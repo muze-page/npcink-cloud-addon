@@ -18,7 +18,7 @@ The addon owns:
   - `GET /v1/runs/{run_id}/result`
   - `GET /v1/stats/*`
   - `GET /v1/entitlements/current`
-- `Magick AI > Cloud`.
+- `Magick AI > Cloud Addon`.
 
 The addon does not own approval truth, proposal truth, WordPress writes, queue control, scheduling, billing truth, prompt ownership, router ownership, or preset ownership.
 
@@ -49,7 +49,7 @@ request(string $method, string $path, ?array $payload = null, string $idempotenc
 
 Admin path:
 
-`Magick AI > Cloud`
+`Magick AI > Cloud Addon`
 
 Fields:
 

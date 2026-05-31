@@ -31,7 +31,7 @@ Steps:
 
 1. Log in with a local administrator account.
 2. Activate `Magick AI Cloud Addon`.
-3. Open `Magick AI > Cloud`.
+3. Open `Magick AI > Cloud Addon`.
 4. Save Cloud Base URL and Cloud API Key.
 5. Confirm failed verification shows a clear error and does not mark the settings as verified.
 6. Confirm successful verification shows `configured_valid`.

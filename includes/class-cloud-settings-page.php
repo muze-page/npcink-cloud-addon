@@ -13,11 +13,11 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 if ( ! class_exists( 'Magick_AI_Cloud_Settings_Page' ) ) {
 	/**
-	 * Renders Magick AI > Cloud and handles save-and-verify.
+	 * Renders Magick AI > Cloud Addon and handles save-and-verify.
 	 */
 	final class Magick_AI_Cloud_Settings_Page {
 		private const PARENT_MENU_SLUG = 'magick-ai';
-		private const PAGE_SLUG = 'magick-ai-cloud';
+		private const PAGE_SLUG = 'magick-ai-cloud-addon';
 		private const MENU_CAPABILITY = 'manage_options';
 		private const ACTION_SAVE = 'magick_ai_cloud_addon_save';
 
@@ -41,8 +41,8 @@ if ( ! class_exists( 'Magick_AI_Cloud_Settings_Page' ) ) {
 
 			add_submenu_page(
 				self::PARENT_MENU_SLUG,
-				__( 'Magick AI Cloud', 'magick-ai-cloud-addon' ),
-				__( 'Cloud', 'magick-ai-cloud-addon' ),
+				__( 'Magick AI Cloud Addon', 'magick-ai-cloud-addon' ),
+				__( 'Cloud Addon', 'magick-ai-cloud-addon' ),
 				self::MENU_CAPABILITY,
 				self::PAGE_SLUG,
 				array( __CLASS__, 'render' ),
@@ -118,7 +118,7 @@ if ( ! class_exists( 'Magick_AI_Cloud_Settings_Page' ) ) {
 						self::render_overview_row( __( 'Core', 'magick-ai-cloud-addon' ), __( 'Review proposals, approval decisions, commit preflight, audit, and Core app keys.', 'magick-ai-cloud-addon' ), 'magick-ai-core' );
 						self::render_overview_row( __( 'Adapter', 'magick-ai-cloud-addon' ), __( 'Connect OpenClaw through the Adapter surface.', 'magick-ai-cloud-addon' ), 'magick-ai-adapter' );
 						self::render_overview_row( __( 'Abilities', 'magick-ai-cloud-addon' ), __( 'Verify WordPress Abilities API packages and demo ability controls.', 'magick-ai-cloud-addon' ), 'magick-ai-abilities' );
-						self::render_overview_row( __( 'Cloud', 'magick-ai-cloud-addon' ), __( 'Connect this site to Magick AI Cloud without moving local control-plane truth.', 'magick-ai-cloud-addon' ), self::PAGE_SLUG );
+						self::render_overview_row( __( 'Cloud Addon', 'magick-ai-cloud-addon' ), __( 'Connect this site to Magick AI Cloud without moving local control-plane truth.', 'magick-ai-cloud-addon' ), self::PAGE_SLUG );
 						?>
 					</tbody>
 				</table>
@@ -225,7 +225,7 @@ if ( ! class_exists( 'Magick_AI_Cloud_Settings_Page' ) ) {
 			$is_verified = ! empty( $state['verified'] );
 			?>
 			<div class="wrap magick-ai-cloud-addon">
-				<h1><?php esc_html_e( 'Magick AI Cloud', 'magick-ai-cloud-addon' ); ?></h1>
+				<h1><?php esc_html_e( 'Magick AI Cloud Addon', 'magick-ai-cloud-addon' ); ?></h1>
 				<p><?php esc_html_e( 'Cloud connector status and access settings for this WordPress site.', 'magick-ai-cloud-addon' ); ?></p>
 				<?php self::render_admin_notice(); ?>
 

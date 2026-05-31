@@ -1,5 +1,5 @@
 === Magick AI Cloud Addon ===
-Contributors: magick-ai
+Contributors: muze233
 Tags: magick ai, cloud, hosted runtime
 Requires at least: 7.0
 Tested up to: 7.0

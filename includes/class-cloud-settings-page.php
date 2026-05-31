@@ -180,10 +180,14 @@ if ( ! class_exists( 'Magick_AI_Cloud_Settings_Page' ) ) {
 
 			check_admin_referer( self::ACTION_SAVE );
 
+			$base_url = isset( $_POST['base_url'] ) ? sanitize_text_field( wp_unslash( $_POST['base_url'] ) ) : '';
+			$api_key  = isset( $_POST['api_key'] ) ? sanitize_text_field( wp_unslash( $_POST['api_key'] ) ) : '';
+			$timeout  = isset( $_POST['timeout'] ) ? absint( wp_unslash( $_POST['timeout'] ) ) : 8;
+
 			$payload = array(
-				'base_url' => isset( $_POST['base_url'] ) ? sanitize_text_field( wp_unslash( $_POST['base_url'] ) ) : '',
-				'api_key' => isset( $_POST['api_key'] ) ? trim( (string) wp_unslash( $_POST['api_key'] ) ) : '',
-				'timeout' => isset( $_POST['timeout'] ) ? absint( wp_unslash( $_POST['timeout'] ) ) : 8,
+				'base_url' => $base_url,
+				'api_key'  => $api_key,
+				'timeout'  => $timeout,
 			);
 
 			$settings = Magick_AI_Cloud_Addon_Settings::build_settings_from_admin_payload( $payload );
@@ -225,74 +229,256 @@ if ( ! class_exists( 'Magick_AI_Cloud_Settings_Page' ) ) {
 			$is_verified = ! empty( $state['verified'] );
 			?>
 			<div class="wrap magick-ai-cloud-addon">
+				<?php self::render_page_styles(); ?>
 				<h1><?php esc_html_e( 'Magick AI Cloud Addon', 'magick-ai-cloud-addon' ); ?></h1>
 				<p><?php esc_html_e( 'Cloud connector status and access settings for this WordPress site.', 'magick-ai-cloud-addon' ); ?></p>
 				<?php self::render_admin_notice(); ?>
 
-				<div class="notice notice-<?php echo esc_attr( self::notice_class_for_state( $state ) ); ?> inline">
-					<p>
-						<strong><?php echo esc_html( (string) $state['label'] ); ?></strong>
-						<code><?php echo esc_html( (string) $state['code'] ); ?></code>
-						<?php echo esc_html( (string) $state['message'] ); ?>
-					</p>
-				</div>
+				<?php self::render_connection_summary( $settings, $state, $entitlement ); ?>
 
 				<?php if ( $is_verified ) : ?>
-					<?php self::render_status_table( $settings, $state ); ?>
-					<h2><?php esc_html_e( 'Entitlement Summary', 'magick-ai-cloud-addon' ); ?></h2>
-					<?php self::render_entitlement_summary( $entitlement ); ?>
-					<details style="max-width: 860px; margin-top: 16px;">
-						<summary style="cursor: pointer;">
+					<section class="magick-ai-cloud-section">
+						<h2><?php esc_html_e( 'Entitlement Summary', 'magick-ai-cloud-addon' ); ?></h2>
+						<?php self::render_entitlement_summary( $entitlement, true ); ?>
+					</section>
+					<details class="magick-ai-cloud-disclosure">
+						<summary>
 							<strong><?php esc_html_e( 'Cloud Settings', 'magick-ai-cloud-addon' ); ?></strong>
-							<span style="color: #646970;"><?php esc_html_e( 'Update the connector or re-run verification.', 'magick-ai-cloud-addon' ); ?></span>
+							<span><?php esc_html_e( 'Update the connector or replace the stored key.', 'magick-ai-cloud-addon' ); ?></span>
 						</summary>
 						<?php self::render_settings_form( $settings ); ?>
 					</details>
 				<?php else : ?>
-					<h2><?php esc_html_e( 'Cloud Settings', 'magick-ai-cloud-addon' ); ?></h2>
-					<?php self::render_settings_form( $settings ); ?>
-					<?php self::render_status_table( $settings, $state ); ?>
-					<h2><?php esc_html_e( 'Entitlement Summary', 'magick-ai-cloud-addon' ); ?></h2>
-					<?php self::render_entitlement_summary( $entitlement ); ?>
+					<section class="magick-ai-cloud-section">
+						<h2><?php esc_html_e( 'Cloud Settings', 'magick-ai-cloud-addon' ); ?></h2>
+						<p><?php esc_html_e( 'Save a Cloud Base URL and Cloud API Key to verify this connector.', 'magick-ai-cloud-addon' ); ?></p>
+						<?php self::render_settings_form( $settings ); ?>
+					</section>
 				<?php endif; ?>
+				<?php self::render_advanced_information( $settings, $state, $entitlement ); ?>
 			</div>
 			<?php
 		}
 
 		/**
-		 * Renders the compact connector status.
+		 * Renders page-local styles for the compact admin surface.
+		 *
+		 * @return void
+		 */
+		private static function render_page_styles(): void {
+			?>
+			<style>
+				.magick-ai-cloud-addon {
+					max-width: 960px;
+				}
+
+				.magick-ai-cloud-summary,
+				.magick-ai-cloud-section,
+				.magick-ai-cloud-disclosure {
+					box-sizing: border-box;
+					max-width: 860px;
+				}
+
+				.magick-ai-cloud-summary {
+					background: #fff;
+					border: 1px solid #c3c4c7;
+					margin: 16px 0 18px;
+					padding: 16px;
+				}
+
+				.magick-ai-cloud-summary__header {
+					align-items: flex-start;
+					display: flex;
+					gap: 16px;
+					justify-content: space-between;
+				}
+
+				.magick-ai-cloud-summary__state {
+					margin: 0 0 4px;
+				}
+
+				.magick-ai-cloud-summary__message {
+					margin: 0;
+					color: #50575e;
+				}
+
+				.magick-ai-cloud-badge {
+					border-radius: 999px;
+					display: inline-block;
+					font-size: 12px;
+					font-weight: 600;
+					line-height: 1;
+					margin-right: 8px;
+					padding: 5px 8px;
+				}
+
+				.magick-ai-cloud-badge--ok {
+					background: #edfaef;
+					color: #008a20;
+				}
+
+				.magick-ai-cloud-badge--error {
+					background: #fcf0f1;
+					color: #b32d2e;
+				}
+
+				.magick-ai-cloud-badge--pending,
+				.magick-ai-cloud-badge--inactive {
+					background: #fcf9e8;
+					color: #8a5a00;
+				}
+
+				.magick-ai-cloud-summary__grid {
+					border-top: 1px solid #dcdcde;
+					display: grid;
+					gap: 0;
+					grid-template-columns: repeat(2, minmax(0, 1fr));
+					margin-top: 14px;
+				}
+
+				.magick-ai-cloud-summary__item {
+					border-bottom: 1px solid #f0f0f1;
+					padding: 10px 12px 10px 0;
+				}
+
+				.magick-ai-cloud-summary__label {
+					color: #646970;
+					display: block;
+					font-size: 12px;
+					margin-bottom: 3px;
+				}
+
+				.magick-ai-cloud-summary__value {
+					display: block;
+					font-weight: 600;
+					overflow-wrap: anywhere;
+				}
+
+				.magick-ai-cloud-verify-form {
+					margin: 0;
+					min-width: 96px;
+				}
+
+				.magick-ai-cloud-section {
+					margin-top: 18px;
+				}
+
+				.magick-ai-cloud-disclosure {
+					background: #fff;
+					border: 1px solid #dcdcde;
+					margin-top: 16px;
+				}
+
+				.magick-ai-cloud-disclosure > summary {
+					cursor: pointer;
+					display: flex;
+					gap: 8px;
+					justify-content: space-between;
+					padding: 12px 14px;
+				}
+
+				.magick-ai-cloud-disclosure > summary:hover {
+					background: #f6f7f7;
+				}
+
+				.magick-ai-cloud-disclosure > summary span {
+					color: #646970;
+				}
+
+				.magick-ai-cloud-disclosure form,
+				.magick-ai-cloud-disclosure table {
+					margin: 0 14px 14px;
+				}
+
+				.magick-ai-cloud-empty {
+					background: #fff;
+					border-left: 4px solid #dba617;
+					margin: 0;
+					max-width: 820px;
+					padding: 10px 12px;
+				}
+
+				@media (max-width: 782px) {
+					.magick-ai-cloud-summary__header,
+					.magick-ai-cloud-disclosure > summary {
+						display: block;
+					}
+
+					.magick-ai-cloud-summary__grid {
+						grid-template-columns: 1fr;
+					}
+
+					.magick-ai-cloud-verify-form {
+						margin-top: 12px;
+					}
+				}
+			</style>
+			<?php
+		}
+
+		/**
+		 * Renders the default connector summary.
 		 *
 		 * @param array<string,mixed> $settings Stored settings.
 		 * @param array<string,mixed> $state Credential state.
+		 * @param array<string,mixed> $entitlement Entitlement summary.
 		 * @return void
 		 */
-		private static function render_status_table( array $settings, array $state ): void {
+		private static function render_connection_summary( array $settings, array $state, array $entitlement ): void {
+			$severity = sanitize_html_class( (string) ( $state['severity'] ?? 'inactive' ) );
+			$is_verified = ! empty( $state['verified'] );
+			$is_configured = ! empty( $state['configured'] );
 			?>
-			<h2><?php esc_html_e( 'Cloud Status', 'magick-ai-cloud-addon' ); ?></h2>
-			<table class="widefat striped" style="max-width: 860px;">
-				<tbody>
-					<tr>
-						<th scope="row"><?php esc_html_e( 'Connection', 'magick-ai-cloud-addon' ); ?></th>
-						<td><?php echo esc_html( (string) $state['code'] ); ?></td>
-					</tr>
-					<tr>
-						<th scope="row"><?php esc_html_e( 'Cloud Base URL', 'magick-ai-cloud-addon' ); ?></th>
-						<td><?php echo '' !== $settings['base_url'] ? esc_html( (string) $settings['base_url'] ) : esc_html__( 'Not set', 'magick-ai-cloud-addon' ); ?></td>
-					</tr>
-					<tr>
-						<th scope="row"><?php esc_html_e( 'Site ID', 'magick-ai-cloud-addon' ); ?></th>
-						<td><?php echo '' !== $settings['site_id'] ? esc_html( (string) $settings['site_id'] ) : esc_html__( 'Not set', 'magick-ai-cloud-addon' ); ?></td>
-					</tr>
-					<tr>
-						<th scope="row"><?php esc_html_e( 'Key ID', 'magick-ai-cloud-addon' ); ?></th>
-						<td><?php echo '' !== $settings['key_id'] ? esc_html( (string) $settings['key_id'] ) : esc_html__( 'Not set', 'magick-ai-cloud-addon' ); ?></td>
-					</tr>
-					<tr>
-						<th scope="row"><?php esc_html_e( 'Last verified', 'magick-ai-cloud-addon' ); ?></th>
-						<td><?php echo '' !== $settings['verified_at'] ? esc_html( (string) $settings['verified_at'] ) : esc_html__( 'Never', 'magick-ai-cloud-addon' ); ?></td>
-					</tr>
-				</tbody>
-			</table>
+			<section class="magick-ai-cloud-summary">
+				<div class="magick-ai-cloud-summary__header">
+					<div>
+						<p class="magick-ai-cloud-summary__state">
+							<span class="magick-ai-cloud-badge magick-ai-cloud-badge--<?php echo esc_attr( $severity ); ?>"><?php echo esc_html( (string) $state['label'] ); ?></span>
+						</p>
+						<p class="magick-ai-cloud-summary__message"><?php echo esc_html( (string) $state['message'] ); ?></p>
+					</div>
+					<?php if ( $is_configured ) : ?>
+						<?php self::render_reverify_form( $settings ); ?>
+					<?php endif; ?>
+				</div>
+				<div class="magick-ai-cloud-summary__grid">
+					<div class="magick-ai-cloud-summary__item">
+						<span class="magick-ai-cloud-summary__label"><?php esc_html_e( 'Cloud Base URL', 'magick-ai-cloud-addon' ); ?></span>
+						<span class="magick-ai-cloud-summary__value"><?php echo esc_html( self::format_setting_value( (string) $settings['base_url'], __( 'Not set', 'magick-ai-cloud-addon' ) ) ); ?></span>
+					</div>
+					<div class="magick-ai-cloud-summary__item">
+						<span class="magick-ai-cloud-summary__label"><?php esc_html_e( 'Last verified', 'magick-ai-cloud-addon' ); ?></span>
+						<span class="magick-ai-cloud-summary__value"><?php echo esc_html( self::format_setting_value( (string) $settings['verified_at'], __( 'Never', 'magick-ai-cloud-addon' ) ) ); ?></span>
+					</div>
+					<div class="magick-ai-cloud-summary__item">
+						<span class="magick-ai-cloud-summary__label"><?php esc_html_e( 'Entitlement', 'magick-ai-cloud-addon' ); ?></span>
+						<span class="magick-ai-cloud-summary__value"><?php echo esc_html( self::format_entitlement_availability( $entitlement, $is_verified ) ); ?></span>
+					</div>
+					<div class="magick-ai-cloud-summary__item">
+						<span class="magick-ai-cloud-summary__label"><?php esc_html_e( 'Package', 'magick-ai-cloud-addon' ); ?></span>
+						<span class="magick-ai-cloud-summary__value"><?php echo esc_html( $is_verified ? self::format_empty( (string) ( $entitlement['package_label'] ?? '' ) ) : __( 'Not checked', 'magick-ai-cloud-addon' ) ); ?></span>
+					</div>
+				</div>
+			</section>
+			<?php
+		}
+
+		/**
+		 * Renders a compact re-verification action.
+		 *
+		 * @param array<string,mixed> $settings Stored settings.
+		 * @return void
+		 */
+		private static function render_reverify_form( array $settings ): void {
+			?>
+			<form class="magick-ai-cloud-verify-form" method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>">
+				<input type="hidden" name="_wpnonce" value="<?php echo esc_attr( wp_create_nonce( self::ACTION_SAVE ) ); ?>" />
+				<input type="hidden" name="action" value="<?php echo esc_attr( self::ACTION_SAVE ); ?>" />
+				<input type="hidden" name="base_url" value="<?php echo esc_attr( (string) $settings['base_url'] ); ?>" />
+				<input type="hidden" name="api_key" value="" />
+				<input type="hidden" name="timeout" value="<?php echo esc_attr( (string) $settings['timeout'] ); ?>" />
+				<button type="submit" class="button button-secondary"><?php esc_html_e( 'Re-verify', 'magick-ai-cloud-addon' ); ?></button>
+			</form>
 			<?php
 		}
 
@@ -370,22 +556,22 @@ if ( ! class_exists( 'Magick_AI_Cloud_Settings_Page' ) ) {
 		 * Renders the entitlement summary.
 		 *
 		 * @param array<string,mixed> $summary Entitlement summary.
+		 * @param bool                $is_verified Whether the connector has verified credentials.
 		 * @return void
 		 */
-		private static function render_entitlement_summary( array $summary ): void {
+		private static function render_entitlement_summary( array $summary, bool $is_verified ): void {
+			if ( ! $is_verified ) {
+				?>
+				<p class="magick-ai-cloud-empty"><?php esc_html_e( 'Entitlement is checked after the connector verifies successfully.', 'magick-ai-cloud-addon' ); ?></p>
+				<?php
+				return;
+			}
 			?>
 			<table class="widefat striped" style="max-width: 860px;">
 				<tbody>
 					<tr>
 						<th scope="row"><?php esc_html_e( 'Availability', 'magick-ai-cloud-addon' ); ?></th>
-						<td>
-							<?php echo ! empty( $summary['available'] ) ? esc_html__( 'available', 'magick-ai-cloud-addon' ) : esc_html__( 'unavailable', 'magick-ai-cloud-addon' ); ?>
-							<code><?php echo esc_html( (string) ( $summary['state'] ?? '' ) ); ?></code>
-						</td>
-					</tr>
-					<tr>
-						<th scope="row"><?php esc_html_e( 'Message', 'magick-ai-cloud-addon' ); ?></th>
-						<td><?php echo esc_html( (string) ( $summary['message'] ?? '' ) ); ?></td>
+						<td><?php echo ! empty( $summary['available'] ) ? esc_html__( 'available', 'magick-ai-cloud-addon' ) : esc_html__( 'unavailable', 'magick-ai-cloud-addon' ); ?></td>
 					</tr>
 					<tr>
 						<th scope="row"><?php esc_html_e( 'Package', 'magick-ai-cloud-addon' ); ?></th>
@@ -401,6 +587,57 @@ if ( ! class_exists( 'Magick_AI_Cloud_Settings_Page' ) ) {
 					</tr>
 				</tbody>
 			</table>
+			<?php
+		}
+
+		/**
+		 * Renders low-frequency connector details.
+		 *
+		 * @param array<string,mixed> $settings Stored settings.
+		 * @param array<string,mixed> $state Credential state.
+		 * @param array<string,mixed> $entitlement Entitlement summary.
+		 * @return void
+		 */
+		private static function render_advanced_information( array $settings, array $state, array $entitlement ): void {
+			?>
+			<details class="magick-ai-cloud-disclosure">
+				<summary>
+					<strong><?php esc_html_e( 'Advanced Information', 'magick-ai-cloud-addon' ); ?></strong>
+					<span><?php esc_html_e( 'Timeout, verification failure, and entitlement message.', 'magick-ai-cloud-addon' ); ?></span>
+				</summary>
+				<table class="widefat striped">
+					<tbody>
+						<tr>
+							<th scope="row"><?php esc_html_e( 'Timeout', 'magick-ai-cloud-addon' ); ?></th>
+							<td>
+								<?php
+								printf(
+									/* translators: %d: timeout in seconds. */
+									esc_html__( '%d seconds', 'magick-ai-cloud-addon' ),
+									absint( $settings['timeout'] )
+								);
+								?>
+							</td>
+						</tr>
+						<tr>
+							<th scope="row"><?php esc_html_e( 'Connection code', 'magick-ai-cloud-addon' ); ?></th>
+							<td><code><?php echo esc_html( (string) $state['code'] ); ?></code></td>
+						</tr>
+						<tr>
+							<th scope="row"><?php esc_html_e( 'Last failure', 'magick-ai-cloud-addon' ); ?></th>
+							<td><?php echo esc_html( self::format_empty( (string) ( $state['last_verification_error'] ?? '' ) ) ); ?></td>
+						</tr>
+						<tr>
+							<th scope="row"><?php esc_html_e( 'Entitlement message', 'magick-ai-cloud-addon' ); ?></th>
+							<td><?php echo esc_html( self::format_empty( (string) ( $entitlement['message'] ?? '' ) ) ); ?></td>
+						</tr>
+						<tr>
+							<th scope="row"><?php esc_html_e( 'Entitlement state', 'magick-ai-cloud-addon' ); ?></th>
+							<td><code><?php echo esc_html( self::format_empty( (string) ( $entitlement['state'] ?? '' ) ) ); ?></code></td>
+						</tr>
+					</tbody>
+				</table>
+			</details>
 			<?php
 		}
 
@@ -490,21 +727,31 @@ if ( ! class_exists( 'Magick_AI_Cloud_Settings_Page' ) ) {
 		}
 
 		/**
-		 * Maps credential state to notice class.
+		 * Formats entitlement availability for default display.
 		 *
-		 * @param array<string,mixed> $state Credential state.
+		 * @param array<string,mixed> $summary Entitlement summary.
+		 * @param bool                $is_verified Whether the connector has verified credentials.
 		 * @return string
 		 */
-		private static function notice_class_for_state( array $state ): string {
-			$severity = (string) ( $state['severity'] ?? '' );
-			if ( 'ok' === $severity ) {
-				return 'success';
-			}
-			if ( 'error' === $severity ) {
-				return 'error';
+		private static function format_entitlement_availability( array $summary, bool $is_verified ): string {
+			if ( ! $is_verified ) {
+				return __( 'Not checked', 'magick-ai-cloud-addon' );
 			}
 
-			return 'warning';
+			return ! empty( $summary['available'] )
+				? __( 'available', 'magick-ai-cloud-addon' )
+				: __( 'unavailable', 'magick-ai-cloud-addon' );
+		}
+
+		/**
+		 * Formats a setting value with a field-specific fallback.
+		 *
+		 * @param string $value Value.
+		 * @param string $fallback Fallback text.
+		 * @return string
+		 */
+		private static function format_setting_value( string $value, string $fallback ): string {
+			return '' !== $value ? $value : $fallback;
 		}
 
 		/**

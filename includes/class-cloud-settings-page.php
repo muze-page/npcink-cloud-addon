@@ -116,7 +116,7 @@ if ( ! class_exists( 'Magick_AI_Cloud_Settings_Page' ) ) {
 					<tbody>
 						<?php
 						self::render_overview_row( __( 'Governance', 'magick-ai-cloud-addon' ), __( 'Review proposals, approval decisions, commit preflight, audit, and Core app keys.', 'magick-ai-cloud-addon' ), 'magick-ai-core' );
-						self::render_overview_row( __( 'OpenClaw Connection', 'magick-ai-cloud-addon' ), __( 'Connect OpenClaw through the Adapter surface.', 'magick-ai-cloud-addon' ), 'magick-ai-adapter-openclaw' );
+						self::render_overview_row( __( 'Adapter', 'magick-ai-cloud-addon' ), __( 'Connect OpenClaw through the Adapter surface.', 'magick-ai-cloud-addon' ), 'magick-ai-adapter' );
 						self::render_overview_row( __( 'Cloud Connection', 'magick-ai-cloud-addon' ), __( 'Connect this site to Magick AI Cloud without moving local control-plane truth.', 'magick-ai-cloud-addon' ), self::PAGE_SLUG );
 						self::render_overview_row( __( 'Ability Packages', 'magick-ai-cloud-addon' ), __( 'Verify WordPress Abilities API packages and demo ability controls.', 'magick-ai-cloud-addon' ), 'magick-ai-abilities-test' );
 						?>

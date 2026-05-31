@@ -55,6 +55,28 @@ a hosted runtime and service enhancement layer.
 - PHP 8.0 or later.
 - A Cloud Base URL and Cloud API Key issued by Magick AI Cloud.
 
+## External Services
+
+This plugin connects to the Magick AI Cloud service configured by the site
+administrator through the Cloud Base URL setting.
+
+The plugin contacts the configured Cloud service only after an administrator
+enters a Cloud Base URL and Cloud API Key, saves the settings, verifies the
+connection, or a local Magick AI component explicitly uses the Cloud runtime
+client.
+
+Requests may include the configured site identifier, key identifier, request
+timestamp, nonce, trace identifier, idempotency key, HMAC signature headers,
+runtime request payloads supplied by local Magick AI components, and read-only
+requests for health, run status, run result, usage statistics, and entitlement
+summaries. The stored Cloud API Key secret is used server-side for request
+signing and is not printed in wp-admin.
+
+The configured Cloud service is responsible for its own privacy policy, terms
+of service, data retention, and account/key issuance. Site administrators
+should only connect this plugin to a Cloud service whose terms and privacy
+policy they have reviewed.
+
 ## Series Boundary
 
 In the Magick AI plugin family:

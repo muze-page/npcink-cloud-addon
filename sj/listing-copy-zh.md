@@ -50,6 +50,24 @@ enhancement layer。
 - PHP 8.0 或更高版本。
 - 由 Magick AI Cloud 签发的 Cloud Base URL 和 Cloud API Key。
 
+## 外部服务
+
+这个插件会连接到站点管理员在 Cloud Base URL 设置中配置的 Magick AI Cloud
+服务。
+
+插件只会在管理员填写 Cloud Base URL 和 Cloud API Key、保存设置、验证连接，
+或本地 Magick AI 组件明确调用 Cloud runtime client 时，联系已配置的 Cloud
+服务。
+
+请求可能包含已配置的 site identifier、key identifier、请求时间戳、nonce、
+trace identifier、idempotency key、HMAC signature headers、本地 Magick AI
+组件提供的 runtime request payload，以及用于 health、run status、run result、
+usage statistics 和 entitlement summaries 的只读请求。已保存的 Cloud API Key
+secret 只在服务端用于请求签名，不会打印到 wp-admin 页面。
+
+已配置的 Cloud 服务负责自己的隐私政策、服务条款、数据保留规则和账号/key 签发。
+站点管理员应只连接到已经审阅过隐私政策和服务条款的 Cloud 服务。
+
 ## 系列插件边界
 
 在 Magick AI 系列插件中：

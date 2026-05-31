@@ -4,5 +4,14 @@
 .DS_Store
 AGENTS.md
 README.md
+composer.json
 docs
 sj
+build
+dist
+vendor
+node_modules
+phpcs.xml
+phpcs.xml.dist
+phpstan.neon
+phpstan.neon.dist

@@ -1,5 +1,5 @@
 === Magick AI Cloud Addon ===
-Contributors: npcink
+Contributors: magick-ai
 Tags: magick ai, cloud, hosted runtime
 Requires at least: 7.0
 Tested up to: 7.0
@@ -17,6 +17,16 @@ Magick AI Cloud Addon connects a local WordPress site to `magick-ai-cloud`.
 It stores the Cloud Base URL and Cloud API Key, parses Cloud-issued keys, signs runtime requests, probes health, and reads Cloud entitlement summaries.
 
 It does not execute WordPress writes, approve proposals, own billing truth, or manage prompts, routers, presets, queues, schedulers, or workflow engines.
+
+== External Services ==
+
+This plugin connects to the Magick AI Cloud service configured by the site administrator through the Cloud Base URL setting.
+
+The plugin contacts the configured Cloud service only after an administrator enters a Cloud Base URL and Cloud API Key, saves the settings, verifies the connection, or a local Magick AI component explicitly uses the Cloud runtime client.
+
+Requests may include the configured site identifier, key identifier, request timestamp, nonce, trace identifier, idempotency key, HMAC signature headers, runtime request payloads supplied by local Magick AI components, and read-only requests for health, run status, run result, usage statistics, and entitlement summaries. The stored Cloud API Key secret is used server-side for request signing and is not printed in wp-admin.
+
+The configured Cloud service is responsible for its own privacy policy, terms of service, data retention, and account/key issuance. Site administrators should only connect this plugin to a Cloud service whose terms and privacy policy they have reviewed.
 
 == Installation ==
 

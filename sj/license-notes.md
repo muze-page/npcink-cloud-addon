@@ -30,8 +30,9 @@ The artwork was generated from text prompts prepared by the project maintainer.
 - Tool used: AI image generation tool selected by the project maintainer.
 - Generation date: 2026-05-31.
 - Prompt file: `image-prompts.md`.
-- Human edits: resized, center-cropped where needed, and exported to
-  WordPress.org asset dimensions.
+- Human edits: replaced a draft local WordPress mark with a generic local-site
+  icon, resized, center-cropped where needed, and exported to WordPress.org
+  asset dimensions.
 - Reference images used: none recorded.
 - Third-party logos used: none.
 - Trademarked marks used: none.

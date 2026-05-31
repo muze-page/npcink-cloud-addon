@@ -13,10 +13,12 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 if ( ! class_exists( 'Magick_AI_Cloud_Settings_Page' ) ) {
 	/**
-	 * Renders Settings > Magick AI Cloud and handles save-and-verify.
+	 * Renders Magick AI > Cloud Connection and handles save-and-verify.
 	 */
 	final class Magick_AI_Cloud_Settings_Page {
+		private const PARENT_MENU_SLUG = 'magick-ai';
 		private const PAGE_SLUG = 'magick-ai-cloud';
+		private const MENU_CAPABILITY = 'manage_options';
 		private const ACTION_SAVE = 'magick_ai_cloud_addon_save';
 
 		/**
@@ -25,7 +27,7 @@ if ( ! class_exists( 'Magick_AI_Cloud_Settings_Page' ) ) {
 		 * @return void
 		 */
 		public static function register(): void {
-			add_action( 'admin_menu', array( __CLASS__, 'add_menu_page' ) );
+			add_action( 'admin_menu', array( __CLASS__, 'add_menu_page' ), 30 );
 			add_action( 'admin_post_' . self::ACTION_SAVE, array( __CLASS__, 'handle_save' ) );
 		}
 
@@ -35,13 +37,135 @@ if ( ! class_exists( 'Magick_AI_Cloud_Settings_Page' ) ) {
 		 * @return void
 		 */
 		public static function add_menu_page(): void {
-			add_options_page(
+			self::ensure_parent_menu();
+
+			add_submenu_page(
+				self::PARENT_MENU_SLUG,
 				__( 'Magick AI Cloud', 'magick-ai-cloud-addon' ),
-				__( 'Magick AI Cloud', 'magick-ai-cloud-addon' ),
-				'manage_options',
+				__( 'Cloud Connection', 'magick-ai-cloud-addon' ),
+				self::MENU_CAPABILITY,
 				self::PAGE_SLUG,
-				array( __CLASS__, 'render' )
+				array( __CLASS__, 'render' ),
+				30
 			);
+		}
+
+		/**
+		 * Ensures the shared Magick AI parent menu exists.
+		 *
+		 * @return void
+		 */
+		private static function ensure_parent_menu(): void {
+			if ( self::has_parent_menu() ) {
+				return;
+			}
+
+			add_menu_page(
+				__( 'Magick AI', 'magick-ai-cloud-addon' ),
+				__( 'Magick AI', 'magick-ai-cloud-addon' ),
+				self::MENU_CAPABILITY,
+				self::PARENT_MENU_SLUG,
+				array( __CLASS__, 'render_overview' ),
+				'dashicons-superhero',
+				58
+			);
+
+			add_submenu_page(
+				self::PARENT_MENU_SLUG,
+				__( 'Magick AI Overview', 'magick-ai-cloud-addon' ),
+				__( 'Overview', 'magick-ai-cloud-addon' ),
+				self::MENU_CAPABILITY,
+				self::PARENT_MENU_SLUG,
+				array( __CLASS__, 'render_overview' ),
+				0
+			);
+		}
+
+		/**
+		 * Returns whether another Magick AI plugin already created the parent menu.
+		 *
+		 * @return bool
+		 */
+		private static function has_parent_menu(): bool {
+			global $menu;
+
+			foreach ( (array) $menu as $item ) {
+				if ( isset( $item[2] ) && self::PARENT_MENU_SLUG === $item[2] ) {
+					return true;
+				}
+			}
+
+			return false;
+		}
+
+		/**
+		 * Renders the shared Magick AI overview page.
+		 *
+		 * @return void
+		 */
+		public static function render_overview(): void {
+			if ( ! current_user_can( self::MENU_CAPABILITY ) ) {
+				wp_die( esc_html__( 'You do not have permission to manage Magick AI settings.', 'magick-ai-cloud-addon' ) );
+			}
+			?>
+			<div class="wrap">
+				<h1><?php esc_html_e( 'Magick AI', 'magick-ai-cloud-addon' ); ?></h1>
+				<p><?php esc_html_e( 'Local WordPress entry points for Magick AI governance, connections, cloud access, and ability packages.', 'magick-ai-cloud-addon' ); ?></p>
+				<h2><?php esc_html_e( 'Installed Surfaces', 'magick-ai-cloud-addon' ); ?></h2>
+				<table class="widefat striped" style="max-width: 860px;">
+					<tbody>
+						<?php
+						self::render_overview_row( __( 'Governance', 'magick-ai-cloud-addon' ), __( 'Review proposals, approval decisions, commit preflight, audit, and Core app keys.', 'magick-ai-cloud-addon' ), 'magick-ai-core' );
+						self::render_overview_row( __( 'OpenClaw Connection', 'magick-ai-cloud-addon' ), __( 'Connect OpenClaw through the Adapter surface.', 'magick-ai-cloud-addon' ), 'magick-ai-adapter-openclaw' );
+						self::render_overview_row( __( 'Cloud Connection', 'magick-ai-cloud-addon' ), __( 'Connect this site to Magick AI Cloud without moving local control-plane truth.', 'magick-ai-cloud-addon' ), self::PAGE_SLUG );
+						self::render_overview_row( __( 'Ability Packages', 'magick-ai-cloud-addon' ), __( 'Verify WordPress Abilities API packages and demo ability controls.', 'magick-ai-cloud-addon' ), 'magick-ai-abilities-test' );
+						?>
+					</tbody>
+				</table>
+			</div>
+			<?php
+		}
+
+		/**
+		 * Renders one overview row.
+		 *
+		 * @param string $label       Row label.
+		 * @param string $description Row description.
+		 * @param string $slug        Menu page slug.
+		 * @return void
+		 */
+		private static function render_overview_row( string $label, string $description, string $slug ): void {
+			?>
+			<tr>
+				<th scope="row"><?php echo esc_html( $label ); ?></th>
+				<td><?php echo esc_html( $description ); ?></td>
+				<td>
+					<?php if ( self::is_submenu_registered( $slug ) ) : ?>
+						<a class="button" href="<?php echo esc_url( admin_url( 'admin.php?page=' . $slug ) ); ?>"><?php esc_html_e( 'Open', 'magick-ai-cloud-addon' ); ?></a>
+					<?php else : ?>
+						<span style="color: #646970;"><?php esc_html_e( 'Not installed', 'magick-ai-cloud-addon' ); ?></span>
+					<?php endif; ?>
+				</td>
+			</tr>
+			<?php
+		}
+
+		/**
+		 * Returns whether a Magick AI submenu has been registered.
+		 *
+		 * @param string $slug Menu page slug.
+		 * @return bool
+		 */
+		private static function is_submenu_registered( string $slug ): bool {
+			global $submenu;
+
+			foreach ( (array) ( $submenu[ self::PARENT_MENU_SLUG ] ?? array() ) as $item ) {
+				if ( isset( $item[2] ) && $slug === $item[2] ) {
+					return true;
+				}
+			}
+
+			return false;
 		}
 
 		/**
@@ -323,7 +447,7 @@ if ( ! class_exists( 'Magick_AI_Cloud_Settings_Page' ) ) {
 		 * @return void
 		 */
 		private static function redirect_to_page(): void {
-			wp_safe_redirect( admin_url( 'options-general.php?page=' . self::PAGE_SLUG ) );
+			wp_safe_redirect( admin_url( 'admin.php?page=' . self::PAGE_SLUG ) );
 			exit;
 		}
 

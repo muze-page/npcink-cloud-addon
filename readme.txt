@@ -22,7 +22,7 @@ It does not execute WordPress writes, approve proposals, own billing truth, or m
 
 1. Place this directory in `wp-content/plugins/magick-ai-cloud-addon`.
 2. Activate `Magick AI Cloud Addon`.
-3. Open `Magick AI > Cloud Connection`.
+3. Open `Magick AI > Cloud`.
 4. Enter Cloud Base URL and Cloud API Key.
 5. Click `Save and Verify`.
 

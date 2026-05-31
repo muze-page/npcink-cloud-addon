@@ -13,7 +13,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 if ( ! class_exists( 'Magick_AI_Cloud_Settings_Page' ) ) {
 	/**
-	 * Renders Magick AI > Cloud Connection and handles save-and-verify.
+	 * Renders Magick AI > Cloud and handles save-and-verify.
 	 */
 	final class Magick_AI_Cloud_Settings_Page {
 		private const PARENT_MENU_SLUG = 'magick-ai';
@@ -27,7 +27,7 @@ if ( ! class_exists( 'Magick_AI_Cloud_Settings_Page' ) ) {
 		 * @return void
 		 */
 		public static function register(): void {
-			add_action( 'admin_menu', array( __CLASS__, 'add_menu_page' ), 30 );
+			add_action( 'admin_menu', array( __CLASS__, 'add_menu_page' ), 50 );
 			add_action( 'admin_post_' . self::ACTION_SAVE, array( __CLASS__, 'handle_save' ) );
 		}
 
@@ -42,11 +42,11 @@ if ( ! class_exists( 'Magick_AI_Cloud_Settings_Page' ) ) {
 			add_submenu_page(
 				self::PARENT_MENU_SLUG,
 				__( 'Magick AI Cloud', 'magick-ai-cloud-addon' ),
-				__( 'Cloud Connection', 'magick-ai-cloud-addon' ),
+				__( 'Cloud', 'magick-ai-cloud-addon' ),
 				self::MENU_CAPABILITY,
 				self::PAGE_SLUG,
 				array( __CLASS__, 'render' ),
-				30
+				50
 			);
 		}
 
@@ -115,10 +115,10 @@ if ( ! class_exists( 'Magick_AI_Cloud_Settings_Page' ) ) {
 				<table class="widefat striped" style="max-width: 860px;">
 					<tbody>
 						<?php
-						self::render_overview_row( __( 'Governance', 'magick-ai-cloud-addon' ), __( 'Review proposals, approval decisions, commit preflight, audit, and Core app keys.', 'magick-ai-cloud-addon' ), 'magick-ai-core' );
+						self::render_overview_row( __( 'Core', 'magick-ai-cloud-addon' ), __( 'Review proposals, approval decisions, commit preflight, audit, and Core app keys.', 'magick-ai-cloud-addon' ), 'magick-ai-core' );
 						self::render_overview_row( __( 'Adapter', 'magick-ai-cloud-addon' ), __( 'Connect OpenClaw through the Adapter surface.', 'magick-ai-cloud-addon' ), 'magick-ai-adapter' );
-						self::render_overview_row( __( 'Cloud Connection', 'magick-ai-cloud-addon' ), __( 'Connect this site to Magick AI Cloud without moving local control-plane truth.', 'magick-ai-cloud-addon' ), self::PAGE_SLUG );
-						self::render_overview_row( __( 'Ability Packages', 'magick-ai-cloud-addon' ), __( 'Verify WordPress Abilities API packages and demo ability controls.', 'magick-ai-cloud-addon' ), 'magick-ai-abilities-test' );
+						self::render_overview_row( __( 'Abilities', 'magick-ai-cloud-addon' ), __( 'Verify WordPress Abilities API packages and demo ability controls.', 'magick-ai-cloud-addon' ), 'magick-ai-abilities' );
+						self::render_overview_row( __( 'Cloud', 'magick-ai-cloud-addon' ), __( 'Connect this site to Magick AI Cloud without moving local control-plane truth.', 'magick-ai-cloud-addon' ), self::PAGE_SLUG );
 						?>
 					</tbody>
 				</table>

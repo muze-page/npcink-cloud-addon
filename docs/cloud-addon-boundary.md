@@ -16,7 +16,7 @@ It connects a local WordPress site to `magick-ai-cloud` and keeps only the local
 - Health and signed connectivity checks.
 - Runtime request dispatch and run/result reads.
 - Stats and entitlement read projections.
-- A light `Magick AI -> Cloud Connection` page.
+- A light `Magick AI -> Cloud` page.
 
 ## Addon Does Not Own
 

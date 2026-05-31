@@ -57,7 +57,14 @@ Fields:
 - Cloud API Key
 - Timeout
 
-The page saves and verifies in one action. It displays connection state, Site ID, Key ID, last verification time, and a read-only entitlement summary. It never displays the secret and does not provide split credential editing.
+The page saves and verifies in one action. When unverified, it prioritizes the
+settings form and `Save and Verify`. When verified, it prioritizes Cloud status,
+Site ID, Key ID, last verification time, and a read-only entitlement summary,
+with settings collapsed for update/re-verification. It never displays the
+secret and does not provide split credential editing.
+
+The admin page scope is documented in
+[`docs/admin-surface-standard.md`](docs/admin-surface-standard.md).
 
 ## Local Checks
 

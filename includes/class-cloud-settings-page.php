@@ -222,9 +222,11 @@ if ( ! class_exists( 'Magick_AI_Cloud_Settings_Page' ) ) {
 			$settings = Magick_AI_Cloud_Addon_Settings::get_settings();
 			$state = Magick_AI_Cloud_Addon_Settings::get_credential_state();
 			$entitlement = Magick_AI_Cloud_Entitlement_Summary::get_summary();
+			$is_verified = ! empty( $state['verified'] );
 			?>
 			<div class="wrap magick-ai-cloud-addon">
 				<h1><?php esc_html_e( 'Magick AI Cloud', 'magick-ai-cloud-addon' ); ?></h1>
+				<p><?php esc_html_e( 'Cloud connector status and access settings for this WordPress site.', 'magick-ai-cloud-addon' ); ?></p>
 				<?php self::render_admin_notice(); ?>
 
 				<div class="notice notice-<?php echo esc_attr( self::notice_class_for_state( $state ) ); ?> inline">
@@ -235,96 +237,132 @@ if ( ! class_exists( 'Magick_AI_Cloud_Settings_Page' ) ) {
 					</p>
 				</div>
 
-				<h2><?php esc_html_e( 'Status', 'magick-ai-cloud-addon' ); ?></h2>
-				<table class="widefat striped" style="max-width: 860px;">
+				<?php if ( $is_verified ) : ?>
+					<?php self::render_status_table( $settings, $state ); ?>
+					<h2><?php esc_html_e( 'Entitlement Summary', 'magick-ai-cloud-addon' ); ?></h2>
+					<?php self::render_entitlement_summary( $entitlement ); ?>
+					<details style="max-width: 860px; margin-top: 16px;">
+						<summary style="cursor: pointer;">
+							<strong><?php esc_html_e( 'Cloud Settings', 'magick-ai-cloud-addon' ); ?></strong>
+							<span style="color: #646970;"><?php esc_html_e( 'Update the connector or re-run verification.', 'magick-ai-cloud-addon' ); ?></span>
+						</summary>
+						<?php self::render_settings_form( $settings ); ?>
+					</details>
+				<?php else : ?>
+					<h2><?php esc_html_e( 'Cloud Settings', 'magick-ai-cloud-addon' ); ?></h2>
+					<?php self::render_settings_form( $settings ); ?>
+					<?php self::render_status_table( $settings, $state ); ?>
+					<h2><?php esc_html_e( 'Entitlement Summary', 'magick-ai-cloud-addon' ); ?></h2>
+					<?php self::render_entitlement_summary( $entitlement ); ?>
+				<?php endif; ?>
+			</div>
+			<?php
+		}
+
+		/**
+		 * Renders the compact connector status.
+		 *
+		 * @param array<string,mixed> $settings Stored settings.
+		 * @param array<string,mixed> $state Credential state.
+		 * @return void
+		 */
+		private static function render_status_table( array $settings, array $state ): void {
+			?>
+			<h2><?php esc_html_e( 'Cloud Status', 'magick-ai-cloud-addon' ); ?></h2>
+			<table class="widefat striped" style="max-width: 860px;">
+				<tbody>
+					<tr>
+						<th scope="row"><?php esc_html_e( 'Connection', 'magick-ai-cloud-addon' ); ?></th>
+						<td><?php echo esc_html( (string) $state['code'] ); ?></td>
+					</tr>
+					<tr>
+						<th scope="row"><?php esc_html_e( 'Cloud Base URL', 'magick-ai-cloud-addon' ); ?></th>
+						<td><?php echo '' !== $settings['base_url'] ? esc_html( (string) $settings['base_url'] ) : esc_html__( 'Not set', 'magick-ai-cloud-addon' ); ?></td>
+					</tr>
+					<tr>
+						<th scope="row"><?php esc_html_e( 'Site ID', 'magick-ai-cloud-addon' ); ?></th>
+						<td><?php echo '' !== $settings['site_id'] ? esc_html( (string) $settings['site_id'] ) : esc_html__( 'Not set', 'magick-ai-cloud-addon' ); ?></td>
+					</tr>
+					<tr>
+						<th scope="row"><?php esc_html_e( 'Key ID', 'magick-ai-cloud-addon' ); ?></th>
+						<td><?php echo '' !== $settings['key_id'] ? esc_html( (string) $settings['key_id'] ) : esc_html__( 'Not set', 'magick-ai-cloud-addon' ); ?></td>
+					</tr>
+					<tr>
+						<th scope="row"><?php esc_html_e( 'Last verified', 'magick-ai-cloud-addon' ); ?></th>
+						<td><?php echo '' !== $settings['verified_at'] ? esc_html( (string) $settings['verified_at'] ) : esc_html__( 'Never', 'magick-ai-cloud-addon' ); ?></td>
+					</tr>
+				</tbody>
+			</table>
+			<?php
+		}
+
+		/**
+		 * Renders connector settings.
+		 *
+		 * @param array<string,mixed> $settings Stored settings.
+		 * @return void
+		 */
+		private static function render_settings_form( array $settings ): void {
+			?>
+			<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" style="max-width: 860px;">
+				<?php wp_nonce_field( self::ACTION_SAVE ); ?>
+				<input type="hidden" name="action" value="<?php echo esc_attr( self::ACTION_SAVE ); ?>" />
+				<table class="form-table" role="presentation">
 					<tbody>
 						<tr>
-							<th scope="row"><?php esc_html_e( 'Connection', 'magick-ai-cloud-addon' ); ?></th>
-							<td><?php echo esc_html( (string) $state['code'] ); ?></td>
+							<th scope="row">
+								<label for="magick-ai-cloud-base-url"><?php esc_html_e( 'Cloud Base URL', 'magick-ai-cloud-addon' ); ?></label>
+							</th>
+							<td>
+								<input
+									type="url"
+									class="regular-text code"
+									id="magick-ai-cloud-base-url"
+									name="base_url"
+									value="<?php echo esc_attr( (string) $settings['base_url'] ); ?>"
+									placeholder="https://cloud.example.com"
+									required
+								/>
+							</td>
 						</tr>
 						<tr>
-							<th scope="row"><?php esc_html_e( 'Cloud Base URL', 'magick-ai-cloud-addon' ); ?></th>
-							<td><?php echo '' !== $settings['base_url'] ? esc_html( (string) $settings['base_url'] ) : esc_html__( 'Not set', 'magick-ai-cloud-addon' ); ?></td>
+							<th scope="row">
+								<label for="magick-ai-cloud-api-key"><?php esc_html_e( 'Cloud API Key', 'magick-ai-cloud-addon' ); ?></label>
+							</th>
+							<td>
+								<input
+									type="password"
+									class="regular-text code"
+									id="magick-ai-cloud-api-key"
+									name="api_key"
+									value=""
+									autocomplete="new-password"
+									placeholder="<?php echo esc_attr__( 'Paste a mak1_ key or JSON key to replace the stored key', 'magick-ai-cloud-addon' ); ?>"
+								/>
+								<p class="description"><?php esc_html_e( 'Leave blank to keep the stored Cloud API Key. The secret is never printed in this page.', 'magick-ai-cloud-addon' ); ?></p>
+							</td>
 						</tr>
 						<tr>
-							<th scope="row"><?php esc_html_e( 'Site ID', 'magick-ai-cloud-addon' ); ?></th>
-							<td><?php echo '' !== $settings['site_id'] ? esc_html( (string) $settings['site_id'] ) : esc_html__( 'Not set', 'magick-ai-cloud-addon' ); ?></td>
-						</tr>
-						<tr>
-							<th scope="row"><?php esc_html_e( 'Key ID', 'magick-ai-cloud-addon' ); ?></th>
-							<td><?php echo '' !== $settings['key_id'] ? esc_html( (string) $settings['key_id'] ) : esc_html__( 'Not set', 'magick-ai-cloud-addon' ); ?></td>
-						</tr>
-						<tr>
-							<th scope="row"><?php esc_html_e( 'Last verified', 'magick-ai-cloud-addon' ); ?></th>
-							<td><?php echo '' !== $settings['verified_at'] ? esc_html( (string) $settings['verified_at'] ) : esc_html__( 'Never', 'magick-ai-cloud-addon' ); ?></td>
+							<th scope="row">
+								<label for="magick-ai-cloud-timeout"><?php esc_html_e( 'Timeout', 'magick-ai-cloud-addon' ); ?></label>
+							</th>
+							<td>
+								<input
+									type="number"
+									id="magick-ai-cloud-timeout"
+									name="timeout"
+									min="5"
+									max="60"
+									step="1"
+									value="<?php echo esc_attr( (string) $settings['timeout'] ); ?>"
+								/>
+								<span><?php esc_html_e( 'seconds', 'magick-ai-cloud-addon' ); ?></span>
+							</td>
 						</tr>
 					</tbody>
 				</table>
-
-				<h2><?php esc_html_e( 'Cloud Settings', 'magick-ai-cloud-addon' ); ?></h2>
-				<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" style="max-width: 860px;">
-					<?php wp_nonce_field( self::ACTION_SAVE ); ?>
-					<input type="hidden" name="action" value="<?php echo esc_attr( self::ACTION_SAVE ); ?>" />
-					<table class="form-table" role="presentation">
-						<tbody>
-							<tr>
-								<th scope="row">
-									<label for="magick-ai-cloud-base-url"><?php esc_html_e( 'Cloud Base URL', 'magick-ai-cloud-addon' ); ?></label>
-								</th>
-								<td>
-									<input
-										type="url"
-										class="regular-text code"
-										id="magick-ai-cloud-base-url"
-										name="base_url"
-										value="<?php echo esc_attr( (string) $settings['base_url'] ); ?>"
-										placeholder="https://cloud.example.com"
-										required
-									/>
-								</td>
-							</tr>
-							<tr>
-								<th scope="row">
-									<label for="magick-ai-cloud-api-key"><?php esc_html_e( 'Cloud API Key', 'magick-ai-cloud-addon' ); ?></label>
-								</th>
-								<td>
-									<input
-										type="password"
-										class="regular-text code"
-										id="magick-ai-cloud-api-key"
-										name="api_key"
-										value=""
-										autocomplete="new-password"
-										placeholder="<?php echo esc_attr__( 'Paste a mak1_ key or JSON key to replace the stored key', 'magick-ai-cloud-addon' ); ?>"
-									/>
-									<p class="description"><?php esc_html_e( 'Leave blank to keep the stored Cloud API Key. The secret is never printed in this page.', 'magick-ai-cloud-addon' ); ?></p>
-								</td>
-							</tr>
-							<tr>
-								<th scope="row">
-									<label for="magick-ai-cloud-timeout"><?php esc_html_e( 'Timeout', 'magick-ai-cloud-addon' ); ?></label>
-								</th>
-								<td>
-									<input
-										type="number"
-										id="magick-ai-cloud-timeout"
-										name="timeout"
-										min="5"
-										max="60"
-										step="1"
-										value="<?php echo esc_attr( (string) $settings['timeout'] ); ?>"
-									/>
-									<span><?php esc_html_e( 'seconds', 'magick-ai-cloud-addon' ); ?></span>
-								</td>
-							</tr>
-						</tbody>
-					</table>
-					<?php submit_button( __( 'Save and Verify', 'magick-ai-cloud-addon' ) ); ?>
-				</form>
-
-				<h2><?php esc_html_e( 'Entitlement Summary', 'magick-ai-cloud-addon' ); ?></h2>
-				<?php self::render_entitlement_summary( $entitlement ); ?>
-			</div>
+				<?php submit_button( __( 'Save and Verify', 'magick-ai-cloud-addon' ) ); ?>
+			</form>
 			<?php
 		}
 

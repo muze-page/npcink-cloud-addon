@@ -98,6 +98,17 @@ if ( ! class_exists( 'Magick_AI_Cloud_Addon_Settings' ) ) {
 		}
 
 		/**
+		 * Returns whether monitoring collection may run.
+		 *
+		 * @return bool
+		 */
+		public static function is_monitoring_enabled(): bool {
+			$settings = self::get_settings();
+
+			return self::is_verified() && ! empty( $settings['monitoring_enabled'] );
+		}
+
+		/**
 		 * Returns a compact credential state for local surfaces.
 		 *
 		 * @return array<string,mixed>
@@ -173,6 +184,10 @@ if ( ! class_exists( 'Magick_AI_Cloud_Addon_Settings' ) ) {
 				$next['timeout'] = self::normalize_timeout( $payload['timeout'] );
 			}
 
+			if ( array_key_exists( 'monitoring_enabled', $payload ) ) {
+				$next['monitoring_enabled'] = ! empty( $payload['monitoring_enabled'] );
+			}
+
 			$api_key = array_key_exists( 'api_key', $payload ) ? trim( (string) $payload['api_key'] ) : '';
 			if ( '' !== $api_key ) {
 				$parsed = self::parse_api_key( $api_key );
@@ -242,6 +257,7 @@ if ( ! class_exists( 'Magick_AI_Cloud_Addon_Settings' ) ) {
 				'verified' => ! empty( $settings['verified'] ),
 				'verified_at' => sanitize_text_field( (string) ( $settings['verified_at'] ?? '' ) ),
 				'last_verification_error' => sanitize_text_field( (string) ( $settings['last_verification_error'] ?? '' ) ),
+				'monitoring_enabled' => ! empty( $settings['monitoring_enabled'] ),
 			);
 		}
 
@@ -269,6 +285,7 @@ if ( ! class_exists( 'Magick_AI_Cloud_Addon_Settings' ) ) {
 				'verified' => false,
 				'verified_at' => '',
 				'last_verification_error' => '',
+				'monitoring_enabled' => false,
 			);
 		}
 

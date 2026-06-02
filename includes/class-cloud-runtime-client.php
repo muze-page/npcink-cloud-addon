@@ -196,6 +196,52 @@ if ( ! class_exists( 'Magick_AI_Cloud_Runtime_Client' ) ) {
 		}
 
 		/**
+		 * Sends a batch of plugin observability events.
+		 *
+		 * @param array<int,array<string,mixed>> $events Event batch.
+		 * @param string                         $trace_id Optional trace id.
+		 * @param string                         $idempotency_key Optional idempotency key.
+		 * @return array<string,mixed>|WP_Error
+		 */
+		public function send_observability_events( array $events, string $trace_id = '', string $idempotency_key = '' ) {
+			if ( empty( $events ) ) {
+				return new WP_Error(
+					'cloud_observability_events_empty',
+					__( 'No observability events are ready to upload.', 'magick-ai-cloud-addon' )
+				);
+			}
+
+			if ( '' === $idempotency_key ) {
+				$idempotency_key = 'obs_' . wp_generate_uuid4();
+			}
+
+			return $this->request(
+				'POST',
+				'/v1/observability/plugin-events',
+				array(
+					'contract_version' => 'magick-plugin-observability-v1',
+					'source'           => 'magick-ai-cloud-addon',
+					'events'           => array_values( $events ),
+				),
+				$idempotency_key,
+				$trace_id
+			);
+		}
+
+		/**
+		 * Reads the Cloud plugin observability summary.
+		 *
+		 * @param int    $window_hours Summary window in hours.
+		 * @param string $trace_id Optional trace id.
+		 * @return array<string,mixed>|WP_Error
+		 */
+		public function get_observability_summary( int $window_hours = 24, string $trace_id = '' ) {
+			$window_hours = min( 168, max( 1, absint( $window_hours ) ) );
+
+			return $this->request( 'GET', '/v1/observability/plugin-summary?window_hours=' . rawurlencode( (string) $window_hours ), null, '', $trace_id );
+		}
+
+		/**
 		 * Executes one signed Cloud request.
 		 *
 		 * @param string              $method HTTP method.
@@ -205,7 +251,7 @@ if ( ! class_exists( 'Magick_AI_Cloud_Runtime_Client' ) ) {
 		 * @param string              $trace_id Optional trace id.
 		 * @return array<string,mixed>|WP_Error
 		 */
-		public function request( string $method, string $path, ?array $payload = null, string $idempotency_key = '', string $trace_id = '' ) {
+		private function request( string $method, string $path, ?array $payload = null, string $idempotency_key = '', string $trace_id = '' ) {
 			if ( ! $this->is_configured() ) {
 				return new WP_Error(
 					'cloud_runtime_unconfigured',
@@ -216,6 +262,14 @@ if ( ! class_exists( 'Magick_AI_Cloud_Runtime_Client' ) ) {
 
 			$method = strtoupper( trim( $method ) );
 			$path = '/' . ltrim( trim( $path ), '/' );
+			if ( ! $this->is_allowed_request_path( $method, $path ) ) {
+				return new WP_Error(
+					'cloud_runtime_endpoint_not_allowed',
+					__( 'This Cloud endpoint is not allowed by the Cloud Addon runtime contract.', 'magick-ai-cloud-addon' ),
+					array( 'status' => 403 )
+				);
+			}
+
 			$trace_id = $this->normalize_trace_id( $trace_id );
 			$idempotency_key = sanitize_text_field( $idempotency_key );
 			$body = '';
@@ -335,6 +389,40 @@ if ( ! class_exists( 'Magick_AI_Cloud_Runtime_Client' ) ) {
 			}
 
 			return $decoded;
+		}
+
+		/**
+		 * Returns whether one signed request path is within the Addon contract.
+		 *
+		 * @param string $method HTTP method.
+		 * @param string $path Relative path with optional query.
+		 * @return bool
+		 */
+		private function is_allowed_request_path( string $method, string $path ): bool {
+			$method = strtoupper( $method );
+			$path_only = parse_url( $path, PHP_URL_PATH );
+			$path_only = is_string( $path_only ) ? $path_only : $path;
+
+			if ( 'POST' === $method && '/v1/runtime/execute' === $path_only ) {
+				return true;
+			}
+			if ( 'GET' === $method && '/v1/entitlements/current' === $path_only ) {
+				return true;
+			}
+			if ( 'GET' === $method && 1 === preg_match( '#^/v1/runs/[A-Za-z0-9._:-]+(?:/result)?$#', $path_only ) ) {
+				return true;
+			}
+			if ( 'GET' === $method && 1 === preg_match( '#^/v1/stats/(?:profiles|instances)/[A-Za-z0-9._:-]+$#', $path_only ) ) {
+				return true;
+			}
+			if ( 'POST' === $method && '/v1/observability/plugin-events' === $path_only ) {
+				return true;
+			}
+			if ( 'GET' === $method && '/v1/observability/plugin-summary' === $path_only ) {
+				return true;
+			}
+
+			return false;
 		}
 
 		/**

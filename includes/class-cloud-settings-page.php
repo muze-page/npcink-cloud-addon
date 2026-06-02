@@ -20,6 +20,7 @@ if ( ! class_exists( 'Magick_AI_Cloud_Settings_Page' ) ) {
 		private const PAGE_SLUG = 'magick-ai-cloud-addon';
 		private const MENU_CAPABILITY = 'manage_options';
 		private const ACTION_SAVE = 'magick_ai_cloud_addon_save';
+		private const ACTION_REFRESH_MONITORING = 'magick_ai_cloud_addon_refresh_monitoring';
 
 		/**
 		 * Registers admin hooks.
@@ -29,6 +30,7 @@ if ( ! class_exists( 'Magick_AI_Cloud_Settings_Page' ) ) {
 		public static function register(): void {
 			add_action( 'admin_menu', array( __CLASS__, 'add_menu_page' ), 50 );
 			add_action( 'admin_post_' . self::ACTION_SAVE, array( __CLASS__, 'handle_save' ) );
+			add_action( 'admin_post_' . self::ACTION_REFRESH_MONITORING, array( __CLASS__, 'handle_refresh_monitoring' ) );
 		}
 
 		/**
@@ -183,11 +185,13 @@ if ( ! class_exists( 'Magick_AI_Cloud_Settings_Page' ) ) {
 			$base_url = isset( $_POST['base_url'] ) ? sanitize_text_field( wp_unslash( $_POST['base_url'] ) ) : '';
 			$api_key  = isset( $_POST['api_key'] ) ? sanitize_text_field( wp_unslash( $_POST['api_key'] ) ) : '';
 			$timeout  = isset( $_POST['timeout'] ) ? absint( wp_unslash( $_POST['timeout'] ) ) : 8;
+			$monitoring_enabled = ! empty( $_POST['monitoring_enabled'] );
 
 			$payload = array(
-				'base_url' => $base_url,
-				'api_key'  => $api_key,
-				'timeout'  => $timeout,
+				'base_url'           => $base_url,
+				'api_key'            => $api_key,
+				'timeout'            => $timeout,
+				'monitoring_enabled' => $monitoring_enabled,
 			);
 
 			$settings = Magick_AI_Cloud_Addon_Settings::build_settings_from_admin_payload( $payload );
@@ -202,15 +206,54 @@ if ( ! class_exists( 'Magick_AI_Cloud_Settings_Page' ) ) {
 			$probe = $client->probe_connectivity();
 			if ( ! empty( $probe['ok'] ) ) {
 				Magick_AI_Cloud_Addon_Settings::mark_verification_result( true, '' );
+				Magick_AI_Cloud_Observability_Collector::sync_schedule();
 				Magick_AI_Cloud_Entitlement_Summary::refresh();
 				self::set_admin_notice( 'success', __( 'Cloud settings saved and verified.', 'magick-ai-cloud-addon' ) );
 			} else {
 				$message = self::format_probe_failure_message( $probe );
 				Magick_AI_Cloud_Addon_Settings::mark_verification_result( false, $message );
+				Magick_AI_Cloud_Observability_Collector::sync_schedule();
 				self::set_admin_notice( 'error', $message );
 			}
 
 			self::redirect_to_page();
+		}
+
+		/**
+		 * Handles manual monitoring upload and summary refresh.
+		 *
+		 * @return void
+		 */
+		public static function handle_refresh_monitoring(): void {
+			if ( ! current_user_can( 'manage_options' ) ) {
+				wp_die( esc_html__( 'You do not have permission to manage Magick AI Cloud settings.', 'magick-ai-cloud-addon' ) );
+			}
+
+			check_admin_referer( self::ACTION_REFRESH_MONITORING );
+
+			if ( ! Magick_AI_Cloud_Addon_Settings::is_monitoring_enabled() ) {
+				self::set_admin_notice( 'error', __( 'Monitoring is disabled or Cloud is not verified.', 'magick-ai-cloud-addon' ) );
+				self::redirect_to_page( 'monitoring' );
+			}
+
+			$upload = Magick_AI_Cloud_Observability_Collector::flush_buffer();
+			$summary = Magick_AI_Cloud_Observability_Collector::refresh_summary();
+			if ( empty( $summary['last_refresh_ok'] ) ) {
+				$message = sanitize_text_field( (string) ( $summary['last_refresh_error'] ?? '' ) );
+				self::set_admin_notice( 'error', '' !== $message ? $message : __( 'Monitoring summary refresh failed.', 'magick-ai-cloud-addon' ) );
+				self::redirect_to_page( 'monitoring' );
+			}
+
+			$remaining = absint( $upload['buffer_count'] ?? 0 );
+			self::set_admin_notice(
+				'success',
+				sprintf(
+					/* translators: %d: remaining buffered event count. */
+					__( 'Monitoring refreshed. Remaining buffered events: %d.', 'magick-ai-cloud-addon' ),
+					$remaining
+				)
+			);
+			self::redirect_to_page( 'monitoring' );
 		}
 
 		/**
@@ -226,7 +269,9 @@ if ( ! class_exists( 'Magick_AI_Cloud_Settings_Page' ) ) {
 			$settings = Magick_AI_Cloud_Addon_Settings::get_settings();
 			$state = Magick_AI_Cloud_Addon_Settings::get_credential_state();
 			$entitlement = Magick_AI_Cloud_Entitlement_Summary::get_summary();
+			$monitoring = Magick_AI_Cloud_Observability_Collector::get_status();
 			$is_verified = ! empty( $state['verified'] );
+			$active_tab = self::get_active_tab( $is_verified );
 			?>
 			<div class="wrap magick-ai-cloud-addon">
 				<?php self::render_page_styles(); ?>
@@ -235,28 +280,105 @@ if ( ! class_exists( 'Magick_AI_Cloud_Settings_Page' ) ) {
 				<?php self::render_admin_notice(); ?>
 
 				<?php self::render_connection_summary( $settings, $state, $entitlement ); ?>
+				<?php self::render_tab_navigation( $active_tab, $is_verified ); ?>
 
-				<?php if ( $is_verified ) : ?>
-					<section class="magick-ai-cloud-section">
+				<?php if ( 'entitlement' === $active_tab ) : ?>
+					<section class="magick-ai-cloud-section magick-ai-cloud-tab-panel">
 						<h2><?php esc_html_e( 'Entitlement Summary', 'magick-ai-cloud-addon' ); ?></h2>
-						<?php self::render_entitlement_summary( $entitlement, true ); ?>
+						<?php self::render_entitlement_summary( $entitlement, $is_verified ); ?>
 					</section>
-					<details class="magick-ai-cloud-disclosure">
-						<summary>
-							<strong><?php esc_html_e( 'Cloud Settings', 'magick-ai-cloud-addon' ); ?></strong>
-							<span><?php esc_html_e( 'Update the connector or replace the stored key.', 'magick-ai-cloud-addon' ); ?></span>
-						</summary>
-						<?php self::render_settings_form( $settings ); ?>
-					</details>
+				<?php elseif ( 'monitoring' === $active_tab ) : ?>
+					<section class="magick-ai-cloud-section magick-ai-cloud-tab-panel">
+						<h2><?php esc_html_e( 'Monitoring', 'magick-ai-cloud-addon' ); ?></h2>
+						<?php self::render_monitoring_summary( $monitoring ); ?>
+					</section>
+				<?php elseif ( 'advanced' === $active_tab ) : ?>
+					<section class="magick-ai-cloud-section magick-ai-cloud-tab-panel">
+						<h2><?php esc_html_e( 'Advanced Information', 'magick-ai-cloud-addon' ); ?></h2>
+						<?php self::render_advanced_information( $settings, $state, $entitlement ); ?>
+					</section>
 				<?php else : ?>
-					<section class="magick-ai-cloud-section">
+					<section class="magick-ai-cloud-section magick-ai-cloud-tab-panel">
 						<h2><?php esc_html_e( 'Cloud Settings', 'magick-ai-cloud-addon' ); ?></h2>
-						<p><?php esc_html_e( 'Save a Cloud Base URL and Cloud API Key to verify this connector.', 'magick-ai-cloud-addon' ); ?></p>
+						<?php if ( $is_verified ) : ?>
+							<p><?php esc_html_e( 'Update the connector or replace the stored key.', 'magick-ai-cloud-addon' ); ?></p>
+						<?php else : ?>
+							<p><?php esc_html_e( 'Save a Cloud Base URL and Cloud API Key to verify this connector.', 'magick-ai-cloud-addon' ); ?></p>
+						<?php endif; ?>
 						<?php self::render_settings_form( $settings ); ?>
 					</section>
 				<?php endif; ?>
-				<?php self::render_advanced_information( $settings, $state, $entitlement ); ?>
 			</div>
+			<?php
+		}
+
+		/**
+		 * Returns the active settings tab.
+		 *
+		 * @param bool $is_verified Whether the connector has verified credentials.
+		 * @return string
+		 */
+		private static function get_active_tab( bool $is_verified ): string {
+			$tabs = self::get_tab_labels( $is_verified );
+			$default = $is_verified ? 'entitlement' : 'settings';
+			$requested = isset( $_GET['tab'] ) ? sanitize_key( wp_unslash( $_GET['tab'] ) ) : '';
+
+			return isset( $tabs[ $requested ] ) ? $requested : $default;
+		}
+
+		/**
+		 * Returns available tab labels.
+		 *
+		 * @param bool $is_verified Whether the connector has verified credentials.
+		 * @return array<string,string>
+		 */
+		private static function get_tab_labels( bool $is_verified ): array {
+			if ( $is_verified ) {
+				return array(
+					'entitlement' => __( 'Entitlement', 'magick-ai-cloud-addon' ),
+					'monitoring'  => __( 'Monitoring', 'magick-ai-cloud-addon' ),
+					'settings'    => __( 'Settings', 'magick-ai-cloud-addon' ),
+					'advanced'    => __( 'Advanced', 'magick-ai-cloud-addon' ),
+				);
+			}
+
+			return array(
+				'settings' => __( 'Settings', 'magick-ai-cloud-addon' ),
+				'advanced' => __( 'Advanced', 'magick-ai-cloud-addon' ),
+			);
+		}
+
+		/**
+		 * Renders settings tab navigation.
+		 *
+		 * @param string $active_tab Active tab slug.
+		 * @param bool   $is_verified Whether the connector has verified credentials.
+		 * @return void
+		 */
+		private static function render_tab_navigation( string $active_tab, bool $is_verified ): void {
+			$tabs = self::get_tab_labels( $is_verified );
+			?>
+			<nav class="nav-tab-wrapper magick-ai-cloud-tabs" aria-label="<?php esc_attr_e( 'Cloud addon sections', 'magick-ai-cloud-addon' ); ?>">
+				<?php foreach ( $tabs as $slug => $label ) : ?>
+					<?php
+					$url = add_query_arg(
+						array(
+							'page' => self::PAGE_SLUG,
+							'tab'  => $slug,
+						),
+						admin_url( 'admin.php' )
+					);
+					$is_active = $active_tab === $slug;
+					?>
+					<a
+						class="nav-tab<?php echo $is_active ? ' nav-tab-active' : ''; ?>"
+						href="<?php echo esc_url( $url ); ?>"
+						<?php echo $is_active ? 'aria-current="page"' : ''; ?>
+					>
+						<?php echo esc_html( $label ); ?>
+					</a>
+				<?php endforeach; ?>
+			</nav>
 			<?php
 		}
 
@@ -274,7 +396,8 @@ if ( ! class_exists( 'Magick_AI_Cloud_Settings_Page' ) ) {
 
 				.magick-ai-cloud-summary,
 				.magick-ai-cloud-section,
-				.magick-ai-cloud-disclosure {
+				.magick-ai-cloud-disclosure,
+				.magick-ai-cloud-tabs {
 					box-sizing: border-box;
 					max-width: 860px;
 				}
@@ -361,6 +484,22 @@ if ( ! class_exists( 'Magick_AI_Cloud_Settings_Page' ) ) {
 
 				.magick-ai-cloud-section {
 					margin-top: 18px;
+				}
+
+				.magick-ai-cloud-tabs {
+					margin-top: 14px;
+				}
+
+				.magick-ai-cloud-tab-panel {
+					background: #fff;
+					border: 1px solid #dcdcde;
+					border-top: 0;
+					margin-top: 0;
+					padding: 16px;
+				}
+
+				.magick-ai-cloud-tab-panel > h2:first-child {
+					margin-top: 0;
 				}
 
 				.magick-ai-cloud-disclosure {
@@ -477,6 +616,7 @@ if ( ! class_exists( 'Magick_AI_Cloud_Settings_Page' ) ) {
 				<input type="hidden" name="base_url" value="<?php echo esc_attr( (string) $settings['base_url'] ); ?>" />
 				<input type="hidden" name="api_key" value="" />
 				<input type="hidden" name="timeout" value="<?php echo esc_attr( (string) $settings['timeout'] ); ?>" />
+				<input type="hidden" name="monitoring_enabled" value="<?php echo esc_attr( ! empty( $settings['monitoring_enabled'] ) ? '1' : '0' ); ?>" />
 				<button type="submit" class="button button-secondary"><?php esc_html_e( 'Re-verify', 'magick-ai-cloud-addon' ); ?></button>
 			</form>
 			<?php
@@ -545,10 +685,203 @@ if ( ! class_exists( 'Magick_AI_Cloud_Settings_Page' ) ) {
 								<span><?php esc_html_e( 'seconds', 'magick-ai-cloud-addon' ); ?></span>
 							</td>
 						</tr>
+						<tr>
+							<th scope="row"><?php esc_html_e( 'Monitoring', 'magick-ai-cloud-addon' ); ?></th>
+							<td>
+								<label for="magick-ai-cloud-monitoring-enabled">
+									<input
+										type="checkbox"
+										id="magick-ai-cloud-monitoring-enabled"
+										name="monitoring_enabled"
+										value="1"
+										<?php checked( ! empty( $settings['monitoring_enabled'] ) ); ?>
+									/>
+									<?php esc_html_e( 'Enable Cloud monitoring for installed Magick AI plugins.', 'magick-ai-cloud-addon' ); ?>
+								</label>
+								<p class="description"><?php esc_html_e( 'The addon collects local metadata events only: plugin, event kind, status, timing, ids, and error codes. Prompts, content, results, secrets, and raw request payloads are not collected.', 'magick-ai-cloud-addon' ); ?></p>
+							</td>
+						</tr>
 					</tbody>
 				</table>
 				<?php submit_button( __( 'Save and Verify', 'magick-ai-cloud-addon' ) ); ?>
 			</form>
+			<?php
+		}
+
+		/**
+		 * Renders monitoring status.
+		 *
+		 * @param array<string,mixed> $monitoring Monitoring status.
+		 * @return void
+		 */
+		private static function render_monitoring_summary( array $monitoring ): void {
+			$plugins = is_array( $monitoring['plugins'] ?? null ) ? $monitoring['plugins'] : array();
+			$remote = is_array( $monitoring['remote_summary'] ?? null ) ? $monitoring['remote_summary'] : array();
+			$summary = is_array( $remote['summary'] ?? null ) ? $remote['summary'] : array();
+			$totals = is_array( $summary['totals'] ?? null ) ? $summary['totals'] : array();
+			$cloud_plugins = is_array( $summary['plugins'] ?? null ) ? $summary['plugins'] : array();
+			$recent_errors = is_array( $summary['recent_errors'] ?? null ) ? $summary['recent_errors'] : array();
+			?>
+			<form class="magick-ai-cloud-verify-form" method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" style="margin: 0 0 12px;">
+				<?php wp_nonce_field( self::ACTION_REFRESH_MONITORING ); ?>
+				<input type="hidden" name="action" value="<?php echo esc_attr( self::ACTION_REFRESH_MONITORING ); ?>" />
+				<button type="submit" class="button button-secondary"><?php esc_html_e( 'Refresh monitoring', 'magick-ai-cloud-addon' ); ?></button>
+			</form>
+			<table class="widefat striped" style="max-width: 860px;">
+				<tbody>
+					<tr>
+						<th scope="row"><?php esc_html_e( 'Collection', 'magick-ai-cloud-addon' ); ?></th>
+						<td><?php echo ! empty( $monitoring['enabled'] ) ? esc_html__( 'enabled', 'magick-ai-cloud-addon' ) : esc_html__( 'disabled', 'magick-ai-cloud-addon' ); ?></td>
+					</tr>
+					<tr>
+						<th scope="row"><?php esc_html_e( 'Buffered events', 'magick-ai-cloud-addon' ); ?></th>
+						<td><?php echo esc_html( (string) absint( $monitoring['buffer_count'] ?? 0 ) ); ?></td>
+					</tr>
+					<tr>
+						<th scope="row"><?php esc_html_e( 'Last captured', 'magick-ai-cloud-addon' ); ?></th>
+						<td><?php echo esc_html( self::format_empty( (string) ( $monitoring['last_captured_at'] ?? '' ) ) ); ?></td>
+					</tr>
+					<tr>
+						<th scope="row"><?php esc_html_e( 'Uploaded events', 'magick-ai-cloud-addon' ); ?></th>
+						<td><?php echo esc_html( (string) absint( $monitoring['total_uploaded'] ?? 0 ) ); ?></td>
+					</tr>
+					<tr>
+						<th scope="row"><?php esc_html_e( 'Last uploaded', 'magick-ai-cloud-addon' ); ?></th>
+						<td><?php echo esc_html( self::format_empty( (string) ( $monitoring['last_uploaded_at'] ?? '' ) ) ); ?></td>
+					</tr>
+					<tr>
+						<th scope="row"><?php esc_html_e( 'Last upload error', 'magick-ai-cloud-addon' ); ?></th>
+						<td><?php echo esc_html( self::format_empty( (string) ( $monitoring['last_upload_error'] ?? '' ) ) ); ?></td>
+					</tr>
+					<tr>
+						<th scope="row"><?php esc_html_e( 'Last event', 'magick-ai-cloud-addon' ); ?></th>
+						<td>
+							<code><?php echo esc_html( self::format_empty( (string) ( $monitoring['last_event_kind'] ?? '' ) ) ); ?></code>
+							<?php if ( '' !== (string) ( $monitoring['last_plugin_slug'] ?? '' ) ) : ?>
+								<span><?php echo esc_html( ' ' . (string) $monitoring['last_plugin_slug'] ); ?></span>
+							<?php endif; ?>
+						</td>
+					</tr>
+				</tbody>
+			</table>
+			<table class="widefat striped" style="max-width: 860px; margin-top: 12px;">
+				<tbody>
+					<tr>
+						<th scope="row"><?php esc_html_e( 'Cloud window', 'magick-ai-cloud-addon' ); ?></th>
+						<td>
+							<?php
+							$window = is_array( $summary['window'] ?? null ) ? $summary['window'] : array();
+							printf(
+								/* translators: %d: window hours. */
+								esc_html__( '%d hours', 'magick-ai-cloud-addon' ),
+								absint( $window['hours'] ?? 0 )
+							);
+							?>
+						</td>
+					</tr>
+					<tr>
+						<th scope="row"><?php esc_html_e( 'Cloud events', 'magick-ai-cloud-addon' ); ?></th>
+						<td><?php echo esc_html( (string) absint( $totals['events_total'] ?? 0 ) ); ?></td>
+					</tr>
+					<tr>
+						<th scope="row"><?php esc_html_e( 'Cloud errors', 'magick-ai-cloud-addon' ); ?></th>
+						<td><?php echo esc_html( (string) absint( $totals['error_total'] ?? 0 ) ); ?></td>
+					</tr>
+					<tr>
+						<th scope="row"><?php esc_html_e( 'Success rate', 'magick-ai-cloud-addon' ); ?></th>
+						<td><?php echo esc_html( self::format_percent( (float) ( $totals['success_rate'] ?? 0 ) ) ); ?></td>
+					</tr>
+					<tr>
+						<th scope="row"><?php esc_html_e( 'Average latency', 'magick-ai-cloud-addon' ); ?></th>
+						<td>
+							<?php
+							printf(
+								/* translators: %d: latency in milliseconds. */
+								esc_html__( '%d ms', 'magick-ai-cloud-addon' ),
+								absint( $totals['avg_latency_ms'] ?? 0 )
+							);
+							?>
+						</td>
+					</tr>
+					<tr>
+						<th scope="row"><?php esc_html_e( 'Summary refreshed', 'magick-ai-cloud-addon' ); ?></th>
+						<td><?php echo esc_html( self::format_empty( (string) ( $remote['last_refreshed_at'] ?? '' ) ) ); ?></td>
+					</tr>
+					<tr>
+						<th scope="row"><?php esc_html_e( 'Summary error', 'magick-ai-cloud-addon' ); ?></th>
+						<td><?php echo esc_html( self::format_empty( (string) ( $remote['last_refresh_error'] ?? '' ) ) ); ?></td>
+					</tr>
+				</tbody>
+			</table>
+			<?php if ( ! empty( $cloud_plugins ) ) : ?>
+				<table class="widefat striped" style="max-width: 860px; margin-top: 12px;">
+					<thead>
+						<tr>
+							<th scope="col"><?php esc_html_e( 'Cloud plugin', 'magick-ai-cloud-addon' ); ?></th>
+							<th scope="col"><?php esc_html_e( 'Events', 'magick-ai-cloud-addon' ); ?></th>
+							<th scope="col"><?php esc_html_e( 'Errors', 'magick-ai-cloud-addon' ); ?></th>
+							<th scope="col"><?php esc_html_e( 'Success', 'magick-ai-cloud-addon' ); ?></th>
+							<th scope="col"><?php esc_html_e( 'Avg latency', 'magick-ai-cloud-addon' ); ?></th>
+						</tr>
+					</thead>
+					<tbody>
+						<?php foreach ( $cloud_plugins as $plugin ) : ?>
+							<?php $plugin = is_array( $plugin ) ? $plugin : array(); ?>
+							<tr>
+								<th scope="row"><code><?php echo esc_html( (string) ( $plugin['plugin_slug'] ?? '' ) ); ?></code></th>
+								<td><?php echo esc_html( (string) absint( $plugin['events_total'] ?? 0 ) ); ?></td>
+								<td><?php echo esc_html( (string) absint( $plugin['error_total'] ?? 0 ) ); ?></td>
+								<td><?php echo esc_html( self::format_percent( (float) ( $plugin['success_rate'] ?? 0 ) ) ); ?></td>
+								<td><?php echo esc_html( absint( $plugin['avg_latency_ms'] ?? 0 ) . ' ms' ); ?></td>
+							</tr>
+						<?php endforeach; ?>
+					</tbody>
+				</table>
+			<?php endif; ?>
+			<?php if ( ! empty( $recent_errors ) ) : ?>
+				<table class="widefat striped" style="max-width: 860px; margin-top: 12px;">
+					<thead>
+						<tr>
+							<th scope="col"><?php esc_html_e( 'Recent error', 'magick-ai-cloud-addon' ); ?></th>
+							<th scope="col"><?php esc_html_e( 'Plugin', 'magick-ai-cloud-addon' ); ?></th>
+							<th scope="col"><?php esc_html_e( 'Event', 'magick-ai-cloud-addon' ); ?></th>
+							<th scope="col"><?php esc_html_e( 'Seen', 'magick-ai-cloud-addon' ); ?></th>
+						</tr>
+					</thead>
+					<tbody>
+						<?php foreach ( $recent_errors as $error ) : ?>
+							<?php $error = is_array( $error ) ? $error : array(); ?>
+							<tr>
+								<td><code><?php echo esc_html( (string) ( $error['error_code'] ?? '' ) ); ?></code></td>
+								<td><code><?php echo esc_html( (string) ( $error['plugin_slug'] ?? '' ) ); ?></code></td>
+								<td><code><?php echo esc_html( (string) ( $error['event_kind'] ?? '' ) ); ?></code></td>
+								<td><?php echo esc_html( self::format_empty( (string) ( $error['received_at'] ?? '' ) ) ); ?></td>
+							</tr>
+						<?php endforeach; ?>
+					</tbody>
+				</table>
+			<?php endif; ?>
+			<table class="widefat striped" style="max-width: 860px; margin-top: 12px;">
+				<thead>
+					<tr>
+						<th scope="col"><?php esc_html_e( 'Plugin', 'magick-ai-cloud-addon' ); ?></th>
+						<th scope="col"><?php esc_html_e( 'Installed', 'magick-ai-cloud-addon' ); ?></th>
+						<th scope="col"><?php esc_html_e( 'Active', 'magick-ai-cloud-addon' ); ?></th>
+						<th scope="col"><?php esc_html_e( 'Version', 'magick-ai-cloud-addon' ); ?></th>
+					</tr>
+				</thead>
+				<tbody>
+					<?php foreach ( $plugins as $plugin ) : ?>
+						<?php $plugin = is_array( $plugin ) ? $plugin : array(); ?>
+						<tr>
+							<th scope="row"><?php echo esc_html( (string) ( $plugin['label'] ?? '' ) ); ?></th>
+							<td><?php echo ! empty( $plugin['installed'] ) ? esc_html__( 'yes', 'magick-ai-cloud-addon' ) : esc_html__( 'no', 'magick-ai-cloud-addon' ); ?></td>
+							<td><?php echo ! empty( $plugin['active'] ) ? esc_html__( 'yes', 'magick-ai-cloud-addon' ) : esc_html__( 'no', 'magick-ai-cloud-addon' ); ?></td>
+							<td><code><?php echo esc_html( self::format_empty( (string) ( $plugin['version'] ?? '' ) ) ); ?></code></td>
+						</tr>
+					<?php endforeach; ?>
+				</tbody>
+			</table>
 			<?php
 		}
 
@@ -600,44 +933,39 @@ if ( ! class_exists( 'Magick_AI_Cloud_Settings_Page' ) ) {
 		 */
 		private static function render_advanced_information( array $settings, array $state, array $entitlement ): void {
 			?>
-			<details class="magick-ai-cloud-disclosure">
-				<summary>
-					<strong><?php esc_html_e( 'Advanced Information', 'magick-ai-cloud-addon' ); ?></strong>
-					<span><?php esc_html_e( 'Timeout, verification failure, and entitlement message.', 'magick-ai-cloud-addon' ); ?></span>
-				</summary>
-				<table class="widefat striped">
-					<tbody>
-						<tr>
-							<th scope="row"><?php esc_html_e( 'Timeout', 'magick-ai-cloud-addon' ); ?></th>
-							<td>
-								<?php
-								printf(
-									/* translators: %d: timeout in seconds. */
-									esc_html__( '%d seconds', 'magick-ai-cloud-addon' ),
-									absint( $settings['timeout'] )
-								);
-								?>
-							</td>
-						</tr>
-						<tr>
-							<th scope="row"><?php esc_html_e( 'Connection code', 'magick-ai-cloud-addon' ); ?></th>
-							<td><code><?php echo esc_html( (string) $state['code'] ); ?></code></td>
-						</tr>
-						<tr>
-							<th scope="row"><?php esc_html_e( 'Last failure', 'magick-ai-cloud-addon' ); ?></th>
-							<td><?php echo esc_html( self::format_empty( (string) ( $state['last_verification_error'] ?? '' ) ) ); ?></td>
-						</tr>
-						<tr>
-							<th scope="row"><?php esc_html_e( 'Entitlement message', 'magick-ai-cloud-addon' ); ?></th>
-							<td><?php echo esc_html( self::format_empty( (string) ( $entitlement['message'] ?? '' ) ) ); ?></td>
-						</tr>
-						<tr>
-							<th scope="row"><?php esc_html_e( 'Entitlement state', 'magick-ai-cloud-addon' ); ?></th>
-							<td><code><?php echo esc_html( self::format_empty( (string) ( $entitlement['state'] ?? '' ) ) ); ?></code></td>
-						</tr>
-					</tbody>
-				</table>
-			</details>
+			<p><?php esc_html_e( 'Timeout, verification failure, and entitlement message.', 'magick-ai-cloud-addon' ); ?></p>
+			<table class="widefat striped">
+				<tbody>
+					<tr>
+						<th scope="row"><?php esc_html_e( 'Timeout', 'magick-ai-cloud-addon' ); ?></th>
+						<td>
+							<?php
+							printf(
+								/* translators: %d: timeout in seconds. */
+								esc_html__( '%d seconds', 'magick-ai-cloud-addon' ),
+								absint( $settings['timeout'] )
+							);
+							?>
+						</td>
+					</tr>
+					<tr>
+						<th scope="row"><?php esc_html_e( 'Connection code', 'magick-ai-cloud-addon' ); ?></th>
+						<td><code><?php echo esc_html( (string) $state['code'] ); ?></code></td>
+					</tr>
+					<tr>
+						<th scope="row"><?php esc_html_e( 'Last failure', 'magick-ai-cloud-addon' ); ?></th>
+						<td><?php echo esc_html( self::format_empty( (string) ( $state['last_verification_error'] ?? '' ) ) ); ?></td>
+					</tr>
+					<tr>
+						<th scope="row"><?php esc_html_e( 'Entitlement message', 'magick-ai-cloud-addon' ); ?></th>
+						<td><?php echo esc_html( self::format_empty( (string) ( $entitlement['message'] ?? '' ) ) ); ?></td>
+					</tr>
+					<tr>
+						<th scope="row"><?php esc_html_e( 'Entitlement state', 'magick-ai-cloud-addon' ); ?></th>
+						<td><code><?php echo esc_html( self::format_empty( (string) ( $entitlement['state'] ?? '' ) ) ); ?></code></td>
+					</tr>
+				</tbody>
+			</table>
 			<?php
 		}
 
@@ -721,8 +1049,13 @@ if ( ! class_exists( 'Magick_AI_Cloud_Settings_Page' ) ) {
 		 *
 		 * @return void
 		 */
-		private static function redirect_to_page(): void {
-			wp_safe_redirect( admin_url( 'admin.php?page=' . self::PAGE_SLUG ) );
+		private static function redirect_to_page( string $tab = '' ): void {
+			$url = admin_url( 'admin.php?page=' . self::PAGE_SLUG );
+			if ( '' !== $tab ) {
+				$url = add_query_arg( 'tab', sanitize_key( $tab ), $url );
+			}
+
+			wp_safe_redirect( $url );
 			exit;
 		}
 
@@ -762,6 +1095,18 @@ if ( ! class_exists( 'Magick_AI_Cloud_Settings_Page' ) ) {
 		 */
 		private static function format_empty( string $value ): string {
 			return '' !== $value ? $value : __( 'unavailable', 'magick-ai-cloud-addon' );
+		}
+
+		/**
+		 * Formats a normalized ratio as a percentage.
+		 *
+		 * @param float $value Normalized ratio.
+		 * @return string
+		 */
+		private static function format_percent( float $value ): string {
+			$value = max( 0.0, min( 1.0, $value ) );
+
+			return number_format_i18n( $value * 100, 1 ) . '%';
 		}
 	}
 }

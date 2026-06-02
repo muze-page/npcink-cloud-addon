@@ -2,7 +2,7 @@
 
 Standalone WordPress plugin for connecting a local Magick AI installation to `magick-ai-cloud`.
 
-The addon is a thin Cloud connector. It stores the Cloud Base URL and Cloud API Key, parses the key into signing credentials, sends signed runtime requests, reads health and entitlement status, and exposes a minimal PHP interface for local plugins.
+The addon is a thin Cloud connector. It stores the Cloud Base URL and Cloud API Key, parses the key into signing credentials, sends signed runtime requests, reads health and entitlement status, transports opt-in metadata-only plugin observability events, and exposes a minimal PHP interface for local plugins.
 
 ## Scope
 
@@ -18,9 +18,16 @@ The addon owns:
   - `GET /v1/runs/{run_id}/result`
   - `GET /v1/stats/*`
   - `GET /v1/entitlements/current`
+- Opt-in plugin observability transport:
+  - `POST /v1/observability/plugin-events`
+  - `GET /v1/observability/plugin-summary`
 - `Magick AI > Cloud Addon`.
 
-The addon does not own approval truth, proposal truth, WordPress writes, queue control, scheduling, billing truth, prompt ownership, router ownership, or preset ownership.
+The addon does not own approval truth, proposal truth, WordPress writes,
+workflow/task queue control, scheduler truth, billing truth, prompt ownership,
+router ownership, or preset ownership. Its local observability buffer is only a
+bounded delivery buffer for metadata uploads; it is not audit, execution,
+billing, or workflow truth.
 
 ## Public PHP Interface
 
@@ -28,6 +35,9 @@ The addon does not own approval truth, proposal truth, WordPress writes, queue c
 magick_ai_cloud_addon_is_configured(): bool
 magick_ai_cloud_addon_get_settings(): array
 magick_ai_cloud_addon_runtime_client(): ?Magick_AI_Cloud_Runtime_Client
+magick_ai_cloud_addon_verified_runtime_client(): ?Magick_AI_Cloud_Runtime_Client
+magick_ai_cloud_addon_dispatch_media_derivative_cloud_request(array $ability_response, array $source_artifact, string $trace_id = '', string $idempotency_key = '')
+magick_ai_cloud_addon_build_media_derivative_proposal_payload(array $ability_response, array $cloud_result, array $derivative_artifact)
 ```
 
 `Magick_AI_Cloud_Runtime_Client` exposes:
@@ -40,10 +50,54 @@ get_run_result(string $run_id, string $trace_id = '')
 get_current_entitlement(string $trace_id = '')
 get_profile_stats(string $profile_id, string $trace_id = '')
 get_instance_stats(string $instance_id, string $trace_id = '')
-request(string $method, string $path, ?array $payload = null, string $idempotency_key = '', string $trace_id = '')
+send_observability_events(array $events, string $trace_id = '', string $idempotency_key = '')
+get_observability_summary(int $window_hours = 24, string $trace_id = '')
 ```
 
+The low-level signed request method is private and endpoint-allowlisted. New
+callers should use the named methods above instead of sending arbitrary Cloud
+paths through the addon.
+
 `magick_ai_cloud_addon_get_settings()` returns server-side settings, including the stored secret. Do not print it into HTML or logs.
+
+## Media Derivative Transport
+
+The addon can consume the read-only
+`magick-ai/build-media-derivative-cloud-request` ability output as a transport
+input. It validates that the ability payload has no Cloud credentials,
+Authorization data, or signed headers, requires verified Cloud settings, and
+dispatches through `/v1/runtime/execute`.
+
+The local host or Adapter still owns the ability call, local source file access,
+short TTL source artifact creation, Core proposal creation, UI display,
+approval, record, replace, rollback, and all WordPress writes. The addon helper
+only returns a Core-ready proposal payload with
+`final_write_owner=local_wordpress_host`; it does not persist or approve the
+proposal.
+
+Expired Cloud artifacts are rejected before proposal adoption payloads are
+built. The default action is preview-only and original attachment files are not
+replaced by default.
+
+## Observability Transport
+
+Administrators may enable Cloud monitoring after Cloud settings verify. When
+enabled, the addon listens for local `magick_ai_observability_event` metadata,
+stores a bounded local observability buffer, flushes buffered metadata to
+Cloud, and reads aggregate Cloud summaries for the local monitoring view.
+
+Allowed uploaded fields are limited to operational metadata such as plugin
+slug/version, event kind, status, timing, error code, route, proposal id,
+ability id, correlation id, and counts.
+
+Monitoring does not upload prompts, generated content, article body content,
+media bytes, raw request/response payloads, provider credentials, Cloud API
+secrets, passwords, cookies, nonces, Authorization headers, database names,
+table names, or filesystem paths.
+
+Cloud observability summaries are dashboard projections only. They must not be
+used to approve proposals, change Core status, execute WordPress writes, or
+configure router, prompt, or preset behavior.
 
 ## Settings Page
 
@@ -70,13 +124,17 @@ The admin page scope is documented in
 
 ```bash
 find /Users/muze/gitee/magick-ai-cloud-addon -name '*.php' -print0 | xargs -0 -n1 php -l
+php /Users/muze/gitee/magick-ai-cloud-addon/tests/run.php
 git diff --check
 ```
 
 Boundary checks:
 
 ```bash
-rg "/v1/runtime/workflows/runs|queue|scheduler|workflow engine|wp_insert_post|wp_update_post" /Users/muze/gitee/magick-ai-cloud-addon
+rg "/v1/runtime/workflows/runs|workflow engine|wp_insert_post|wp_update_post|approval truth|proposal truth|billing truth" /Users/muze/gitee/magick-ai-cloud-addon
 ```
 
-`queue`, `scheduler`, and `workflow engine` may appear in documentation only as forbidden responsibilities.
+`workflow/task queue`, `scheduler truth`, and `workflow engine` may appear in
+documentation only as forbidden responsibilities. `observability buffer` and the
+WordPress cron flush hook are allowed only for opt-in metadata monitoring
+transport.

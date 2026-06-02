@@ -6,6 +6,7 @@ Run:
 
 ```bash
 find /Users/muze/gitee/magick-ai-cloud-addon -name '*.php' -print0 | xargs -0 -n1 php -l
+php /Users/muze/gitee/magick-ai-cloud-addon/tests/run.php
 git diff --check
 ```
 
@@ -14,12 +15,26 @@ Boundary checks:
 ```bash
 rg "/v1/runtime/workflows/runs" /Users/muze/gitee/magick-ai-cloud-addon
 rg "wp_insert_post|wp_update_post|wp_delete_post" /Users/muze/gitee/magick-ai-cloud-addon
+rg "approval truth|proposal truth|billing truth|workflow engine" /Users/muze/gitee/magick-ai-cloud-addon
 ```
 
 Expected:
 
 - No `/v1/runtime/workflows/runs`.
 - No WordPress post write calls.
+- No ownership of approval, proposal, billing, workflow, or scheduler truth.
+- Observability upload uses only a bounded metadata buffer and approved
+  observability endpoints.
+
+Media derivative contract checks:
+
+- ability payloads are guarded against credentials, Authorization, and signed
+  headers before dispatch;
+- unverified Cloud credentials fail closed;
+- expired Cloud artifacts cannot produce adoption/proposal payloads;
+- default proposal payloads are preview-only and do not replace the original
+  attachment file;
+- proposal payloads declare `final_write_owner=local_wordpress_host`.
 
 ## WordPress Smoke Test
 
@@ -48,5 +63,10 @@ With valid Cloud credentials:
 - `get_run_result()` calls `/v1/runs/{run_id}/result`.
 - `get_profile_stats()` and `get_instance_stats()` only read `/v1/stats/*`.
 - `get_current_entitlement()` only reads `/v1/entitlements/current`.
+- `send_observability_events()` only writes metadata-only events to
+  `/v1/observability/plugin-events`.
+- `get_observability_summary()` only reads `/v1/observability/plugin-summary`.
 
 Stats and entitlement data are read projections only. They must not become local billing truth.
+Observability summaries are dashboard projections only. They must not become
+Core audit, proposal, approval, execution, billing, or workflow truth.

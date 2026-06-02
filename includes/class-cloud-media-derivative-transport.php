@@ -17,8 +17,8 @@ if ( ! class_exists( 'Magick_AI_Cloud_Media_Derivative_Transport' ) ) {
 	 */
 	final class Magick_AI_Cloud_Media_Derivative_Transport {
 		private const REQUEST_CONTRACT_VERSION = 'media_derivative_cloud_request.v1';
-		private const RUNTIME_CONTRACT_VERSION = 'media_derivative_cloud_runtime.v1';
 		private const PROPOSAL_CONTRACT_VERSION = 'media_derivative_cloud_proposal.v1';
+		private const MAX_UPLOAD_BYTES = 26214400;
 
 		/**
 		 * Dispatches a Cloud derivative job from an abilities-side request contract.
@@ -27,9 +27,10 @@ if ( ! class_exists( 'Magick_AI_Cloud_Media_Derivative_Transport' ) ) {
 		 * @param array<string,mixed> $source_artifact Short TTL source artifact descriptor supplied by the local host.
 		 * @param string              $trace_id Optional trace id.
 		 * @param string              $idempotency_key Optional idempotency key.
+		 * @param array<string,mixed> $watermark_artifact Optional short TTL watermark artifact or upload descriptor.
 		 * @return array<string,mixed>|WP_Error
 		 */
-		public static function dispatch_from_ability_response( array $ability_response, array $source_artifact, string $trace_id = '', string $idempotency_key = '' ) {
+		public static function dispatch_from_ability_response( array $ability_response, array $source_artifact, string $trace_id = '', string $idempotency_key = '', array $watermark_artifact = array() ) {
 			$client = self::verified_client();
 			if ( is_wp_error( $client ) ) {
 				return $client;
@@ -41,15 +42,69 @@ if ( ! class_exists( 'Magick_AI_Cloud_Media_Derivative_Transport' ) ) {
 				return $validated;
 			}
 
-			$artifact = self::normalize_artifact_descriptor( $source_artifact, 'source' );
-			if ( is_wp_error( $artifact ) ) {
-				return $artifact;
+			if ( self::descriptor_has_upload_file( $source_artifact ) && self::descriptor_has_artifact_id( $source_artifact ) ) {
+				return new WP_Error(
+					'cloud_media_derivative_source_mode_conflict',
+					__( 'Source upload and source artifact id cannot be sent together.', 'magick-ai-cloud-addon' ),
+					array( 'status' => 400 )
+				);
 			}
 
-			$runtime_payload = self::build_runtime_payload( $contract, $artifact );
+			$source_upload = self::normalize_upload_file_descriptor( $source_artifact, 'source_file' );
+			if ( is_wp_error( $source_upload ) ) {
+				return $source_upload;
+			}
 
-			return $client->execute_runtime(
-				$runtime_payload,
+			$source_reference = array();
+			if ( empty( $source_upload ) ) {
+				$source_reference = self::normalize_required_artifact_reference( $source_artifact, 'source' );
+				if ( is_wp_error( $source_reference ) ) {
+					return $source_reference;
+				}
+			}
+
+			$watermark_upload = array();
+			$watermark_reference = array();
+			if ( ! empty( $watermark_artifact ) ) {
+				if ( self::descriptor_has_upload_file( $watermark_artifact ) && self::descriptor_has_artifact_id( $watermark_artifact ) ) {
+					return new WP_Error(
+						'cloud_media_derivative_watermark_source_conflict',
+						__( 'Watermark upload and watermark artifact id cannot be sent together.', 'magick-ai-cloud-addon' ),
+						array( 'status' => 400 )
+					);
+				}
+				$watermark_upload = self::normalize_upload_file_descriptor( $watermark_artifact, 'watermark_file' );
+				if ( is_wp_error( $watermark_upload ) ) {
+					return $watermark_upload;
+				}
+				if ( empty( $watermark_upload ) ) {
+					$watermark_reference = self::normalize_required_artifact_reference( $watermark_artifact, 'watermark' );
+					if ( is_wp_error( $watermark_reference ) ) {
+						return $watermark_reference;
+					}
+				}
+			}
+
+			$media_payload = self::build_media_derivative_request_payload(
+				$contract,
+				$source_reference,
+				$watermark_reference,
+				! empty( $watermark_upload )
+			);
+			if ( is_wp_error( $media_payload ) ) {
+				return $media_payload;
+			}
+
+			$files = array();
+			if ( ! empty( $source_upload ) ) {
+				$files['source_file'] = $source_upload;
+			}
+			if ( ! empty( $watermark_upload ) ) {
+				$files['watermark_file'] = $watermark_upload;
+			}
+			return $client->create_media_derivative(
+				$media_payload,
+				$files,
 				$trace_id,
 				'' !== $idempotency_key ? $idempotency_key : 'media_derivative_' . wp_generate_uuid4()
 			);
@@ -200,6 +255,13 @@ if ( ! class_exists( 'Magick_AI_Cloud_Media_Derivative_Transport' ) ) {
 					array( 'status' => 400 )
 				);
 			}
+			if ( self::contains_forbidden_secret_fields( $contract ) ) {
+				return new WP_Error(
+					'cloud_media_derivative_credentials_present',
+					__( 'Media derivative ability payload must not include credentials or signed headers.', 'magick-ai-cloud-addon' ),
+					array( 'status' => 400 )
+				);
+			}
 
 			$job_payload = is_array( $contract['cloud_job_payload'] ?? null ) ? $contract['cloud_job_payload'] : array();
 			if ( 'generate_optimized_media_derivative' !== (string) ( $job_payload['job_type'] ?? '' ) ) {
@@ -216,43 +278,238 @@ if ( ! class_exists( 'Magick_AI_Cloud_Media_Derivative_Transport' ) ) {
 					array( 'status' => 400 )
 				);
 			}
-			if ( self::contains_forbidden_secret_fields( $job_payload ) ) {
-				return new WP_Error(
-					'cloud_media_derivative_credentials_present',
-					__( 'Media derivative ability payload must not include credentials or signed headers.', 'magick-ai-cloud-addon' ),
-					array( 'status' => 400 )
-				);
-			}
 
 			return true;
 		}
 
 		/**
-		 * Builds a runtime payload for /v1/runtime/execute.
+		 * Builds the strict Cloud media derivative request payload.
 		 *
 		 * @param array<string,mixed> $contract Ability contract data.
-		 * @param array<string,mixed> $source_artifact Source artifact descriptor.
+		 * @param array<string,mixed> $source_reference Optional source artifact reference.
+		 * @param array<string,mixed> $watermark_reference Optional watermark artifact reference.
+		 * @param bool                $has_watermark_upload Whether a watermark file is attached.
+		 * @return array<string,mixed>|WP_Error
+		 */
+		private static function build_media_derivative_request_payload( array $contract, array $source_reference, array $watermark_reference, bool $has_watermark_upload ) {
+			$job_payload = is_array( $contract['cloud_job_payload'] ?? null ) ? $contract['cloud_job_payload'] : array();
+			$requested = is_array( $job_payload['requested_derivative'] ?? null ) ? $job_payload['requested_derivative'] : array();
+			$watermark = is_array( $job_payload['watermark'] ?? null ) ? $job_payload['watermark'] : array();
+
+			if ( ( ! empty( $watermark_reference ) || $has_watermark_upload ) && empty( $watermark ) ) {
+				return new WP_Error(
+					'cloud_media_derivative_watermark_plan_missing',
+					__( 'Watermark artifact transport requires a watermark plan in the ability response.', 'magick-ai-cloud-addon' ),
+					array( 'status' => 400 )
+				);
+			}
+			if ( $has_watermark_upload && ! empty( $watermark['artifact_id'] ) ) {
+				return new WP_Error(
+					'cloud_media_derivative_watermark_source_conflict',
+					__( 'Watermark upload and watermark artifact id cannot be sent together.', 'magick-ai-cloud-addon' ),
+					array( 'status' => 400 )
+				);
+			}
+			if ( ! empty( $watermark ) && empty( $watermark['artifact_id'] ) && empty( $watermark_reference ) && ! $has_watermark_upload ) {
+				return new WP_Error(
+					'cloud_media_derivative_watermark_source_missing',
+					__( 'Watermark plans require a watermark upload or artifact id before Cloud dispatch.', 'magick-ai-cloud-addon' ),
+					array( 'status' => 400 )
+				);
+			}
+
+			$target_format = sanitize_key( (string) ( $job_payload['target_format'] ?? $requested['format'] ?? '' ) );
+			if ( ! in_array( $target_format, array( 'webp', 'avif', 'jpeg', 'png', 'original' ), true ) ) {
+				return new WP_Error(
+					'cloud_media_derivative_target_format_missing',
+					__( 'Media derivative request must include a bounded target format from the ability response.', 'magick-ai-cloud-addon' ),
+					array( 'status' => 400 )
+				);
+			}
+
+			$max_width = absint( $job_payload['max_width'] ?? $requested['max_width'] ?? 0 );
+			if ( $max_width <= 0 ) {
+				return new WP_Error(
+					'cloud_media_derivative_max_width_missing',
+					__( 'Media derivative request must include max_width from the ability response.', 'magick-ai-cloud-addon' ),
+					array( 'status' => 400 )
+				);
+			}
+
+			$quality = absint( $job_payload['quality'] ?? $requested['quality'] ?? 0 );
+			if ( $quality <= 0 ) {
+				return new WP_Error(
+					'cloud_media_derivative_quality_missing',
+					__( 'Media derivative request must include quality from the ability response.', 'magick-ai-cloud-addon' ),
+					array( 'status' => 400 )
+				);
+			}
+
+			$cloud_job_payload = array(
+				'job_type'          => 'generate_optimized_media_derivative',
+				'target_format'     => $target_format,
+				'max_width'         => max( 1, min( 10000, $max_width ) ),
+				'quality'           => max( 1, min( 100, $quality ) ),
+			);
+			$source_media_type = sanitize_key( (string) ( $job_payload['source_media_type'] ?? '' ) );
+			if ( '' !== $source_media_type ) {
+				$cloud_job_payload['source_media_type'] = $source_media_type;
+			}
+			if ( ! empty( $watermark ) ) {
+				$cloud_job_payload['watermark'] = self::sanitize_watermark_payload( $watermark );
+				if ( ! empty( $watermark_reference['artifact_id'] ) ) {
+					if ( ! empty( $cloud_job_payload['watermark']['artifact_id'] ) && $watermark_reference['artifact_id'] !== $cloud_job_payload['watermark']['artifact_id'] ) {
+						return new WP_Error(
+							'cloud_media_derivative_watermark_source_conflict',
+							__( 'Watermark artifact id does not match the ability watermark plan.', 'magick-ai-cloud-addon' ),
+							array( 'status' => 400 )
+						);
+					}
+					$cloud_job_payload['watermark']['artifact_id'] = $watermark_reference['artifact_id'];
+				}
+				if ( $has_watermark_upload ) {
+					unset( $cloud_job_payload['watermark']['artifact_id'] );
+				}
+			}
+			$payload = array(
+				'request_contract_version' => self::REQUEST_CONTRACT_VERSION,
+				'cloud_job_payload'        => $cloud_job_payload,
+				'ttl_minutes'              => 30,
+			);
+			if ( ! empty( $source_reference['artifact_id'] ) ) {
+				$payload['source'] = array(
+					'artifact_id' => $source_reference['artifact_id'],
+				);
+			}
+
+			return $payload;
+		}
+
+		/**
+		 * Sanitizes Cloud watermark options without creating a logo registry.
+		 *
+		 * @param array<string,mixed> $watermark Watermark payload.
 		 * @return array<string,mixed>
 		 */
-		private static function build_runtime_payload( array $contract, array $source_artifact ): array {
-			$job_payload = is_array( $contract['cloud_job_payload'] ?? null ) ? $contract['cloud_job_payload'] : array();
-			$job_payload['source_artifact'] = $source_artifact;
-			$job_payload['local_adoption'] = array(
-				'final_write_owner' => 'local_wordpress_host',
-				'proposal_only'     => true,
-				'replace_original'  => false,
+		private static function sanitize_watermark_payload( array $watermark ): array {
+			$sanitized = array(
+				'type'          => 'image',
+				'position'      => sanitize_key( (string) ( $watermark['position'] ?? 'bottom_right' ) ),
+				'opacity'       => is_numeric( $watermark['opacity'] ?? null ) ? max( 0.0, min( 1.0, (float) $watermark['opacity'] ) ) : 0.75,
+				'scale_percent' => max( 1, min( 100, absint( $watermark['scale_percent'] ?? 18 ) ) ),
+				'margin_px'     => max( 0, min( 1000, absint( $watermark['margin_px'] ?? 24 ) ) ),
 			);
+			$artifact_id = sanitize_text_field( (string) ( $watermark['artifact_id'] ?? '' ) );
+			if ( '' !== $artifact_id ) {
+				$sanitized['artifact_id'] = $artifact_id;
+			}
+
+			return $sanitized;
+		}
+
+		/**
+		 * Normalizes an upload file descriptor.
+		 *
+		 * @param array<string,mixed> $descriptor Local upload descriptor.
+		 * @param string              $field_name Multipart field name.
+		 * @return array<string,string>|WP_Error
+		 */
+		private static function normalize_upload_file_descriptor( array $descriptor, string $field_name ) {
+			$contents = '';
+			if ( is_string( $descriptor['bytes'] ?? null ) ) {
+				$contents = (string) $descriptor['bytes'];
+			} elseif ( is_string( $descriptor['content'] ?? null ) ) {
+				$contents = (string) $descriptor['content'];
+			} else {
+				$path = sanitize_text_field( (string) ( $descriptor['path'] ?? $descriptor['file_path'] ?? $descriptor['tmp_name'] ?? '' ) );
+				if ( '' === $path ) {
+					return array();
+				}
+				if ( ! is_readable( $path ) ) {
+					return new WP_Error(
+						'cloud_media_derivative_upload_file_unreadable',
+						__( 'Media derivative upload file is not readable.', 'magick-ai-cloud-addon' ),
+						array( 'status' => 400 )
+					);
+				}
+				$size = filesize( $path );
+				if ( false !== $size && $size > self::MAX_UPLOAD_BYTES ) {
+					return new WP_Error(
+						'cloud_media_derivative_upload_file_too_large',
+						__( 'Media derivative upload file exceeds the Cloud size limit.', 'magick-ai-cloud-addon' ),
+						array( 'status' => 413 )
+					);
+				}
+				$read = file_get_contents( $path );
+				$contents = is_string( $read ) ? $read : '';
+			}
+
+			if ( '' === $contents ) {
+				return new WP_Error(
+					'cloud_media_derivative_upload_file_empty',
+					__( 'Media derivative upload file is empty.', 'magick-ai-cloud-addon' ),
+					array( 'status' => 400 )
+				);
+			}
+			if ( strlen( $contents ) > self::MAX_UPLOAD_BYTES ) {
+				return new WP_Error(
+					'cloud_media_derivative_upload_file_too_large',
+					__( 'Media derivative upload file exceeds the Cloud size limit.', 'magick-ai-cloud-addon' ),
+					array( 'status' => 413 )
+				);
+			}
 
 			return array(
-				'contract_version'  => self::RUNTIME_CONTRACT_VERSION,
-				'ability_name'      => 'magick-ai/build-media-derivative-cloud-request',
-				'execution_pattern' => 'whole_run_offload',
-				'input'             => $job_payload,
-				'policy'            => array(
-					'allow_fallback' => false,
-				),
-				'final_write_owner' => 'local_wordpress_host',
+				'field_name' => sanitize_key( $field_name ),
+				'filename'   => sanitize_file_name( (string) ( $descriptor['filename'] ?? $descriptor['name'] ?? $field_name ) ),
+				'mime_type'  => sanitize_text_field( (string) ( $descriptor['mime_type'] ?? 'application/octet-stream' ) ),
+				'contents'   => $contents,
 			);
+		}
+
+		/**
+		 * Returns whether a descriptor includes a local upload source.
+		 *
+		 * @param array<string,mixed> $descriptor Artifact or upload descriptor.
+		 * @return bool
+		 */
+		private static function descriptor_has_upload_file( array $descriptor ): bool {
+			return is_string( $descriptor['bytes'] ?? null )
+				|| is_string( $descriptor['content'] ?? null )
+				|| '' !== (string) ( $descriptor['path'] ?? $descriptor['file_path'] ?? $descriptor['tmp_name'] ?? '' );
+		}
+
+		/**
+		 * Returns whether a descriptor includes a Cloud artifact id.
+		 *
+		 * @param array<string,mixed> $descriptor Artifact or upload descriptor.
+		 * @return bool
+		 */
+		private static function descriptor_has_artifact_id( array $descriptor ): bool {
+			return '' !== sanitize_text_field( (string) ( $descriptor['artifact_id'] ?? $descriptor['id'] ?? '' ) );
+		}
+
+		/**
+		 * Normalizes a required Cloud artifact id reference for runtime processing.
+		 *
+		 * @param array<string,mixed> $artifact Artifact descriptor.
+		 * @param string              $role Artifact role.
+		 * @return array<string,mixed>|WP_Error
+		 */
+		private static function normalize_required_artifact_reference( array $artifact, string $role ) {
+			$normalized = self::normalize_artifact_descriptor( $artifact, $role );
+			if ( is_wp_error( $normalized ) ) {
+				return $normalized;
+			}
+			if ( '' === (string) ( $normalized['artifact_id'] ?? '' ) ) {
+				return new WP_Error(
+					'cloud_media_derivative_artifact_id_missing',
+					__( 'Media derivative runtime artifacts require an artifact id.', 'magick-ai-cloud-addon' ),
+					array( 'status' => 400 )
+				);
+			}
+
+			return $normalized;
 		}
 
 		/**

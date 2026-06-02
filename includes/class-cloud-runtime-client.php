@@ -100,6 +100,49 @@ if ( ! class_exists( 'Magick_AI_Cloud_Runtime_Client' ) ) {
 		}
 
 		/**
+		 * Creates one media derivative run through the named runtime service endpoint.
+		 *
+		 * @param array<string,mixed> $payload Media derivative request payload.
+		 * @param array<string,array<string,string>> $files Optional multipart source_file.
+		 * @param string              $trace_id Optional trace id.
+		 * @param string              $idempotency_key Optional idempotency key.
+		 * @return array<string,mixed>|WP_Error
+		 */
+		public function create_media_derivative( array $payload, array $files = array(), string $trace_id = '', string $idempotency_key = '' ) {
+			if ( '' === $idempotency_key ) {
+				$idempotency_key = 'media_derivative_' . wp_generate_uuid4();
+			}
+			foreach ( array_keys( $files ) as $field_name ) {
+				if ( ! in_array( (string) $field_name, array( 'source_file', 'watermark_file' ), true ) ) {
+					return new WP_Error(
+						'cloud_runtime_media_derivative_file_field_not_allowed',
+						__( 'Only source_file and watermark_file uploads are allowed for media derivative transport.', 'magick-ai-cloud-addon' ),
+						array( 'status' => 400 )
+					);
+				}
+			}
+
+			if ( empty( $files ) ) {
+				return $this->request( 'POST', '/v1/runtime/media-derivatives', $payload, $idempotency_key, $trace_id );
+			}
+
+			$multipart = $this->build_media_derivative_multipart_body( $payload, $files );
+			if ( is_wp_error( $multipart ) ) {
+				return $multipart;
+			}
+
+			return $this->request(
+				'POST',
+				'/v1/runtime/media-derivatives',
+				null,
+				$idempotency_key,
+				$trace_id,
+				(string) $multipart['body'],
+				(string) $multipart['content_type']
+			);
+		}
+
+		/**
 		 * Reads one runtime run.
 		 *
 		 * @param string $run_id Cloud run id.
@@ -251,7 +294,7 @@ if ( ! class_exists( 'Magick_AI_Cloud_Runtime_Client' ) ) {
 		 * @param string              $trace_id Optional trace id.
 		 * @return array<string,mixed>|WP_Error
 		 */
-		private function request( string $method, string $path, ?array $payload = null, string $idempotency_key = '', string $trace_id = '' ) {
+		private function request( string $method, string $path, ?array $payload = null, string $idempotency_key = '', string $trace_id = '', ?string $raw_body = null, string $content_type = 'application/json' ) {
 			if ( ! $this->is_configured() ) {
 				return new WP_Error(
 					'cloud_runtime_unconfigured',
@@ -274,7 +317,9 @@ if ( ! class_exists( 'Magick_AI_Cloud_Runtime_Client' ) ) {
 			$idempotency_key = sanitize_text_field( $idempotency_key );
 			$body = '';
 
-			if ( is_array( $payload ) ) {
+			if ( null !== $raw_body ) {
+				$body = $raw_body;
+			} elseif ( is_array( $payload ) ) {
 				$encoded = wp_json_encode( $payload );
 				if ( ! is_string( $encoded ) || '' === $encoded ) {
 					return new WP_Error(
@@ -288,7 +333,7 @@ if ( ! class_exists( 'Magick_AI_Cloud_Runtime_Client' ) ) {
 			$args = array(
 				'method' => $method,
 				'timeout' => max( 5, absint( $this->config['timeout'] ?? 8 ) ),
-				'headers' => $this->build_signed_headers( $method, $path, $body, $idempotency_key, $trace_id ),
+				'headers' => $this->build_signed_headers( $method, $path, $body, $idempotency_key, $trace_id, $content_type ),
 			);
 
 			if ( '' !== $body ) {
@@ -406,6 +451,9 @@ if ( ! class_exists( 'Magick_AI_Cloud_Runtime_Client' ) ) {
 			if ( 'POST' === $method && '/v1/runtime/execute' === $path_only ) {
 				return true;
 			}
+			if ( 'POST' === $method && '/v1/runtime/media-derivatives' === $path_only ) {
+				return true;
+			}
 			if ( 'GET' === $method && '/v1/entitlements/current' === $path_only ) {
 				return true;
 			}
@@ -435,7 +483,7 @@ if ( ! class_exists( 'Magick_AI_Cloud_Runtime_Client' ) ) {
 		 * @param string $trace_id Trace id.
 		 * @return array<string,string>
 		 */
-		private function build_signed_headers( string $method, string $path, string $body, string $idempotency_key, string $trace_id ): array {
+		private function build_signed_headers( string $method, string $path, string $body, string $idempotency_key, string $trace_id, string $content_type = 'application/json' ): array {
 			$timestamp = (string) time();
 			$traceparent = $this->build_traceparent( $trace_id );
 			$nonce = $this->build_request_nonce( $method, $trace_id, $idempotency_key );
@@ -458,7 +506,7 @@ if ( ! class_exists( 'Magick_AI_Cloud_Runtime_Client' ) ) {
 
 			$headers = array(
 				'Accept' => 'application/json',
-				'Content-Type' => 'application/json',
+				'Content-Type' => sanitize_text_field( $content_type ),
 				'X-Magick-Site-Id' => (string) ( $this->config['site_id'] ?? '' ),
 				'X-Magick-Key-Id' => (string) ( $this->config['key_id'] ?? '' ),
 				'X-Magick-Timestamp' => $timestamp,
@@ -475,6 +523,49 @@ if ( ! class_exists( 'Magick_AI_Cloud_Runtime_Client' ) ) {
 			}
 
 			return $headers;
+		}
+
+		/**
+		 * Builds a bounded multipart body for the media derivative endpoint.
+		 *
+		 * @param array<string,mixed> $payload Media derivative JSON request.
+		 * @param array<string,array<string,string>> $files Multipart files.
+		 * @return array{body:string,content_type:string}|WP_Error
+		 */
+		private function build_media_derivative_multipart_body( array $payload, array $files ) {
+			$encoded = wp_json_encode( $payload );
+			if ( ! is_string( $encoded ) || '' === $encoded ) {
+				return new WP_Error(
+					'cloud_runtime_encode_failed',
+					__( 'Cloud media derivative request payload could not be encoded.', 'magick-ai-cloud-addon' )
+				);
+			}
+
+			$boundary = 'magick-ai-cloud-addon-' . wp_generate_uuid4();
+			$body = '--' . $boundary . "\r\n";
+			$body .= "Content-Disposition: form-data; name=\"request\"\r\n";
+			$body .= "Content-Type: application/json\r\n\r\n";
+			$body .= $encoded . "\r\n";
+
+			foreach ( array( 'source_file', 'watermark_file' ) as $field_name ) {
+				if ( empty( $files[ $field_name ]['contents'] ) ) {
+					continue;
+				}
+
+				$filename = sanitize_file_name( (string) ( $files[ $field_name ]['filename'] ?? $field_name ) );
+				$mime_type = sanitize_text_field( (string) ( $files[ $field_name ]['mime_type'] ?? 'application/octet-stream' ) );
+				$body .= '--' . $boundary . "\r\n";
+				$body .= 'Content-Disposition: form-data; name="' . $field_name . '"; filename="' . $filename . "\"\r\n";
+				$body .= 'Content-Type: ' . $mime_type . "\r\n\r\n";
+				$body .= (string) $files[ $field_name ]['contents'] . "\r\n";
+			}
+
+			$body .= '--' . $boundary . "--\r\n";
+
+			return array(
+				'body'         => $body,
+				'content_type' => 'multipart/form-data; boundary=' . $boundary,
+			);
 		}
 
 		/**

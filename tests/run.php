@@ -52,14 +52,47 @@ maca_assert(
 	false !== strpos( $bootstrap, 'class-cloud-media-derivative-transport.php' )
 	&& false !== strpos( $bootstrap, 'magick_ai_cloud_addon_verified_runtime_client' )
 	&& false !== strpos( $bootstrap, 'magick_ai_cloud_addon_dispatch_media_derivative_cloud_request' )
+	&& false !== strpos( $bootstrap, 'array $watermark_artifact = array()' )
 	&& false !== strpos( $bootstrap, 'magick_ai_cloud_addon_build_media_derivative_proposal_payload' ),
-	'Bootstrap exposes verified runtime and media derivative transport helpers.'
+	'Bootstrap exposes verified runtime and media derivative transport helpers with optional watermark transport.'
 );
 
 maca_assert(
 	false !== strpos( $transport, 'Magick_AI_Cloud_Addon_Settings::is_verified()' )
 	&& false !== strpos( $transport, "'cloud_runtime_unverified'" ),
 	'Media derivative dispatch fails closed until Cloud credentials verify.'
+);
+
+maca_assert(
+	false !== strpos( $runtime_client, 'function create_media_derivative' )
+	&& false !== strpos( $runtime_client, "'/v1/runtime/media-derivatives'" )
+	&& false !== strpos( $runtime_client, 'build_media_derivative_multipart_body' )
+	&& false !== strpos( $runtime_client, "'source_file'" )
+	&& false !== strpos( $runtime_client, "'watermark_file'" )
+	&& false !== strpos( $runtime_client, "'cloud_runtime_media_derivative_file_field_not_allowed'" )
+	&& false !== strpos( $runtime_client, 'Only source_file and watermark_file uploads are allowed' ),
+	'Runtime client exposes a named media derivative endpoint with bounded multipart files.'
+);
+
+maca_assert(
+	false !== strpos( $transport, 'create_media_derivative' )
+	&& false !== strpos( $transport, 'build_media_derivative_request_payload' )
+	&& false !== strpos( $transport, 'normalize_upload_file_descriptor' )
+	&& false !== strpos( $transport, 'normalize_required_artifact_reference' ),
+	'Media derivative transport shapes strict Cloud requests from ability contracts and host artifacts.'
+);
+
+maca_assert(
+	false !== strpos( $transport, 'cloud_media_derivative_watermark_plan_missing' )
+	&& false !== strpos( $transport, 'cloud_media_derivative_watermark_source_conflict' )
+	&& false !== strpos( $transport, 'cloud_media_derivative_watermark_source_missing' )
+	&& false !== strpos( $transport, 'cloud_media_derivative_source_mode_conflict' )
+	&& false !== strpos( $transport, 'Watermark artifact transport requires a watermark plan' )
+	&& false !== strpos( $transport, 'Watermark plans require a watermark upload or artifact id' )
+	&& false !== strpos( $transport, 'array $watermark_artifact = array()' )
+	&& false !== strpos( $transport, 'sanitize_watermark_payload' )
+	&& false !== strpos( $transport, "'watermark_file'" ),
+	'Watermark transport requires a local ability plan and rejects missing or mixed source modes.'
 );
 
 maca_assert(
@@ -79,7 +112,7 @@ maca_assert(
 );
 
 maca_assert(
-	false !== strpos( $transport, "'replace_original'  => false" )
+	false !== strpos( $transport, 'cloud_media_derivative_replace_original_requested' )
 	&& false !== strpos( $transport, "'replace_original_default'      => false" )
 	&& false !== strpos( $transport, "'default_action'    => 'preview_only'" ),
 	'Media derivative proposal payload defaults to preview-only and does not replace the original file.'
@@ -103,6 +136,7 @@ maca_assert(
 
 maca_assert(
 	false !== strpos( $runtime_client, "'POST', '/v1/runtime/execute'" )
+	&& false !== strpos( $runtime_client, "'POST', '/v1/runtime/media-derivatives'" )
 	&& false !== strpos( $runtime_client, "'GET', '/v1/runs/'" )
 	&& false !== strpos( $runtime_client, 'private function request' )
 	&& false !== strpos( $runtime_client, 'is_allowed_request_path' )
@@ -115,6 +149,17 @@ maca_assert(
 );
 
 maca_assert(
+	false === strpos( $transport, 'media_derivative_cloud_runtime.v1' )
+	&& false === strpos( $transport, 'build_runtime_payload' )
+	&& false !== strpos( $transport, 'cloud_media_derivative_target_format_missing' )
+	&& false !== strpos( $transport, 'cloud_media_derivative_max_width_missing' )
+	&& false !== strpos( $transport, 'cloud_media_derivative_quality_missing' )
+	&& false !== strpos( $transport, 'filesize( $path )' )
+	&& false !== strpos( $transport, 'MAX_UPLOAD_BYTES = 26214400' ),
+	'Media derivative transport has no legacy execute payload builder, requires ability-provided derivative fields, and preflights upload size.'
+);
+
+maca_assert(
 	false === strpos( $readme, 'request(string $method' )
 	&& false === strpos( $runtime_contract, 'request(string $method' )
 	&& false !== strpos( $readme, 'low-level signed request method is private and endpoint-allowlisted' )
@@ -124,10 +169,14 @@ maca_assert(
 );
 
 maca_assert(
-	false !== strpos( $boundary_doc, 'Media derivative transport must use the runtime/run/result endpoints' )
+	false !== strpos( $boundary_doc, 'POST /v1/runtime/media-derivatives' )
+	&& false !== strpos( $boundary_doc, 'logo registry' )
+	&& false !== strpos( $boundary_doc, 'watermark plan' )
 	&& false !== strpos( $adapter_doc, 'Expired Cloud artifacts must not be adopted.' )
-	&& false !== strpos( $adapter_doc, 'final_write_owner=local_wordpress_host' ),
-	'Boundary and adapter integration docs describe derivative transport ownership.'
+	&& false !== strpos( $adapter_doc, 'final_write_owner=local_wordpress_host' )
+	&& false !== strpos( $adapter_doc, 'watermark_artifact' )
+	&& false !== strpos( $agents, 'POST /v1/runtime/media-derivatives' ),
+	'Boundary, adapter integration, and AGENTS docs describe derivative transport ownership.'
 );
 
 maca_assert(

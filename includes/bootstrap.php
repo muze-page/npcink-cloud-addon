@@ -85,14 +85,16 @@ if ( ! function_exists( 'magick_ai_cloud_addon_dispatch_media_derivative_cloud_r
 	 * @param array<string,mixed> $source_artifact Short TTL source artifact descriptor.
 	 * @param string              $trace_id Optional trace id.
 	 * @param string              $idempotency_key Optional idempotency key.
+	 * @param array<string,mixed> $watermark_artifact Optional short TTL watermark artifact or upload descriptor.
 	 * @return array<string,mixed>|WP_Error
 	 */
-	function magick_ai_cloud_addon_dispatch_media_derivative_cloud_request( array $ability_response, array $source_artifact, string $trace_id = '', string $idempotency_key = '' ) {
+	function magick_ai_cloud_addon_dispatch_media_derivative_cloud_request( array $ability_response, array $source_artifact, string $trace_id = '', string $idempotency_key = '', array $watermark_artifact = array() ) {
 		return Magick_AI_Cloud_Media_Derivative_Transport::dispatch_from_ability_response(
 			$ability_response,
 			$source_artifact,
 			$trace_id,
-			$idempotency_key
+			$idempotency_key,
+			$watermark_artifact
 		);
 	}
 }

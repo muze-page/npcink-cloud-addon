@@ -33,8 +33,9 @@ For `magick-ai/build-media-derivative-cloud-request`:
 
 1. Host/Adapter calls the local WordPress ability and receives the read-only
    request contract.
-2. Host/Adapter creates or obtains a short TTL source artifact descriptor. The
-   addon does not invent undocumented upload/download endpoints.
+2. Host/Adapter creates or obtains a local source upload descriptor or same-site
+   short TTL source artifact id. The addon does not invent undocumented generic
+   upload/download endpoints.
 3. Host/Adapter calls
    `magick_ai_cloud_addon_dispatch_media_derivative_cloud_request()`.
 4. The addon validates that the ability payload has no credentials,
@@ -50,6 +51,12 @@ For `magick-ai/build-media-derivative-cloud-request`:
 Expired Cloud artifacts must not be adopted. The proposal payload must keep
 `final_write_owner=local_wordpress_host`, `default_action=preview_only`, and
 `replace_original_default=false`.
+
+Watermark/logo transport is not currently exposed through this addon. If the
+local ability output contains `cloud_job_payload.watermark`, the addon must
+reject dispatch until the local ability and Cloud runtime contracts are both
+frozen. The addon does not own a logo registry, choose default branding,
+approve adoption, or write attachment metadata.
 
 ## Example
 

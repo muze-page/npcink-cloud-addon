@@ -58,6 +58,7 @@ It returns `null` until the addon settings have passed Save and Verify.
 | --- | --- |
 | `probe_connectivity()` | `GET /health/live`, then signed `GET /v1/entitlements/current` |
 | `execute_runtime()` | `POST /v1/runtime/execute` |
+| `create_media_derivative()` | `POST /v1/runtime/media-derivatives` |
 | `get_run()` | `GET /v1/runs/{run_id}` |
 | `get_run_result()` | `GET /v1/runs/{run_id}/result` |
 | `get_current_entitlement()` | `GET /v1/entitlements/current` |
@@ -146,8 +147,10 @@ It may:
 - reject payloads that include credentials, Authorization data, or signed
   headers;
 - reject unverified Cloud credentials before dispatch;
-- attach a host-supplied short TTL source artifact descriptor;
-- dispatch through `POST /v1/runtime/execute`;
+- attach a host-supplied source upload or short TTL source artifact id;
+- attach an optional host-supplied watermark upload or short TTL watermark
+  artifact id when the ability response includes a watermark plan;
+- dispatch through `POST /v1/runtime/media-derivatives`;
 - convert a Cloud derivative artifact descriptor into a Core-ready local
   proposal payload.
 
@@ -155,6 +158,7 @@ It must not:
 
 - call the ability itself;
 - upload or download bytes through undocumented Cloud endpoints;
+- own a source media registry or logo registry;
 - persist proposals;
 - approve proposals;
 - replace attachment main files;

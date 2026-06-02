@@ -19,6 +19,7 @@ This repository is the standalone `magick-ai-cloud-addon` WordPress plugin.
 Allowed runtime/read endpoints:
 
 - `POST /v1/runtime/execute`
+- `POST /v1/runtime/media-derivatives`
 - `GET /v1/runs/{run_id}`
 - `GET /v1/runs/{run_id}/result`
 - `GET /v1/stats/*`

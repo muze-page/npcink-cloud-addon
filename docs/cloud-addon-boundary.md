@@ -51,8 +51,12 @@ Cloud may return generated output or write intent, but this addon must not apply
 For media derivative Cloud jobs, the addon may validate the local
 `magick-ai/build-media-derivative-cloud-request` output, sign the runtime
 request, and build a Core-ready proposal payload from a non-expired Cloud
-artifact descriptor. It must not call the ability, persist the proposal, replace
-the attachment file, update attachment metadata, or perform adoption.
+artifact descriptor. It may forward a host-supplied source upload or same-site
+short TTL artifact id, and it may forward an optional host-supplied watermark
+upload or artifact id when the local ability output contains a watermark plan.
+It must not call the ability, persist the proposal, choose logo defaults, own a
+logo registry, replace the attachment file, update attachment metadata, or
+perform adoption.
 
 ## Observability Transport Rule
 
@@ -105,6 +109,7 @@ Allowed Cloud contract endpoints:
 
 - `GET /health/live`
 - `POST /v1/runtime/execute`
+- `POST /v1/runtime/media-derivatives`
 - `GET /v1/runs/{run_id}`
 - `GET /v1/runs/{run_id}/result`
 - `GET /v1/stats/*`
@@ -116,9 +121,10 @@ Forbidden legacy endpoint:
 
 - `/v1/runtime/workflows/runs`
 
-Media derivative transport must use the runtime/run/result endpoints above
-unless a future Cloud artifact contract explicitly updates this list. Do not
-silently add ad hoc artifact upload or download endpoints to the addon.
+Media derivative transport must use the named runtime media derivative endpoint
+and run/result endpoints above unless a future Cloud artifact contract
+explicitly updates this list. Do not silently add ad hoc artifact upload,
+download, source registry, or logo registry endpoints to the addon.
 
 Observability transport must use only the observability endpoints above. Do not
 add ad hoc log upload, support bundle, file upload, database export, or raw

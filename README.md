@@ -14,6 +14,7 @@ The addon owns:
 - Connectivity probing with `/health/live` and a signed Cloud read.
 - Runtime and read projection calls:
   - `POST /v1/runtime/execute`
+  - `POST /v1/runtime/media-derivatives`
   - `GET /v1/runs/{run_id}`
   - `GET /v1/runs/{run_id}/result`
   - `GET /v1/stats/*`
@@ -45,6 +46,7 @@ magick_ai_cloud_addon_build_media_derivative_proposal_payload(array $ability_res
 ```php
 probe_connectivity(): array
 execute_runtime(array $payload, string $trace_id = '', string $idempotency_key = '')
+create_media_derivative(array $payload, array $files = array(), string $trace_id = '', string $idempotency_key = '')
 get_run(string $run_id, string $trace_id = '')
 get_run_result(string $run_id, string $trace_id = '')
 get_current_entitlement(string $trace_id = '')
@@ -66,7 +68,8 @@ The addon can consume the read-only
 `magick-ai/build-media-derivative-cloud-request` ability output as a transport
 input. It validates that the ability payload has no Cloud credentials,
 Authorization data, or signed headers, requires verified Cloud settings, and
-dispatches through `/v1/runtime/execute`.
+dispatches through the named `/v1/runtime/media-derivatives` runtime service
+endpoint.
 
 The local host or Adapter still owns the ability call, local source file access,
 short TTL source artifact creation, Core proposal creation, UI display,
@@ -74,6 +77,12 @@ approval, record, replace, rollback, and all WordPress writes. The addon helper
 only returns a Core-ready proposal payload with
 `final_write_owner=local_wordpress_host`; it does not persist or approve the
 proposal.
+
+Source media can be sent either as a local upload descriptor (`path`, `bytes`,
+or `content`) or as a same-site short TTL Cloud artifact id. Optional
+watermarks require `cloud_job_payload.watermark` in the ability response; the
+fifth dispatch parameter can then provide a watermark upload descriptor or a
+short TTL watermark artifact id.
 
 Expired Cloud artifacts are rejected before proposal adoption payloads are
 built. The default action is preview-only and original attachment files are not

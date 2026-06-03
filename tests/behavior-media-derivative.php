@@ -187,6 +187,46 @@ maca_assert(
 	'Behavior: valid Cloud artifacts become preview-only local WordPress host proposals.'
 );
 
+$proposal_from_runtime_artifact = Magick_AI_Cloud_Media_Derivative_Transport::build_local_proposal_payload(
+	maca_ability_fixture(),
+	array(
+		'data' => array(
+			'run_id' => 'run_media_1',
+			'status' => 'succeeded',
+			'result' => array(
+				'artifact' => array(
+					'artifact_id' => 'derivative_artifact',
+					'download_url' => '/v1/runtime/artifacts/derivative_artifact/download',
+					'expires_at' => maca_future_expiry(),
+					'mime_type' => 'image/webp',
+					'format' => 'webp',
+					'width' => 1200,
+					'height' => 675,
+					'filesize_bytes' => 180000,
+					'checksum' => 'sha256:' . str_repeat( 'a', 64 ),
+					'processing_warnings' => array(),
+				),
+			),
+		),
+	),
+	array(
+		'artifact_id' => 'derivative_artifact',
+		'run_id' => 'run_media_1',
+		'expires_at' => maca_future_expiry(),
+		'mime_type' => 'image/webp',
+		'width' => 1200,
+		'height' => 675,
+		'filesize_bytes' => 180000,
+		'checksum' => 'sha256:' . str_repeat( 'a', 64 ),
+	)
+);
+maca_assert(
+	is_array( $proposal_from_runtime_artifact )
+	&& 'derivative_artifact' === $proposal_from_runtime_artifact['artifact']['artifact_id']
+	&& str_repeat( 'a', 64 ) === $proposal_from_runtime_artifact['artifact']['sha256'],
+	'Behavior: runtime result artifact shape can become a local proposal payload.'
+);
+
 $incomplete_metrics = maca_ability_fixture();
 unset( $incomplete_metrics['cloud_job_payload']['source_asset']['width'] );
 $proposal_with_warnings = Magick_AI_Cloud_Media_Derivative_Transport::build_local_proposal_payload(
@@ -231,6 +271,20 @@ $invalid_source_result = Magick_AI_Cloud_Media_Derivative_Transport::dispatch_fr
 maca_assert(
 	is_wp_error( $invalid_source_result ) && 'cloud_media_derivative_source_media_type_invalid' === $invalid_source_result->get_error_code(),
 	'Behavior: unsupported source media types fail closed.'
+);
+
+$generic_source_type = maca_ability_fixture();
+$generic_source_type['cloud_job_payload']['source_media_type'] = 'image';
+$generic_source_result = Magick_AI_Cloud_Media_Derivative_Transport::dispatch_from_ability_response(
+	$generic_source_type,
+	array(
+		'artifact_id' => 'source_artifact',
+		'expires_at' => maca_future_expiry(),
+	)
+);
+maca_assert(
+	! is_wp_error( $generic_source_result ),
+	'Behavior: generic image source media type is accepted for ability contracts.'
 );
 
 $unsafe_url = Magick_AI_Cloud_Addon_Settings::build_settings_from_admin_payload(

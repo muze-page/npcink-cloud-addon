@@ -219,11 +219,12 @@ if ( ! class_exists( 'Magick_AI_Cloud_Media_Derivative_Transport' ) ) {
 		 * @return array<string,mixed>
 		 */
 		private static function extract_cloud_data( array $cloud_result ): array {
-			if ( is_array( $cloud_result['data'] ?? null ) ) {
-				return $cloud_result['data'];
+			$data = is_array( $cloud_result['data'] ?? null ) ? $cloud_result['data'] : $cloud_result;
+			if ( empty( $data['derivative'] ) && is_array( $data['result']['artifact'] ?? null ) ) {
+				$data['derivative'] = self::normalize_result_artifact_for_cloud_data( $data['result']['artifact'] );
 			}
 
-			return $cloud_result;
+			return $data;
 		}
 
 		/**
@@ -358,7 +359,7 @@ if ( ! class_exists( 'Magick_AI_Cloud_Media_Derivative_Transport' ) ) {
 				'quality'           => max( 1, min( 100, $quality ) ),
 			);
 			$raw_source_media_type = (string) ( $job_payload['source_media_type'] ?? '' );
-			$source_media_type = self::normalize_media_type( $raw_source_media_type );
+			$source_media_type = self::normalize_media_type( $raw_source_media_type, true );
 			if ( '' !== trim( $raw_source_media_type ) && '' === $source_media_type ) {
 				return new WP_Error(
 					'cloud_media_derivative_source_media_type_invalid',
@@ -587,7 +588,7 @@ if ( ! class_exists( 'Magick_AI_Cloud_Media_Derivative_Transport' ) ) {
 				'width'          => absint( $artifact['width'] ?? 0 ),
 				'height'         => absint( $artifact['height'] ?? 0 ),
 				'filesize_bytes' => absint( $artifact['filesize_bytes'] ?? $artifact['size_bytes'] ?? 0 ),
-				'sha256'         => self::normalize_sha256( (string) ( $artifact['sha256'] ?? '' ) ),
+				'sha256'         => self::normalize_sha256( (string) ( $artifact['sha256'] ?? $artifact['checksum'] ?? '' ) ),
 			);
 		}
 
@@ -691,8 +692,8 @@ if ( ! class_exists( 'Magick_AI_Cloud_Media_Derivative_Transport' ) ) {
 				);
 			}
 
-			$result_sha256 = self::normalize_sha256( (string) ( $derivative['sha256'] ?? '' ) );
-			$artifact_sha256 = self::normalize_sha256( (string) ( $artifact['sha256'] ?? '' ) );
+			$result_sha256 = self::normalize_sha256( (string) ( $derivative['sha256'] ?? $derivative['checksum'] ?? '' ) );
+			$artifact_sha256 = self::normalize_sha256( (string) ( $artifact['sha256'] ?? $artifact['checksum'] ?? '' ) );
 			if ( '' !== $result_sha256 && '' !== $artifact_sha256 && $result_sha256 !== $artifact_sha256 ) {
 				return new WP_Error(
 					'cloud_media_derivative_artifact_checksum_mismatch',
@@ -740,10 +741,15 @@ if ( ! class_exists( 'Magick_AI_Cloud_Media_Derivative_Transport' ) ) {
 		 * Normalizes supported media derivative image mime types.
 		 *
 		 * @param string $mime_type Raw mime type.
+		 * @param bool   $allow_generic_image Whether the generic image type is accepted.
 		 * @return string
 		 */
-		private static function normalize_media_type( string $mime_type ): string {
+		private static function normalize_media_type( string $mime_type, bool $allow_generic_image = false ): string {
 			$mime_type = strtolower( trim( sanitize_text_field( $mime_type ) ) );
+			if ( $allow_generic_image && 'image' === $mime_type ) {
+				return 'image';
+			}
+
 			$allowed = array(
 				'image/avif',
 				'image/gif',
@@ -783,10 +789,34 @@ if ( ! class_exists( 'Magick_AI_Cloud_Media_Derivative_Transport' ) ) {
 		 * @return array<string,mixed>
 		 */
 		private static function sanitize_cloud_result_summary( array $cloud_data ): array {
+			$derivative = is_array( $cloud_data['derivative'] ?? null ) ? $cloud_data['derivative'] : array();
+
 			return array(
 				'run_id' => sanitize_text_field( (string) ( $cloud_data['run_id'] ?? '' ) ),
 				'status' => sanitize_key( (string) ( $cloud_data['status'] ?? '' ) ),
 				'warnings' => self::sanitize_string_list( $cloud_data['warnings'] ?? array() ),
+				'derivative_artifact_id' => sanitize_text_field( (string) ( $derivative['artifact_id'] ?? $derivative['id'] ?? '' ) ),
+			);
+		}
+
+		/**
+		 * Normalizes a runtime result artifact into the derivative summary shape.
+		 *
+		 * @param array<string,mixed> $artifact Runtime result artifact.
+		 * @return array<string,mixed>
+		 */
+		private static function normalize_result_artifact_for_cloud_data( array $artifact ): array {
+			return array(
+				'artifact_id'    => sanitize_text_field( (string) ( $artifact['artifact_id'] ?? $artifact['id'] ?? '' ) ),
+				'download_url'   => esc_url_raw( (string) ( $artifact['download_url'] ?? $artifact['url'] ?? '' ) ),
+				'expires_at'     => sanitize_text_field( (string) ( $artifact['expires_at'] ?? '' ) ),
+				'mime_type'      => self::normalize_media_type( (string) ( $artifact['mime_type'] ?? '' ) ),
+				'format'         => sanitize_key( (string) ( $artifact['format'] ?? '' ) ),
+				'width'          => absint( $artifact['width'] ?? 0 ),
+				'height'         => absint( $artifact['height'] ?? 0 ),
+				'filesize_bytes' => absint( $artifact['filesize_bytes'] ?? $artifact['size_bytes'] ?? 0 ),
+				'sha256'         => self::normalize_sha256( (string) ( $artifact['sha256'] ?? $artifact['checksum'] ?? '' ) ),
+				'processing_warnings' => self::sanitize_string_list( $artifact['processing_warnings'] ?? array() ),
 			);
 		}
 
@@ -817,6 +847,9 @@ if ( ! class_exists( 'Magick_AI_Cloud_Media_Derivative_Transport' ) ) {
 		 */
 		private static function normalize_sha256( string $value ): string {
 			$value = strtolower( trim( $value ) );
+			if ( 0 === strpos( $value, 'sha256:' ) ) {
+				$value = substr( $value, 7 );
+			}
 
 			return preg_match( '/^[a-f0-9]{64}$/', $value ) ? $value : '';
 		}

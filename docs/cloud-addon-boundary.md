@@ -54,9 +54,11 @@ request, and build a Core-ready proposal payload from a non-expired Cloud
 artifact descriptor. It may forward a host-supplied source upload or same-site
 short TTL artifact id, and it may forward an optional host-supplied watermark
 upload or artifact id when the local ability output contains a watermark plan.
-It must not call the ability, persist the proposal, choose logo defaults, own a
-logo registry, replace the attachment file, update attachment metadata, or
-perform adoption.
+Derivative proposal adoption requires a non-expired Cloud artifact id, and any
+Cloud result artifact id, run id, or checksum must match the artifact descriptor
+before the addon returns a local proposal payload. It must not call the ability,
+persist the proposal, choose logo defaults, own a logo registry, replace the
+attachment file, update attachment metadata, or perform adoption.
 
 ## Observability Transport Rule
 

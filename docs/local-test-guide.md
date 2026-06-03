@@ -10,6 +10,15 @@ php /Users/muze/gitee/magick-ai-cloud-addon/tests/run.php
 git diff --check
 ```
 
+`tests/run.php` is only an aggregate runner:
+
+- `tests/static-contracts.php` checks source and docs for boundary contracts.
+- `tests/behavior-media-derivative.php` calls public PHP APIs with WordPress
+  stubs to prove fail-closed behavior.
+- `tests/helpers.php` contains shared assertions, stubs, and fixtures.
+
+Before expanding addon scope, read `docs/cloud-addon-complexity-budget.md`.
+
 Boundary checks:
 
 ```bash

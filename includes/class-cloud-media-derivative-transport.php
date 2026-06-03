@@ -134,6 +134,11 @@ if ( ! class_exists( 'Magick_AI_Cloud_Media_Derivative_Transport' ) ) {
 			}
 
 			$cloud_data = self::extract_cloud_data( $cloud_result );
+			$binding_valid = self::validate_derivative_artifact_binding( $cloud_data, $artifact );
+			if ( is_wp_error( $binding_valid ) ) {
+				return $binding_valid;
+			}
+
 			$original = self::normalize_media_metrics( $contract['cloud_job_payload']['source_asset'] ?? array() );
 			$derivative = self::normalize_media_metrics(
 				array_merge(
@@ -143,6 +148,7 @@ if ( ! class_exists( 'Magick_AI_Cloud_Media_Derivative_Transport' ) ) {
 			);
 			$warnings = self::sanitize_string_list( $contract['cloud_job_payload']['warnings'] ?? array() );
 			$warnings = array_merge( $warnings, self::sanitize_string_list( $cloud_data['warnings'] ?? array() ) );
+			$warnings = self::append_metric_warnings( $warnings, $original, $derivative );
 
 			return array(
 				'contract_version'  => self::PROPOSAL_CONTRACT_VERSION,
@@ -351,7 +357,15 @@ if ( ! class_exists( 'Magick_AI_Cloud_Media_Derivative_Transport' ) ) {
 				'max_width'         => max( 1, min( 10000, $max_width ) ),
 				'quality'           => max( 1, min( 100, $quality ) ),
 			);
-			$source_media_type = sanitize_key( (string) ( $job_payload['source_media_type'] ?? '' ) );
+			$raw_source_media_type = (string) ( $job_payload['source_media_type'] ?? '' );
+			$source_media_type = self::normalize_media_type( $raw_source_media_type );
+			if ( '' !== trim( $raw_source_media_type ) && '' === $source_media_type ) {
+				return new WP_Error(
+					'cloud_media_derivative_source_media_type_invalid',
+					__( 'Media derivative source media type must be a supported image type.', 'magick-ai-cloud-addon' ),
+					array( 'status' => 400 )
+				);
+			}
 			if ( '' !== $source_media_type ) {
 				$cloud_job_payload['source_media_type'] = $source_media_type;
 			}
@@ -537,11 +551,28 @@ if ( ! class_exists( 'Magick_AI_Cloud_Media_Derivative_Transport' ) ) {
 			}
 
 			$artifact_id = sanitize_text_field( (string) ( $artifact['artifact_id'] ?? $artifact['id'] ?? '' ) );
+			if ( 'derivative' === $role && '' === $artifact_id ) {
+				return new WP_Error(
+					'cloud_media_derivative_derivative_artifact_id_missing',
+					__( 'Derivative Cloud artifacts require an artifact id before local proposal adoption.', 'magick-ai-cloud-addon' ),
+					array( 'status' => 400 )
+				);
+			}
+
 			$download_url = esc_url_raw( (string) ( $artifact['download_url'] ?? $artifact['url'] ?? '' ) );
 			if ( '' === $artifact_id && '' === $download_url ) {
 				return new WP_Error(
 					'cloud_media_derivative_artifact_ref_missing',
 					__( 'Media derivative artifact requires an artifact id or download URL.', 'magick-ai-cloud-addon' ),
+					array( 'status' => 400 )
+				);
+			}
+			$raw_mime_type = (string) ( $artifact['mime_type'] ?? '' );
+			$mime_type = self::normalize_media_type( $raw_mime_type );
+			if ( '' !== trim( $raw_mime_type ) && '' === $mime_type ) {
+				return new WP_Error(
+					'cloud_media_derivative_artifact_mime_invalid',
+					__( 'Media derivative artifact mime type must be a supported image type.', 'magick-ai-cloud-addon' ),
 					array( 'status' => 400 )
 				);
 			}
@@ -551,7 +582,8 @@ if ( ! class_exists( 'Magick_AI_Cloud_Media_Derivative_Transport' ) ) {
 				'artifact_id'    => $artifact_id,
 				'download_url'   => $download_url,
 				'expires_at'     => $expires_at,
-				'mime_type'      => sanitize_text_field( (string) ( $artifact['mime_type'] ?? '' ) ),
+				'run_id'         => sanitize_text_field( (string) ( $artifact['run_id'] ?? '' ) ),
+				'mime_type'      => $mime_type,
 				'width'          => absint( $artifact['width'] ?? 0 ),
 				'height'         => absint( $artifact['height'] ?? 0 ),
 				'filesize_bytes' => absint( $artifact['filesize_bytes'] ?? $artifact['size_bytes'] ?? 0 ),
@@ -620,13 +652,107 @@ if ( ! class_exists( 'Magick_AI_Cloud_Media_Derivative_Transport' ) ) {
 		 */
 		private static function normalize_media_metrics( $metrics ): array {
 			$metrics = is_array( $metrics ) ? $metrics : array();
+			$raw_mime_type = (string) ( $metrics['mime_type'] ?? '' );
 
 			return array(
 				'width'          => absint( $metrics['width'] ?? 0 ),
 				'height'         => absint( $metrics['height'] ?? 0 ),
 				'filesize_bytes' => absint( $metrics['filesize_bytes'] ?? $metrics['size_bytes'] ?? 0 ),
-				'mime_type'      => sanitize_text_field( (string) ( $metrics['mime_type'] ?? '' ) ),
+				'mime_type'      => self::normalize_media_type( $raw_mime_type ),
 			);
+		}
+
+		/**
+		 * Validates that the adopted artifact matches the Cloud result summary.
+		 *
+		 * @param array<string,mixed> $cloud_data Cloud result data.
+		 * @param array<string,mixed> $artifact Normalized derivative artifact.
+		 * @return true|WP_Error
+		 */
+		private static function validate_derivative_artifact_binding( array $cloud_data, array $artifact ) {
+			$derivative = is_array( $cloud_data['derivative'] ?? null ) ? $cloud_data['derivative'] : array();
+			$result_artifact_id = sanitize_text_field( (string) ( $derivative['artifact_id'] ?? $derivative['id'] ?? '' ) );
+			$artifact_id = sanitize_text_field( (string) ( $artifact['artifact_id'] ?? '' ) );
+			if ( '' !== $result_artifact_id && '' !== $artifact_id && $result_artifact_id !== $artifact_id ) {
+				return new WP_Error(
+					'cloud_media_derivative_artifact_binding_mismatch',
+					__( 'Derivative artifact id does not match the Cloud result.', 'magick-ai-cloud-addon' ),
+					array( 'status' => 409 )
+				);
+			}
+
+			$result_run_id = sanitize_text_field( (string) ( $cloud_data['run_id'] ?? '' ) );
+			$artifact_run_id = sanitize_text_field( (string) ( $artifact['run_id'] ?? '' ) );
+			if ( '' !== $result_run_id && '' !== $artifact_run_id && $result_run_id !== $artifact_run_id ) {
+				return new WP_Error(
+					'cloud_media_derivative_artifact_run_mismatch',
+					__( 'Derivative artifact run_id does not match the Cloud result.', 'magick-ai-cloud-addon' ),
+					array( 'status' => 409 )
+				);
+			}
+
+			$result_sha256 = self::normalize_sha256( (string) ( $derivative['sha256'] ?? '' ) );
+			$artifact_sha256 = self::normalize_sha256( (string) ( $artifact['sha256'] ?? '' ) );
+			if ( '' !== $result_sha256 && '' !== $artifact_sha256 && $result_sha256 !== $artifact_sha256 ) {
+				return new WP_Error(
+					'cloud_media_derivative_artifact_checksum_mismatch',
+					__( 'Derivative artifact checksum does not match the Cloud result.', 'magick-ai-cloud-addon' ),
+					array( 'status' => 409 )
+				);
+			}
+
+			return true;
+		}
+
+		/**
+		 * Adds explicit warnings when proposal comparison metrics are incomplete.
+		 *
+		 * @param array<int,string>    $warnings Existing warnings.
+		 * @param array<string,mixed> $original Original metrics.
+		 * @param array<string,mixed> $derivative Derivative metrics.
+		 * @return array<int,string>
+		 */
+		private static function append_metric_warnings( array $warnings, array $original, array $derivative ): array {
+			if ( ! self::has_complete_media_metrics( $original ) ) {
+				$warnings[] = __( 'Original media metrics are incomplete.', 'magick-ai-cloud-addon' );
+			}
+			if ( ! self::has_complete_media_metrics( $derivative ) ) {
+				$warnings[] = __( 'Derivative media metrics are incomplete.', 'magick-ai-cloud-addon' );
+			}
+
+			return $warnings;
+		}
+
+		/**
+		 * Returns whether media comparison metrics have the fields needed by UI.
+		 *
+		 * @param array<string,mixed> $metrics Normalized metrics.
+		 * @return bool
+		 */
+		private static function has_complete_media_metrics( array $metrics ): bool {
+			return absint( $metrics['width'] ?? 0 ) > 0
+				&& absint( $metrics['height'] ?? 0 ) > 0
+				&& absint( $metrics['filesize_bytes'] ?? 0 ) > 0
+				&& '' !== (string) ( $metrics['mime_type'] ?? '' );
+		}
+
+		/**
+		 * Normalizes supported media derivative image mime types.
+		 *
+		 * @param string $mime_type Raw mime type.
+		 * @return string
+		 */
+		private static function normalize_media_type( string $mime_type ): string {
+			$mime_type = strtolower( trim( sanitize_text_field( $mime_type ) ) );
+			$allowed = array(
+				'image/avif',
+				'image/gif',
+				'image/jpeg',
+				'image/png',
+				'image/webp',
+			);
+
+			return in_array( $mime_type, $allowed, true ) ? $mime_type : '';
 		}
 
 		/**

@@ -1,0 +1,254 @@
+<?php
+/**
+ * Behavior tests for media derivative Cloud transport.
+ *
+ * @package MagickAICloudAddon
+ */
+
+declare(strict_types=1);
+
+require_once __DIR__ . '/helpers.php';
+
+maca_load_addon_classes();
+
+maca_seed_settings( false );
+$unverified = Magick_AI_Cloud_Media_Derivative_Transport::dispatch_from_ability_response(
+	maca_ability_fixture(),
+	array(
+		'artifact_id' => 'source_artifact',
+		'expires_at' => maca_future_expiry(),
+	)
+);
+maca_assert(
+	is_wp_error( $unverified ) && 'cloud_runtime_unverified' === $unverified->get_error_code(),
+	'Behavior: media derivative dispatch fails closed before verified Cloud credentials.'
+);
+
+maca_seed_settings( true );
+$credential_payload = maca_ability_fixture();
+$credential_payload['cloud_job_payload']['signed_headers'] = array( 'Authorization' => 'Bearer secret' );
+$credential_result = Magick_AI_Cloud_Media_Derivative_Transport::dispatch_from_ability_response(
+	$credential_payload,
+	array(
+		'artifact_id' => 'source_artifact',
+		'expires_at' => maca_future_expiry(),
+	)
+);
+maca_assert(
+	is_wp_error( $credential_result ) && 'cloud_media_derivative_credentials_present' === $credential_result->get_error_code(),
+	'Behavior: ability credentials and signed headers are rejected before Cloud dispatch.'
+);
+
+$watermark_without_plan = Magick_AI_Cloud_Media_Derivative_Transport::dispatch_from_ability_response(
+	maca_ability_fixture(),
+	array(
+		'artifact_id' => 'source_artifact',
+		'expires_at' => maca_future_expiry(),
+	),
+	'',
+	'',
+	array(
+		'artifact_id' => 'watermark_artifact',
+		'expires_at' => maca_future_expiry(),
+	)
+);
+maca_assert(
+	is_wp_error( $watermark_without_plan ) && 'cloud_media_derivative_watermark_plan_missing' === $watermark_without_plan->get_error_code(),
+	'Behavior: watermark artifacts require a local ability watermark plan.'
+);
+
+$watermark_payload = maca_ability_fixture();
+$watermark_payload['cloud_job_payload']['watermark'] = array(
+	'type' => 'image',
+	'position' => 'bottom_right',
+);
+$watermark_missing_source = Magick_AI_Cloud_Media_Derivative_Transport::dispatch_from_ability_response(
+	$watermark_payload,
+	array(
+		'artifact_id' => 'source_artifact',
+		'expires_at' => maca_future_expiry(),
+	)
+);
+maca_assert(
+	is_wp_error( $watermark_missing_source ) && 'cloud_media_derivative_watermark_source_missing' === $watermark_missing_source->get_error_code(),
+	'Behavior: watermark plans require a watermark upload or artifact id.'
+);
+
+$watermark_artifact_result = Magick_AI_Cloud_Media_Derivative_Transport::dispatch_from_ability_response(
+	$watermark_payload,
+	array(
+		'artifact_id' => 'source_artifact',
+		'expires_at' => maca_future_expiry(),
+	),
+	'trace-watermark',
+	'idempotency-watermark',
+	array(
+		'artifact_id' => 'watermark_artifact',
+		'expires_at' => maca_future_expiry(),
+	)
+);
+maca_assert(
+	is_array( $watermark_artifact_result ) && 'ok' === (string) ( $watermark_artifact_result['status'] ?? '' ),
+	'Behavior: watermark artifact references dispatch through the media derivative endpoint.'
+);
+
+$client = new Magick_AI_Cloud_Runtime_Client( Magick_AI_Cloud_Addon_Settings::get_settings() );
+$watermark_file_result = $client->create_media_derivative(
+	array( 'request_contract_version' => 'media_derivative_cloud_request.v1' ),
+	array( 'watermark_file' => array( 'contents' => 'x' ) )
+);
+maca_assert(
+	is_array( $watermark_file_result ) && 'ok' === (string) ( $watermark_file_result['status'] ?? '' ),
+	'Behavior: runtime client accepts bounded watermark_file multipart transport.'
+);
+
+$expired_proposal = Magick_AI_Cloud_Media_Derivative_Transport::build_local_proposal_payload(
+	maca_ability_fixture(),
+	array( 'data' => array( 'run_id' => 'run_media_1' ) ),
+	array(
+		'artifact_id' => 'derivative_artifact',
+		'expires_at' => gmdate( 'c', time() - 60 ),
+		'mime_type' => 'image/webp',
+	)
+);
+maca_assert(
+	is_wp_error( $expired_proposal ) && 'cloud_media_derivative_artifact_expired' === $expired_proposal->get_error_code(),
+	'Behavior: expired Cloud artifacts cannot produce proposal payloads.'
+);
+
+$missing_artifact_id = Magick_AI_Cloud_Media_Derivative_Transport::build_local_proposal_payload(
+	maca_ability_fixture(),
+	array( 'data' => array( 'run_id' => 'run_media_1' ) ),
+	array(
+		'download_url' => 'https://cloud.example.test/artifacts/derivative',
+		'expires_at' => maca_future_expiry(),
+		'mime_type' => 'image/webp',
+	)
+);
+maca_assert(
+	is_wp_error( $missing_artifact_id ) && 'cloud_media_derivative_derivative_artifact_id_missing' === $missing_artifact_id->get_error_code(),
+	'Behavior: derivative proposal adoption requires a Cloud artifact id.'
+);
+
+$mismatched_artifact = Magick_AI_Cloud_Media_Derivative_Transport::build_local_proposal_payload(
+	maca_ability_fixture(),
+	array(
+		'data' => array(
+			'run_id' => 'run_media_1',
+			'derivative' => array(
+				'artifact_id' => 'expected_artifact',
+				'sha256' => str_repeat( 'a', 64 ),
+			),
+		),
+	),
+	array(
+		'artifact_id' => 'other_artifact',
+		'run_id' => 'run_media_1',
+		'expires_at' => maca_future_expiry(),
+		'mime_type' => 'image/webp',
+		'sha256' => str_repeat( 'a', 64 ),
+	)
+);
+maca_assert(
+	is_wp_error( $mismatched_artifact ) && 'cloud_media_derivative_artifact_binding_mismatch' === $mismatched_artifact->get_error_code(),
+	'Behavior: derivative artifact id must match the Cloud result when provided.'
+);
+
+$proposal = Magick_AI_Cloud_Media_Derivative_Transport::build_local_proposal_payload(
+	maca_ability_fixture(),
+	array(
+		'data' => array(
+			'run_id' => 'run_media_1',
+			'derivative' => array(
+				'artifact_id' => 'derivative_artifact',
+				'width' => 1200,
+				'height' => 675,
+				'filesize_bytes' => 180000,
+				'mime_type' => 'image/webp',
+			),
+		),
+	),
+	array(
+		'artifact_id' => 'derivative_artifact',
+		'run_id' => 'run_media_1',
+		'expires_at' => maca_future_expiry(),
+		'mime_type' => 'image/webp',
+		'width' => 1200,
+		'height' => 675,
+		'filesize_bytes' => 180000,
+	)
+);
+maca_assert(
+	is_array( $proposal )
+	&& 'local_wordpress_host' === $proposal['final_write_owner']
+	&& 'preview_only' === $proposal['default_action']
+	&& false === $proposal['local_adoption']['replace_original_default']
+	&& false === $proposal['local_adoption']['attachment_metadata_write_included'],
+	'Behavior: valid Cloud artifacts become preview-only local WordPress host proposals.'
+);
+
+$incomplete_metrics = maca_ability_fixture();
+unset( $incomplete_metrics['cloud_job_payload']['source_asset']['width'] );
+$proposal_with_warnings = Magick_AI_Cloud_Media_Derivative_Transport::build_local_proposal_payload(
+	$incomplete_metrics,
+	array(
+		'data' => array(
+			'run_id' => 'run_media_1',
+			'derivative' => array(
+				'artifact_id' => 'derivative_artifact',
+				'width' => 1200,
+				'height' => 675,
+				'filesize_bytes' => 180000,
+				'mime_type' => 'image/webp',
+			),
+		),
+	),
+	array(
+		'artifact_id' => 'derivative_artifact',
+		'run_id' => 'run_media_1',
+		'expires_at' => maca_future_expiry(),
+		'mime_type' => 'image/webp',
+		'width' => 1200,
+		'height' => 675,
+		'filesize_bytes' => 180000,
+	)
+);
+maca_assert(
+	is_array( $proposal_with_warnings )
+	&& in_array( 'Original media metrics are incomplete.', $proposal_with_warnings['warnings'], true ),
+	'Behavior: proposal payload warns when original or derivative metrics are incomplete.'
+);
+
+$invalid_source_type = maca_ability_fixture();
+$invalid_source_type['cloud_job_payload']['source_media_type'] = 'text/html';
+$invalid_source_result = Magick_AI_Cloud_Media_Derivative_Transport::dispatch_from_ability_response(
+	$invalid_source_type,
+	array(
+		'artifact_id' => 'source_artifact',
+		'expires_at' => maca_future_expiry(),
+	)
+);
+maca_assert(
+	is_wp_error( $invalid_source_result ) && 'cloud_media_derivative_source_media_type_invalid' === $invalid_source_result->get_error_code(),
+	'Behavior: unsupported source media types fail closed.'
+);
+
+$unsafe_url = Magick_AI_Cloud_Addon_Settings::build_settings_from_admin_payload(
+	array(
+		'base_url' => 'http://cloud.example.test',
+		'api_key' => '{"site_id":"site_test","key_id":"key_test","secret":"secret_test"}',
+	)
+);
+$local_url = Magick_AI_Cloud_Addon_Settings::build_settings_from_admin_payload(
+	array(
+		'base_url' => 'http://127.0.0.1:8787',
+		'api_key' => '{"site_id":"site_test","key_id":"key_test","secret":"secret_test"}',
+	)
+);
+maca_assert(
+	is_wp_error( $unsafe_url )
+	&& 'invalid_cloud_base_url' === $unsafe_url->get_error_code()
+	&& is_array( $local_url )
+	&& 'http://127.0.0.1:8787' === $local_url['base_url'],
+	'Behavior: Cloud Base URL requires HTTPS except localhost development URLs.'
+);

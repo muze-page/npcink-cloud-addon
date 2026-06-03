@@ -172,6 +172,12 @@ if ( ! class_exists( 'Magick_AI_Cloud_Addon_Settings' ) ) {
 
 			if ( array_key_exists( 'base_url', $payload ) ) {
 				$base_url = self::normalize_base_url( (string) $payload['base_url'] );
+				if ( '' !== trim( (string) $payload['base_url'] ) && '' === $base_url ) {
+					return new WP_Error(
+						'invalid_cloud_base_url',
+						__( 'Cloud Base URL must use HTTPS unless it points to localhost or 127.0.0.1.', 'magick-ai-cloud-addon' )
+					);
+				}
 				if ( $base_url !== (string) $next['base_url'] ) {
 					$next['verified'] = false;
 					$next['verified_at'] = '';
@@ -366,7 +372,32 @@ if ( ! class_exists( 'Magick_AI_Cloud_Addon_Settings' ) ) {
 		 * @return string
 		 */
 		private static function normalize_base_url( string $base_url ): string {
-			return untrailingslashit( esc_url_raw( trim( $base_url ) ) );
+			$base_url = untrailingslashit( esc_url_raw( trim( $base_url ) ) );
+			if ( '' === $base_url ) {
+				return '';
+			}
+
+			$scheme = strtolower( (string) parse_url( $base_url, PHP_URL_SCHEME ) );
+			if ( 'https' === $scheme ) {
+				return $base_url;
+			}
+			if ( 'http' === $scheme && self::is_local_http_base_url( $base_url ) ) {
+				return $base_url;
+			}
+
+			return '';
+		}
+
+		/**
+		 * Returns whether an HTTP URL is limited to a local development host.
+		 *
+		 * @param string $base_url Normalized base URL.
+		 * @return bool
+		 */
+		private static function is_local_http_base_url( string $base_url ): bool {
+			$host = strtolower( (string) parse_url( $base_url, PHP_URL_HOST ) );
+
+			return in_array( $host, array( 'localhost', '127.0.0.1', '::1' ), true );
 		}
 
 		/**

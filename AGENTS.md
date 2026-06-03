@@ -13,6 +13,8 @@ This repository is the standalone `magick-ai-cloud-addon` WordPress plugin.
 - Do not expose split credential fields in the UI.
 - Do not print or log the stored `secret`.
 - Do not make the settings page a second control plane.
+- Read `docs/cloud-addon-complexity-budget.md` before expanding addon scope;
+  keep security/boundary checks, but do not add product-control complexity.
 
 ## Current Cloud Runtime Contract
 

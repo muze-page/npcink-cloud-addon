@@ -16,6 +16,9 @@ When not configured or not verified, the default page should prioritize:
 - Cloud Base URL and Cloud API Key entry;
 - `Save and Verify` as the primary action.
 
+Cloud Base URL must use HTTPS except for local development hosts (`localhost`,
+`127.0.0.1`, or `::1`).
+
 When verified, the default page should prioritize:
 
 - compact Cloud status;

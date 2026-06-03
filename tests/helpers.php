@@ -1,0 +1,322 @@
+<?php
+/**
+ * Shared test helpers for Magick AI Cloud Addon.
+ *
+ * @package MagickAICloudAddon
+ */
+
+declare(strict_types=1);
+
+if ( ! defined( 'MACA_TEST_ROOT' ) ) {
+	define( 'MACA_TEST_ROOT', dirname( __DIR__ ) );
+}
+
+/**
+ * Assertion helper.
+ *
+ * @param bool   $condition Condition.
+ * @param string $message Message.
+ * @return void
+ */
+function maca_assert( bool $condition, string $message ): void {
+	if ( ! $condition ) {
+		fwrite( STDERR, '[fail] ' . $message . "\n" );
+		exit( 1 );
+	}
+
+	echo '[ok] ' . $message . "\n";
+}
+
+/**
+ * Reads a repo file.
+ *
+ * @param string $path Path.
+ * @return string
+ */
+function maca_read( string $path ): string {
+	$contents = is_readable( $path ) ? file_get_contents( $path ) : false;
+
+	return is_string( $contents ) ? $contents : '';
+}
+
+if ( ! defined( 'ABSPATH' ) ) {
+	define( 'ABSPATH', MACA_TEST_ROOT . '/tests/wordpress-stub/' );
+}
+
+if ( ! class_exists( 'WP_Error' ) ) {
+	/**
+	 * Minimal WP_Error stub for behavior tests.
+	 */
+	class WP_Error {
+		/**
+		 * Error code.
+		 *
+		 * @var string
+		 */
+		private $code;
+
+		/**
+		 * Error message.
+		 *
+		 * @var string
+		 */
+		private $message;
+
+		/**
+		 * Error data.
+		 *
+		 * @var mixed
+		 */
+		private $data;
+
+		/**
+		 * Constructor.
+		 *
+		 * @param string $code Error code.
+		 * @param string $message Error message.
+		 * @param mixed  $data Error data.
+		 */
+		public function __construct( string $code = '', string $message = '', $data = null ) {
+			$this->code = $code;
+			$this->message = $message;
+			$this->data = $data;
+		}
+
+		/**
+		 * Gets the error code.
+		 *
+		 * @return string
+		 */
+		public function get_error_code(): string {
+			return $this->code;
+		}
+
+		/**
+		 * Gets the error message.
+		 *
+		 * @return string
+		 */
+		public function get_error_message(): string {
+			return $this->message;
+		}
+
+		/**
+		 * Gets the error data.
+		 *
+		 * @return mixed
+		 */
+		public function get_error_data() {
+			return $this->data;
+		}
+	}
+}
+
+if ( ! function_exists( '__' ) ) {
+	function __( string $text, string $domain = '' ): string {
+		return $text;
+	}
+}
+
+if ( ! function_exists( 'is_wp_error' ) ) {
+	function is_wp_error( $value ): bool {
+		return $value instanceof WP_Error;
+	}
+}
+
+if ( ! function_exists( 'sanitize_text_field' ) ) {
+	function sanitize_text_field( $value ): string {
+		return trim( preg_replace( '/[\x00-\x1F\x7F]/', '', wp_strip_all_tags( (string) $value ) ) );
+	}
+}
+
+if ( ! function_exists( 'sanitize_key' ) ) {
+	function sanitize_key( $value ): string {
+		return strtolower( preg_replace( '/[^a-zA-Z0-9_-]/', '', (string) $value ) );
+	}
+}
+
+if ( ! function_exists( 'sanitize_file_name' ) ) {
+	function sanitize_file_name( $value ): string {
+		return preg_replace( '/[^A-Za-z0-9._-]/', '', basename( (string) $value ) );
+	}
+}
+
+if ( ! function_exists( 'esc_url_raw' ) ) {
+	function esc_url_raw( $value ): string {
+		return filter_var( trim( (string) $value ), FILTER_SANITIZE_URL );
+	}
+}
+
+if ( ! function_exists( 'absint' ) ) {
+	function absint( $value ): int {
+		return abs( (int) $value );
+	}
+}
+
+if ( ! function_exists( 'wp_json_encode' ) ) {
+	function wp_json_encode( $value ) {
+		return json_encode( $value );
+	}
+}
+
+if ( ! function_exists( 'wp_generate_uuid4' ) ) {
+	function wp_generate_uuid4(): string {
+		return '00000000-0000-4000-8000-' . substr( hash( 'sha256', (string) microtime( true ) . random_int( 1, PHP_INT_MAX ) ), 0, 12 );
+	}
+}
+
+if ( ! function_exists( 'untrailingslashit' ) ) {
+	function untrailingslashit( string $value ): string {
+		return rtrim( $value, '/' );
+	}
+}
+
+if ( ! function_exists( 'wp_strip_all_tags' ) ) {
+	function wp_strip_all_tags( $value ): string {
+		return strip_tags( (string) $value );
+	}
+}
+
+$GLOBALS['maca_options'] = array();
+$GLOBALS['maca_http_requests'] = array();
+
+if ( ! function_exists( 'get_option' ) ) {
+	function get_option( string $name, $default = false ) {
+		return array_key_exists( $name, $GLOBALS['maca_options'] ) ? $GLOBALS['maca_options'][ $name ] : $default;
+	}
+}
+
+if ( ! function_exists( 'update_option' ) ) {
+	function update_option( string $name, $value, bool $autoload = true ): bool {
+		$GLOBALS['maca_options'][ $name ] = $value;
+		return true;
+	}
+}
+
+if ( ! function_exists( 'delete_option' ) ) {
+	function delete_option( string $name ): void {
+		unset( $GLOBALS['maca_options'][ $name ] );
+	}
+}
+
+if ( ! function_exists( 'add_action' ) ) {
+	function add_action(): void {}
+}
+
+if ( ! function_exists( 'register_setting' ) ) {
+	function register_setting(): void {}
+}
+
+if ( ! function_exists( 'wp_remote_request' ) ) {
+	function wp_remote_request( string $url, array $args = array() ): array {
+		$GLOBALS['maca_http_requests'][] = array(
+			'url'  => $url,
+			'args' => $args,
+		);
+
+		return array(
+			'response' => array( 'code' => 200 ),
+			'body'     => wp_json_encode(
+				array(
+					'status' => 'ok',
+					'data'   => array(
+						'run_id' => 'run_media_1',
+					),
+				)
+			),
+		);
+	}
+}
+
+if ( ! function_exists( 'wp_remote_get' ) ) {
+	function wp_remote_get( string $url, array $args = array() ): array {
+		return array(
+			'response' => array( 'code' => 200 ),
+			'body'     => wp_json_encode( array( 'message' => 'ok' ) ),
+		);
+	}
+}
+
+if ( ! function_exists( 'wp_remote_retrieve_response_code' ) ) {
+	function wp_remote_retrieve_response_code( array $response ): int {
+		return absint( $response['response']['code'] ?? 0 );
+	}
+}
+
+if ( ! function_exists( 'wp_remote_retrieve_body' ) ) {
+	function wp_remote_retrieve_body( array $response ): string {
+		return (string) ( $response['body'] ?? '' );
+	}
+}
+
+/**
+ * Loads addon classes needed by behavior tests.
+ *
+ * @return void
+ */
+function maca_load_addon_classes(): void {
+	require_once MACA_TEST_ROOT . '/includes/class-cloud-addon-settings.php';
+	require_once MACA_TEST_ROOT . '/includes/class-cloud-runtime-client.php';
+	require_once MACA_TEST_ROOT . '/includes/class-cloud-media-derivative-transport.php';
+}
+
+/**
+ * Seeds Cloud addon settings for behavior tests.
+ *
+ * @param bool   $verified Whether settings are verified.
+ * @param string $base_url Cloud base URL.
+ * @return void
+ */
+function maca_seed_settings( bool $verified, string $base_url = 'https://cloud.example.test' ): void {
+	$GLOBALS['maca_options'][ Magick_AI_Cloud_Addon_Settings::option_name() ] = array(
+		'base_url' => $base_url,
+		'site_id' => 'site_test',
+		'key_id' => 'key_test',
+		'secret' => 'secret_test',
+		'timeout' => 8,
+		'verified' => $verified,
+		'verified_at' => $verified ? '2026-06-03 00:00:00 UTC' : '',
+		'last_verification_error' => '',
+		'monitoring_enabled' => false,
+	);
+}
+
+/**
+ * Returns a valid local ability response fixture.
+ *
+ * @return array<string,mixed>
+ */
+function maca_ability_fixture(): array {
+	return array(
+		'request_contract_version' => 'media_derivative_cloud_request.v1',
+		'readonly' => true,
+		'proposal_only' => true,
+		'attachment_id' => 123,
+		'local_adoption' => array(
+			'final_write_owner' => 'local_wordpress_host',
+			'wordpress_write_included' => false,
+		),
+		'cloud_job_payload' => array(
+			'job_type' => 'generate_optimized_media_derivative',
+			'target_format' => 'webp',
+			'max_width' => 1200,
+			'quality' => 82,
+			'source_media_type' => 'image/jpeg',
+			'source_asset' => array(
+				'width' => 1600,
+				'height' => 900,
+				'filesize_bytes' => 400000,
+				'mime_type' => 'image/jpeg',
+			),
+		),
+	);
+}
+
+/**
+ * Returns a future expiry timestamp.
+ *
+ * @return string
+ */
+function maca_future_expiry(): string {
+	return gmdate( 'c', time() + 3600 );
+}

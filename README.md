@@ -118,6 +118,9 @@ Fields:
 
 - Cloud Base URL
 - Cloud API Key
+
+Cloud Base URL must use `https://` unless it points to local development hosts
+such as `localhost`, `127.0.0.1`, or `::1`.
 - Timeout
 
 The page saves and verifies in one action. When unverified, it prioritizes the

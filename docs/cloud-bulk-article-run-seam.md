@@ -71,3 +71,18 @@ The settings page and addon detail surfaces must not show:
 
 Cloud Addon connects the site to allowed Cloud service detail. It does not
 provide writing generation, article import, or publishing.
+
+## Rejected Product Language
+
+Do not describe the addon as a Cloud writing assistant, Cloud article
+generator, hosted article drafting connector, bulk article writer, or article
+import bridge. Use Cloud connector, service detail, entitlement, health, and
+diagnostics language instead.
+
+Rejected names: Cloud writing assistant, Cloud article generator, hosted
+article drafting connector.
+
+Use Cloud connector, service detail, entitlement, health, and diagnostics
+language.
+
+Cloud connector, service detail, entitlement, health, and diagnostics language.

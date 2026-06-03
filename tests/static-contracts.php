@@ -20,6 +20,7 @@ $boundary_doc = maca_read( $root . '/docs/cloud-addon-boundary.md' );
 $runtime_contract = maca_read( $root . '/docs/cloud-runtime-client-contract.md' );
 $adapter_doc = maca_read( $root . '/docs/adapter-integration-seam.md' );
 $complexity_doc = maca_read( $root . '/docs/cloud-addon-complexity-budget.md' );
+$cloud_bulk_article_doc = maca_read( $root . '/docs/cloud-bulk-article-run-seam.md' );
 $agents = maca_read( $root . '/AGENTS.md' );
 $readme = maca_read( $root . '/README.md' );
 
@@ -139,6 +140,15 @@ maca_assert(
 	&& false === strpos( $transport, '/v1/runtime/workflows/' . 'runs' )
 	&& false === strpos( $transport, '/v1/artifacts' ),
 	'Runtime client keeps Cloud calls on named allowlisted contract surfaces.'
+);
+
+maca_assert(
+	false !== strpos( $cloud_bulk_article_doc, 'Rejected Product Language' )
+	&& false !== strpos( $cloud_bulk_article_doc, 'Cloud writing assistant' )
+	&& false !== strpos( $cloud_bulk_article_doc, 'Cloud article generator' )
+	&& false !== strpos( $cloud_bulk_article_doc, 'hosted article drafting connector' )
+	&& false !== strpos( $cloud_bulk_article_doc, 'Cloud connector, service detail, entitlement, health, and diagnostics language' ),
+	'Cloud bulk article seam rejects writing-product language and keeps addon copy on service detail.'
 );
 
 maca_assert(

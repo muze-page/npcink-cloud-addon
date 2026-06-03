@@ -13,7 +13,7 @@ magick_ai_cloud_addon_is_configured(): bool
 magick_ai_cloud_addon_get_settings(): array
 magick_ai_cloud_addon_runtime_client(): ?Magick_AI_Cloud_Runtime_Client
 magick_ai_cloud_addon_verified_runtime_client(): ?Magick_AI_Cloud_Runtime_Client
-magick_ai_cloud_addon_dispatch_media_derivative_cloud_request(array $ability_response, array $source_artifact, string $trace_id = '', string $idempotency_key = '')
+magick_ai_cloud_addon_dispatch_media_derivative_cloud_request(array $ability_response, array $source_artifact, string $trace_id = '', string $idempotency_key = '', array $watermark_artifact = array())
 magick_ai_cloud_addon_build_media_derivative_proposal_payload(array $ability_response, array $cloud_result, array $derivative_artifact)
 ```
 

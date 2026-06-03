@@ -237,6 +237,12 @@ if ( ! class_exists( 'Magick_AI_Cloud_Settings_Page' ) ) {
 			}
 
 			$upload = Magick_AI_Cloud_Observability_Collector::flush_buffer();
+			if ( empty( $upload['last_upload_ok'] ) ) {
+				$message = sanitize_text_field( (string) ( $upload['last_upload_error'] ?? '' ) );
+				self::set_admin_notice( 'error', '' !== $message ? $message : __( 'Monitoring upload failed.', 'magick-ai-cloud-addon' ) );
+				self::redirect_to_page( 'monitoring' );
+			}
+
 			$summary = Magick_AI_Cloud_Observability_Collector::refresh_summary();
 			if ( empty( $summary['last_refresh_ok'] ) ) {
 				$message = sanitize_text_field( (string) ( $summary['last_refresh_error'] ?? '' ) );
@@ -744,6 +750,23 @@ if ( ! class_exists( 'Magick_AI_Cloud_Settings_Page' ) ) {
 					<tr>
 						<th scope="row"><?php esc_html_e( 'Uploaded events', 'magick-ai-cloud-addon' ); ?></th>
 						<td><?php echo esc_html( (string) absint( $monitoring['total_uploaded'] ?? 0 ) ); ?></td>
+					</tr>
+					<tr>
+						<th scope="row"><?php esc_html_e( 'Last upload status', 'magick-ai-cloud-addon' ); ?></th>
+						<td>
+							<?php
+							$has_upload_state = '' !== (string) ( $monitoring['last_uploaded_at'] ?? '' )
+								|| '' !== (string) ( $monitoring['last_upload_error'] ?? '' );
+							if ( ! $has_upload_state ) {
+								echo esc_html__( 'never', 'magick-ai-cloud-addon' );
+							} else {
+								$upload_status = ! empty( $monitoring['last_upload_ok'] )
+									? __( 'ok', 'magick-ai-cloud-addon' )
+									: __( 'failed', 'magick-ai-cloud-addon' );
+								echo esc_html( $upload_status );
+							}
+							?>
+						</td>
 					</tr>
 					<tr>
 						<th scope="row"><?php esc_html_e( 'Last uploaded', 'magick-ai-cloud-addon' ); ?></th>

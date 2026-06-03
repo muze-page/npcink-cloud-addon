@@ -1,0 +1,296 @@
+<?php
+/**
+ * Behavior tests for the plugin observability collector.
+ *
+ * @package MagickAICloudAddon
+ */
+
+declare(strict_types=1);
+
+require_once __DIR__ . '/helpers.php';
+
+maca_load_addon_classes();
+
+/**
+ * Builds one metadata-only observability event.
+ *
+ * @param int $index Event index.
+ * @return array<string,mixed>
+ */
+function maca_observability_event( int $index ): array {
+	return array(
+		'schema_version' => '2026-06-01',
+		'plugin_slug'    => 'magick-ai-core',
+		'plugin_version' => '1.0.' . $index,
+		'source'         => 'local',
+		'event_kind'     => 'core.proposal.create',
+		'event_id'       => 'evt_' . $index,
+			'status'         => 'ok',
+			'latency_ms'     => $index,
+			'proposal_id'    => 'proposal_' . $index,
+			'route'          => '/wp-json/magick-ai-core/v1/' . str_repeat( 'long-route-', 40 ),
+			'prompt'         => 'must not be collected',
+			'raw_request'    => array( 'body' => 'must not be collected' ),
+			'authorization'  => 'Bearer secret',
+	);
+}
+
+maca_reset_test_state();
+maca_seed_settings( false );
+maca_set_monitoring_enabled( true );
+Magick_AI_Cloud_Observability_Collector::capture_event( maca_observability_event( 1 ) );
+maca_assert(
+	0 === count( get_option( Magick_AI_Cloud_Observability_Collector::BUFFER_OPTION, array() ) ),
+	'Behavior: observability capture is disabled until Cloud settings are verified.'
+);
+
+maca_reset_test_state();
+maca_seed_settings( true );
+Magick_AI_Cloud_Observability_Collector::capture_event( maca_observability_event( 2 ) );
+maca_assert(
+	0 === count( get_option( Magick_AI_Cloud_Observability_Collector::BUFFER_OPTION, array() ) ),
+	'Behavior: observability capture is disabled until monitoring is explicitly enabled.'
+);
+
+maca_reset_test_state();
+maca_seed_settings( true );
+maca_set_monitoring_enabled( true );
+Magick_AI_Cloud_Observability_Collector::capture_event( maca_observability_event( 3 ) );
+$buffer = get_option( Magick_AI_Cloud_Observability_Collector::BUFFER_OPTION, array() );
+maca_assert(
+		1 === count( $buffer )
+		&& 'magick-ai-core' === (string) ( $buffer[0]['plugin_slug'] ?? '' )
+		&& 200 === strlen( (string) ( $buffer[0]['route'] ?? '' ) )
+		&& ! array_key_exists( 'prompt', $buffer[0] )
+	&& ! array_key_exists( 'raw_request', $buffer[0] )
+	&& ! array_key_exists( 'authorization', $buffer[0] ),
+	'Behavior: verified opt-in capture stores only allowed metadata fields.'
+);
+
+maca_reset_test_state();
+maca_seed_settings( true );
+maca_set_monitoring_enabled( true );
+for ( $i = 1; $i <= 205; $i++ ) {
+	Magick_AI_Cloud_Observability_Collector::capture_event( maca_observability_event( $i ) );
+}
+$buffer = get_option( Magick_AI_Cloud_Observability_Collector::BUFFER_OPTION, array() );
+maca_assert(
+	200 === count( $buffer )
+	&& 'evt_6' === (string) ( $buffer[0]['event_id'] ?? '' )
+	&& 'evt_205' === (string) ( $buffer[199]['event_id'] ?? '' ),
+	'Behavior: observability buffer remains capped and keeps the newest events.'
+);
+
+maca_reset_test_state();
+maca_seed_settings( true );
+maca_set_monitoring_enabled( true );
+for ( $i = 1; $i <= 3; $i++ ) {
+	Magick_AI_Cloud_Observability_Collector::capture_event( maca_observability_event( $i ) );
+}
+$GLOBALS['maca_http_response_queue'][] = array(
+	'response' => array( 'code' => 500 ),
+	'body'     => wp_json_encode(
+		array(
+			'status'     => 'error',
+			'error_code' => 'signature.timestamp_stale',
+			'message'    => 'X-Magick-Timestamp header is outside the accepted time window.',
+		)
+	),
+);
+$failed = Magick_AI_Cloud_Observability_Collector::flush_buffer();
+$buffer = get_option( Magick_AI_Cloud_Observability_Collector::BUFFER_OPTION, array() );
+maca_assert(
+	empty( $failed['last_upload_ok'] )
+	&& 3 === count( $buffer )
+	&& 3 === absint( $failed['buffer_count'] ?? 0 )
+	&& false !== strpos( (string) ( $failed['last_upload_error'] ?? '' ), 'X-Magick-Timestamp' ),
+	'Behavior: failed observability upload keeps buffered events and records the upload error.'
+);
+
+$GLOBALS['maca_http_response_queue'][] = array(
+	'response' => array( 'code' => 200 ),
+	'body'     => wp_json_encode(
+		array(
+			'status' => 'ok',
+			'data'   => array(
+				'accepted_count' => 2,
+			),
+		)
+	),
+);
+$successful = Magick_AI_Cloud_Observability_Collector::flush_buffer();
+$buffer = get_option( Magick_AI_Cloud_Observability_Collector::BUFFER_OPTION, array() );
+maca_assert(
+	! empty( $successful['last_upload_ok'] )
+	&& 1 === count( $buffer )
+	&& 1 === absint( $successful['buffer_count'] ?? 0 )
+	&& 2 === absint( $successful['total_uploaded'] ?? 0 )
+	&& '' === (string) ( $successful['last_upload_error'] ?? '' )
+	&& '' !== (string) ( $successful['last_uploaded_at'] ?? '' ),
+	'Behavior: successful observability upload removes accepted events and clears stale upload errors.'
+);
+$status = Magick_AI_Cloud_Observability_Collector::get_status();
+maca_assert(
+	! empty( $status['last_upload_ok'] )
+	&& 1 === absint( $status['buffer_count'] ?? 0 )
+	&& 2 === absint( $status['total_uploaded'] ?? 0 )
+	&& '' === (string) ( $status['last_upload_error'] ?? '' ),
+	'Behavior: local monitoring status exposes accurate upload outcome, totals, and buffer count.'
+);
+
+maca_reset_test_state();
+maca_seed_settings( true );
+maca_set_monitoring_enabled( true );
+for ( $i = 1; $i <= 75; $i++ ) {
+	Magick_AI_Cloud_Observability_Collector::capture_event( maca_observability_event( $i ) );
+}
+$GLOBALS['maca_http_response_queue'][] = static function ( string $url, array $args ): array {
+	$body = json_decode( (string) ( $args['body'] ?? '' ), true );
+	$events = is_array( $body['events'] ?? null ) ? $body['events'] : array();
+
+	return array(
+		'response' => array( 'code' => 200 ),
+		'body'     => wp_json_encode(
+			array(
+				'status' => 'ok',
+				'data'   => array(
+					'accepted_count' => count( $events ),
+				),
+			)
+		),
+	);
+};
+$bounded = Magick_AI_Cloud_Observability_Collector::flush_buffer();
+$request = $GLOBALS['maca_http_requests'][0] ?? array();
+$body = json_decode( (string) ( $request['args']['body'] ?? '' ), true );
+$sent_events = is_array( $body['events'] ?? null ) ? $body['events'] : array();
+$buffer = get_option( Magick_AI_Cloud_Observability_Collector::BUFFER_OPTION, array() );
+maca_assert(
+	50 === count( $sent_events )
+	&& 25 === count( $buffer )
+	&& 50 === absint( $bounded['total_uploaded'] ?? 0 )
+	&& 1 === count( $GLOBALS['maca_http_requests'] ),
+	'Behavior: observability flush sends one bounded batch request rather than per-event addon telemetry.'
+);
+
+maca_reset_test_state();
+maca_seed_settings( true );
+maca_set_monitoring_enabled( true );
+$GLOBALS['maca_http_response_queue'][] = array(
+	'response' => array( 'code' => 200 ),
+	'body'     => wp_json_encode(
+		array(
+			'status' => 'ok',
+			'data'   => array(
+				'window'        => array(
+					'hours'         => 24,
+					'generated_at'  => '2026-06-03T00:00:00Z',
+					'authorization' => 'Bearer secret',
+				),
+				'totals'        => array(
+					'events_total' => 10,
+					'error_total'  => 1,
+					'success_rate' => 0.9,
+					'payload_json' => array( 'raw' => 'blocked' ),
+				),
+				'plugins'       => array(
+					array(
+						'plugin_slug'    => 'magick-ai-core',
+						'events_total'   => 8,
+						'error_total'    => 1,
+						'success_rate'   => 0.875,
+						'avg_latency_ms' => 12.5,
+						'event_kinds'    => array(
+							array(
+								'event_kind'   => 'core.commit.preflight',
+								'events_total' => 2,
+								'raw_payload'  => 'blocked',
+							),
+						),
+						'secret'         => 'blocked',
+					),
+				),
+				'timeline'      => array(
+					array(
+						'bucket_start_at' => '2026-06-03T00:00:00Z',
+						'bucket_end_at'   => '2026-06-03T01:00:00Z',
+						'bucket_hours'    => 1,
+						'events_total'    => 10,
+						'raw_payload'     => 'blocked',
+					),
+				),
+				'errors'        => array(
+					array(
+						'plugin_slug'  => 'magick-ai-core',
+						'event_kind'   => 'core.commit.preflight',
+						'error_code'   => 'core.preflight.blocked',
+						'count'        => 1,
+						'last_seen_at' => '2026-06-03T00:00:00Z',
+						'payload_json' => 'blocked',
+					),
+				),
+				'recent_errors' => array(
+					array(
+						'error_code'    => 'core.preflight.blocked',
+						'plugin_slug'   => 'magick-ai-core',
+						'event_kind'    => 'core.commit.preflight',
+						'received_at'   => '2026-06-03T00:00:00Z',
+						'raw_response'  => 'blocked',
+						'status_detail' => '<b>blocked</b>',
+					),
+				),
+				'health'        => array(
+					'status'  => 'warning',
+					'score'   => 80,
+					'summary' => '<b>Needs review</b>',
+					'reasons' => array( 'plugin_observability.error_rate_elevated' ),
+					'state'   => array( 'operator_note' => 'blocked' ),
+				),
+				'attention'     => array(
+					array(
+						'attention_key'   => 'attention_1',
+						'severity'        => 'warning',
+						'code'            => 'plugin_observability.error_rate_elevated',
+						'title'           => 'Elevated errors',
+						'workflow_status' => 'active',
+						'state'           => array( 'operator_note' => 'blocked' ),
+					),
+				),
+				'digest'        => array(
+					'period_label' => 'daily',
+					'headline'     => 'Metadata only',
+					'bullets'      => array( 'No raw payloads', '<b>No secrets</b>' ),
+					'token'        => 'blocked',
+				),
+				'payload_json'  => array( 'raw' => 'blocked' ),
+				'secret'        => 'blocked',
+			),
+		)
+	),
+);
+$summary = Magick_AI_Cloud_Observability_Collector::refresh_summary();
+$cached_summary = is_array( $summary['summary'] ?? null ) ? $summary['summary'] : array();
+maca_assert(
+	! empty( $summary['last_refresh_ok'] )
+	&& 10 === absint( $cached_summary['totals']['events_total'] ?? 0 )
+	&& 'magick-ai-core' === (string) ( $cached_summary['plugins'][0]['plugin_slug'] ?? '' )
+	&& 'core.commit.preflight' === (string) ( $cached_summary['plugins'][0]['event_kinds'][0]['event_kind'] ?? '' )
+	&& 10 === absint( $cached_summary['timeline'][0]['events_total'] ?? 0 )
+	&& 'core.preflight.blocked' === (string) ( $cached_summary['errors'][0]['error_code'] ?? '' )
+	&& 'blocked' === (string) ( $cached_summary['recent_errors'][0]['status_detail'] ?? '' )
+	&& 'warning' === (string) ( $cached_summary['health']['status'] ?? '' )
+	&& 'attention_1' === (string) ( $cached_summary['attention'][0]['attention_key'] ?? '' )
+	&& ! array_key_exists( 'payload_json', $cached_summary )
+	&& ! array_key_exists( 'secret', $cached_summary )
+	&& ! array_key_exists( 'authorization', $cached_summary['window'] ?? array() )
+	&& ! array_key_exists( 'payload_json', $cached_summary['totals'] ?? array() )
+	&& ! array_key_exists( 'secret', $cached_summary['plugins'][0] ?? array() )
+	&& ! array_key_exists( 'raw_payload', $cached_summary['plugins'][0]['event_kinds'][0] ?? array() )
+	&& ! array_key_exists( 'raw_payload', $cached_summary['timeline'][0] ?? array() )
+	&& ! array_key_exists( 'payload_json', $cached_summary['errors'][0] ?? array() )
+	&& ! array_key_exists( 'raw_response', $cached_summary['recent_errors'][0] ?? array() )
+	&& ! array_key_exists( 'state', $cached_summary['health'] ?? array() )
+	&& ! array_key_exists( 'state', $cached_summary['attention'][0] ?? array() )
+	&& ! array_key_exists( 'token', $cached_summary['digest'] ?? array() ),
+	'Behavior: Cloud summary refresh stores only sanitized allowlisted summary fields.'
+);

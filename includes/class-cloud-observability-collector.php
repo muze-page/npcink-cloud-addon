@@ -19,9 +19,10 @@ if ( ! class_exists( 'Magick_AI_Cloud_Observability_Collector' ) ) {
 		public const BUFFER_OPTION = 'magick_ai_cloud_addon_observability_buffer';
 		public const STATUS_OPTION = 'magick_ai_cloud_addon_observability_status';
 		public const SUMMARY_OPTION = 'magick_ai_cloud_addon_observability_summary';
-		public const CRON_HOOK = 'magick_ai_cloud_addon_flush_observability';
-		private const MAX_BUFFER_ITEMS = 200;
-		private const MAX_BATCH_ITEMS = 50;
+			public const CRON_HOOK = 'magick_ai_cloud_addon_flush_observability';
+			private const MAX_BUFFER_ITEMS = 200;
+			private const MAX_BATCH_ITEMS = 50;
+			private const MAX_TEXT_FIELD_LENGTH = 200;
 
 		/**
 		 * Registers collection hooks.
@@ -147,6 +148,7 @@ if ( ! class_exists( 'Magick_AI_Cloud_Observability_Collector' ) ) {
 				'last_captured_at' => sanitize_text_field( (string) ( $status['last_captured_at'] ?? '' ) ),
 				'last_event_kind'  => sanitize_text_field( (string) ( $status['last_event_kind'] ?? '' ) ),
 				'last_plugin_slug' => sanitize_text_field( (string) ( $status['last_plugin_slug'] ?? '' ) ),
+				'last_upload_ok'   => ! empty( $status['last_upload_ok'] ),
 				'last_uploaded_at' => sanitize_text_field( (string) ( $status['last_uploaded_at'] ?? '' ) ),
 				'last_upload_error' => sanitize_text_field( (string) ( $status['last_upload_error'] ?? '' ) ),
 				'total_uploaded'   => absint( $status['total_uploaded'] ?? 0 ),
@@ -182,7 +184,7 @@ if ( ! class_exists( 'Magick_AI_Cloud_Observability_Collector' ) ) {
 		 * @return void
 		 */
 		public static function delete_data(): void {
-				delete_option( self::BUFFER_OPTION );
+			delete_option( self::BUFFER_OPTION );
 			delete_option( self::STATUS_OPTION );
 			delete_option( self::SUMMARY_OPTION );
 			wp_clear_scheduled_hook( self::CRON_HOOK );
@@ -324,22 +326,365 @@ if ( ! class_exists( 'Magick_AI_Cloud_Observability_Collector' ) ) {
 		 * Sanitizes a nested summary payload for local option storage.
 		 *
 		 * @param mixed $value Raw payload.
-		 * @return mixed
+		 * @return array<string,mixed>
 		 */
 		private static function sanitize_summary_payload( $value ) {
-			if ( is_array( $value ) ) {
-				$clean = array();
-				foreach ( $value as $key => $item ) {
-					$clean[ is_int( $key ) ? $key : sanitize_key( (string) $key ) ] = self::sanitize_summary_payload( $item );
+			if ( ! is_array( $value ) ) {
+				return array();
+			}
+
+			$summary = array();
+			if ( array_key_exists( 'generated_at', $value ) ) {
+				$summary['generated_at'] = self::sanitize_summary_scalar( $value['generated_at'], 'text' );
+			}
+
+			if ( is_array( $value['window'] ?? null ) ) {
+				$summary['window'] = self::sanitize_summary_fields(
+					$value['window'],
+					array(
+						'hours'        => 'int',
+						'window_hours' => 'int',
+						'start_at'     => 'text',
+						'end_at'       => 'text',
+						'from'         => 'text',
+						'to'           => 'text',
+						'start'        => 'text',
+						'end'          => 'text',
+						'started_at'   => 'text',
+						'ended_at'     => 'text',
+						'generated_at' => 'text',
+					)
+				);
+			}
+
+			if ( is_array( $value['totals'] ?? null ) ) {
+				$summary['totals'] = self::sanitize_summary_fields(
+					$value['totals'],
+					array(
+						'events_total'     => 'int',
+						'ok_total'         => 'int',
+						'warning_total'    => 'int',
+						'error_total'      => 'int',
+						'success_rate'     => 'float',
+						'avg_latency_ms'   => 'float',
+						'last_seen_at'     => 'text',
+						'plugin_total'     => 'int',
+						'event_kind_total' => 'int',
+					)
+				);
+			}
+
+			if ( is_array( $value['plugins'] ?? null ) ) {
+				$summary['plugins'] = self::sanitize_plugin_summary_list( $value['plugins'], 20 );
+			}
+
+			if ( is_array( $value['event_kinds'] ?? null ) ) {
+				$summary['event_kinds'] = self::sanitize_summary_list(
+					$value['event_kinds'],
+					array(
+						'plugin_slug'    => 'text',
+						'event_kind'     => 'text',
+						'events_total'   => 'int',
+						'ok_total'       => 'int',
+						'warning_total'  => 'int',
+						'error_total'    => 'int',
+						'success_rate'   => 'float',
+						'avg_latency_ms' => 'float',
+						'last_seen_at'   => 'text',
+					),
+					50
+				);
+			}
+
+			if ( is_array( $value['hourly_timeline'] ?? null ) ) {
+				$summary['hourly_timeline'] = self::sanitize_summary_list(
+					$value['hourly_timeline'],
+					array(
+						'hour'           => 'text',
+						'bucket'         => 'text',
+						'events_total'   => 'int',
+						'ok_total'       => 'int',
+						'warning_total'  => 'int',
+						'error_total'    => 'int',
+						'avg_latency_ms' => 'float',
+					),
+					168
+				);
+			}
+
+			if ( is_array( $value['timeline'] ?? null ) ) {
+				$summary['timeline'] = self::sanitize_summary_list(
+					$value['timeline'],
+					array(
+						'bucket_start_at' => 'text',
+						'bucket_end_at'   => 'text',
+						'bucket_hours'    => 'int',
+						'events_total'    => 'int',
+						'ok_total'        => 'int',
+						'warning_total'   => 'int',
+						'error_total'     => 'int',
+						'success_rate'    => 'float',
+						'avg_latency_ms'  => 'float',
+					),
+					168
+				);
+			}
+
+			if ( is_array( $value['errors'] ?? null ) ) {
+				$summary['errors'] = self::sanitize_summary_list(
+					$value['errors'],
+					array(
+						'site_id'      => 'text',
+						'plugin_slug'  => 'text',
+						'event_kind'   => 'text',
+						'error_code'   => 'text',
+						'count'        => 'int',
+						'last_seen_at' => 'text',
+					),
+					50
+				);
+			}
+
+			if ( is_array( $value['recent_errors'] ?? null ) ) {
+				$summary['recent_errors'] = self::sanitize_summary_list(
+					$value['recent_errors'],
+					array(
+						'site_id'       => 'text',
+						'error_code'    => 'text',
+						'plugin_slug'   => 'text',
+						'event_kind'    => 'text',
+						'status'        => 'text',
+						'status_detail' => 'text',
+						'ability_id'    => 'text',
+						'proposal_id'   => 'text',
+						'route'         => 'text',
+						'received_at'   => 'text',
+						'emitted_at'    => 'text',
+						'captured_at'   => 'text',
+						'count'         => 'int',
+					),
+					20
+				);
+			}
+
+			if ( is_array( $value['attention'] ?? null ) ) {
+				$summary['attention'] = self::sanitize_attention_summary_list( $value['attention'], 20 );
+			}
+
+			if ( is_array( $value['attention_items'] ?? null ) ) {
+				$summary['attention_items'] = self::sanitize_attention_summary_list( $value['attention_items'], 20 );
+			}
+
+			if ( is_array( $value['attention_workflow'] ?? null ) ) {
+				$summary['attention_workflow'] = self::sanitize_summary_fields(
+					$value['attention_workflow'],
+					array(
+						'active'          => 'int',
+						'acknowledged'    => 'int',
+						'muted'           => 'int',
+						'resolved'        => 'int',
+						'total'           => 'int',
+						'needs_attention' => 'int',
+					)
+				);
+			}
+
+			if ( is_array( $value['digest'] ?? null ) ) {
+				$digest = self::sanitize_summary_fields(
+					$value['digest'],
+					array(
+						'period_label'    => 'text',
+						'window_hours'    => 'int',
+						'headline'        => 'text',
+						'top_plugin_slug' => 'text',
+						'top_error_code'  => 'text',
+					)
+				);
+				if ( is_array( $value['digest']['bullets'] ?? null ) ) {
+					$digest['bullets'] = self::sanitize_text_list( $value['digest']['bullets'], 10 );
 				}
-				return $clean;
+				$summary['digest'] = $digest;
 			}
 
-			if ( is_bool( $value ) || is_int( $value ) || is_float( $value ) || null === $value ) {
-				return $value;
+			if ( is_array( $value['health'] ?? null ) ) {
+				$summary['health'] = self::sanitize_summary_fields(
+					$value['health'],
+					array(
+						'status'       => 'text',
+						'severity'     => 'text',
+						'message'      => 'text',
+						'score'        => 'int',
+						'summary'      => 'text',
+						'last_seen_at' => 'text',
+					)
+				);
+				if ( is_array( $value['health']['reasons'] ?? null ) ) {
+					$summary['health']['reasons'] = self::sanitize_text_list( $value['health']['reasons'], 10 );
+				}
 			}
 
-			return sanitize_text_field( wp_unslash( (string) $value ) );
+			return $summary;
+		}
+
+		/**
+		 * Sanitizes explicitly allowed summary fields.
+		 *
+		 * @param array<string,mixed>  $source Raw source.
+		 * @param array<string,string> $schema Allowed field schema.
+		 * @return array<string,mixed>
+		 */
+		private static function sanitize_summary_fields( array $source, array $schema ): array {
+			$clean = array();
+			foreach ( $schema as $key => $type ) {
+				if ( ! array_key_exists( $key, $source ) ) {
+					continue;
+				}
+
+				$clean[ $key ] = self::sanitize_summary_scalar( $source[ $key ], $type );
+			}
+
+			return $clean;
+		}
+
+		/**
+		 * Sanitizes a list of explicitly allowed summary objects.
+		 *
+		 * @param mixed                $items Raw list.
+		 * @param array<string,string> $schema Allowed field schema.
+		 * @param int                  $limit Maximum retained items.
+		 * @return array<int,array<string,mixed>>
+		 */
+		private static function sanitize_summary_list( $items, array $schema, int $limit ): array {
+			$items = is_array( $items ) ? array_values( $items ) : array();
+			$items = array_slice( $items, 0, max( 0, $limit ) );
+			$clean = array();
+
+			foreach ( $items as $item ) {
+				if ( is_array( $item ) ) {
+					$clean[] = self::sanitize_summary_fields( $item, $schema );
+				}
+			}
+
+			return $clean;
+		}
+
+		/**
+		 * Sanitizes plugin summary entries with nested event-kind metadata.
+		 *
+		 * @param mixed $items Raw plugin summaries.
+		 * @param int   $limit Maximum retained items.
+		 * @return array<int,array<string,mixed>>
+		 */
+		private static function sanitize_plugin_summary_list( $items, int $limit ): array {
+			$items = is_array( $items ) ? array_values( $items ) : array();
+			$items = array_slice( $items, 0, max( 0, $limit ) );
+			$clean = array();
+			$plugin_schema = array(
+				'plugin_slug'    => 'text',
+				'events_total'   => 'int',
+				'ok_total'       => 'int',
+				'warning_total'  => 'int',
+				'error_total'    => 'int',
+				'success_rate'   => 'float',
+				'avg_latency_ms' => 'float',
+				'last_seen_at'   => 'text',
+			);
+			$event_kind_schema = array(
+				'event_kind'     => 'text',
+				'events_total'   => 'int',
+				'ok_total'       => 'int',
+				'warning_total'  => 'int',
+				'error_total'    => 'int',
+				'success_rate'   => 'float',
+				'avg_latency_ms' => 'float',
+				'last_seen_at'   => 'text',
+			);
+
+			foreach ( $items as $item ) {
+				if ( ! is_array( $item ) ) {
+					continue;
+				}
+
+				$plugin = self::sanitize_summary_fields( $item, $plugin_schema );
+				if ( is_array( $item['event_kinds'] ?? null ) ) {
+					$plugin['event_kinds'] = self::sanitize_summary_list( $item['event_kinds'], $event_kind_schema, 25 );
+				}
+				$clean[] = $plugin;
+			}
+
+			return $clean;
+		}
+
+		/**
+		 * Sanitizes attention entries without storing nested operator notes.
+		 *
+		 * @param mixed $items Raw attention entries.
+		 * @param int   $limit Maximum retained items.
+		 * @return array<int,array<string,mixed>>
+		 */
+		private static function sanitize_attention_summary_list( $items, int $limit ): array {
+			return self::sanitize_summary_list(
+				$items,
+				array(
+					'attention_key'    => 'text',
+					'severity'         => 'text',
+					'code'             => 'text',
+					'title'            => 'text',
+					'detail'           => 'text',
+					'workflow_status'  => 'text',
+					'site_id'          => 'text',
+					'plugin_slug'      => 'text',
+					'event_kind'       => 'text',
+					'error_code'       => 'text',
+					'suggested_action' => 'text',
+				),
+				$limit
+			);
+		}
+
+		/**
+		 * Sanitizes a scalar summary field by type.
+		 *
+		 * @param mixed  $value Raw value.
+		 * @param string $type Field type.
+		 * @return bool|float|int|string
+		 */
+		private static function sanitize_summary_scalar( $value, string $type ) {
+			if ( 'int' === $type ) {
+				return absint( $value );
+			}
+			if ( 'float' === $type ) {
+				return (float) $value;
+			}
+			if ( 'bool' === $type ) {
+				return ! empty( $value );
+			}
+			if ( is_array( $value ) || is_object( $value ) ) {
+				return '';
+			}
+
+				return substr( sanitize_text_field( wp_unslash( (string) $value ) ), 0, self::MAX_TEXT_FIELD_LENGTH );
+		}
+
+		/**
+		 * Sanitizes a bounded list of text values.
+		 *
+		 * @param mixed $items Raw list.
+		 * @param int   $limit Maximum retained items.
+		 * @return array<int,string>
+		 */
+		private static function sanitize_text_list( $items, int $limit ): array {
+			$items = is_array( $items ) ? array_values( $items ) : array();
+			$items = array_slice( $items, 0, max( 0, $limit ) );
+			$clean = array();
+
+			foreach ( $items as $item ) {
+				if ( is_scalar( $item ) || null === $item ) {
+						$clean[] = substr( sanitize_text_field( wp_unslash( (string) $item ) ), 0, self::MAX_TEXT_FIELD_LENGTH );
+				}
+			}
+
+			return $clean;
 		}
 
 		/**
@@ -368,8 +713,8 @@ if ( ! class_exists( 'Magick_AI_Cloud_Observability_Collector' ) ) {
 				return '';
 			}
 
-			return sanitize_text_field( wp_unslash( (string) $value ) );
-		}
+				return substr( sanitize_text_field( wp_unslash( (string) $value ) ), 0, self::MAX_TEXT_FIELD_LENGTH );
+			}
 
 		/**
 		 * Returns active/installed state for known Magick AI plugins.

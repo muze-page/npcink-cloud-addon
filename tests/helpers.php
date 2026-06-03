@@ -179,6 +179,7 @@ if ( ! function_exists( 'wp_strip_all_tags' ) ) {
 
 $GLOBALS['maca_options'] = array();
 $GLOBALS['maca_http_requests'] = array();
+$GLOBALS['maca_http_response_queue'] = array();
 
 if ( ! function_exists( 'get_option' ) ) {
 	function get_option( string $name, $default = false ) {
@@ -208,11 +209,20 @@ if ( ! function_exists( 'register_setting' ) ) {
 }
 
 if ( ! function_exists( 'wp_remote_request' ) ) {
-	function wp_remote_request( string $url, array $args = array() ): array {
+	function wp_remote_request( string $url, array $args = array() ) {
 		$GLOBALS['maca_http_requests'][] = array(
 			'url'  => $url,
 			'args' => $args,
 		);
+
+		if ( ! empty( $GLOBALS['maca_http_response_queue'] ) ) {
+			$response = array_shift( $GLOBALS['maca_http_response_queue'] );
+			if ( is_callable( $response ) ) {
+				return $response( $url, $args );
+			}
+
+			return $response;
+		}
 
 		return array(
 			'response' => array( 'code' => 200 ),
@@ -225,6 +235,12 @@ if ( ! function_exists( 'wp_remote_request' ) ) {
 				)
 			),
 		);
+	}
+}
+
+if ( ! function_exists( 'wp_unslash' ) ) {
+	function wp_unslash( $value ) {
+		return is_array( $value ) ? array_map( 'wp_unslash', $value ) : stripslashes( (string) $value );
 	}
 }
 
@@ -258,6 +274,7 @@ function maca_load_addon_classes(): void {
 	require_once MACA_TEST_ROOT . '/includes/class-cloud-addon-settings.php';
 	require_once MACA_TEST_ROOT . '/includes/class-cloud-runtime-client.php';
 	require_once MACA_TEST_ROOT . '/includes/class-cloud-media-derivative-transport.php';
+	require_once MACA_TEST_ROOT . '/includes/class-cloud-observability-collector.php';
 }
 
 /**
@@ -279,6 +296,29 @@ function maca_seed_settings( bool $verified, string $base_url = 'https://cloud.e
 		'last_verification_error' => '',
 		'monitoring_enabled' => false,
 	);
+}
+
+/**
+ * Enables or disables the addon monitoring setting in test storage.
+ *
+ * @param bool $enabled Whether monitoring is enabled.
+ * @return void
+ */
+function maca_set_monitoring_enabled( bool $enabled ): void {
+	$settings = Magick_AI_Cloud_Addon_Settings::get_settings();
+	$settings['monitoring_enabled'] = $enabled;
+	$GLOBALS['maca_options'][ Magick_AI_Cloud_Addon_Settings::option_name() ] = $settings;
+}
+
+/**
+ * Resets addon behavior test state.
+ *
+ * @return void
+ */
+function maca_reset_test_state(): void {
+	$GLOBALS['maca_options'] = array();
+	$GLOBALS['maca_http_requests'] = array();
+	$GLOBALS['maca_http_response_queue'] = array();
 }
 
 /**

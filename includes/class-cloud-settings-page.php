@@ -748,8 +748,43 @@ if ( ! class_exists( 'Magick_AI_Cloud_Settings_Page' ) ) {
 						<td><?php echo esc_html( self::format_empty( (string) ( $monitoring['last_captured_at'] ?? '' ) ) ); ?></td>
 					</tr>
 					<tr>
-						<th scope="row"><?php esc_html_e( 'Uploaded events', 'magick-ai-cloud-addon' ); ?></th>
-						<td><?php echo esc_html( (string) absint( $monitoring['total_uploaded'] ?? 0 ) ); ?></td>
+						<th scope="row"><?php esc_html_e( 'Sent events', 'magick-ai-cloud-addon' ); ?></th>
+						<td>
+							<?php
+							printf(
+								/* translators: 1: last sent count, 2: total sent count. */
+								esc_html__( 'last %1$d / total %2$d', 'magick-ai-cloud-addon' ),
+								absint( $monitoring['last_sent_count'] ?? 0 ),
+								absint( $monitoring['total_sent'] ?? ( $monitoring['total_uploaded'] ?? 0 ) )
+							);
+							?>
+						</td>
+					</tr>
+					<tr>
+						<th scope="row"><?php esc_html_e( 'Stored events', 'magick-ai-cloud-addon' ); ?></th>
+						<td>
+							<?php
+							printf(
+								/* translators: 1: last stored count, 2: total stored count. */
+								esc_html__( 'last %1$d / total %2$d', 'magick-ai-cloud-addon' ),
+								absint( $monitoring['last_stored_count'] ?? 0 ),
+								absint( $monitoring['total_stored'] ?? 0 )
+							);
+							?>
+						</td>
+					</tr>
+					<tr>
+						<th scope="row"><?php esc_html_e( 'Duplicate events', 'magick-ai-cloud-addon' ); ?></th>
+						<td>
+							<?php
+							printf(
+								/* translators: 1: last duplicate count, 2: total duplicate count. */
+								esc_html__( 'last %1$d / total %2$d', 'magick-ai-cloud-addon' ),
+								absint( $monitoring['last_duplicate_count'] ?? 0 ),
+								absint( $monitoring['total_duplicate'] ?? 0 )
+							);
+							?>
+						</td>
 					</tr>
 					<tr>
 						<th scope="row"><?php esc_html_e( 'Last upload status', 'magick-ai-cloud-addon' ); ?></th>

@@ -121,12 +121,14 @@ if ( ! class_exists( 'Magick_AI_Cloud_Observability_Collector' ) ) {
 
 			$data = is_array( $result['data'] ?? null ) ? $result['data'] : array();
 			$accepted = min( count( $batch ), max( 0, absint( $data['accepted_count'] ?? count( $batch ) ) ) );
+			$stored = min( $accepted, max( 0, absint( $data['stored_count'] ?? $accepted ) ) );
+			$duplicate = min( $accepted, max( 0, absint( $data['duplicate_count'] ?? ( $accepted - $stored ) ) ) );
 			if ( $accepted > 0 ) {
 				$buffer = array_slice( $buffer, $accepted );
 				update_option( self::BUFFER_OPTION, $buffer, false );
 			}
 
-			return self::record_flush_result( true, $accepted, '' );
+			return self::record_flush_result( true, $accepted, '', $stored, $duplicate );
 		}
 
 		/**
@@ -152,6 +154,12 @@ if ( ! class_exists( 'Magick_AI_Cloud_Observability_Collector' ) ) {
 				'last_uploaded_at' => sanitize_text_field( (string) ( $status['last_uploaded_at'] ?? '' ) ),
 				'last_upload_error' => sanitize_text_field( (string) ( $status['last_upload_error'] ?? '' ) ),
 				'total_uploaded'   => absint( $status['total_uploaded'] ?? 0 ),
+				'last_sent_count'  => absint( $status['last_sent_count'] ?? 0 ),
+				'last_stored_count' => absint( $status['last_stored_count'] ?? 0 ),
+				'last_duplicate_count' => absint( $status['last_duplicate_count'] ?? 0 ),
+				'total_sent'       => absint( $status['total_sent'] ?? ( $status['total_uploaded'] ?? 0 ) ),
+				'total_stored'     => absint( $status['total_stored'] ?? 0 ),
+				'total_duplicate'  => absint( $status['total_duplicate'] ?? 0 ),
 				'remote_summary'   => self::get_summary_cache(),
 				'plugins'          => self::plugin_snapshot(),
 			);
@@ -261,23 +269,36 @@ if ( ! class_exists( 'Magick_AI_Cloud_Observability_Collector' ) ) {
 		 * Stores the latest upload outcome.
 		 *
 		 * @param bool   $ok Whether upload passed.
-		 * @param int    $uploaded Uploaded count.
+		 * @param int    $sent Sent and accepted payload count.
 		 * @param string $error Error message.
+		 * @param int    $stored Stored Cloud event count.
+		 * @param int    $duplicate Duplicate Cloud event count.
 		 * @return array<string,mixed>
 		 */
-		private static function record_flush_result( bool $ok, int $uploaded, string $error ): array {
+		private static function record_flush_result( bool $ok, int $sent, string $error, int $stored = 0, int $duplicate = 0 ): array {
 			$buffer = get_option( self::BUFFER_OPTION, array() );
 			$buffer = is_array( $buffer ) ? $buffer : array();
 			$status = self::get_raw_status();
-			$total_uploaded = absint( $status['total_uploaded'] ?? 0 ) + max( 0, $uploaded );
+			$sent = max( 0, $sent );
+			$stored = min( $sent, max( 0, $stored ) );
+			$duplicate = min( $sent, max( 0, $duplicate ) );
+			$total_sent = absint( $status['total_sent'] ?? ( $status['total_uploaded'] ?? 0 ) ) + $sent;
+			$total_stored = absint( $status['total_stored'] ?? 0 ) + $stored;
+			$total_duplicate = absint( $status['total_duplicate'] ?? 0 ) + $duplicate;
 			$status = array_merge(
 				$status,
 				array(
-					'last_upload_ok'    => $ok,
-					'last_uploaded_at'  => $ok ? gmdate( 'c' ) : (string) ( $status['last_uploaded_at'] ?? '' ),
-					'last_upload_error' => $ok ? '' : sanitize_text_field( $error ),
-					'total_uploaded'    => $total_uploaded,
-					'buffer_count'      => count( $buffer ),
+					'last_upload_ok'       => $ok,
+					'last_uploaded_at'     => $ok ? gmdate( 'c' ) : (string) ( $status['last_uploaded_at'] ?? '' ),
+					'last_upload_error'    => $ok ? '' : sanitize_text_field( $error ),
+					'last_sent_count'      => $ok ? $sent : 0,
+					'last_stored_count'    => $ok ? $stored : 0,
+					'last_duplicate_count' => $ok ? $duplicate : 0,
+					'total_uploaded'       => $total_sent,
+					'total_sent'           => $total_sent,
+					'total_stored'         => $total_stored,
+					'total_duplicate'      => $total_duplicate,
+					'buffer_count'         => count( $buffer ),
 				)
 			);
 			update_option( self::STATUS_OPTION, $status, false );

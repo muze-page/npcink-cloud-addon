@@ -94,6 +94,9 @@ Administrators may enable Cloud monitoring after Cloud settings verify. When
 enabled, the addon listens for local `magick_ai_observability_event` metadata,
 stores a bounded local observability buffer, flushes buffered metadata to
 Cloud, and reads aggregate Cloud summaries for the local monitoring view.
+The local monitoring status distinguishes sent events, Cloud-stored events, and
+Cloud-reported duplicates so operators do not confuse upload attempts with
+durable Cloud storage.
 
 Allowed uploaded fields are limited to operational metadata such as plugin
 slug/version, event kind, status, timing, error code, route, proposal id,

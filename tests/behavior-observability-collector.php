@@ -114,6 +114,8 @@ $GLOBALS['maca_http_response_queue'][] = array(
 			'status' => 'ok',
 			'data'   => array(
 				'accepted_count' => 2,
+				'stored_count'    => 1,
+				'duplicate_count' => 1,
 			),
 		)
 	),
@@ -125,17 +127,29 @@ maca_assert(
 	&& 1 === count( $buffer )
 	&& 1 === absint( $successful['buffer_count'] ?? 0 )
 	&& 2 === absint( $successful['total_uploaded'] ?? 0 )
+	&& 2 === absint( $successful['last_sent_count'] ?? 0 )
+	&& 1 === absint( $successful['last_stored_count'] ?? 0 )
+	&& 1 === absint( $successful['last_duplicate_count'] ?? 0 )
+	&& 2 === absint( $successful['total_sent'] ?? 0 )
+	&& 1 === absint( $successful['total_stored'] ?? 0 )
+	&& 1 === absint( $successful['total_duplicate'] ?? 0 )
 	&& '' === (string) ( $successful['last_upload_error'] ?? '' )
 	&& '' !== (string) ( $successful['last_uploaded_at'] ?? '' ),
-	'Behavior: successful observability upload removes accepted events and clears stale upload errors.'
+	'Behavior: successful observability upload records sent, stored, and duplicate counts.'
 );
 $status = Magick_AI_Cloud_Observability_Collector::get_status();
 maca_assert(
 	! empty( $status['last_upload_ok'] )
 	&& 1 === absint( $status['buffer_count'] ?? 0 )
 	&& 2 === absint( $status['total_uploaded'] ?? 0 )
+	&& 2 === absint( $status['last_sent_count'] ?? 0 )
+	&& 1 === absint( $status['last_stored_count'] ?? 0 )
+	&& 1 === absint( $status['last_duplicate_count'] ?? 0 )
+	&& 2 === absint( $status['total_sent'] ?? 0 )
+	&& 1 === absint( $status['total_stored'] ?? 0 )
+	&& 1 === absint( $status['total_duplicate'] ?? 0 )
 	&& '' === (string) ( $status['last_upload_error'] ?? '' ),
-	'Behavior: local monitoring status exposes accurate upload outcome, totals, and buffer count.'
+	'Behavior: local monitoring status exposes accurate upload outcome, buffer count, and Cloud ingest totals.'
 );
 
 maca_reset_test_state();

@@ -39,6 +39,7 @@ magick_ai_cloud_addon_runtime_client(): ?Magick_AI_Cloud_Runtime_Client
 magick_ai_cloud_addon_verified_runtime_client(): ?Magick_AI_Cloud_Runtime_Client
 magick_ai_cloud_addon_dispatch_media_derivative_cloud_request(array $ability_response, array $source_artifact, string $trace_id = '', string $idempotency_key = '')
 magick_ai_cloud_addon_build_media_derivative_proposal_payload(array $ability_response, array $cloud_result, array $derivative_artifact)
+magick_ai_cloud_addon_download_media_derivative_artifact(array $derivative_artifact, string $trace_id = '')
 ```
 
 `Magick_AI_Cloud_Runtime_Client` exposes:
@@ -49,6 +50,7 @@ execute_runtime(array $payload, string $trace_id = '', string $idempotency_key =
 create_media_derivative(array $payload, array $files = array(), string $trace_id = '', string $idempotency_key = '')
 get_run(string $run_id, string $trace_id = '')
 get_run_result(string $run_id, string $trace_id = '')
+download_media_derivative_artifact(string $artifact_id, string $trace_id = '')
 get_current_entitlement(string $trace_id = '')
 get_profile_stats(string $profile_id, string $trace_id = '')
 get_instance_stats(string $instance_id, string $trace_id = '')
@@ -87,6 +89,13 @@ short TTL watermark artifact id.
 Expired Cloud artifacts are rejected before proposal adoption payloads are
 built. The default action is preview-only and original attachment files are not
 replaced by default.
+
+For local operator previews, the addon may download one non-expired derivative
+artifact by id through the explicit signed
+`GET /v1/runtime/artifacts/{artifact_id}/download` runtime endpoint. The helper
+checks descriptor TTL, supported image MIME type, bounded size, and optional
+SHA-256 checksum, then returns bytes to the trusted local caller. It does not
+persist the artifact, create an artifact registry, or write WordPress media.
 
 ## Observability Transport
 

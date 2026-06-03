@@ -114,6 +114,7 @@ Allowed Cloud contract endpoints:
 - `POST /v1/runtime/media-derivatives`
 - `GET /v1/runs/{run_id}`
 - `GET /v1/runs/{run_id}/result`
+- `GET /v1/runtime/artifacts/{artifact_id}/download`
 - `GET /v1/stats/*`
 - `GET /v1/entitlements/current`
 - `POST /v1/observability/plugin-events`
@@ -123,10 +124,10 @@ Forbidden legacy endpoint:
 
 - `/v1/runtime/workflows/runs`
 
-Media derivative transport must use the named runtime media derivative endpoint
-and run/result endpoints above unless a future Cloud artifact contract
-explicitly updates this list. Do not silently add ad hoc artifact upload,
-download, source registry, or logo registry endpoints to the addon.
+Media derivative transport must use the named runtime media derivative endpoint,
+run/result endpoints, and explicit derivative artifact download endpoint above.
+Do not silently add ad hoc artifact upload, generic download, source registry,
+or logo registry endpoints to the addon.
 
 Observability transport must use only the observability endpoints above. Do not
 add ad hoc log upload, support bundle, file upload, database export, or raw

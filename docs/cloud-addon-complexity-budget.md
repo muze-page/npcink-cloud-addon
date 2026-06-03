@@ -23,6 +23,8 @@ Keep these even if they make the code less minimal:
 - Bounded source and watermark media derivative multipart transport.
 - Watermark/logo fail-closed behavior unless the local ability supplies a
   watermark plan and the host supplies one short TTL artifact or upload.
+- Bounded signed derivative artifact preview download through the explicit
+  runtime artifact download endpoint.
 - Non-expired Cloud artifact id requirements for derivative proposal adoption.
 - Cloud result to artifact binding checks for artifact id, run id, and checksum.
 - Preview-only proposal payloads with `final_write_owner=local_wordpress_host`.

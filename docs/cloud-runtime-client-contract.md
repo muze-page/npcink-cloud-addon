@@ -132,7 +132,7 @@ scheduler truth, approval operations, billing mutation, prompt mutation, router
 mutation, preset mutation, or WordPress write methods.
 
 The private request helper must reject any signed path outside the endpoint
-mapping above. In particular, it must reject workflow runtime, artifact,
+mapping above. In particular, it must reject workflow runtime, generic artifact,
 support-bundle, file-upload, database-export, raw-payload, approval, proposal,
 billing-mutation, prompt, router, preset, and WordPress write endpoints unless a
 future boundary update explicitly adds a named public method.
@@ -152,13 +152,17 @@ It may:
 - attach an optional host-supplied watermark upload or short TTL watermark
   artifact id when the ability response includes a watermark plan;
 - dispatch through `POST /v1/runtime/media-derivatives`;
+- download one non-expired derivative artifact for local preview through
+  `download_media_derivative_artifact(string $artifact_id, string $trace_id = '')`
+  and the explicit signed
+  `GET /v1/runtime/artifacts/{artifact_id}/download` endpoint;
 - convert a Cloud derivative artifact descriptor into a Core-ready local
   proposal payload.
 
 It must not:
 
 - call the ability itself;
-- upload or download bytes through undocumented Cloud endpoints;
+- upload or download bytes through undocumented or generic Cloud endpoints;
 - own a source media registry or logo registry;
 - persist proposals;
 - approve proposals;

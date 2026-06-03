@@ -182,6 +182,82 @@ if ( ! class_exists( 'Magick_AI_Cloud_Media_Derivative_Transport' ) ) {
 		}
 
 		/**
+		 * Downloads a derivative artifact for local preview through a signed Cloud request.
+		 *
+		 * This returns bytes only to the trusted local caller. It does not persist,
+		 * register, adopt, or write the artifact into WordPress.
+		 *
+		 * @param array<string,mixed> $derivative_artifact Cloud derivative artifact descriptor.
+		 * @param string              $trace_id Optional trace id.
+		 * @return array<string,mixed>|WP_Error
+		 */
+		public static function download_artifact_preview( array $derivative_artifact, string $trace_id = '' ) {
+			$client = self::verified_client();
+			if ( is_wp_error( $client ) ) {
+				return $client;
+			}
+
+			$artifact = self::normalize_artifact_descriptor( $derivative_artifact, 'derivative' );
+			if ( is_wp_error( $artifact ) ) {
+				return $artifact;
+			}
+
+			$download = $client->download_media_derivative_artifact(
+				(string) $artifact['artifact_id'],
+				$trace_id
+			);
+			if ( is_wp_error( $download ) ) {
+				return $download;
+			}
+
+			$contents = is_string( $download['body'] ?? null ) ? $download['body'] : '';
+			if ( '' === $contents ) {
+				return new WP_Error(
+					'cloud_media_derivative_artifact_empty',
+					__( 'Cloud derivative artifact download returned no bytes.', 'magick-ai-cloud-addon' ),
+					array( 'status' => 502 )
+				);
+			}
+
+			$artifact_mime = self::normalize_media_type( (string) ( $artifact['mime_type'] ?? '' ) );
+			$response_mime = self::normalize_response_mime_type( (string) ( $download['content_type'] ?? '' ) );
+			if ( '' !== $artifact_mime && '' !== $response_mime && $artifact_mime !== $response_mime ) {
+				return new WP_Error(
+					'cloud_media_derivative_artifact_mime_mismatch',
+					__( 'Cloud derivative artifact mime type does not match the descriptor.', 'magick-ai-cloud-addon' ),
+					array( 'status' => 409 )
+				);
+			}
+
+			$mime_type = '' !== $artifact_mime ? $artifact_mime : $response_mime;
+			if ( '' === $mime_type ) {
+				return new WP_Error(
+					'cloud_media_derivative_artifact_mime_invalid',
+					__( 'Media derivative artifact mime type must be a supported image type.', 'magick-ai-cloud-addon' ),
+					array( 'status' => 400 )
+				);
+			}
+
+			$actual_sha256 = hash( 'sha256', $contents );
+			if ( '' !== (string) ( $artifact['sha256'] ?? '' ) && $actual_sha256 !== (string) $artifact['sha256'] ) {
+				return new WP_Error(
+					'cloud_media_derivative_artifact_checksum_mismatch',
+					__( 'Derivative artifact checksum does not match the downloaded bytes.', 'magick-ai-cloud-addon' ),
+					array( 'status' => 409 )
+				);
+			}
+
+			return array(
+				'artifact_id'    => (string) $artifact['artifact_id'],
+				'contents'       => $contents,
+				'mime_type'      => $mime_type,
+				'filesize_bytes' => strlen( $contents ),
+				'sha256'         => $actual_sha256,
+				'expires_at'     => (string) $artifact['expires_at'],
+			);
+		}
+
+		/**
 		 * Returns a verified runtime client or a fail-closed error.
 		 *
 		 * @return Magick_AI_Cloud_Runtime_Client|WP_Error
@@ -759,6 +835,18 @@ if ( ! class_exists( 'Magick_AI_Cloud_Media_Derivative_Transport' ) ) {
 			);
 
 			return in_array( $mime_type, $allowed, true ) ? $mime_type : '';
+		}
+
+		/**
+		 * Normalizes a response Content-Type header into a supported image mime.
+		 *
+		 * @param string $content_type Raw Content-Type header.
+		 * @return string
+		 */
+		private static function normalize_response_mime_type( string $content_type ): string {
+			$content_type = trim( explode( ';', $content_type )[0] ?? '' );
+
+			return self::normalize_media_type( $content_type );
 		}
 
 		/**

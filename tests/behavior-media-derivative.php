@@ -102,6 +102,66 @@ maca_assert(
 	'Behavior: runtime client accepts bounded watermark_file multipart transport.'
 );
 
+maca_reset_test_state();
+maca_seed_settings( true );
+$preview_bytes = 'derivative-preview-bytes';
+$GLOBALS['maca_http_response_queue'][] = array(
+	'response' => array( 'code' => 200 ),
+	'headers'  => array(
+		'Content-Type'   => 'image/webp',
+		'Content-Length' => (string) strlen( $preview_bytes ),
+	),
+	'body'     => $preview_bytes,
+);
+$artifact_preview = Magick_AI_Cloud_Media_Derivative_Transport::download_artifact_preview(
+	array(
+		'artifact_id' => 'derivative_artifact',
+		'expires_at' => maca_future_expiry(),
+		'mime_type'  => 'image/webp',
+		'sha256'     => hash( 'sha256', $preview_bytes ),
+	),
+	'trace-preview'
+);
+$preview_request = end( $GLOBALS['maca_http_requests'] );
+maca_assert(
+	is_array( $artifact_preview )
+	&& 'derivative_artifact' === $artifact_preview['artifact_id']
+	&& $preview_bytes === $artifact_preview['contents']
+	&& false !== strpos( (string) ( $preview_request['url'] ?? '' ), '/v1/runtime/artifacts/derivative_artifact/download' )
+	&& 'image/*' === (string) ( $preview_request['args']['headers']['Accept'] ?? '' ),
+	'Behavior: derivative artifact preview downloads through the explicit signed runtime artifact endpoint.'
+);
+
+$expired_preview = Magick_AI_Cloud_Media_Derivative_Transport::download_artifact_preview(
+	array(
+		'artifact_id' => 'derivative_artifact',
+		'expires_at' => gmdate( 'c', time() - 60 ),
+		'mime_type'  => 'image/webp',
+	)
+);
+maca_assert(
+	is_wp_error( $expired_preview ) && 'cloud_media_derivative_artifact_expired' === $expired_preview->get_error_code(),
+	'Behavior: expired Cloud artifacts cannot be downloaded for local preview.'
+);
+
+$GLOBALS['maca_http_response_queue'][] = array(
+	'response' => array( 'code' => 200 ),
+	'headers'  => array( 'Content-Type' => 'image/webp' ),
+	'body'     => 'different-bytes',
+);
+$checksum_mismatch_preview = Magick_AI_Cloud_Media_Derivative_Transport::download_artifact_preview(
+	array(
+		'artifact_id' => 'derivative_artifact',
+		'expires_at' => maca_future_expiry(),
+		'mime_type'  => 'image/webp',
+		'sha256'     => hash( 'sha256', $preview_bytes ),
+	)
+);
+maca_assert(
+	is_wp_error( $checksum_mismatch_preview ) && 'cloud_media_derivative_artifact_checksum_mismatch' === $checksum_mismatch_preview->get_error_code(),
+	'Behavior: derivative preview download rejects checksum mismatches.'
+);
+
 $expired_proposal = Magick_AI_Cloud_Media_Derivative_Transport::build_local_proposal_payload(
 	maca_ability_fixture(),
 	array( 'data' => array( 'run_id' => 'run_media_1' ) ),

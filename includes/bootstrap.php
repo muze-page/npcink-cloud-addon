@@ -119,6 +119,24 @@ if ( ! function_exists( 'magick_ai_cloud_addon_build_media_derivative_proposal_p
 	}
 }
 
+if ( ! function_exists( 'magick_ai_cloud_addon_download_media_derivative_artifact' ) ) {
+	/**
+	 * Downloads a short-TTL derivative artifact for a trusted local preview.
+	 *
+	 * This does not store, register, adopt, or write the artifact.
+	 *
+	 * @param array<string,mixed> $derivative_artifact Cloud derivative artifact descriptor.
+	 * @param string              $trace_id Optional trace id.
+	 * @return array<string,mixed>|WP_Error
+	 */
+	function magick_ai_cloud_addon_download_media_derivative_artifact( array $derivative_artifact, string $trace_id = '' ) {
+		return Magick_AI_Cloud_Media_Derivative_Transport::download_artifact_preview(
+			$derivative_artifact,
+			$trace_id
+		);
+	}
+}
+
 if ( ! function_exists( 'magick_ai_cloud_addon_bootstrap' ) ) {
 	/**
 	 * Boots the standalone Cloud addon.

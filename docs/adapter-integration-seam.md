@@ -15,6 +15,7 @@ magick_ai_cloud_addon_runtime_client(): ?Magick_AI_Cloud_Runtime_Client
 magick_ai_cloud_addon_verified_runtime_client(): ?Magick_AI_Cloud_Runtime_Client
 magick_ai_cloud_addon_dispatch_media_derivative_cloud_request(array $ability_response, array $source_artifact, string $trace_id = '', string $idempotency_key = '', array $watermark_artifact = array())
 magick_ai_cloud_addon_build_media_derivative_proposal_payload(array $ability_response, array $cloud_result, array $derivative_artifact)
+magick_ai_cloud_addon_download_media_derivative_artifact(array $derivative_artifact, string $trace_id = '')
 ```
 
 ## Expected Adapter Flow
@@ -42,10 +43,15 @@ For `magick-ai/build-media-derivative-cloud-request`:
    Authorization data, or signed headers, and fails closed when Cloud settings
    are not verified.
 5. Host/Adapter polls `get_run()` and `get_run_result()`.
-6. Host/Adapter calls
+6. Host/Adapter may call
+   `magick_ai_cloud_addon_download_media_derivative_artifact()` to serve a
+   same-origin local preview proxy for a non-expired derivative artifact. The
+   addon signs the Cloud download and verifies MIME, size, and optional
+   checksum, but does not persist or register the artifact.
+7. Host/Adapter calls
    `magick_ai_cloud_addon_build_media_derivative_proposal_payload()` to produce
    Core proposal input.
-7. Core/local host owns proposal display, approval, record, replace, rollback,
+8. Core/local host owns proposal display, approval, record, replace, rollback,
    and all WordPress writes.
 
 Expired Cloud artifacts must not be adopted. The proposal payload must keep

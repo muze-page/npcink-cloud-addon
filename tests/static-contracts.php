@@ -28,8 +28,9 @@ maca_assert(
 	&& false !== strpos( $bootstrap, 'magick_ai_cloud_addon_verified_runtime_client' )
 	&& false !== strpos( $bootstrap, 'magick_ai_cloud_addon_dispatch_media_derivative_cloud_request' )
 	&& false !== strpos( $bootstrap, 'array $watermark_artifact = array()' )
-	&& false !== strpos( $bootstrap, 'magick_ai_cloud_addon_build_media_derivative_proposal_payload' ),
-	'Bootstrap exposes verified runtime and media derivative transport helpers with optional watermark transport.'
+	&& false !== strpos( $bootstrap, 'magick_ai_cloud_addon_build_media_derivative_proposal_payload' )
+	&& false !== strpos( $bootstrap, 'magick_ai_cloud_addon_download_media_derivative_artifact' ),
+	'Bootstrap exposes verified runtime and media derivative transport helpers with optional watermark transport and signed preview download.'
 );
 
 maca_assert(
@@ -47,6 +48,18 @@ maca_assert(
 	&& false !== strpos( $runtime_client, "'cloud_runtime_media_derivative_file_field_not_allowed'" )
 	&& false !== strpos( $runtime_client, 'Only source_file and watermark_file uploads are allowed' ),
 	'Runtime client exposes a named media derivative endpoint with bounded multipart files.'
+);
+
+maca_assert(
+	false !== strpos( $runtime_client, 'function download_media_derivative_artifact' )
+	&& false !== strpos( $runtime_client, "'/v1/runtime/artifacts/'" )
+	&& false !== strpos( $runtime_client, "'/download'" )
+	&& false !== strpos( $runtime_client, 'request_raw' )
+	&& false !== strpos( $runtime_client, 'MAX_DOWNLOAD_BYTES = 26214400' )
+	&& false !== strpos( $transport, 'download_artifact_preview' )
+	&& false !== strpos( $transport, 'cloud_media_derivative_artifact_mime_mismatch' )
+	&& false !== strpos( $transport, 'Derivative artifact checksum does not match the downloaded bytes.' ),
+	'Runtime client and transport expose only a bounded signed media derivative artifact preview download.'
 );
 
 maca_assert(
@@ -121,6 +134,7 @@ maca_assert(
 	&& false !== strpos( $runtime_client, 'is_allowed_request_path' )
 	&& false !== strpos( $runtime_client, "'cloud_runtime_endpoint_not_allowed'" )
 	&& false !== strpos( $runtime_client, '#^/v1/runs/[A-Za-z0-9._:-]+(?:/result)?$#' )
+	&& false !== strpos( $runtime_client, '#^/v1/runtime/artifacts/[A-Za-z0-9._:-]+/download$#' )
 	&& false !== strpos( $runtime_client, '#^/v1/stats/(?:profiles|instances)/[A-Za-z0-9._:-]+$#' )
 	&& false === strpos( $transport, '/v1/runtime/workflows/' . 'runs' )
 	&& false === strpos( $transport, '/v1/artifacts' ),
@@ -146,6 +160,7 @@ maca_assert(
 	false === strpos( $readme, 'request(string $method' )
 	&& false === strpos( $runtime_contract, 'request(string $method' )
 	&& false !== strpos( $runtime_contract, 'create_media_derivative(array $payload, array $files = array(), string $trace_id = \'\', string $idempotency_key = \'\')' )
+	&& false !== strpos( $runtime_contract, 'download_media_derivative_artifact(string $artifact_id, string $trace_id = \'\')' )
 	&& false !== strpos( $readme, 'low-level signed request method is private and endpoint-allowlisted' )
 	&& false !== strpos( $runtime_contract, 'must enforce the endpoint allowlist' )
 	&& false !== strpos( $runtime_contract, 'must not be exposed as a generic public Cloud proxy' ),
@@ -160,6 +175,7 @@ maca_assert(
 
 maca_assert(
 	false !== strpos( $boundary_doc, 'POST /v1/runtime/media-derivatives' )
+	&& false !== strpos( $boundary_doc, 'GET /v1/runtime/artifacts/{artifact_id}/download' )
 	&& false !== strpos( $boundary_doc, 'logo registry' )
 	&& false !== strpos( $boundary_doc, 'watermark plan' )
 	&& false !== strpos( $adapter_doc, 'Expired Cloud artifacts must not be adopted.' )

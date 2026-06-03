@@ -16,6 +16,8 @@ if ( ! class_exists( 'Magick_AI_Cloud_Runtime_Client' ) ) {
 	 * Signs and dispatches requests to the Magick AI Cloud runtime plane.
 	 */
 	final class Magick_AI_Cloud_Runtime_Client {
+		private const MAX_DOWNLOAD_BYTES = 26214400;
+
 		/**
 		 * Normalized client configuration.
 		 *
@@ -178,6 +180,32 @@ if ( ! class_exists( 'Magick_AI_Cloud_Runtime_Client' ) ) {
 			}
 
 			return $this->request( 'GET', '/v1/runs/' . rawurlencode( $run_id ) . '/result', null, '', $trace_id );
+		}
+
+		/**
+		 * Downloads one short-TTL derivative artifact through a signed runtime request.
+		 *
+		 * @param string $artifact_id Cloud artifact id.
+		 * @param string $trace_id Optional trace id.
+		 * @return array<string,mixed>|WP_Error
+		 */
+		public function download_media_derivative_artifact( string $artifact_id, string $trace_id = '' ) {
+			$artifact_id = $this->normalize_identifier( $artifact_id );
+			if ( '' === $artifact_id ) {
+				return new WP_Error(
+					'cloud_runtime_artifact_missing',
+					__( 'Cloud artifact_id is required.', 'magick-ai-cloud-addon' ),
+					array( 'status' => 400 )
+				);
+			}
+
+			return $this->request_raw(
+				'GET',
+				'/v1/runtime/artifacts/' . rawurlencode( $artifact_id ) . '/download',
+				'',
+				$trace_id,
+				'image/*'
+			);
 		}
 
 		/**
@@ -353,6 +381,60 @@ if ( ! class_exists( 'Magick_AI_Cloud_Runtime_Client' ) ) {
 		}
 
 		/**
+		 * Executes one signed Cloud request and returns raw response bytes.
+		 *
+		 * @param string $method HTTP method.
+		 * @param string $path Relative path with optional query.
+		 * @param string $idempotency_key Optional idempotency key.
+		 * @param string $trace_id Optional trace id.
+		 * @param string $accept Accept header.
+		 * @return array<string,mixed>|WP_Error
+		 */
+		private function request_raw( string $method, string $path, string $idempotency_key = '', string $trace_id = '', string $accept = '*/*' ) {
+			if ( ! $this->is_configured() ) {
+				return new WP_Error(
+					'cloud_runtime_unconfigured',
+					__( 'Magick AI Cloud is not configured.', 'magick-ai-cloud-addon' ),
+					array( 'status' => 400 )
+				);
+			}
+
+			$method = strtoupper( trim( $method ) );
+			$path   = '/' . ltrim( trim( $path ), '/' );
+			if ( ! $this->is_allowed_request_path( $method, $path ) ) {
+				return new WP_Error(
+					'cloud_runtime_endpoint_not_allowed',
+					__( 'This Cloud endpoint is not allowed by the Cloud Addon runtime contract.', 'magick-ai-cloud-addon' ),
+					array( 'status' => 403 )
+				);
+			}
+
+			$trace_id        = $this->normalize_trace_id( $trace_id );
+			$idempotency_key = sanitize_text_field( $idempotency_key );
+			$headers         = $this->build_signed_headers( $method, $path, '', $idempotency_key, $trace_id, 'application/octet-stream' );
+			$headers['Accept'] = sanitize_text_field( $accept );
+			unset( $headers['Content-Type'] );
+
+			$response = wp_remote_request(
+				$this->build_request_url( $path ),
+				array(
+					'method'  => $method,
+					'timeout' => max( 5, absint( $this->config['timeout'] ?? 8 ) ),
+					'headers' => $headers,
+				)
+			);
+			if ( is_wp_error( $response ) ) {
+				return new WP_Error(
+					'cloud_runtime_request_failed',
+					$this->format_transport_error_message( $response->get_error_message() ),
+					array( 'status' => 502 )
+				);
+			}
+
+			return $this->decode_raw_response( $response );
+		}
+
+		/**
 		 * Requests the public liveness endpoint.
 		 *
 		 * @return array<string,mixed>
@@ -437,6 +519,77 @@ if ( ! class_exists( 'Magick_AI_Cloud_Runtime_Client' ) ) {
 		}
 
 		/**
+		 * Decodes a raw byte response with bounded size checks.
+		 *
+		 * @param array<string,mixed> $response WP HTTP response.
+		 * @return array<string,mixed>|WP_Error
+		 */
+		private function decode_raw_response( array $response ) {
+			$status       = absint( wp_remote_retrieve_response_code( $response ) );
+			$raw_body     = wp_remote_retrieve_body( $response );
+			$body         = is_string( $raw_body ) ? $raw_body : '';
+			$content_type = $this->response_header( $response, 'content-type' );
+			$content_len  = absint( $this->response_header( $response, 'content-length' ) );
+
+			if ( $status < 200 || $status >= 300 ) {
+				$decoded = json_decode( $body, true );
+				$decoded = is_array( $decoded ) ? $decoded : array();
+				$error_code = sanitize_text_field( (string) ( $decoded['error_code'] ?? $decoded['code'] ?? '' ) );
+				$message = sanitize_text_field( (string) ( $decoded['message'] ?? $decoded['detail'] ?? '' ) );
+				if ( '' === $message ) {
+					$message = __( 'Cloud runtime artifact download failed.', 'magick-ai-cloud-addon' );
+				}
+
+				return new WP_Error(
+					$this->map_remote_error_code( $error_code ),
+					$message,
+					array(
+						'status'           => $status > 0 ? $status : 502,
+						'cloud_error_code' => $error_code,
+						'cloud_payload'    => $decoded,
+					)
+				);
+			}
+
+			if ( $content_len > self::MAX_DOWNLOAD_BYTES || strlen( $body ) > self::MAX_DOWNLOAD_BYTES ) {
+				return new WP_Error(
+					'cloud_runtime_artifact_too_large',
+					__( 'Cloud artifact download exceeds the local preview size limit.', 'magick-ai-cloud-addon' ),
+					array( 'status' => 413 )
+				);
+			}
+
+			return array(
+				'status'         => $status,
+				'body'           => $body,
+				'content_type'   => $content_type,
+				'content_length' => $content_len,
+			);
+		}
+
+		/**
+		 * Retrieves one response header without depending on WP internals in tests.
+		 *
+		 * @param array<string,mixed> $response WP HTTP response.
+		 * @param string              $header Header name.
+		 * @return string
+		 */
+		private function response_header( array $response, string $header ): string {
+			if ( function_exists( 'wp_remote_retrieve_header' ) ) {
+				return sanitize_text_field( (string) wp_remote_retrieve_header( $response, $header ) );
+			}
+
+			$headers = is_array( $response['headers'] ?? null ) ? $response['headers'] : array();
+			foreach ( $headers as $name => $value ) {
+				if ( strtolower( (string) $name ) === strtolower( $header ) ) {
+					return sanitize_text_field( (string) $value );
+				}
+			}
+
+			return '';
+		}
+
+		/**
 		 * Returns whether one signed request path is within the Addon contract.
 		 *
 		 * @param string $method HTTP method.
@@ -458,6 +611,9 @@ if ( ! class_exists( 'Magick_AI_Cloud_Runtime_Client' ) ) {
 				return true;
 			}
 			if ( 'GET' === $method && 1 === preg_match( '#^/v1/runs/[A-Za-z0-9._:-]+(?:/result)?$#', $path_only ) ) {
+				return true;
+			}
+			if ( 'GET' === $method && 1 === preg_match( '#^/v1/runtime/artifacts/[A-Za-z0-9._:-]+/download$#', $path_only ) ) {
 				return true;
 			}
 			if ( 'GET' === $method && 1 === preg_match( '#^/v1/stats/(?:profiles|instances)/[A-Za-z0-9._:-]+$#', $path_only ) ) {

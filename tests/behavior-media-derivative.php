@@ -104,6 +104,30 @@ maca_assert(
 
 maca_reset_test_state();
 maca_seed_settings( true );
+$GLOBALS['maca_http_response_queue'][] = array(
+	'response' => array( 'code' => 422 ),
+	'body'     => wp_json_encode(
+		array(
+			'code'    => 'image_source_provider_error',
+			'message' => array(
+				array(
+					'loc' => array( 'body', 'input', 'provider' ),
+					'msg' => array( 'Unsplash provider failed.', 'Check Cloud provider key or runtime availability.' ),
+				),
+			),
+		)
+	),
+);
+$nested_error_result = $client->execute_runtime( array( 'ability_name' => 'magick-ai-toolbox/search-image-source' ) );
+maca_assert(
+	is_wp_error( $nested_error_result )
+	&& false !== strpos( $nested_error_result->get_error_message(), 'body.input.provider: Unsplash provider failed.' )
+	&& false === strpos( $nested_error_result->get_error_message(), 'Array' ),
+	'Behavior: runtime client renders nested Cloud error payloads without Array-to-string collapse.'
+);
+
+maca_reset_test_state();
+maca_seed_settings( true );
 $preview_bytes = 'derivative-preview-bytes';
 $GLOBALS['maca_http_response_queue'][] = array(
 	'response' => array( 'code' => 200 ),

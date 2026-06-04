@@ -574,34 +574,58 @@ if ( ! class_exists( 'Magick_AI_Cloud_Runtime_Client' ) ) {
 		 * @return string
 		 */
 		private function normalize_error_message( $value ): string {
-			if ( is_scalar( $value ) || null === $value ) {
-				return sanitize_text_field( (string) $value );
+			$parts = array();
+			$this->collect_error_message_parts( $value, $parts );
+
+			return sanitize_text_field( implode( '; ', array_unique( array_filter( $parts ) ) ) );
+		}
+
+		/**
+		 * Recursively collects Cloud error text without casting arrays to strings.
+		 *
+		 * @param mixed         $value Error value.
+		 * @param array<int,string> $parts Message parts.
+		 * @param int           $depth Recursion depth.
+		 * @return void
+		 */
+		private function collect_error_message_parts( $value, array &$parts, int $depth = 0 ): void {
+			if ( $depth > 6 || '' === $value || null === $value ) {
+				return;
+			}
+
+			if ( is_scalar( $value ) ) {
+				$parts[] = sanitize_text_field( (string) $value );
+				return;
 			}
 
 			if ( ! is_array( $value ) ) {
-				return '';
+				return;
 			}
 
-			$parts = array();
-			foreach ( $value as $item ) {
-				if ( is_scalar( $item ) || null === $item ) {
-					$parts[] = sanitize_text_field( (string) $item );
-					continue;
+			$message_value = null;
+			foreach ( array( 'msg', 'message', 'detail', 'error', 'error_message' ) as $key ) {
+				if ( array_key_exists( $key, $value ) ) {
+					$message_value = $value[ $key ];
+					break;
 				}
-				if ( ! is_array( $item ) ) {
-					continue;
-				}
+			}
 
-				$message = sanitize_text_field( (string) ( $item['msg'] ?? $item['message'] ?? '' ) );
-				$path    = $this->normalize_error_path( $item['loc'] ?? $item['path'] ?? array() );
+			if ( null !== $message_value ) {
+				$nested_parts = array();
+				$this->collect_error_message_parts( $message_value, $nested_parts, $depth + 1 );
+				$message = implode( '; ', array_filter( $nested_parts ) );
+				$path    = $this->normalize_error_path( $value['loc'] ?? $value['path'] ?? array() );
 				if ( '' !== $message && '' !== $path ) {
 					$parts[] = $path . ': ' . $message;
 				} elseif ( '' !== $message ) {
 					$parts[] = $message;
 				}
+				return;
 			}
 
-			return sanitize_text_field( implode( '; ', array_filter( $parts ) ) );
+			foreach ( $value as $item ) {
+				$this->collect_error_message_parts( $item, $parts, $depth + 1 );
+			}
 		}
 
 		/**

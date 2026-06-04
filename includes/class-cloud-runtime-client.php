@@ -499,7 +499,7 @@ if ( ! class_exists( 'Magick_AI_Cloud_Runtime_Client' ) ) {
 
 			if ( $status < 200 || $status >= 300 || ( '' !== $envelope_status && 'ok' !== $envelope_status ) ) {
 				$error_code = sanitize_text_field( (string) ( $decoded['error_code'] ?? $decoded['code'] ?? '' ) );
-				$message = sanitize_text_field( (string) ( $decoded['message'] ?? $decoded['detail'] ?? '' ) );
+				$message = $this->normalize_error_message( $decoded['message'] ?? $decoded['detail'] ?? '' );
 				if ( '' === $message ) {
 					$message = __( 'Cloud runtime request failed.', 'magick-ai-cloud-addon' );
 				}
@@ -535,7 +535,7 @@ if ( ! class_exists( 'Magick_AI_Cloud_Runtime_Client' ) ) {
 				$decoded = json_decode( $body, true );
 				$decoded = is_array( $decoded ) ? $decoded : array();
 				$error_code = sanitize_text_field( (string) ( $decoded['error_code'] ?? $decoded['code'] ?? '' ) );
-				$message = sanitize_text_field( (string) ( $decoded['message'] ?? $decoded['detail'] ?? '' ) );
+				$message = $this->normalize_error_message( $decoded['message'] ?? $decoded['detail'] ?? '' );
 				if ( '' === $message ) {
 					$message = __( 'Cloud runtime artifact download failed.', 'magick-ai-cloud-addon' );
 				}
@@ -565,6 +565,61 @@ if ( ! class_exists( 'Magick_AI_Cloud_Runtime_Client' ) ) {
 				'content_type'   => $content_type,
 				'content_length' => $content_len,
 			);
+		}
+
+		/**
+		 * Normalizes scalar or structured Cloud error detail into readable text.
+		 *
+		 * @param mixed $value Cloud error message/detail value.
+		 * @return string
+		 */
+		private function normalize_error_message( $value ): string {
+			if ( is_scalar( $value ) || null === $value ) {
+				return sanitize_text_field( (string) $value );
+			}
+
+			if ( ! is_array( $value ) ) {
+				return '';
+			}
+
+			$parts = array();
+			foreach ( $value as $item ) {
+				if ( is_scalar( $item ) || null === $item ) {
+					$parts[] = sanitize_text_field( (string) $item );
+					continue;
+				}
+				if ( ! is_array( $item ) ) {
+					continue;
+				}
+
+				$message = sanitize_text_field( (string) ( $item['msg'] ?? $item['message'] ?? '' ) );
+				$path    = $this->normalize_error_path( $item['loc'] ?? $item['path'] ?? array() );
+				if ( '' !== $message && '' !== $path ) {
+					$parts[] = $path . ': ' . $message;
+				} elseif ( '' !== $message ) {
+					$parts[] = $message;
+				}
+			}
+
+			return sanitize_text_field( implode( '; ', array_filter( $parts ) ) );
+		}
+
+		/**
+		 * Normalizes structured Cloud error location into a dotted path.
+		 *
+		 * @param mixed $value Error location value.
+		 * @return string
+		 */
+		private function normalize_error_path( $value ): string {
+			if ( is_scalar( $value ) || null === $value ) {
+				return sanitize_text_field( (string) $value );
+			}
+
+			if ( ! is_array( $value ) ) {
+				return '';
+			}
+
+			return sanitize_text_field( implode( '.', array_map( 'strval', $value ) ) );
 		}
 
 		/**

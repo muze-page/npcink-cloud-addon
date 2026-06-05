@@ -21,8 +21,9 @@ Keep these even if they make the code less minimal:
 - Ability payload checks that reject credentials, Authorization data, signed
   headers, tokens, and Cloud signing fields.
 - Bounded source and watermark media derivative multipart transport.
-- Watermark/logo fail-closed behavior unless the local ability supplies a
-  watermark plan and the host supplies one short TTL artifact or upload.
+- Image watermark/logo fail-closed behavior unless the local ability supplies a
+  watermark plan and the host supplies one short TTL artifact or upload; text
+  watermark plans must remain structured options without a watermark source.
 - Bounded signed derivative artifact preview download through the explicit
   runtime artifact download endpoint.
 - Non-expired Cloud artifact id requirements for derivative proposal adoption.

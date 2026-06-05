@@ -92,6 +92,55 @@ maca_assert(
 	'Behavior: watermark artifact references dispatch through the media derivative endpoint.'
 );
 
+$text_watermark_payload = maca_ability_fixture();
+$text_watermark_payload['cloud_job_payload']['watermark'] = array(
+	'type' => 'text',
+	'text' => 'AI',
+	'position' => 'top_right',
+	'opacity' => 0.75,
+	'font_size' => 48,
+	'color' => '#FFFFFF',
+	'background' => 'rgba(0,0,0,0.35)',
+	'margin_px' => 24,
+);
+$text_watermark_result = Magick_AI_Cloud_Media_Derivative_Transport::dispatch_from_ability_response(
+	$text_watermark_payload,
+	array(
+		'artifact_id' => 'source_artifact',
+		'expires_at' => maca_future_expiry(),
+	),
+	'trace-text-watermark',
+	'idempotency-text-watermark'
+);
+$text_watermark_request = end( $GLOBALS['maca_http_requests'] );
+$text_watermark_body = json_decode( (string) ( $text_watermark_request['args']['body'] ?? '' ), true );
+maca_assert(
+	is_array( $text_watermark_result )
+	&& 'ok' === (string) ( $text_watermark_result['status'] ?? '' )
+	&& 'text' === (string) ( $text_watermark_body['cloud_job_payload']['watermark']['type'] ?? '' )
+	&& 'AI' === (string) ( $text_watermark_body['cloud_job_payload']['watermark']['text'] ?? '' )
+	&& empty( $text_watermark_body['cloud_job_payload']['watermark']['artifact_id'] ),
+	'Behavior: text watermark plans dispatch without a watermark upload or artifact id.'
+);
+
+$text_watermark_source_conflict = Magick_AI_Cloud_Media_Derivative_Transport::dispatch_from_ability_response(
+	$text_watermark_payload,
+	array(
+		'artifact_id' => 'source_artifact',
+		'expires_at' => maca_future_expiry(),
+	),
+	'',
+	'',
+	array(
+		'artifact_id' => 'watermark_artifact',
+		'expires_at' => maca_future_expiry(),
+	)
+);
+maca_assert(
+	is_wp_error( $text_watermark_source_conflict ) && 'cloud_media_derivative_watermark_source_conflict' === $text_watermark_source_conflict->get_error_code(),
+	'Behavior: text watermark plans reject watermark upload or artifact sources.'
+);
+
 $client = new Magick_AI_Cloud_Runtime_Client( Magick_AI_Cloud_Addon_Settings::get_settings() );
 $watermark_file_result = $client->create_media_derivative(
 	array( 'request_contract_version' => 'media_derivative_cloud_request.v1' ),

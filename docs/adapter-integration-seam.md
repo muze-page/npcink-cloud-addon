@@ -58,13 +58,16 @@ Expired Cloud artifacts must not be adopted. The proposal payload must keep
 `final_write_owner=local_wordpress_host`, `default_action=preview_only`, and
 `replace_original_default=false`.
 
-Optional image watermarks are part of the same derivative request. The local
-ability response must include `cloud_job_payload.watermark` before adapter code
-passes the fifth `watermark_artifact` argument. That argument can be a local
-upload descriptor (`path`, `bytes`, or `content`) or a same-site short TTL Cloud
-artifact id. The addon forwards the watermark plan and artifact reference only;
-it does not own a logo registry, choose default branding, approve adoption, or
-write attachment metadata.
+Optional watermarks are part of the same derivative request. For image
+watermarks, the local ability response must include
+`cloud_job_payload.watermark` before adapter code passes the fifth
+`watermark_artifact` argument. That argument can be a local upload descriptor
+(`path`, `bytes`, or `content`) or a same-site short TTL Cloud artifact id. Text
+watermark plans do not use the fifth argument; the addon forwards their text,
+font, color, background, margin, opacity, and position as structured Cloud
+payload options. The addon forwards the watermark plan and optional image
+artifact reference only; it does not own a logo registry, choose default
+branding, approve adoption, or write attachment metadata.
 
 ## Example
 

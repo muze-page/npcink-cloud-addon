@@ -1,8 +1,8 @@
 <?php
 /**
- * Optional local observability collection for Magick AI plugins.
+ * Optional local observability collection for Npcink plugins.
  *
- * @package MagickAICloudAddon
+ * @package NpcinkCloudAddon
  */
 
 declare(strict_types=1);
@@ -11,15 +11,15 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-if ( ! class_exists( 'Magick_AI_Cloud_Observability_Collector' ) ) {
+if ( ! class_exists( 'Npcink_Cloud_Observability_Collector' ) ) {
 	/**
 	 * Captures metadata-only plugin events after explicit Cloud Addon opt-in.
 	 */
-	final class Magick_AI_Cloud_Observability_Collector {
-		public const BUFFER_OPTION = 'magick_ai_cloud_addon_observability_buffer';
-		public const STATUS_OPTION = 'magick_ai_cloud_addon_observability_status';
-		public const SUMMARY_OPTION = 'magick_ai_cloud_addon_observability_summary';
-			public const CRON_HOOK = 'magick_ai_cloud_addon_flush_observability';
+	final class Npcink_Cloud_Observability_Collector {
+		public const BUFFER_OPTION = 'npcink_cloud_addon_observability_buffer';
+		public const STATUS_OPTION = 'npcink_cloud_addon_observability_status';
+		public const SUMMARY_OPTION = 'npcink_cloud_addon_observability_summary';
+			public const CRON_HOOK = 'npcink_cloud_addon_flush_observability';
 			private const MAX_BUFFER_ITEMS = 200;
 			private const MAX_BATCH_ITEMS = 50;
 			private const MAX_TEXT_FIELD_LENGTH = 200;
@@ -42,7 +42,7 @@ if ( ! class_exists( 'Magick_AI_Cloud_Observability_Collector' ) ) {
 		 * @return void
 		 */
 		public static function sync_schedule(): void {
-			if ( Magick_AI_Cloud_Addon_Settings::is_monitoring_enabled() ) {
+			if ( Npcink_Cloud_Addon_Settings::is_monitoring_enabled() ) {
 				self::maybe_schedule_flush();
 				return;
 			}
@@ -59,7 +59,7 @@ if ( ! class_exists( 'Magick_AI_Cloud_Observability_Collector' ) ) {
 		 * @return void
 		 */
 		public static function capture_event( $event ): void {
-			if ( ! is_array( $event ) || ! Magick_AI_Cloud_Addon_Settings::is_monitoring_enabled() ) {
+			if ( ! is_array( $event ) || ! Npcink_Cloud_Addon_Settings::is_monitoring_enabled() ) {
 				return;
 			}
 
@@ -97,8 +97,8 @@ if ( ! class_exists( 'Magick_AI_Cloud_Observability_Collector' ) ) {
 		 * @return array<string,mixed>
 		 */
 		public static function flush_buffer(): array {
-			if ( ! Magick_AI_Cloud_Addon_Settings::is_monitoring_enabled() ) {
-				return self::record_flush_result( false, 0, __( 'Monitoring is disabled or Cloud is not verified.', 'magick-ai-cloud-addon' ) );
+			if ( ! Npcink_Cloud_Addon_Settings::is_monitoring_enabled() ) {
+				return self::record_flush_result( false, 0, __( 'Monitoring is disabled or Cloud is not verified.', 'npcink-cloud-addon' ) );
 			}
 
 			$buffer = get_option( self::BUFFER_OPTION, array() );
@@ -108,7 +108,7 @@ if ( ! class_exists( 'Magick_AI_Cloud_Observability_Collector' ) ) {
 			}
 
 			$batch = array_slice( $buffer, 0, self::MAX_BATCH_ITEMS );
-			$client = new Magick_AI_Cloud_Runtime_Client();
+			$client = new Npcink_Cloud_Runtime_Client();
 			$result = $client->send_observability_events(
 				$batch,
 				'trace_cloud_observability_' . wp_generate_uuid4(),
@@ -143,9 +143,9 @@ if ( ! class_exists( 'Magick_AI_Cloud_Observability_Collector' ) ) {
 			$status = is_array( $status ) ? $status : array();
 
 			return array(
-				'enabled'          => Magick_AI_Cloud_Addon_Settings::is_monitoring_enabled(),
-				'configured'       => Magick_AI_Cloud_Addon_Settings::is_configured(),
-				'verified'         => Magick_AI_Cloud_Addon_Settings::is_verified(),
+				'enabled'          => Npcink_Cloud_Addon_Settings::is_monitoring_enabled(),
+				'configured'       => Npcink_Cloud_Addon_Settings::is_configured(),
+				'verified'         => Npcink_Cloud_Addon_Settings::is_verified(),
 				'buffer_count'     => count( $buffer ),
 				'last_captured_at' => sanitize_text_field( (string) ( $status['last_captured_at'] ?? '' ) ),
 				'last_event_kind'  => sanitize_text_field( (string) ( $status['last_event_kind'] ?? '' ) ),
@@ -171,11 +171,11 @@ if ( ! class_exists( 'Magick_AI_Cloud_Observability_Collector' ) ) {
 		 * @return array<string,mixed>
 		 */
 		public static function refresh_summary(): array {
-			if ( ! Magick_AI_Cloud_Addon_Settings::is_monitoring_enabled() ) {
-				return self::record_summary_result( false, array(), __( 'Monitoring is disabled or Cloud is not verified.', 'magick-ai-cloud-addon' ) );
+			if ( ! Npcink_Cloud_Addon_Settings::is_monitoring_enabled() ) {
+				return self::record_summary_result( false, array(), __( 'Monitoring is disabled or Cloud is not verified.', 'npcink-cloud-addon' ) );
 			}
 
-			$client = new Magick_AI_Cloud_Runtime_Client();
+			$client = new Npcink_Cloud_Runtime_Client();
 			$result = $client->get_observability_summary( 24, 'trace_cloud_observability_summary_' . wp_generate_uuid4() );
 			if ( is_wp_error( $result ) ) {
 				return self::record_summary_result( false, array(), $result->get_error_message() );
@@ -738,37 +738,33 @@ if ( ! class_exists( 'Magick_AI_Cloud_Observability_Collector' ) ) {
 			}
 
 		/**
-		 * Returns active/installed state for known Magick AI plugins.
+		 * Returns active/installed state for known Npcink plugins.
 		 *
 		 * @return array<int,array<string,mixed>>
 		 */
 		private static function plugin_snapshot(): array {
 			$known = array(
-				'magick-ai-core'        => array(
-					'label'    => __( 'Core', 'magick-ai-cloud-addon' ),
-					'file'     => 'magick-ai-core/magick-ai-core.php',
-					'constant' => 'MAGICK_AI_CORE_VERSION',
+				'npcink-governance-core'        => array(
+					'label'    => __( 'Core', 'npcink-cloud-addon' ),
+					'file'     => 'npcink-governance-core/npcink-governance-core.php',
+					'constant' => 'NPCINK_GOVERNANCE_CORE_VERSION',
 				),
-				'magick-ai-abilities'   => array(
-					'label'    => __( 'Abilities', 'magick-ai-cloud-addon' ),
-					'file'     => 'magick-ai-abilities/magick-ai-abilities.php',
-					'constant' => 'MAGICK_AI_ABILITIES_VERSION',
+				'npcink-abilities-toolkit'   => array(
+					'label'    => __( 'Abilities', 'npcink-cloud-addon' ),
+					'file'     => 'npcink-abilities-toolkit/npcink-abilities-toolkit.php',
+					'constant' => 'NPCINK_ABILITIES_TOOLKIT_VERSION',
 				),
-				'magick-ai-adapter'     => array(
-					'label'    => __( 'Adapter', 'magick-ai-cloud-addon' ),
-					'file'     => 'magick-ai-adapter/magick-ai-adapter.php',
-					'constant' => 'MAGICK_AI_ADAPTER_VERSION',
+				'npcink-openclaw-adapter'     => array(
+					'label'    => __( 'Adapter', 'npcink-cloud-addon' ),
+					'file'     => 'npcink-openclaw-adapter/npcink-openclaw-adapter.php',
+					'constant' => 'NPCINK_OPENCLAW_ADAPTER_VERSION',
 				),
-				'magick-ai-cloud-addon' => array(
-					'label'    => __( 'Cloud Addon', 'magick-ai-cloud-addon' ),
-					'file'     => 'magick-ai-cloud-addon/magick-ai-cloud-addon.php',
-					'constant' => 'MAGICK_AI_CLOUD_ADDON_VERSION',
+				'npcink-cloud-addon' => array(
+					'label'    => __( 'Cloud Addon', 'npcink-cloud-addon' ),
+					'file'     => 'npcink-cloud-addon/npcink-cloud-addon.php',
+					'constant' => 'NPCINK_CLOUD_ADDON_VERSION',
 				),
 			);
-
-			if ( ! function_exists( 'get_plugins' ) && is_readable( ABSPATH . 'wp-admin/includes/plugin.php' ) ) {
-				require_once ABSPATH . 'wp-admin/includes/plugin.php';
-			}
 
 			$installed = function_exists( 'get_plugins' ) ? get_plugins() : array();
 			$snapshot = array();

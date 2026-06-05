@@ -1,6 +1,6 @@
 # Cloud Addon Complexity Budget
 
-Status: active for `magick-ai-cloud-addon`.
+Status: active for `npcink-cloud-addon`.
 
 ## Purpose
 

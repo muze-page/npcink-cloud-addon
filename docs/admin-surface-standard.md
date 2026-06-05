@@ -1,6 +1,6 @@
 # Cloud Addon Admin Surface Standard
 
-Status: active for `Magick AI -> Cloud Addon`.
+Status: active for `Npcink -> Cloud Addon`.
 
 ## Purpose
 

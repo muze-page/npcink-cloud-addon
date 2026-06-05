@@ -1,8 +1,8 @@
 <?php
 /**
- * Static contract tests for Magick AI Cloud Addon.
+ * Static contract tests for Npcink Cloud Addon.
  *
- * @package MagickAICloudAddon
+ * @package NpcinkCloudAddon
  */
 
 declare(strict_types=1);
@@ -27,16 +27,16 @@ $readme = maca_read( $root . '/README.md' );
 
 maca_assert(
 	false !== strpos( $bootstrap, 'class-cloud-media-derivative-transport.php' )
-	&& false !== strpos( $bootstrap, 'magick_ai_cloud_addon_verified_runtime_client' )
-	&& false !== strpos( $bootstrap, 'magick_ai_cloud_addon_dispatch_media_derivative_cloud_request' )
+	&& false !== strpos( $bootstrap, 'npcink_cloud_addon_verified_runtime_client' )
+	&& false !== strpos( $bootstrap, 'npcink_cloud_addon_dispatch_media_derivative_cloud_request' )
 	&& false !== strpos( $bootstrap, 'array $watermark_artifact = array()' )
-	&& false !== strpos( $bootstrap, 'magick_ai_cloud_addon_build_media_derivative_proposal_payload' )
-	&& false !== strpos( $bootstrap, 'magick_ai_cloud_addon_download_media_derivative_artifact' ),
+	&& false !== strpos( $bootstrap, 'npcink_cloud_addon_build_media_derivative_proposal_payload' )
+	&& false !== strpos( $bootstrap, 'npcink_cloud_addon_download_media_derivative_artifact' ),
 	'Bootstrap exposes verified runtime and media derivative transport helpers with optional watermark transport and signed preview download.'
 );
 
 maca_assert(
-	false !== strpos( $transport, 'Magick_AI_Cloud_Addon_Settings::is_verified()' )
+	false !== strpos( $transport, 'Npcink_Cloud_Addon_Settings::is_verified()' )
 	&& false !== strpos( $transport, "'cloud_runtime_unverified'" ),
 	'Media derivative dispatch fails closed until Cloud credentials verify.'
 );
@@ -215,7 +215,7 @@ maca_assert(
 
 maca_assert(
 	false !== strpos( $observability, 'BUFFER_OPTION' )
-	&& false !== strpos( $observability, 'magick_ai_cloud_addon_observability_buffer' )
+	&& false !== strpos( $observability, 'npcink_cloud_addon_observability_buffer' )
 	&& false !== strpos( $observability, 'MAX_BUFFER_ITEMS = 200' )
 	&& false !== strpos( $observability, 'MAX_BATCH_ITEMS = 50' )
 	&& false === strpos( $observability, 'QUEUE_OPTION' )
@@ -224,7 +224,7 @@ maca_assert(
 );
 
 maca_assert(
-	false !== strpos( $observability, 'Magick_AI_Cloud_Addon_Settings::is_monitoring_enabled()' )
+	false !== strpos( $observability, 'Npcink_Cloud_Addon_Settings::is_monitoring_enabled()' )
 	&& false !== strpos( $observability, 'wp_schedule_event' )
 	&& false !== strpos( $agents, 'Bounded observability buffering and WP-Cron flushing are allowed only' ),
 	'Observability capture and flush are gated by verified opt-in monitoring.'

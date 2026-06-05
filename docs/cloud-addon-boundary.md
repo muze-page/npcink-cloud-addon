@@ -2,11 +2,11 @@
 
 ## Position
 
-`magick-ai-cloud-addon` is a WordPress-side Cloud Connector / Cloud Addon.
+`npcink-cloud-addon` is a WordPress-side Cloud Connector / Cloud Addon.
 
-It connects a local WordPress site to `magick-ai-cloud` and keeps only the local settings required to sign Cloud runtime requests.
+It connects a local WordPress site to `npcink-cloud` and keeps only the local settings required to sign Cloud runtime requests.
 
-It may also act as an opt-in observability transport for installed Magick AI
+It may also act as an opt-in observability transport for installed Npcink
 plugins. Observability is metadata-only plugin monitoring for Cloud dashboards;
 it is not local governance truth, Cloud governance truth, or a workflow/task
 queue.
@@ -25,7 +25,7 @@ queue.
 - Opt-in, verified, metadata-only plugin observability upload.
 - A bounded local observability buffer used only to survive temporary delivery
   failures before upload.
-- A light `Magick AI -> Cloud Addon` page.
+- A light `Npcink -> Cloud Addon` page.
 
 ## Addon Does Not Own
 
@@ -49,7 +49,7 @@ Local Core remains the owner for final WordPress permissions, proposal/preflight
 Cloud may return generated output or write intent, but this addon must not apply it. Any write intent must be passed to Core proposal/preflight and final local approval paths.
 
 For media derivative Cloud jobs, the addon may validate the local
-`magick-ai/build-media-derivative-cloud-request` output, sign the runtime
+`npcink-abilities-toolkit/build-media-derivative-cloud-request` output, sign the runtime
 request, and build a Core-ready proposal payload from a non-expired Cloud
 artifact descriptor. It may forward a host-supplied source upload or same-site
 short TTL artifact id, and it may forward an optional host-supplied watermark

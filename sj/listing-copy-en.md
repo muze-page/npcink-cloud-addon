@@ -2,11 +2,11 @@
 
 ## Plugin Name
 
-Magick AI Cloud Addon
+Npcink Cloud Addon
 
 ## Short Description
 
-Thin Cloud connector for Magick AI hosted runtime access, signing, health
+Thin Cloud connector for Npcink hosted runtime access, signing, health
 checks, and entitlement summaries.
 
 ## Tags
@@ -15,7 +15,7 @@ magick ai, cloud, hosted runtime, ai, connector
 
 ## Description
 
-Magick AI Cloud Addon connects a local WordPress site to `magick-ai-cloud`.
+Npcink Cloud Addon connects a local WordPress site to `npcink-cloud`.
 
 It stores the Cloud Base URL and Cloud API Key, parses Cloud-issued keys,
 signs runtime requests, probes Cloud health, and reads Cloud entitlement
@@ -43,9 +43,9 @@ a hosted runtime and service enhancement layer.
 
 ## Who This Is For
 
-- WordPress administrators connecting a local Magick AI setup to Magick AI
+- WordPress administrators connecting a local Npcink setup to Npcink
   Cloud.
-- Magick AI deployments that need hosted runtime access while preserving local
+- Npcink deployments that need hosted runtime access while preserving local
   governance truth.
 - Developers who need a narrow server-side Cloud transport seam.
 
@@ -53,21 +53,21 @@ a hosted runtime and service enhancement layer.
 
 - WordPress 7.0 or later.
 - PHP 8.0 or later.
-- A Cloud Base URL and Cloud API Key issued by Magick AI Cloud.
+- A Cloud Base URL and Cloud API Key issued by Npcink Cloud.
 
 ## External Services
 
-This plugin connects to the Magick AI Cloud service configured by the site
+This plugin connects to the Npcink Cloud service configured by the site
 administrator through the Cloud Base URL setting.
 
 The plugin contacts the configured Cloud service only after an administrator
 enters a Cloud Base URL and Cloud API Key, saves the settings, verifies the
-connection, or a local Magick AI component explicitly uses the Cloud runtime
+connection, or a local Npcink component explicitly uses the Cloud runtime
 client.
 
 Requests may include the configured site identifier, key identifier, request
 timestamp, nonce, trace identifier, idempotency key, HMAC signature headers,
-runtime request payloads supplied by local Magick AI components, and read-only
+runtime request payloads supplied by local Npcink components, and read-only
 requests for health, run status, run result, usage statistics, and entitlement
 summaries. The stored Cloud API Key secret is used server-side for request
 signing and is not printed in wp-admin.
@@ -79,12 +79,12 @@ policy they have reviewed.
 
 ## Series Boundary
 
-In the Magick AI plugin family:
+In the Npcink plugin family:
 
-- Magick AI Abilities owns ability definitions and callbacks.
-- Magick AI Core owns governance, approval, preflight, and audit.
-- Magick AI Adapter owns OpenClaw channel adaptation.
-- Magick AI Cloud Addon owns Cloud service connection and signing.
+- Npcink Abilities Toolkit owns ability definitions and callbacks.
+- Npcink Governance Core owns governance, approval, preflight, and audit.
+- Npcink OpenClaw Adapter owns OpenClaw channel adaptation.
+- Npcink Cloud Addon owns Cloud service connection and signing.
 
 This separation keeps Cloud as a hosted runtime and service enhancement layer
 without moving local governance, approval, prompts, router truth, or final

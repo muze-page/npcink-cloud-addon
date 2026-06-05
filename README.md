@@ -1,6 +1,6 @@
-# Magick AI Cloud Addon
+# Npcink Cloud Addon
 
-Standalone WordPress plugin for connecting a local Magick AI installation to `magick-ai-cloud`.
+Standalone WordPress plugin for connecting a local Npcink installation to `npcink-cloud`.
 
 The addon is a thin Cloud connector. It stores the Cloud Base URL and Cloud API Key, parses the key into signing credentials, sends signed runtime requests, reads health and entitlement status, transports opt-in metadata-only plugin observability events, and exposes a minimal PHP interface for local plugins.
 
@@ -22,7 +22,7 @@ The addon owns:
 - Opt-in plugin observability transport:
   - `POST /v1/observability/plugin-events`
   - `GET /v1/observability/plugin-summary`
-- `Magick AI > Cloud Addon`.
+- `Npcink > Cloud Addon`.
 
 The addon does not own approval truth, proposal truth, WordPress writes,
 workflow/task queue control, scheduler truth, billing truth, prompt ownership,
@@ -33,16 +33,16 @@ billing, or workflow truth.
 ## Public PHP Interface
 
 ```php
-magick_ai_cloud_addon_is_configured(): bool
-magick_ai_cloud_addon_get_settings(): array
-magick_ai_cloud_addon_runtime_client(): ?Magick_AI_Cloud_Runtime_Client
-magick_ai_cloud_addon_verified_runtime_client(): ?Magick_AI_Cloud_Runtime_Client
-magick_ai_cloud_addon_dispatch_media_derivative_cloud_request(array $ability_response, array $source_artifact, string $trace_id = '', string $idempotency_key = '')
-magick_ai_cloud_addon_build_media_derivative_proposal_payload(array $ability_response, array $cloud_result, array $derivative_artifact)
-magick_ai_cloud_addon_download_media_derivative_artifact(array $derivative_artifact, string $trace_id = '')
+npcink_cloud_addon_is_configured(): bool
+npcink_cloud_addon_get_settings(): array
+npcink_cloud_addon_runtime_client(): ?Npcink_Cloud_Runtime_Client
+npcink_cloud_addon_verified_runtime_client(): ?Npcink_Cloud_Runtime_Client
+npcink_cloud_addon_dispatch_media_derivative_cloud_request(array $ability_response, array $source_artifact, string $trace_id = '', string $idempotency_key = '')
+npcink_cloud_addon_build_media_derivative_proposal_payload(array $ability_response, array $cloud_result, array $derivative_artifact)
+npcink_cloud_addon_download_media_derivative_artifact(array $derivative_artifact, string $trace_id = '')
 ```
 
-`Magick_AI_Cloud_Runtime_Client` exposes:
+`Npcink_Cloud_Runtime_Client` exposes:
 
 ```php
 probe_connectivity(): array
@@ -62,12 +62,12 @@ The low-level signed request method is private and endpoint-allowlisted. New
 callers should use the named methods above instead of sending arbitrary Cloud
 paths through the addon.
 
-`magick_ai_cloud_addon_get_settings()` returns server-side settings, including the stored secret. Do not print it into HTML or logs.
+`npcink_cloud_addon_get_settings()` returns server-side settings, including the stored secret. Do not print it into HTML or logs.
 
 ## Media Derivative Transport
 
 The addon can consume the read-only
-`magick-ai/build-media-derivative-cloud-request` ability output as a transport
+`npcink-abilities-toolkit/build-media-derivative-cloud-request` ability output as a transport
 input. It validates that the ability payload has no Cloud credentials,
 Authorization data, or signed headers, requires verified Cloud settings, and
 dispatches through the named `/v1/runtime/media-derivatives` runtime service
@@ -124,7 +124,7 @@ configure router, prompt, or preset behavior.
 
 Admin path:
 
-`Magick AI > Cloud Addon`
+`Npcink > Cloud Addon`
 
 Fields:
 

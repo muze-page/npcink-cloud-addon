@@ -2,7 +2,7 @@
 /**
  * Cloud addon settings registry.
  *
- * @package MagickAICloudAddon
+ * @package NpcinkCloudAddon
  */
 
 declare(strict_types=1);
@@ -11,11 +11,11 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-if ( ! class_exists( 'Magick_AI_Cloud_Addon_Settings' ) ) {
+if ( ! class_exists( 'Npcink_Cloud_Addon_Settings' ) ) {
 	/**
 	 * Owns the addon-local Cloud credential settings.
 	 */
-	final class Magick_AI_Cloud_Addon_Settings {
+	final class Npcink_Cloud_Addon_Settings {
 		private const DEFAULT_TIMEOUT = 8;
 		private const MIN_TIMEOUT = 5;
 		private const MAX_TIMEOUT = 60;
@@ -36,7 +36,7 @@ if ( ! class_exists( 'Magick_AI_Cloud_Addon_Settings' ) ) {
 		 */
 		public static function register_setting(): void {
 			register_setting(
-				'magick_ai_cloud_addon',
+				'npcink_cloud_addon',
 				self::option_name(),
 				array(
 					'type' => 'array',
@@ -53,11 +53,11 @@ if ( ! class_exists( 'Magick_AI_Cloud_Addon_Settings' ) ) {
 		 * @return string
 		 */
 		public static function option_name(): string {
-			$option_name = defined( 'MAGICK_AI_CLOUD_ADDON_OPTION_NAME' )
-				? (string) MAGICK_AI_CLOUD_ADDON_OPTION_NAME
-				: 'magick_ai_cloud_addon_settings';
+			$option_name = defined( 'NPCINK_CLOUD_ADDON_OPTION_NAME' )
+				? (string) NPCINK_CLOUD_ADDON_OPTION_NAME
+				: 'npcink_cloud_addon_settings';
 
-			return '' !== $option_name ? $option_name : 'magick_ai_cloud_addon_settings';
+			return '' !== $option_name ? $option_name : 'npcink_cloud_addon_settings';
 		}
 
 		/**
@@ -123,10 +123,10 @@ if ( ! class_exists( 'Magick_AI_Cloud_Addon_Settings' ) ) {
 			if ( ! $configured ) {
 				return array(
 					'code' => 'not_configured',
-					'label' => __( 'Not configured', 'magick-ai-cloud-addon' ),
+					'label' => __( 'Not configured', 'npcink-cloud-addon' ),
 					'message' => $has_any_values
-						? __( 'Cloud settings are incomplete. Save a Cloud Base URL and Cloud API Key.', 'magick-ai-cloud-addon' )
-						: __( 'Add a Cloud Base URL and Cloud API Key to connect this site.', 'magick-ai-cloud-addon' ),
+						? __( 'Cloud settings are incomplete. Save a Cloud Base URL and Cloud API Key.', 'npcink-cloud-addon' )
+						: __( 'Add a Cloud Base URL and Cloud API Key to connect this site.', 'npcink-cloud-addon' ),
 					'configured' => false,
 					'verified' => false,
 					'verified_at' => '',
@@ -138,8 +138,8 @@ if ( ! class_exists( 'Magick_AI_Cloud_Addon_Settings' ) ) {
 			if ( $verified ) {
 				return array(
 					'code' => 'configured_valid',
-					'label' => __( 'Verified', 'magick-ai-cloud-addon' ),
-					'message' => __( 'Cloud settings are saved and verified.', 'magick-ai-cloud-addon' ),
+					'label' => __( 'Verified', 'npcink-cloud-addon' ),
+					'message' => __( 'Cloud settings are saved and verified.', 'npcink-cloud-addon' ),
 					'configured' => true,
 					'verified' => true,
 					'verified_at' => sanitize_text_field( (string) $settings['verified_at'] ),
@@ -150,8 +150,8 @@ if ( ! class_exists( 'Magick_AI_Cloud_Addon_Settings' ) ) {
 
 			return array(
 				'code' => '' !== $last_error ? 'configured_unavailable' : 'configured_unverified',
-				'label' => '' !== $last_error ? __( 'Unavailable', 'magick-ai-cloud-addon' ) : __( 'Pending verification', 'magick-ai-cloud-addon' ),
-				'message' => '' !== $last_error ? $last_error : __( 'Cloud settings are saved but have not passed verification.', 'magick-ai-cloud-addon' ),
+				'label' => '' !== $last_error ? __( 'Unavailable', 'npcink-cloud-addon' ) : __( 'Pending verification', 'npcink-cloud-addon' ),
+				'message' => '' !== $last_error ? $last_error : __( 'Cloud settings are saved but have not passed verification.', 'npcink-cloud-addon' ),
 				'configured' => true,
 				'verified' => false,
 				'verified_at' => '',
@@ -175,7 +175,7 @@ if ( ! class_exists( 'Magick_AI_Cloud_Addon_Settings' ) ) {
 				if ( '' !== trim( (string) $payload['base_url'] ) && '' === $base_url ) {
 					return new WP_Error(
 						'invalid_cloud_base_url',
-						__( 'Cloud Base URL must use HTTPS unless it points to localhost or 127.0.0.1.', 'magick-ai-cloud-addon' )
+						__( 'Cloud Base URL must use HTTPS unless it points to localhost or 127.0.0.1.', 'npcink-cloud-addon' )
 					);
 				}
 				if ( $base_url !== (string) $next['base_url'] ) {
@@ -323,7 +323,7 @@ if ( ! class_exists( 'Magick_AI_Cloud_Addon_Settings' ) ) {
 			if ( '' === $api_key ) {
 				return new WP_Error(
 					'invalid_cloud_api_key',
-					__( 'Cloud API Key cannot be empty.', 'magick-ai-cloud-addon' )
+					__( 'Cloud API Key cannot be empty.', 'npcink-cloud-addon' )
 				);
 			}
 
@@ -333,7 +333,7 @@ if ( ! class_exists( 'Magick_AI_Cloud_Addon_Settings' ) ) {
 				if ( false === $decoded || '' === $decoded ) {
 					return new WP_Error(
 						'invalid_cloud_api_key',
-						__( 'Cloud API Key could not be decoded.', 'magick-ai-cloud-addon' )
+						__( 'Cloud API Key could not be decoded.', 'npcink-cloud-addon' )
 					);
 				}
 				$json_candidate = $decoded;
@@ -343,7 +343,7 @@ if ( ! class_exists( 'Magick_AI_Cloud_Addon_Settings' ) ) {
 			if ( ! is_array( $decoded_payload ) ) {
 				return new WP_Error(
 					'invalid_cloud_api_key',
-					__( 'Cloud API Key format is invalid. Use a key issued by Magick AI Cloud.', 'magick-ai-cloud-addon' )
+					__( 'Cloud API Key format is invalid. Use a key issued by Npcink Cloud.', 'npcink-cloud-addon' )
 				);
 			}
 
@@ -354,7 +354,7 @@ if ( ! class_exists( 'Magick_AI_Cloud_Addon_Settings' ) ) {
 			if ( '' === $site_id || '' === $key_id || '' === $secret ) {
 				return new WP_Error(
 					'invalid_cloud_api_key',
-					__( 'Cloud API Key is missing site_id, key_id, or secret.', 'magick-ai-cloud-addon' )
+					__( 'Cloud API Key is missing site_id, key_id, or secret.', 'npcink-cloud-addon' )
 				);
 			}
 
@@ -377,7 +377,7 @@ if ( ! class_exists( 'Magick_AI_Cloud_Addon_Settings' ) ) {
 				return '';
 			}
 
-			$scheme = strtolower( (string) parse_url( $base_url, PHP_URL_SCHEME ) );
+			$scheme = strtolower( (string) wp_parse_url( $base_url, PHP_URL_SCHEME ) );
 			if ( 'https' === $scheme ) {
 				return $base_url;
 			}
@@ -395,7 +395,7 @@ if ( ! class_exists( 'Magick_AI_Cloud_Addon_Settings' ) ) {
 		 * @return bool
 		 */
 		private static function is_local_http_base_url( string $base_url ): bool {
-			$host = strtolower( (string) parse_url( $base_url, PHP_URL_HOST ) );
+			$host = strtolower( (string) wp_parse_url( $base_url, PHP_URL_HOST ) );
 
 			return in_array( $host, array( 'localhost', '127.0.0.1', '::1' ), true );
 		}

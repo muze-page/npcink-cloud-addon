@@ -1,6 +1,6 @@
 # Agent Notes
 
-This repository is the standalone `magick-ai-cloud-addon` WordPress plugin.
+This repository is the standalone `npcink-cloud-addon` WordPress plugin.
 
 ## Boundaries
 

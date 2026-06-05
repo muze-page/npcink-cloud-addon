@@ -1,0 +1,161 @@
+.npcink-cloud-addon {
+	max-width: 960px;
+}
+
+.npcink-cloud-summary,
+.npcink-cloud-section,
+.npcink-cloud-disclosure,
+.npcink-cloud-tabs {
+	box-sizing: border-box;
+	max-width: 860px;
+}
+
+.npcink-cloud-summary {
+	background: #fff;
+	border: 1px solid #c3c4c7;
+	margin: 16px 0 18px;
+	padding: 16px;
+}
+
+.npcink-cloud-summary__header {
+	align-items: flex-start;
+	display: flex;
+	gap: 16px;
+	justify-content: space-between;
+}
+
+.npcink-cloud-summary__state {
+	margin: 0 0 4px;
+}
+
+.npcink-cloud-summary__message {
+	color: #50575e;
+	margin: 0;
+}
+
+.npcink-cloud-badge {
+	border-radius: 999px;
+	display: inline-block;
+	font-size: 12px;
+	font-weight: 600;
+	line-height: 1;
+	margin-right: 8px;
+	padding: 5px 8px;
+}
+
+.npcink-cloud-badge--ok {
+	background: #edfaef;
+	color: #008a20;
+}
+
+.npcink-cloud-badge--error {
+	background: #fcf0f1;
+	color: #b32d2e;
+}
+
+.npcink-cloud-badge--pending,
+.npcink-cloud-badge--inactive {
+	background: #fcf9e8;
+	color: #8a5a00;
+}
+
+.npcink-cloud-summary__grid {
+	border-top: 1px solid #dcdcde;
+	display: grid;
+	gap: 0;
+	grid-template-columns: repeat(2, minmax(0, 1fr));
+	margin-top: 14px;
+}
+
+.npcink-cloud-summary__item {
+	border-bottom: 1px solid #f0f0f1;
+	padding: 10px 12px 10px 0;
+}
+
+.npcink-cloud-summary__label {
+	color: #646970;
+	display: block;
+	font-size: 12px;
+	margin-bottom: 3px;
+}
+
+.npcink-cloud-summary__value {
+	display: block;
+	font-weight: 600;
+	overflow-wrap: anywhere;
+}
+
+.npcink-cloud-verify-form {
+	margin: 0;
+	min-width: 96px;
+}
+
+.npcink-cloud-section {
+	margin-top: 18px;
+}
+
+.npcink-cloud-tabs {
+	margin-top: 14px;
+}
+
+.npcink-cloud-tab-panel {
+	background: #fff;
+	border: 1px solid #dcdcde;
+	border-top: 0;
+	margin-top: 0;
+	padding: 16px;
+}
+
+.npcink-cloud-tab-panel > h2:first-child {
+	margin-top: 0;
+}
+
+.npcink-cloud-disclosure {
+	background: #fff;
+	border: 1px solid #dcdcde;
+	margin-top: 16px;
+}
+
+.npcink-cloud-disclosure > summary {
+	cursor: pointer;
+	display: flex;
+	gap: 8px;
+	justify-content: space-between;
+	padding: 12px 14px;
+}
+
+.npcink-cloud-disclosure > summary:hover {
+	background: #f6f7f7;
+}
+
+.npcink-cloud-disclosure > summary span {
+	color: #646970;
+}
+
+.npcink-cloud-disclosure form,
+.npcink-cloud-disclosure table {
+	margin: 0 14px 14px;
+}
+
+.npcink-cloud-empty {
+	background: #fff;
+	border-left: 4px solid #dba617;
+	margin: 0;
+	max-width: 820px;
+	padding: 10px 12px;
+}
+
+@media (max-width: 782px) {
+	.npcink-cloud-summary__header,
+	.npcink-cloud-disclosure > summary {
+		display: block;
+	}
+
+	.npcink-cloud-summary__grid {
+		grid-template-columns: 1fr;
+	}
+
+	.npcink-cloud-verify-form {
+		margin-top: 12px;
+	}
+}

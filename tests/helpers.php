@@ -1,8 +1,8 @@
 <?php
 /**
- * Shared test helpers for Magick AI Cloud Addon.
+ * Shared test helpers for Npcink Cloud Addon.
  *
- * @package MagickAICloudAddon
+ * @package NpcinkCloudAddon
  */
 
 declare(strict_types=1);
@@ -37,6 +37,19 @@ function maca_read( string $path ): string {
 	$contents = is_readable( $path ) ? file_get_contents( $path ) : false;
 
 	return is_string( $contents ) ? $contents : '';
+}
+
+if ( ! function_exists( 'wp_parse_url' ) ) {
+	/**
+	 * Minimal wp_parse_url polyfill for pure PHP behavior tests.
+	 *
+	 * @param string $url URL to parse.
+	 * @param int    $component Specific component.
+	 * @return mixed
+	 */
+	function wp_parse_url( string $url, int $component = -1 ) {
+		return -1 === $component ? parse_url( $url ) : parse_url( $url, $component );
+	}
 }
 
 if ( ! defined( 'ABSPATH' ) ) {
@@ -285,7 +298,7 @@ function maca_load_addon_classes(): void {
  * @return void
  */
 function maca_seed_settings( bool $verified, string $base_url = 'https://cloud.example.test' ): void {
-	$GLOBALS['maca_options'][ Magick_AI_Cloud_Addon_Settings::option_name() ] = array(
+	$GLOBALS['maca_options'][ Npcink_Cloud_Addon_Settings::option_name() ] = array(
 		'base_url' => $base_url,
 		'site_id' => 'site_test',
 		'key_id' => 'key_test',
@@ -305,9 +318,9 @@ function maca_seed_settings( bool $verified, string $base_url = 'https://cloud.e
  * @return void
  */
 function maca_set_monitoring_enabled( bool $enabled ): void {
-	$settings = Magick_AI_Cloud_Addon_Settings::get_settings();
+	$settings = Npcink_Cloud_Addon_Settings::get_settings();
 	$settings['monitoring_enabled'] = $enabled;
-	$GLOBALS['maca_options'][ Magick_AI_Cloud_Addon_Settings::option_name() ] = $settings;
+	$GLOBALS['maca_options'][ Npcink_Cloud_Addon_Settings::option_name() ] = $settings;
 }
 
 /**

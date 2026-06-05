@@ -2,7 +2,7 @@
 
 Status: prohibited and deprecated planning seam.
 
-This document records that `magick-ai-cloud-addon` must not expose Cloud
+This document records that `npcink-cloud-addon` must not expose Cloud
 article writing generation, Cloud bulk article runs, or Cloud article artifact
 imports to local plugins.
 
@@ -30,10 +30,10 @@ Article drafting is a local Ability recipe. The safe path remains:
 ```text
 local Ability recipe
   -> local/operator-reviewed artifacts
-  -> magick-ai-toolbox/build-article-write-plan
+  -> npcink-toolbox/build-article-write-plan
   -> Core /proposals/from-plan
   -> Core approval and commit preflight
-  -> Adapter executes magick-ai/create-draft through WordPress Abilities API
+  -> Adapter executes npcink-abilities-toolkit/create-draft through WordPress Abilities API
 ```
 
 ## Allowed Addon Role

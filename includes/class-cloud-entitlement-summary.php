@@ -2,7 +2,7 @@
 /**
  * Cloud entitlement summary.
  *
- * @package MagickAICloudAddon
+ * @package NpcinkCloudAddon
  */
 
 declare(strict_types=1);
@@ -11,11 +11,11 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-if ( ! class_exists( 'Magick_AI_Cloud_Entitlement_Summary' ) ) {
+if ( ! class_exists( 'Npcink_Cloud_Entitlement_Summary' ) ) {
 	/**
 	 * Reads a compact, read-only entitlement projection from Cloud.
 	 */
-	final class Magick_AI_Cloud_Entitlement_Summary {
+	final class Npcink_Cloud_Entitlement_Summary {
 		private const CACHE_TTL_SECONDS = 300;
 
 		/**
@@ -25,21 +25,21 @@ if ( ! class_exists( 'Magick_AI_Cloud_Entitlement_Summary' ) ) {
 		 * @return array<string,mixed>
 		 */
 		public static function get_summary( bool $force_refresh = false ): array {
-			$state = Magick_AI_Cloud_Addon_Settings::get_credential_state();
+			$state = Npcink_Cloud_Addon_Settings::get_credential_state();
 			if ( empty( $state['configured'] ) ) {
 				return self::unavailable_summary(
 					'not_configured',
-					__( 'Configure Cloud settings before reading entitlement.', 'magick-ai-cloud-addon' )
+					__( 'Configure Cloud settings before reading entitlement.', 'npcink-cloud-addon' )
 				);
 			}
 			if ( empty( $state['verified'] ) ) {
 				return self::unavailable_summary(
 					'unverified',
-					__( 'Entitlement is unavailable until Cloud settings verify successfully.', 'magick-ai-cloud-addon' )
+					__( 'Entitlement is unavailable until Cloud settings verify successfully.', 'npcink-cloud-addon' )
 				);
 			}
 
-			$settings = Magick_AI_Cloud_Addon_Settings::get_settings();
+			$settings = Npcink_Cloud_Addon_Settings::get_settings();
 			$cache_key = self::cache_key( $settings );
 			if ( ! $force_refresh ) {
 				$cached = get_transient( $cache_key );
@@ -52,7 +52,7 @@ if ( ! class_exists( 'Magick_AI_Cloud_Entitlement_Summary' ) ) {
 				}
 			}
 
-			$client = new Magick_AI_Cloud_Runtime_Client( $settings );
+			$client = new Npcink_Cloud_Runtime_Client( $settings );
 			$result = $client->get_current_entitlement( 'trace_cloud_entitlement_' . wp_generate_uuid4() );
 			if ( is_wp_error( $result ) ) {
 				return self::unavailable_summary( 'unavailable', $result->get_error_message() );
@@ -124,7 +124,7 @@ if ( ! class_exists( 'Magick_AI_Cloud_Entitlement_Summary' ) ) {
 				'state' => 'fresh',
 				'available' => true,
 				'stale' => false,
-				'message' => __( 'Entitlement summary synced.', 'magick-ai-cloud-addon' ),
+				'message' => __( 'Entitlement summary synced.', 'npcink-cloud-addon' ),
 				'contract_version' => sanitize_text_field( (string) ( $data['contract_version'] ?? '' ) ),
 				'package_label' => sanitize_text_field( (string) ( $data['package'] ?? $data['package_label'] ?? '' ) ),
 				'package_tier' => sanitize_key( (string) ( $data['package_tier'] ?? $entitlement['package_tier'] ?? '' ) ),

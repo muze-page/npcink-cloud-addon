@@ -1,19 +1,19 @@
-# Magick AI Cloud Addon Positioning
+# Npcink Cloud Addon Positioning
 
 ## English
 
-Magick AI Cloud Addon is the thin Cloud connector for Magick AI hosted runtime
-access. It connects a local WordPress site to `magick-ai-cloud` through Cloud
+Npcink Cloud Addon is the thin Cloud connector for Npcink hosted runtime
+access. It connects a local WordPress site to `npcink-cloud` through Cloud
 Base URL and Cloud API Key settings, signed runtime requests, health checks,
 and entitlement summaries.
 
-Magick AI Cloud Addon is part of the Magick AI plugin family:
+Npcink Cloud Addon is part of the Npcink plugin family:
 
-- `magick-ai-abilities` - ability definitions and ability callbacks.
-- `magick-ai-core` - governance, approval, preflight, and audit.
-- `magick-ai-adapter` - OpenClaw channel adaptation that calls Core and the
+- `npcink-abilities-toolkit` - ability definitions and ability callbacks.
+- `npcink-governance-core` - governance, approval, preflight, and audit.
+- `npcink-openclaw-adapter` - OpenClaw channel adaptation that calls Core and the
   Abilities API.
-- `magick-ai-cloud-addon` - cloud service connection, signing, health checks,
+- `npcink-cloud-addon` - cloud service connection, signing, health checks,
   and entitlement summaries.
 
 The addon keeps local WordPress as the control plane. Cloud remains a hosted
@@ -23,16 +23,16 @@ own presets, run queues, schedule jobs, or become a workflow engine.
 
 ## Chinese
 
-Magick AI Cloud Addon 是 Magick AI hosted runtime access 的薄 Cloud 连接器。
+Npcink Cloud Addon 是 Npcink hosted runtime access 的薄 Cloud 连接器。
 它通过 Cloud Base URL 和 Cloud API Key 设置、签名 runtime requests、health
-checks 和 entitlement summaries，把本地 WordPress 站点连接到 `magick-ai-cloud`。
+checks 和 entitlement summaries，把本地 WordPress 站点连接到 `npcink-cloud`。
 
-Magick AI Cloud Addon 是 Magick AI 系列插件的一部分：
+Npcink Cloud Addon 是 Npcink 系列插件的一部分：
 
-- `magick-ai-abilities` - 能力定义和 ability callback。
-- `magick-ai-core` - 治理、审批、preflight、audit。
-- `magick-ai-adapter` - OpenClaw 通道适配，调用 Core 和 Abilities API。
-- `magick-ai-cloud-addon` - 云端服务连接、签名、健康检查和 entitlement 摘要。
+- `npcink-abilities-toolkit` - 能力定义和 ability callback。
+- `npcink-governance-core` - 治理、审批、preflight、audit。
+- `npcink-openclaw-adapter` - OpenClaw 通道适配，调用 Core 和 Abilities API。
+- `npcink-cloud-addon` - 云端服务连接、签名、健康检查和 entitlement 摘要。
 
 Addon 保持本地 WordPress 作为控制面。Cloud 仍然是 hosted runtime 和 service
 enhancement layer。Addon 不执行 WordPress 写入、不审批 proposals、不拥有 billing

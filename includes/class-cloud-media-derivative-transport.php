@@ -2,7 +2,7 @@
 /**
  * Media derivative Cloud transport helper.
  *
- * @package MagickAICloudAddon
+ * @package NpcinkCloudAddon
  */
 
 declare(strict_types=1);
@@ -11,11 +11,11 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-if ( ! class_exists( 'Magick_AI_Cloud_Media_Derivative_Transport' ) ) {
+if ( ! class_exists( 'Npcink_Cloud_Media_Derivative_Transport' ) ) {
 	/**
 	 * Converts local media derivative request contracts into signed Cloud jobs.
 	 */
-	final class Magick_AI_Cloud_Media_Derivative_Transport {
+	final class Npcink_Cloud_Media_Derivative_Transport {
 		private const REQUEST_CONTRACT_VERSION = 'media_derivative_cloud_request.v1';
 		private const PROPOSAL_CONTRACT_VERSION = 'media_derivative_cloud_proposal.v1';
 		private const MAX_UPLOAD_BYTES = 26214400;
@@ -45,7 +45,7 @@ if ( ! class_exists( 'Magick_AI_Cloud_Media_Derivative_Transport' ) ) {
 			if ( self::descriptor_has_upload_file( $source_artifact ) && self::descriptor_has_artifact_id( $source_artifact ) ) {
 				return new WP_Error(
 					'cloud_media_derivative_source_mode_conflict',
-					__( 'Source upload and source artifact id cannot be sent together.', 'magick-ai-cloud-addon' ),
+					__( 'Source upload and source artifact id cannot be sent together.', 'npcink-cloud-addon' ),
 					array( 'status' => 400 )
 				);
 			}
@@ -69,7 +69,7 @@ if ( ! class_exists( 'Magick_AI_Cloud_Media_Derivative_Transport' ) ) {
 				if ( self::descriptor_has_upload_file( $watermark_artifact ) && self::descriptor_has_artifact_id( $watermark_artifact ) ) {
 					return new WP_Error(
 						'cloud_media_derivative_watermark_source_conflict',
-						__( 'Watermark upload and watermark artifact id cannot be sent together.', 'magick-ai-cloud-addon' ),
+						__( 'Watermark upload and watermark artifact id cannot be sent together.', 'npcink-cloud-addon' ),
 						array( 'status' => 400 )
 					);
 				}
@@ -214,7 +214,7 @@ if ( ! class_exists( 'Magick_AI_Cloud_Media_Derivative_Transport' ) ) {
 			if ( '' === $contents ) {
 				return new WP_Error(
 					'cloud_media_derivative_artifact_empty',
-					__( 'Cloud derivative artifact download returned no bytes.', 'magick-ai-cloud-addon' ),
+					__( 'Cloud derivative artifact download returned no bytes.', 'npcink-cloud-addon' ),
 					array( 'status' => 502 )
 				);
 			}
@@ -224,7 +224,7 @@ if ( ! class_exists( 'Magick_AI_Cloud_Media_Derivative_Transport' ) ) {
 			if ( '' !== $artifact_mime && '' !== $response_mime && $artifact_mime !== $response_mime ) {
 				return new WP_Error(
 					'cloud_media_derivative_artifact_mime_mismatch',
-					__( 'Cloud derivative artifact mime type does not match the descriptor.', 'magick-ai-cloud-addon' ),
+					__( 'Cloud derivative artifact mime type does not match the descriptor.', 'npcink-cloud-addon' ),
 					array( 'status' => 409 )
 				);
 			}
@@ -233,7 +233,7 @@ if ( ! class_exists( 'Magick_AI_Cloud_Media_Derivative_Transport' ) ) {
 			if ( '' === $mime_type ) {
 				return new WP_Error(
 					'cloud_media_derivative_artifact_mime_invalid',
-					__( 'Media derivative artifact mime type must be a supported image type.', 'magick-ai-cloud-addon' ),
+					__( 'Media derivative artifact mime type must be a supported image type.', 'npcink-cloud-addon' ),
 					array( 'status' => 400 )
 				);
 			}
@@ -242,7 +242,7 @@ if ( ! class_exists( 'Magick_AI_Cloud_Media_Derivative_Transport' ) ) {
 			if ( '' !== (string) ( $artifact['sha256'] ?? '' ) && $actual_sha256 !== (string) $artifact['sha256'] ) {
 				return new WP_Error(
 					'cloud_media_derivative_artifact_checksum_mismatch',
-					__( 'Derivative artifact checksum does not match the downloaded bytes.', 'magick-ai-cloud-addon' ),
+					__( 'Derivative artifact checksum does not match the downloaded bytes.', 'npcink-cloud-addon' ),
 					array( 'status' => 409 )
 				);
 			}
@@ -260,18 +260,18 @@ if ( ! class_exists( 'Magick_AI_Cloud_Media_Derivative_Transport' ) ) {
 		/**
 		 * Returns a verified runtime client or a fail-closed error.
 		 *
-		 * @return Magick_AI_Cloud_Runtime_Client|WP_Error
+		 * @return Npcink_Cloud_Runtime_Client|WP_Error
 		 */
 		public static function verified_client() {
-			if ( ! Magick_AI_Cloud_Addon_Settings::is_verified() ) {
+			if ( ! Npcink_Cloud_Addon_Settings::is_verified() ) {
 				return new WP_Error(
 					'cloud_runtime_unverified',
-					__( 'Magick AI Cloud credentials must verify before dispatching media derivative jobs.', 'magick-ai-cloud-addon' ),
+					__( 'Npcink Cloud credentials must verify before dispatching media derivative jobs.', 'npcink-cloud-addon' ),
 					array( 'status' => 403 )
 				);
 			}
 
-			return new Magick_AI_Cloud_Runtime_Client( Magick_AI_Cloud_Addon_Settings::get_settings() );
+			return new Npcink_Cloud_Runtime_Client( Npcink_Cloud_Addon_Settings::get_settings() );
 		}
 
 		/**
@@ -313,35 +313,35 @@ if ( ! class_exists( 'Magick_AI_Cloud_Media_Derivative_Transport' ) ) {
 			if ( self::REQUEST_CONTRACT_VERSION !== (string) ( $contract['request_contract_version'] ?? '' ) ) {
 				return new WP_Error(
 					'cloud_media_derivative_contract_invalid',
-					__( 'Media derivative request contract version is invalid.', 'magick-ai-cloud-addon' ),
+					__( 'Media derivative request contract version is invalid.', 'npcink-cloud-addon' ),
 					array( 'status' => 400 )
 				);
 			}
 			if ( empty( $contract['readonly'] ) || empty( $contract['proposal_only'] ) ) {
 				return new WP_Error(
 					'cloud_media_derivative_contract_not_readonly',
-					__( 'Media derivative request must be read-only and proposal-only.', 'magick-ai-cloud-addon' ),
+					__( 'Media derivative request must be read-only and proposal-only.', 'npcink-cloud-addon' ),
 					array( 'status' => 400 )
 				);
 			}
 			if ( 'local_wordpress_host' !== (string) ( $contract['local_adoption']['final_write_owner'] ?? '' ) ) {
 				return new WP_Error(
 					'cloud_media_derivative_write_owner_invalid',
-					__( 'Media derivative final write owner must remain the local WordPress host.', 'magick-ai-cloud-addon' ),
+					__( 'Media derivative final write owner must remain the local WordPress host.', 'npcink-cloud-addon' ),
 					array( 'status' => 400 )
 				);
 			}
 			if ( ! empty( $contract['local_adoption']['wordpress_write_included'] ) ) {
 				return new WP_Error(
 					'cloud_media_derivative_wordpress_write_present',
-					__( 'Media derivative request must not include WordPress writes.', 'magick-ai-cloud-addon' ),
+					__( 'Media derivative request must not include WordPress writes.', 'npcink-cloud-addon' ),
 					array( 'status' => 400 )
 				);
 			}
 			if ( self::contains_forbidden_secret_fields( $contract ) ) {
 				return new WP_Error(
 					'cloud_media_derivative_credentials_present',
-					__( 'Media derivative ability payload must not include credentials or signed headers.', 'magick-ai-cloud-addon' ),
+					__( 'Media derivative ability payload must not include credentials or signed headers.', 'npcink-cloud-addon' ),
 					array( 'status' => 400 )
 				);
 			}
@@ -350,14 +350,14 @@ if ( ! class_exists( 'Magick_AI_Cloud_Media_Derivative_Transport' ) ) {
 			if ( 'generate_optimized_media_derivative' !== (string) ( $job_payload['job_type'] ?? '' ) ) {
 				return new WP_Error(
 					'cloud_media_derivative_job_type_invalid',
-					__( 'Cloud media derivative job type is invalid.', 'magick-ai-cloud-addon' ),
+					__( 'Cloud media derivative job type is invalid.', 'npcink-cloud-addon' ),
 					array( 'status' => 400 )
 				);
 			}
 			if ( ! empty( $job_payload['requested_derivative']['replace_original'] ) ) {
 				return new WP_Error(
 					'cloud_media_derivative_replace_original_requested',
-					__( 'Media derivative jobs must not request original file replacement.', 'magick-ai-cloud-addon' ),
+					__( 'Media derivative jobs must not request original file replacement.', 'npcink-cloud-addon' ),
 					array( 'status' => 400 )
 				);
 			}
@@ -386,28 +386,28 @@ if ( ! class_exists( 'Magick_AI_Cloud_Media_Derivative_Transport' ) ) {
 			if ( ( ! empty( $watermark_reference ) || $has_watermark_upload ) && empty( $watermark ) ) {
 				return new WP_Error(
 					'cloud_media_derivative_watermark_plan_missing',
-					__( 'Watermark artifact transport requires a watermark plan in the ability response.', 'magick-ai-cloud-addon' ),
+					__( 'Watermark artifact transport requires a watermark plan in the ability response.', 'npcink-cloud-addon' ),
 					array( 'status' => 400 )
 				);
 			}
 			if ( 'text' === $watermark_type && ( $has_watermark_upload || ! empty( $watermark_reference ) || ! empty( $watermark['artifact_id'] ) ) ) {
 				return new WP_Error(
 					'cloud_media_derivative_watermark_source_conflict',
-					__( 'Text watermark plans must not include a watermark upload or artifact id.', 'magick-ai-cloud-addon' ),
+					__( 'Text watermark plans must not include a watermark upload or artifact id.', 'npcink-cloud-addon' ),
 					array( 'status' => 400 )
 				);
 			}
 			if ( 'image' === $watermark_type && $has_watermark_upload && ! empty( $watermark['artifact_id'] ) ) {
 				return new WP_Error(
 					'cloud_media_derivative_watermark_source_conflict',
-					__( 'Watermark upload and watermark artifact id cannot be sent together.', 'magick-ai-cloud-addon' ),
+					__( 'Watermark upload and watermark artifact id cannot be sent together.', 'npcink-cloud-addon' ),
 					array( 'status' => 400 )
 				);
 			}
 			if ( 'image' === $watermark_type && ! empty( $watermark ) && empty( $watermark['artifact_id'] ) && empty( $watermark_reference ) && ! $has_watermark_upload ) {
 				return new WP_Error(
 					'cloud_media_derivative_watermark_source_missing',
-					__( 'Watermark plans require a watermark upload or artifact id before Cloud dispatch.', 'magick-ai-cloud-addon' ),
+					__( 'Watermark plans require a watermark upload or artifact id before Cloud dispatch.', 'npcink-cloud-addon' ),
 					array( 'status' => 400 )
 				);
 			}
@@ -416,7 +416,7 @@ if ( ! class_exists( 'Magick_AI_Cloud_Media_Derivative_Transport' ) ) {
 			if ( ! in_array( $target_format, array( 'webp', 'avif', 'jpeg', 'png', 'original' ), true ) ) {
 				return new WP_Error(
 					'cloud_media_derivative_target_format_missing',
-					__( 'Media derivative request must include a bounded target format from the ability response.', 'magick-ai-cloud-addon' ),
+					__( 'Media derivative request must include a bounded target format from the ability response.', 'npcink-cloud-addon' ),
 					array( 'status' => 400 )
 				);
 			}
@@ -425,7 +425,7 @@ if ( ! class_exists( 'Magick_AI_Cloud_Media_Derivative_Transport' ) ) {
 			if ( $max_width <= 0 ) {
 				return new WP_Error(
 					'cloud_media_derivative_max_width_missing',
-					__( 'Media derivative request must include max_width from the ability response.', 'magick-ai-cloud-addon' ),
+					__( 'Media derivative request must include max_width from the ability response.', 'npcink-cloud-addon' ),
 					array( 'status' => 400 )
 				);
 			}
@@ -434,7 +434,7 @@ if ( ! class_exists( 'Magick_AI_Cloud_Media_Derivative_Transport' ) ) {
 			if ( $quality <= 0 ) {
 				return new WP_Error(
 					'cloud_media_derivative_quality_missing',
-					__( 'Media derivative request must include quality from the ability response.', 'magick-ai-cloud-addon' ),
+					__( 'Media derivative request must include quality from the ability response.', 'npcink-cloud-addon' ),
 					array( 'status' => 400 )
 				);
 			}
@@ -450,7 +450,7 @@ if ( ! class_exists( 'Magick_AI_Cloud_Media_Derivative_Transport' ) ) {
 			if ( '' !== trim( $raw_source_media_type ) && '' === $source_media_type ) {
 				return new WP_Error(
 					'cloud_media_derivative_source_media_type_invalid',
-					__( 'Media derivative source media type must be a supported image type.', 'magick-ai-cloud-addon' ),
+					__( 'Media derivative source media type must be a supported image type.', 'npcink-cloud-addon' ),
 					array( 'status' => 400 )
 				);
 			}
@@ -463,7 +463,7 @@ if ( ! class_exists( 'Magick_AI_Cloud_Media_Derivative_Transport' ) ) {
 					if ( ! empty( $cloud_job_payload['watermark']['artifact_id'] ) && $watermark_reference['artifact_id'] !== $cloud_job_payload['watermark']['artifact_id'] ) {
 						return new WP_Error(
 							'cloud_media_derivative_watermark_source_conflict',
-							__( 'Watermark artifact id does not match the ability watermark plan.', 'magick-ai-cloud-addon' ),
+							__( 'Watermark artifact id does not match the ability watermark plan.', 'npcink-cloud-addon' ),
 							array( 'status' => 400 )
 						);
 					}
@@ -583,7 +583,7 @@ if ( ! class_exists( 'Magick_AI_Cloud_Media_Derivative_Transport' ) ) {
 				if ( ! is_readable( $path ) ) {
 					return new WP_Error(
 						'cloud_media_derivative_upload_file_unreadable',
-						__( 'Media derivative upload file is not readable.', 'magick-ai-cloud-addon' ),
+						__( 'Media derivative upload file is not readable.', 'npcink-cloud-addon' ),
 						array( 'status' => 400 )
 					);
 				}
@@ -591,7 +591,7 @@ if ( ! class_exists( 'Magick_AI_Cloud_Media_Derivative_Transport' ) ) {
 				if ( false !== $size && $size > self::MAX_UPLOAD_BYTES ) {
 					return new WP_Error(
 						'cloud_media_derivative_upload_file_too_large',
-						__( 'Media derivative upload file exceeds the Cloud size limit.', 'magick-ai-cloud-addon' ),
+						__( 'Media derivative upload file exceeds the Cloud size limit.', 'npcink-cloud-addon' ),
 						array( 'status' => 413 )
 					);
 				}
@@ -602,14 +602,14 @@ if ( ! class_exists( 'Magick_AI_Cloud_Media_Derivative_Transport' ) ) {
 			if ( '' === $contents ) {
 				return new WP_Error(
 					'cloud_media_derivative_upload_file_empty',
-					__( 'Media derivative upload file is empty.', 'magick-ai-cloud-addon' ),
+					__( 'Media derivative upload file is empty.', 'npcink-cloud-addon' ),
 					array( 'status' => 400 )
 				);
 			}
 			if ( strlen( $contents ) > self::MAX_UPLOAD_BYTES ) {
 				return new WP_Error(
 					'cloud_media_derivative_upload_file_too_large',
-					__( 'Media derivative upload file exceeds the Cloud size limit.', 'magick-ai-cloud-addon' ),
+					__( 'Media derivative upload file exceeds the Cloud size limit.', 'npcink-cloud-addon' ),
 					array( 'status' => 413 )
 				);
 			}
@@ -659,7 +659,7 @@ if ( ! class_exists( 'Magick_AI_Cloud_Media_Derivative_Transport' ) ) {
 			if ( '' === (string) ( $normalized['artifact_id'] ?? '' ) ) {
 				return new WP_Error(
 					'cloud_media_derivative_artifact_id_missing',
-					__( 'Media derivative runtime artifacts require an artifact id.', 'magick-ai-cloud-addon' ),
+					__( 'Media derivative runtime artifacts require an artifact id.', 'npcink-cloud-addon' ),
 					array( 'status' => 400 )
 				);
 			}
@@ -679,14 +679,14 @@ if ( ! class_exists( 'Magick_AI_Cloud_Media_Derivative_Transport' ) ) {
 			if ( '' === $expires_at ) {
 				return new WP_Error(
 					'cloud_media_derivative_artifact_expiry_missing',
-					__( 'Media derivative artifact expiry is required.', 'magick-ai-cloud-addon' ),
+					__( 'Media derivative artifact expiry is required.', 'npcink-cloud-addon' ),
 					array( 'status' => 400 )
 				);
 			}
 			if ( self::is_expired( $expires_at ) ) {
 				return new WP_Error(
 					'cloud_media_derivative_artifact_expired',
-					__( 'Expired Cloud artifacts cannot be adopted.', 'magick-ai-cloud-addon' ),
+					__( 'Expired Cloud artifacts cannot be adopted.', 'npcink-cloud-addon' ),
 					array( 'status' => 409 )
 				);
 			}
@@ -695,7 +695,7 @@ if ( ! class_exists( 'Magick_AI_Cloud_Media_Derivative_Transport' ) ) {
 			if ( 'derivative' === $role && '' === $artifact_id ) {
 				return new WP_Error(
 					'cloud_media_derivative_derivative_artifact_id_missing',
-					__( 'Derivative Cloud artifacts require an artifact id before local proposal adoption.', 'magick-ai-cloud-addon' ),
+					__( 'Derivative Cloud artifacts require an artifact id before local proposal adoption.', 'npcink-cloud-addon' ),
 					array( 'status' => 400 )
 				);
 			}
@@ -704,7 +704,7 @@ if ( ! class_exists( 'Magick_AI_Cloud_Media_Derivative_Transport' ) ) {
 			if ( '' === $artifact_id && '' === $download_url ) {
 				return new WP_Error(
 					'cloud_media_derivative_artifact_ref_missing',
-					__( 'Media derivative artifact requires an artifact id or download URL.', 'magick-ai-cloud-addon' ),
+					__( 'Media derivative artifact requires an artifact id or download URL.', 'npcink-cloud-addon' ),
 					array( 'status' => 400 )
 				);
 			}
@@ -713,7 +713,7 @@ if ( ! class_exists( 'Magick_AI_Cloud_Media_Derivative_Transport' ) ) {
 			if ( '' !== trim( $raw_mime_type ) && '' === $mime_type ) {
 				return new WP_Error(
 					'cloud_media_derivative_artifact_mime_invalid',
-					__( 'Media derivative artifact mime type must be a supported image type.', 'magick-ai-cloud-addon' ),
+					__( 'Media derivative artifact mime type must be a supported image type.', 'npcink-cloud-addon' ),
 					array( 'status' => 400 )
 				);
 			}
@@ -817,7 +817,7 @@ if ( ! class_exists( 'Magick_AI_Cloud_Media_Derivative_Transport' ) ) {
 			if ( '' !== $result_artifact_id && '' !== $artifact_id && $result_artifact_id !== $artifact_id ) {
 				return new WP_Error(
 					'cloud_media_derivative_artifact_binding_mismatch',
-					__( 'Derivative artifact id does not match the Cloud result.', 'magick-ai-cloud-addon' ),
+					__( 'Derivative artifact id does not match the Cloud result.', 'npcink-cloud-addon' ),
 					array( 'status' => 409 )
 				);
 			}
@@ -827,7 +827,7 @@ if ( ! class_exists( 'Magick_AI_Cloud_Media_Derivative_Transport' ) ) {
 			if ( '' !== $result_run_id && '' !== $artifact_run_id && $result_run_id !== $artifact_run_id ) {
 				return new WP_Error(
 					'cloud_media_derivative_artifact_run_mismatch',
-					__( 'Derivative artifact run_id does not match the Cloud result.', 'magick-ai-cloud-addon' ),
+					__( 'Derivative artifact run_id does not match the Cloud result.', 'npcink-cloud-addon' ),
 					array( 'status' => 409 )
 				);
 			}
@@ -837,7 +837,7 @@ if ( ! class_exists( 'Magick_AI_Cloud_Media_Derivative_Transport' ) ) {
 			if ( '' !== $result_sha256 && '' !== $artifact_sha256 && $result_sha256 !== $artifact_sha256 ) {
 				return new WP_Error(
 					'cloud_media_derivative_artifact_checksum_mismatch',
-					__( 'Derivative artifact checksum does not match the Cloud result.', 'magick-ai-cloud-addon' ),
+					__( 'Derivative artifact checksum does not match the Cloud result.', 'npcink-cloud-addon' ),
 					array( 'status' => 409 )
 				);
 			}
@@ -855,10 +855,10 @@ if ( ! class_exists( 'Magick_AI_Cloud_Media_Derivative_Transport' ) ) {
 		 */
 		private static function append_metric_warnings( array $warnings, array $original, array $derivative ): array {
 			if ( ! self::has_complete_media_metrics( $original ) ) {
-				$warnings[] = __( 'Original media metrics are incomplete.', 'magick-ai-cloud-addon' );
+				$warnings[] = __( 'Original media metrics are incomplete.', 'npcink-cloud-addon' );
 			}
 			if ( ! self::has_complete_media_metrics( $derivative ) ) {
-				$warnings[] = __( 'Derivative media metrics are incomplete.', 'magick-ai-cloud-addon' );
+				$warnings[] = __( 'Derivative media metrics are incomplete.', 'npcink-cloud-addon' );
 			}
 
 			return $warnings;

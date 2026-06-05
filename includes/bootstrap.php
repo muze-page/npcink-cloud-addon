@@ -2,7 +2,7 @@
 /**
  * Cloud addon bootstrap and public seams.
  *
- * @package MagickAICloudAddon
+ * @package NpcinkCloudAddon
  */
 
 declare(strict_types=1);
@@ -18,18 +18,18 @@ require_once __DIR__ . '/class-cloud-entitlement-summary.php';
 require_once __DIR__ . '/class-cloud-observability-collector.php';
 require_once __DIR__ . '/class-cloud-settings-page.php';
 
-if ( ! function_exists( 'magick_ai_cloud_addon_is_configured' ) ) {
+if ( ! function_exists( 'npcink_cloud_addon_is_configured' ) ) {
 	/**
 	 * Returns whether Cloud addon credentials are complete.
 	 *
 	 * @return bool
 	 */
-	function magick_ai_cloud_addon_is_configured(): bool {
-		return Magick_AI_Cloud_Addon_Settings::is_configured();
+	function npcink_cloud_addon_is_configured(): bool {
+		return Npcink_Cloud_Addon_Settings::is_configured();
 	}
 }
 
-if ( ! function_exists( 'magick_ai_cloud_addon_get_settings' ) ) {
+if ( ! function_exists( 'npcink_cloud_addon_get_settings' ) ) {
 	/**
 	 * Returns normalized Cloud addon settings.
 	 *
@@ -38,43 +38,43 @@ if ( ! function_exists( 'magick_ai_cloud_addon_get_settings' ) ) {
 	 *
 	 * @return array<string,mixed>
 	 */
-	function magick_ai_cloud_addon_get_settings(): array {
-		return Magick_AI_Cloud_Addon_Settings::get_settings();
+	function npcink_cloud_addon_get_settings(): array {
+		return Npcink_Cloud_Addon_Settings::get_settings();
 	}
 }
 
-if ( ! function_exists( 'magick_ai_cloud_addon_runtime_client' ) ) {
+if ( ! function_exists( 'npcink_cloud_addon_runtime_client' ) ) {
 	/**
 	 * Returns a configured runtime client, or null when credentials are incomplete.
 	 *
-	 * @return Magick_AI_Cloud_Runtime_Client|null
+	 * @return Npcink_Cloud_Runtime_Client|null
 	 */
-	function magick_ai_cloud_addon_runtime_client(): ?Magick_AI_Cloud_Runtime_Client {
-		if ( ! Magick_AI_Cloud_Addon_Settings::is_configured() ) {
+	function npcink_cloud_addon_runtime_client(): ?Npcink_Cloud_Runtime_Client {
+		if ( ! Npcink_Cloud_Addon_Settings::is_configured() ) {
 			return null;
 		}
 
-		return new Magick_AI_Cloud_Runtime_Client( Magick_AI_Cloud_Addon_Settings::get_settings() );
+		return new Npcink_Cloud_Runtime_Client( Npcink_Cloud_Addon_Settings::get_settings() );
 	}
 }
 
-if ( ! function_exists( 'magick_ai_cloud_addon_verified_runtime_client' ) ) {
+if ( ! function_exists( 'npcink_cloud_addon_verified_runtime_client' ) ) {
 	/**
 	 * Returns a verified runtime client, or null when credentials have not verified.
 	 *
 	 * Use this helper for Cloud jobs that move local media bytes or generated
 	 * artifacts. It fails closed until Save and Verify has passed.
 	 *
-	 * @return Magick_AI_Cloud_Runtime_Client|null
+	 * @return Npcink_Cloud_Runtime_Client|null
 	 */
-	function magick_ai_cloud_addon_verified_runtime_client(): ?Magick_AI_Cloud_Runtime_Client {
-		$client = Magick_AI_Cloud_Media_Derivative_Transport::verified_client();
+	function npcink_cloud_addon_verified_runtime_client(): ?Npcink_Cloud_Runtime_Client {
+		$client = Npcink_Cloud_Media_Derivative_Transport::verified_client();
 
 		return is_wp_error( $client ) ? null : $client;
 	}
 }
 
-if ( ! function_exists( 'magick_ai_cloud_addon_dispatch_media_derivative_cloud_request' ) ) {
+if ( ! function_exists( 'npcink_cloud_addon_dispatch_media_derivative_cloud_request' ) ) {
 	/**
 	 * Dispatches a media derivative Cloud job from a local ability response.
 	 *
@@ -88,8 +88,8 @@ if ( ! function_exists( 'magick_ai_cloud_addon_dispatch_media_derivative_cloud_r
 	 * @param array<string,mixed> $watermark_artifact Optional short TTL watermark artifact or upload descriptor.
 	 * @return array<string,mixed>|WP_Error
 	 */
-	function magick_ai_cloud_addon_dispatch_media_derivative_cloud_request( array $ability_response, array $source_artifact, string $trace_id = '', string $idempotency_key = '', array $watermark_artifact = array() ) {
-		return Magick_AI_Cloud_Media_Derivative_Transport::dispatch_from_ability_response(
+	function npcink_cloud_addon_dispatch_media_derivative_cloud_request( array $ability_response, array $source_artifact, string $trace_id = '', string $idempotency_key = '', array $watermark_artifact = array() ) {
+		return Npcink_Cloud_Media_Derivative_Transport::dispatch_from_ability_response(
 			$ability_response,
 			$source_artifact,
 			$trace_id,
@@ -99,7 +99,7 @@ if ( ! function_exists( 'magick_ai_cloud_addon_dispatch_media_derivative_cloud_r
 	}
 }
 
-if ( ! function_exists( 'magick_ai_cloud_addon_build_media_derivative_proposal_payload' ) ) {
+if ( ! function_exists( 'npcink_cloud_addon_build_media_derivative_proposal_payload' ) ) {
 	/**
 	 * Builds a Core-ready local proposal payload for a Cloud derivative artifact.
 	 *
@@ -110,8 +110,8 @@ if ( ! function_exists( 'magick_ai_cloud_addon_build_media_derivative_proposal_p
 	 * @param array<string,mixed> $derivative_artifact Cloud derivative artifact descriptor.
 	 * @return array<string,mixed>|WP_Error
 	 */
-	function magick_ai_cloud_addon_build_media_derivative_proposal_payload( array $ability_response, array $cloud_result, array $derivative_artifact ) {
-		return Magick_AI_Cloud_Media_Derivative_Transport::build_local_proposal_payload(
+	function npcink_cloud_addon_build_media_derivative_proposal_payload( array $ability_response, array $cloud_result, array $derivative_artifact ) {
+		return Npcink_Cloud_Media_Derivative_Transport::build_local_proposal_payload(
 			$ability_response,
 			$cloud_result,
 			$derivative_artifact
@@ -119,7 +119,7 @@ if ( ! function_exists( 'magick_ai_cloud_addon_build_media_derivative_proposal_p
 	}
 }
 
-if ( ! function_exists( 'magick_ai_cloud_addon_download_media_derivative_artifact' ) ) {
+if ( ! function_exists( 'npcink_cloud_addon_download_media_derivative_artifact' ) ) {
 	/**
 	 * Downloads a short-TTL derivative artifact for a trusted local preview.
 	 *
@@ -129,25 +129,25 @@ if ( ! function_exists( 'magick_ai_cloud_addon_download_media_derivative_artifac
 	 * @param string              $trace_id Optional trace id.
 	 * @return array<string,mixed>|WP_Error
 	 */
-	function magick_ai_cloud_addon_download_media_derivative_artifact( array $derivative_artifact, string $trace_id = '' ) {
-		return Magick_AI_Cloud_Media_Derivative_Transport::download_artifact_preview(
+	function npcink_cloud_addon_download_media_derivative_artifact( array $derivative_artifact, string $trace_id = '' ) {
+		return Npcink_Cloud_Media_Derivative_Transport::download_artifact_preview(
 			$derivative_artifact,
 			$trace_id
 		);
 	}
 }
 
-if ( ! function_exists( 'magick_ai_cloud_addon_bootstrap' ) ) {
+if ( ! function_exists( 'npcink_cloud_addon_bootstrap' ) ) {
 	/**
 	 * Boots the standalone Cloud addon.
 	 *
 	 * @return void
 	 */
-	function magick_ai_cloud_addon_bootstrap(): void {
-		Magick_AI_Cloud_Addon_Settings::register();
-		Magick_AI_Cloud_Observability_Collector::register();
-		Magick_AI_Cloud_Settings_Page::register();
+	function npcink_cloud_addon_bootstrap(): void {
+		Npcink_Cloud_Addon_Settings::register();
+		Npcink_Cloud_Observability_Collector::register();
+		Npcink_Cloud_Settings_Page::register();
 	}
 }
 
-add_action( 'plugins_loaded', 'magick_ai_cloud_addon_bootstrap', 20 );
+add_action( 'plugins_loaded', 'npcink_cloud_addon_bootstrap', 20 );

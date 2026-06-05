@@ -2,7 +2,7 @@
 
 ## English
 
-Magick AI Cloud Addon uses the `magick-ai-cloud-addon` text domain and declares
+Npcink Cloud Addon uses the `npcink-cloud-addon` text domain and declares
 `Domain Path: /languages`, so it is prepared for WordPress translation
 workflows.
 
@@ -18,7 +18,7 @@ directory and keep generated `.pot`, `.po`, and `.mo` files separate from this
 Recommended release flow:
 
 1. Keep source code strings in English.
-2. Keep all runtime strings wrapped with the `magick-ai-cloud-addon` text
+2. Keep all runtime strings wrapped with the `npcink-cloud-addon` text
    domain.
 3. Generate a POT file before release if bundled translations are needed.
 4. Translate Chinese strings through the WordPress.org translation workflow or a
@@ -27,7 +27,7 @@ Recommended release flow:
 
 ## Chinese
 
-Magick AI Cloud Addon 的 PHP 运行时字符串使用 `magick-ai-cloud-addon` text
+Npcink Cloud Addon 的 PHP 运行时字符串使用 `npcink-cloud-addon` text
 domain，并声明了 `Domain Path: /languages`，因此已经具备接入 WordPress 翻译
 流程的基础。
 
@@ -41,7 +41,7 @@ domain，并声明了 `Domain Path: /languages`，因此已经具备接入 WordP
 推荐发布流程：
 
 1. 源代码字符串继续保持英文。
-2. 所有运行时字符串继续使用 `magick-ai-cloud-addon` text domain。
+2. 所有运行时字符串继续使用 `npcink-cloud-addon` text domain。
 3. 如果需要内置翻译，在发布前生成 POT 文件。
 4. 中文翻译可以走 WordPress.org 翻译流程，也可以维护项目自己的 `zh_CN` 翻译文件。
 5. `sj/` 只用于上架文案、图片提示词和发布素材。

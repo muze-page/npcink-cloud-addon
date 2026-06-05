@@ -2,7 +2,7 @@
 
 ## Purpose
 
-`Magick_AI_Cloud_Runtime_Client` is the server-side transport client for current Magick AI Cloud runtime APIs.
+`Npcink_Cloud_Runtime_Client` is the server-side transport client for current Npcink Cloud runtime APIs.
 
 It is responsible for request signing, Cloud error mapping, and a small set of stable runtime/read methods.
 
@@ -14,7 +14,7 @@ or WordPress write truth.
 ## Constructor
 
 ```php
-new Magick_AI_Cloud_Runtime_Client(array $config = array())
+new Npcink_Cloud_Runtime_Client(array $config = array())
 ```
 
 If no config is provided, the client loads normalized addon settings.
@@ -48,7 +48,7 @@ For Cloud jobs that move local media bytes or downloadable artifacts, host code
 should use the verified helper:
 
 ```php
-magick_ai_cloud_addon_verified_runtime_client(): ?Magick_AI_Cloud_Runtime_Client
+npcink_cloud_addon_verified_runtime_client(): ?Npcink_Cloud_Runtime_Client
 ```
 
 It returns `null` until the addon settings have passed Save and Verify.
@@ -139,8 +139,8 @@ future boundary update explicitly adds a named public method.
 
 ## Media Derivative Transport
 
-`Magick_AI_Cloud_Media_Derivative_Transport` is a bounded host-facing helper
-for the local ability `magick-ai/build-media-derivative-cloud-request`.
+`Npcink_Cloud_Media_Derivative_Transport` is a bounded host-facing helper
+for the local ability `npcink-abilities-toolkit/build-media-derivative-cloud-request`.
 
 It may:
 

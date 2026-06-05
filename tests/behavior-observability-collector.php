@@ -2,7 +2,7 @@
 /**
  * Behavior tests for the plugin observability collector.
  *
- * @package MagickAICloudAddon
+ * @package NpcinkCloudAddon
  */
 
 declare(strict_types=1);
@@ -20,7 +20,7 @@ maca_load_addon_classes();
 function maca_observability_event( int $index ): array {
 	return array(
 		'schema_version' => '2026-06-01',
-		'plugin_slug'    => 'magick-ai-core',
+		'plugin_slug'    => 'npcink-governance-core',
 		'plugin_version' => '1.0.' . $index,
 		'source'         => 'local',
 		'event_kind'     => 'core.proposal.create',
@@ -28,7 +28,7 @@ function maca_observability_event( int $index ): array {
 			'status'         => 'ok',
 			'latency_ms'     => $index,
 			'proposal_id'    => 'proposal_' . $index,
-			'route'          => '/wp-json/magick-ai-core/v1/' . str_repeat( 'long-route-', 40 ),
+			'route'          => '/wp-json/npcink-governance-core/v1/' . str_repeat( 'long-route-', 40 ),
 			'prompt'         => 'must not be collected',
 			'raw_request'    => array( 'body' => 'must not be collected' ),
 			'authorization'  => 'Bearer secret',
@@ -38,28 +38,28 @@ function maca_observability_event( int $index ): array {
 maca_reset_test_state();
 maca_seed_settings( false );
 maca_set_monitoring_enabled( true );
-Magick_AI_Cloud_Observability_Collector::capture_event( maca_observability_event( 1 ) );
+Npcink_Cloud_Observability_Collector::capture_event( maca_observability_event( 1 ) );
 maca_assert(
-	0 === count( get_option( Magick_AI_Cloud_Observability_Collector::BUFFER_OPTION, array() ) ),
+	0 === count( get_option( Npcink_Cloud_Observability_Collector::BUFFER_OPTION, array() ) ),
 	'Behavior: observability capture is disabled until Cloud settings are verified.'
 );
 
 maca_reset_test_state();
 maca_seed_settings( true );
-Magick_AI_Cloud_Observability_Collector::capture_event( maca_observability_event( 2 ) );
+Npcink_Cloud_Observability_Collector::capture_event( maca_observability_event( 2 ) );
 maca_assert(
-	0 === count( get_option( Magick_AI_Cloud_Observability_Collector::BUFFER_OPTION, array() ) ),
+	0 === count( get_option( Npcink_Cloud_Observability_Collector::BUFFER_OPTION, array() ) ),
 	'Behavior: observability capture is disabled until monitoring is explicitly enabled.'
 );
 
 maca_reset_test_state();
 maca_seed_settings( true );
 maca_set_monitoring_enabled( true );
-Magick_AI_Cloud_Observability_Collector::capture_event( maca_observability_event( 3 ) );
-$buffer = get_option( Magick_AI_Cloud_Observability_Collector::BUFFER_OPTION, array() );
+Npcink_Cloud_Observability_Collector::capture_event( maca_observability_event( 3 ) );
+$buffer = get_option( Npcink_Cloud_Observability_Collector::BUFFER_OPTION, array() );
 maca_assert(
 		1 === count( $buffer )
-		&& 'magick-ai-core' === (string) ( $buffer[0]['plugin_slug'] ?? '' )
+		&& 'npcink-governance-core' === (string) ( $buffer[0]['plugin_slug'] ?? '' )
 		&& 200 === strlen( (string) ( $buffer[0]['route'] ?? '' ) )
 		&& ! array_key_exists( 'prompt', $buffer[0] )
 	&& ! array_key_exists( 'raw_request', $buffer[0] )
@@ -71,9 +71,9 @@ maca_reset_test_state();
 maca_seed_settings( true );
 maca_set_monitoring_enabled( true );
 for ( $i = 1; $i <= 205; $i++ ) {
-	Magick_AI_Cloud_Observability_Collector::capture_event( maca_observability_event( $i ) );
+	Npcink_Cloud_Observability_Collector::capture_event( maca_observability_event( $i ) );
 }
-$buffer = get_option( Magick_AI_Cloud_Observability_Collector::BUFFER_OPTION, array() );
+$buffer = get_option( Npcink_Cloud_Observability_Collector::BUFFER_OPTION, array() );
 maca_assert(
 	200 === count( $buffer )
 	&& 'evt_6' === (string) ( $buffer[0]['event_id'] ?? '' )
@@ -85,7 +85,7 @@ maca_reset_test_state();
 maca_seed_settings( true );
 maca_set_monitoring_enabled( true );
 for ( $i = 1; $i <= 3; $i++ ) {
-	Magick_AI_Cloud_Observability_Collector::capture_event( maca_observability_event( $i ) );
+	Npcink_Cloud_Observability_Collector::capture_event( maca_observability_event( $i ) );
 }
 $GLOBALS['maca_http_response_queue'][] = array(
 	'response' => array( 'code' => 500 ),
@@ -97,8 +97,8 @@ $GLOBALS['maca_http_response_queue'][] = array(
 		)
 	),
 );
-$failed = Magick_AI_Cloud_Observability_Collector::flush_buffer();
-$buffer = get_option( Magick_AI_Cloud_Observability_Collector::BUFFER_OPTION, array() );
+$failed = Npcink_Cloud_Observability_Collector::flush_buffer();
+$buffer = get_option( Npcink_Cloud_Observability_Collector::BUFFER_OPTION, array() );
 maca_assert(
 	empty( $failed['last_upload_ok'] )
 	&& 3 === count( $buffer )
@@ -120,8 +120,8 @@ $GLOBALS['maca_http_response_queue'][] = array(
 		)
 	),
 );
-$successful = Magick_AI_Cloud_Observability_Collector::flush_buffer();
-$buffer = get_option( Magick_AI_Cloud_Observability_Collector::BUFFER_OPTION, array() );
+$successful = Npcink_Cloud_Observability_Collector::flush_buffer();
+$buffer = get_option( Npcink_Cloud_Observability_Collector::BUFFER_OPTION, array() );
 maca_assert(
 	! empty( $successful['last_upload_ok'] )
 	&& 1 === count( $buffer )
@@ -137,7 +137,7 @@ maca_assert(
 	&& '' !== (string) ( $successful['last_uploaded_at'] ?? '' ),
 	'Behavior: successful observability upload records sent, stored, and duplicate counts.'
 );
-$status = Magick_AI_Cloud_Observability_Collector::get_status();
+$status = Npcink_Cloud_Observability_Collector::get_status();
 maca_assert(
 	! empty( $status['last_upload_ok'] )
 	&& 1 === absint( $status['buffer_count'] ?? 0 )
@@ -156,7 +156,7 @@ maca_reset_test_state();
 maca_seed_settings( true );
 maca_set_monitoring_enabled( true );
 for ( $i = 1; $i <= 75; $i++ ) {
-	Magick_AI_Cloud_Observability_Collector::capture_event( maca_observability_event( $i ) );
+	Npcink_Cloud_Observability_Collector::capture_event( maca_observability_event( $i ) );
 }
 $GLOBALS['maca_http_response_queue'][] = static function ( string $url, array $args ): array {
 	$body = json_decode( (string) ( $args['body'] ?? '' ), true );
@@ -174,11 +174,11 @@ $GLOBALS['maca_http_response_queue'][] = static function ( string $url, array $a
 		),
 	);
 };
-$bounded = Magick_AI_Cloud_Observability_Collector::flush_buffer();
+$bounded = Npcink_Cloud_Observability_Collector::flush_buffer();
 $request = $GLOBALS['maca_http_requests'][0] ?? array();
 $body = json_decode( (string) ( $request['args']['body'] ?? '' ), true );
 $sent_events = is_array( $body['events'] ?? null ) ? $body['events'] : array();
-$buffer = get_option( Magick_AI_Cloud_Observability_Collector::BUFFER_OPTION, array() );
+$buffer = get_option( Npcink_Cloud_Observability_Collector::BUFFER_OPTION, array() );
 maca_assert(
 	50 === count( $sent_events )
 	&& 25 === count( $buffer )
@@ -209,7 +209,7 @@ $GLOBALS['maca_http_response_queue'][] = array(
 				),
 				'plugins'       => array(
 					array(
-						'plugin_slug'    => 'magick-ai-core',
+						'plugin_slug'    => 'npcink-governance-core',
 						'events_total'   => 8,
 						'error_total'    => 1,
 						'success_rate'   => 0.875,
@@ -235,7 +235,7 @@ $GLOBALS['maca_http_response_queue'][] = array(
 				),
 				'errors'        => array(
 					array(
-						'plugin_slug'  => 'magick-ai-core',
+						'plugin_slug'  => 'npcink-governance-core',
 						'event_kind'   => 'core.commit.preflight',
 						'error_code'   => 'core.preflight.blocked',
 						'count'        => 1,
@@ -246,7 +246,7 @@ $GLOBALS['maca_http_response_queue'][] = array(
 				'recent_errors' => array(
 					array(
 						'error_code'    => 'core.preflight.blocked',
-						'plugin_slug'   => 'magick-ai-core',
+						'plugin_slug'   => 'npcink-governance-core',
 						'event_kind'    => 'core.commit.preflight',
 						'received_at'   => '2026-06-03T00:00:00Z',
 						'raw_response'  => 'blocked',
@@ -282,12 +282,12 @@ $GLOBALS['maca_http_response_queue'][] = array(
 		)
 	),
 );
-$summary = Magick_AI_Cloud_Observability_Collector::refresh_summary();
+$summary = Npcink_Cloud_Observability_Collector::refresh_summary();
 $cached_summary = is_array( $summary['summary'] ?? null ) ? $summary['summary'] : array();
 maca_assert(
 	! empty( $summary['last_refresh_ok'] )
 	&& 10 === absint( $cached_summary['totals']['events_total'] ?? 0 )
-	&& 'magick-ai-core' === (string) ( $cached_summary['plugins'][0]['plugin_slug'] ?? '' )
+	&& 'npcink-governance-core' === (string) ( $cached_summary['plugins'][0]['plugin_slug'] ?? '' )
 	&& 'core.commit.preflight' === (string) ( $cached_summary['plugins'][0]['event_kinds'][0]['event_kind'] ?? '' )
 	&& 10 === absint( $cached_summary['timeline'][0]['events_total'] ?? 0 )
 	&& 'core.preflight.blocked' === (string) ( $cached_summary['errors'][0]['error_code'] ?? '' )

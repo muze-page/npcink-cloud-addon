@@ -2,7 +2,7 @@
 /**
  * Cloud runtime client.
  *
- * @package MagickAICloudAddon
+ * @package NpcinkCloudAddon
  */
 
 declare(strict_types=1);
@@ -11,11 +11,11 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-if ( ! class_exists( 'Magick_AI_Cloud_Runtime_Client' ) ) {
+if ( ! class_exists( 'Npcink_Cloud_Runtime_Client' ) ) {
 	/**
-	 * Signs and dispatches requests to the Magick AI Cloud runtime plane.
+	 * Signs and dispatches requests to the Npcink Cloud runtime plane.
 	 */
-	final class Magick_AI_Cloud_Runtime_Client {
+	final class Npcink_Cloud_Runtime_Client {
 		private const MAX_DOWNLOAD_BYTES = 26214400;
 
 		/**
@@ -31,8 +31,8 @@ if ( ! class_exists( 'Magick_AI_Cloud_Runtime_Client' ) ) {
 		 * @param array<string,mixed> $config Optional settings override.
 		 */
 		public function __construct( array $config = array() ) {
-			$base = class_exists( 'Magick_AI_Cloud_Addon_Settings' )
-				? Magick_AI_Cloud_Addon_Settings::get_settings()
+			$base = class_exists( 'Npcink_Cloud_Addon_Settings' )
+				? Npcink_Cloud_Addon_Settings::get_settings()
 				: array();
 
 			$this->config = array_merge( is_array( $base ) ? $base : array(), $config );
@@ -63,16 +63,16 @@ if ( ! class_exists( 'Magick_AI_Cloud_Runtime_Client' ) ) {
 			);
 
 			if ( empty( $live_probe['ok'] ) ) {
-				$auth_probe['message'] = __( 'Signed verification was not attempted because the Cloud service is not reachable.', 'magick-ai-cloud-addon' );
+				$auth_probe['message'] = __( 'Signed verification was not attempted because the Cloud service is not reachable.', 'npcink-cloud-addon' );
 			} elseif ( ! $this->is_configured() ) {
-				$auth_probe['message'] = __( 'Cloud credentials are incomplete.', 'magick-ai-cloud-addon' );
+				$auth_probe['message'] = __( 'Cloud credentials are incomplete.', 'npcink-cloud-addon' );
 			} else {
 				$result = $this->get_current_entitlement( 'trace_cloud_probe_' . wp_generate_uuid4() );
 				if ( is_wp_error( $result ) ) {
 					$auth_probe['message'] = $result->get_error_message();
 				} else {
 					$auth_probe['ok'] = true;
-					$auth_probe['message'] = __( 'Signed Cloud request verified.', 'magick-ai-cloud-addon' );
+					$auth_probe['message'] = __( 'Signed Cloud request verified.', 'npcink-cloud-addon' );
 				}
 			}
 
@@ -118,7 +118,7 @@ if ( ! class_exists( 'Magick_AI_Cloud_Runtime_Client' ) ) {
 				if ( ! in_array( (string) $field_name, array( 'source_file', 'watermark_file' ), true ) ) {
 					return new WP_Error(
 						'cloud_runtime_media_derivative_file_field_not_allowed',
-						__( 'Only source_file and watermark_file uploads are allowed for media derivative transport.', 'magick-ai-cloud-addon' ),
+						__( 'Only source_file and watermark_file uploads are allowed for media derivative transport.', 'npcink-cloud-addon' ),
 						array( 'status' => 400 )
 					);
 				}
@@ -156,7 +156,7 @@ if ( ! class_exists( 'Magick_AI_Cloud_Runtime_Client' ) ) {
 			if ( '' === $run_id ) {
 				return new WP_Error(
 					'cloud_runtime_run_missing',
-					__( 'Cloud run_id is required.', 'magick-ai-cloud-addon' )
+					__( 'Cloud run_id is required.', 'npcink-cloud-addon' )
 				);
 			}
 
@@ -175,7 +175,7 @@ if ( ! class_exists( 'Magick_AI_Cloud_Runtime_Client' ) ) {
 			if ( '' === $run_id ) {
 				return new WP_Error(
 					'cloud_runtime_run_missing',
-					__( 'Cloud run_id is required.', 'magick-ai-cloud-addon' )
+					__( 'Cloud run_id is required.', 'npcink-cloud-addon' )
 				);
 			}
 
@@ -194,7 +194,7 @@ if ( ! class_exists( 'Magick_AI_Cloud_Runtime_Client' ) ) {
 			if ( '' === $artifact_id ) {
 				return new WP_Error(
 					'cloud_runtime_artifact_missing',
-					__( 'Cloud artifact_id is required.', 'magick-ai-cloud-addon' ),
+					__( 'Cloud artifact_id is required.', 'npcink-cloud-addon' ),
 					array( 'status' => 400 )
 				);
 			}
@@ -219,7 +219,7 @@ if ( ! class_exists( 'Magick_AI_Cloud_Runtime_Client' ) ) {
 			if ( '' === $site_id ) {
 				return new WP_Error(
 					'cloud_runtime_site_missing',
-					__( 'Cloud site_id is required.', 'magick-ai-cloud-addon' )
+					__( 'Cloud site_id is required.', 'npcink-cloud-addon' )
 				);
 			}
 
@@ -240,7 +240,7 @@ if ( ! class_exists( 'Magick_AI_Cloud_Runtime_Client' ) ) {
 			if ( '' === $profile_id ) {
 				return new WP_Error(
 					'cloud_runtime_profile_missing',
-					__( 'Cloud profile_id is required.', 'magick-ai-cloud-addon' )
+					__( 'Cloud profile_id is required.', 'npcink-cloud-addon' )
 				);
 			}
 
@@ -259,7 +259,7 @@ if ( ! class_exists( 'Magick_AI_Cloud_Runtime_Client' ) ) {
 			if ( '' === $instance_id ) {
 				return new WP_Error(
 					'cloud_runtime_instance_missing',
-					__( 'Cloud instance_id is required.', 'magick-ai-cloud-addon' )
+					__( 'Cloud instance_id is required.', 'npcink-cloud-addon' )
 				);
 			}
 
@@ -278,7 +278,7 @@ if ( ! class_exists( 'Magick_AI_Cloud_Runtime_Client' ) ) {
 			if ( empty( $events ) ) {
 				return new WP_Error(
 					'cloud_observability_events_empty',
-					__( 'No observability events are ready to upload.', 'magick-ai-cloud-addon' )
+					__( 'No observability events are ready to upload.', 'npcink-cloud-addon' )
 				);
 			}
 
@@ -291,7 +291,7 @@ if ( ! class_exists( 'Magick_AI_Cloud_Runtime_Client' ) ) {
 				'/v1/observability/plugin-events',
 				array(
 					'contract_version' => 'magick-plugin-observability-v1',
-					'source'           => 'magick-ai-cloud-addon',
+					'source'           => 'npcink-cloud-addon',
 					'events'           => array_values( $events ),
 				),
 				$idempotency_key,
@@ -326,7 +326,7 @@ if ( ! class_exists( 'Magick_AI_Cloud_Runtime_Client' ) ) {
 			if ( ! $this->is_configured() ) {
 				return new WP_Error(
 					'cloud_runtime_unconfigured',
-					__( 'Magick AI Cloud is not configured.', 'magick-ai-cloud-addon' ),
+					__( 'Npcink Cloud is not configured.', 'npcink-cloud-addon' ),
 					array( 'status' => 400 )
 				);
 			}
@@ -336,7 +336,7 @@ if ( ! class_exists( 'Magick_AI_Cloud_Runtime_Client' ) ) {
 			if ( ! $this->is_allowed_request_path( $method, $path ) ) {
 				return new WP_Error(
 					'cloud_runtime_endpoint_not_allowed',
-					__( 'This Cloud endpoint is not allowed by the Cloud Addon runtime contract.', 'magick-ai-cloud-addon' ),
+					__( 'This Cloud endpoint is not allowed by the Cloud Addon runtime contract.', 'npcink-cloud-addon' ),
 					array( 'status' => 403 )
 				);
 			}
@@ -352,7 +352,7 @@ if ( ! class_exists( 'Magick_AI_Cloud_Runtime_Client' ) ) {
 				if ( ! is_string( $encoded ) || '' === $encoded ) {
 					return new WP_Error(
 						'cloud_runtime_encode_failed',
-						__( 'Cloud runtime request payload could not be encoded.', 'magick-ai-cloud-addon' )
+						__( 'Cloud runtime request payload could not be encoded.', 'npcink-cloud-addon' )
 					);
 				}
 				$body = $encoded;
@@ -394,7 +394,7 @@ if ( ! class_exists( 'Magick_AI_Cloud_Runtime_Client' ) ) {
 			if ( ! $this->is_configured() ) {
 				return new WP_Error(
 					'cloud_runtime_unconfigured',
-					__( 'Magick AI Cloud is not configured.', 'magick-ai-cloud-addon' ),
+					__( 'Npcink Cloud is not configured.', 'npcink-cloud-addon' ),
 					array( 'status' => 400 )
 				);
 			}
@@ -404,7 +404,7 @@ if ( ! class_exists( 'Magick_AI_Cloud_Runtime_Client' ) ) {
 			if ( ! $this->is_allowed_request_path( $method, $path ) ) {
 				return new WP_Error(
 					'cloud_runtime_endpoint_not_allowed',
-					__( 'This Cloud endpoint is not allowed by the Cloud Addon runtime contract.', 'magick-ai-cloud-addon' ),
+					__( 'This Cloud endpoint is not allowed by the Cloud Addon runtime contract.', 'npcink-cloud-addon' ),
 					array( 'status' => 403 )
 				);
 			}
@@ -444,7 +444,7 @@ if ( ! class_exists( 'Magick_AI_Cloud_Runtime_Client' ) ) {
 			if ( '' === $base_url ) {
 				return array(
 					'ok' => false,
-					'message' => __( 'Cloud Base URL is required.', 'magick-ai-cloud-addon' ),
+					'message' => __( 'Cloud Base URL is required.', 'npcink-cloud-addon' ),
 				);
 			}
 
@@ -474,13 +474,13 @@ if ( ! class_exists( 'Magick_AI_Cloud_Runtime_Client' ) ) {
 			if ( $status < 200 || $status >= 300 ) {
 				return array(
 					'ok' => false,
-					'message' => '' !== $message ? $message : __( 'Cloud liveness check failed.', 'magick-ai-cloud-addon' ),
+					'message' => '' !== $message ? $message : __( 'Cloud liveness check failed.', 'npcink-cloud-addon' ),
 				);
 			}
 
 			return array(
 				'ok' => true,
-				'message' => '' !== $message ? $message : __( 'Cloud service is live.', 'magick-ai-cloud-addon' ),
+				'message' => '' !== $message ? $message : __( 'Cloud service is live.', 'npcink-cloud-addon' ),
 			);
 		}
 
@@ -501,7 +501,7 @@ if ( ! class_exists( 'Magick_AI_Cloud_Runtime_Client' ) ) {
 				$error_code = sanitize_text_field( (string) ( $decoded['error_code'] ?? $decoded['code'] ?? '' ) );
 				$message = $this->normalize_error_message( $decoded['message'] ?? $decoded['detail'] ?? '' );
 				if ( '' === $message ) {
-					$message = __( 'Cloud runtime request failed.', 'magick-ai-cloud-addon' );
+					$message = __( 'Cloud runtime request failed.', 'npcink-cloud-addon' );
 				}
 
 				return new WP_Error(
@@ -537,7 +537,7 @@ if ( ! class_exists( 'Magick_AI_Cloud_Runtime_Client' ) ) {
 				$error_code = sanitize_text_field( (string) ( $decoded['error_code'] ?? $decoded['code'] ?? '' ) );
 				$message = $this->normalize_error_message( $decoded['message'] ?? $decoded['detail'] ?? '' );
 				if ( '' === $message ) {
-					$message = __( 'Cloud runtime artifact download failed.', 'magick-ai-cloud-addon' );
+					$message = __( 'Cloud runtime artifact download failed.', 'npcink-cloud-addon' );
 				}
 
 				return new WP_Error(
@@ -554,7 +554,7 @@ if ( ! class_exists( 'Magick_AI_Cloud_Runtime_Client' ) ) {
 			if ( $content_len > self::MAX_DOWNLOAD_BYTES || strlen( $body ) > self::MAX_DOWNLOAD_BYTES ) {
 				return new WP_Error(
 					'cloud_runtime_artifact_too_large',
-					__( 'Cloud artifact download exceeds the local preview size limit.', 'magick-ai-cloud-addon' ),
+					__( 'Cloud artifact download exceeds the local preview size limit.', 'npcink-cloud-addon' ),
 					array( 'status' => 413 )
 				);
 			}
@@ -677,7 +677,7 @@ if ( ! class_exists( 'Magick_AI_Cloud_Runtime_Client' ) ) {
 		 */
 		private function is_allowed_request_path( string $method, string $path ): bool {
 			$method = strtoupper( $method );
-			$path_only = parse_url( $path, PHP_URL_PATH );
+			$path_only = wp_parse_url( $path, PHP_URL_PATH );
 			$path_only = is_string( $path_only ) ? $path_only : $path;
 
 			if ( 'POST' === $method && '/v1/runtime/execute' === $path_only ) {
@@ -772,11 +772,11 @@ if ( ! class_exists( 'Magick_AI_Cloud_Runtime_Client' ) ) {
 			if ( ! is_string( $encoded ) || '' === $encoded ) {
 				return new WP_Error(
 					'cloud_runtime_encode_failed',
-					__( 'Cloud media derivative request payload could not be encoded.', 'magick-ai-cloud-addon' )
+					__( 'Cloud media derivative request payload could not be encoded.', 'npcink-cloud-addon' )
 				);
 			}
 
-			$boundary = 'magick-ai-cloud-addon-' . wp_generate_uuid4();
+			$boundary = 'npcink-cloud-addon-' . wp_generate_uuid4();
 			$body = '--' . $boundary . "\r\n";
 			$body .= "Content-Disposition: form-data; name=\"request\"\r\n";
 			$body .= "Content-Type: application/json\r\n\r\n";
@@ -900,12 +900,12 @@ if ( ! class_exists( 'Magick_AI_Cloud_Runtime_Client' ) ) {
 		private function format_transport_error_message( string $message ): string {
 			$message = trim( wp_strip_all_tags( $message ) );
 			if ( '' === $message ) {
-				return __( 'Cannot connect to Magick AI Cloud. Check the Cloud Base URL.', 'magick-ai-cloud-addon' );
+				return __( 'Cannot connect to Npcink Cloud. Check the Cloud Base URL.', 'npcink-cloud-addon' );
 			}
 
 			return sprintf(
 				/* translators: 1: Cloud base URL, 2: transport error. */
-				__( 'Cannot connect to %1$s. Original error: %2$s', 'magick-ai-cloud-addon' ),
+				__( 'Cannot connect to %1$s. Original error: %2$s', 'npcink-cloud-addon' ),
 				(string) ( $this->config['base_url'] ?? '' ),
 				$message
 			);

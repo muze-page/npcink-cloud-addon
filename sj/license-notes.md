@@ -4,8 +4,8 @@
 
 These notes cover the WordPress.org listing assets for:
 
-- Plugin: Magick AI Cloud Addon
-- Slug: `magick-ai-cloud-addon`
+- Plugin: Npcink Cloud Addon
+- Slug: `npcink-cloud-addon`
 - Asset folder: `sj/`
 - WordPress.org export folder: `sj/exports/wordpress-org/`
 
@@ -58,7 +58,7 @@ The assets intentionally avoid:
 - Screenshots of third-party proprietary interfaces.
 
 The design uses abstract geometric shapes, secure cloud-link metaphors,
-signed-key checks, health signals, entitlement summary symbols, and Magick AI
+signed-key checks, health signals, entitlement summary symbols, and Npcink
 family visual styling.
 
 ## Publishing Status

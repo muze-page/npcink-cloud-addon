@@ -1,8 +1,8 @@
 <?php
 /**
- * Aggregate test runner for Magick AI Cloud Addon.
+ * Aggregate test runner for Npcink Cloud Addon.
  *
- * @package MagickAICloudAddon
+ * @package NpcinkCloudAddon
  */
 
 declare(strict_types=1);

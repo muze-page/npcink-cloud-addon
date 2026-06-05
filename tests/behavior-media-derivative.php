@@ -2,7 +2,7 @@
 /**
  * Behavior tests for media derivative Cloud transport.
  *
- * @package MagickAICloudAddon
+ * @package NpcinkCloudAddon
  */
 
 declare(strict_types=1);
@@ -12,7 +12,7 @@ require_once __DIR__ . '/helpers.php';
 maca_load_addon_classes();
 
 maca_seed_settings( false );
-$unverified = Magick_AI_Cloud_Media_Derivative_Transport::dispatch_from_ability_response(
+$unverified = Npcink_Cloud_Media_Derivative_Transport::dispatch_from_ability_response(
 	maca_ability_fixture(),
 	array(
 		'artifact_id' => 'source_artifact',
@@ -27,7 +27,7 @@ maca_assert(
 maca_seed_settings( true );
 $credential_payload = maca_ability_fixture();
 $credential_payload['cloud_job_payload']['signed_headers'] = array( 'Authorization' => 'Bearer secret' );
-$credential_result = Magick_AI_Cloud_Media_Derivative_Transport::dispatch_from_ability_response(
+$credential_result = Npcink_Cloud_Media_Derivative_Transport::dispatch_from_ability_response(
 	$credential_payload,
 	array(
 		'artifact_id' => 'source_artifact',
@@ -39,7 +39,7 @@ maca_assert(
 	'Behavior: ability credentials and signed headers are rejected before Cloud dispatch.'
 );
 
-$watermark_without_plan = Magick_AI_Cloud_Media_Derivative_Transport::dispatch_from_ability_response(
+$watermark_without_plan = Npcink_Cloud_Media_Derivative_Transport::dispatch_from_ability_response(
 	maca_ability_fixture(),
 	array(
 		'artifact_id' => 'source_artifact',
@@ -62,7 +62,7 @@ $watermark_payload['cloud_job_payload']['watermark'] = array(
 	'type' => 'image',
 	'position' => 'bottom_right',
 );
-$watermark_missing_source = Magick_AI_Cloud_Media_Derivative_Transport::dispatch_from_ability_response(
+$watermark_missing_source = Npcink_Cloud_Media_Derivative_Transport::dispatch_from_ability_response(
 	$watermark_payload,
 	array(
 		'artifact_id' => 'source_artifact',
@@ -74,7 +74,7 @@ maca_assert(
 	'Behavior: watermark plans require a watermark upload or artifact id.'
 );
 
-$watermark_artifact_result = Magick_AI_Cloud_Media_Derivative_Transport::dispatch_from_ability_response(
+$watermark_artifact_result = Npcink_Cloud_Media_Derivative_Transport::dispatch_from_ability_response(
 	$watermark_payload,
 	array(
 		'artifact_id' => 'source_artifact',
@@ -103,7 +103,7 @@ $text_watermark_payload['cloud_job_payload']['watermark'] = array(
 	'background' => 'rgba(0,0,0,0.35)',
 	'margin_px' => 24,
 );
-$text_watermark_result = Magick_AI_Cloud_Media_Derivative_Transport::dispatch_from_ability_response(
+$text_watermark_result = Npcink_Cloud_Media_Derivative_Transport::dispatch_from_ability_response(
 	$text_watermark_payload,
 	array(
 		'artifact_id' => 'source_artifact',
@@ -123,7 +123,7 @@ maca_assert(
 	'Behavior: text watermark plans dispatch without a watermark upload or artifact id.'
 );
 
-$text_watermark_source_conflict = Magick_AI_Cloud_Media_Derivative_Transport::dispatch_from_ability_response(
+$text_watermark_source_conflict = Npcink_Cloud_Media_Derivative_Transport::dispatch_from_ability_response(
 	$text_watermark_payload,
 	array(
 		'artifact_id' => 'source_artifact',
@@ -141,7 +141,7 @@ maca_assert(
 	'Behavior: text watermark plans reject watermark upload or artifact sources.'
 );
 
-$client = new Magick_AI_Cloud_Runtime_Client( Magick_AI_Cloud_Addon_Settings::get_settings() );
+$client = new Npcink_Cloud_Runtime_Client( Npcink_Cloud_Addon_Settings::get_settings() );
 $watermark_file_result = $client->create_media_derivative(
 	array( 'request_contract_version' => 'media_derivative_cloud_request.v1' ),
 	array( 'watermark_file' => array( 'contents' => 'x' ) )
@@ -167,7 +167,7 @@ $GLOBALS['maca_http_response_queue'][] = array(
 		)
 	),
 );
-$nested_error_result = $client->execute_runtime( array( 'ability_name' => 'magick-ai-toolbox/search-image-source' ) );
+$nested_error_result = $client->execute_runtime( array( 'ability_name' => 'npcink-toolbox/search-image-source' ) );
 maca_assert(
 	is_wp_error( $nested_error_result )
 	&& false !== strpos( $nested_error_result->get_error_message(), 'body.input.provider: Unsplash provider failed.' )
@@ -186,7 +186,7 @@ $GLOBALS['maca_http_response_queue'][] = array(
 	),
 	'body'     => $preview_bytes,
 );
-$artifact_preview = Magick_AI_Cloud_Media_Derivative_Transport::download_artifact_preview(
+$artifact_preview = Npcink_Cloud_Media_Derivative_Transport::download_artifact_preview(
 	array(
 		'artifact_id' => 'derivative_artifact',
 		'expires_at' => maca_future_expiry(),
@@ -205,7 +205,7 @@ maca_assert(
 	'Behavior: derivative artifact preview downloads through the explicit signed runtime artifact endpoint.'
 );
 
-$expired_preview = Magick_AI_Cloud_Media_Derivative_Transport::download_artifact_preview(
+$expired_preview = Npcink_Cloud_Media_Derivative_Transport::download_artifact_preview(
 	array(
 		'artifact_id' => 'derivative_artifact',
 		'expires_at' => gmdate( 'c', time() - 60 ),
@@ -222,7 +222,7 @@ $GLOBALS['maca_http_response_queue'][] = array(
 	'headers'  => array( 'Content-Type' => 'image/webp' ),
 	'body'     => 'different-bytes',
 );
-$checksum_mismatch_preview = Magick_AI_Cloud_Media_Derivative_Transport::download_artifact_preview(
+$checksum_mismatch_preview = Npcink_Cloud_Media_Derivative_Transport::download_artifact_preview(
 	array(
 		'artifact_id' => 'derivative_artifact',
 		'expires_at' => maca_future_expiry(),
@@ -235,7 +235,7 @@ maca_assert(
 	'Behavior: derivative preview download rejects checksum mismatches.'
 );
 
-$expired_proposal = Magick_AI_Cloud_Media_Derivative_Transport::build_local_proposal_payload(
+$expired_proposal = Npcink_Cloud_Media_Derivative_Transport::build_local_proposal_payload(
 	maca_ability_fixture(),
 	array( 'data' => array( 'run_id' => 'run_media_1' ) ),
 	array(
@@ -249,7 +249,7 @@ maca_assert(
 	'Behavior: expired Cloud artifacts cannot produce proposal payloads.'
 );
 
-$missing_artifact_id = Magick_AI_Cloud_Media_Derivative_Transport::build_local_proposal_payload(
+$missing_artifact_id = Npcink_Cloud_Media_Derivative_Transport::build_local_proposal_payload(
 	maca_ability_fixture(),
 	array( 'data' => array( 'run_id' => 'run_media_1' ) ),
 	array(
@@ -263,7 +263,7 @@ maca_assert(
 	'Behavior: derivative proposal adoption requires a Cloud artifact id.'
 );
 
-$mismatched_artifact = Magick_AI_Cloud_Media_Derivative_Transport::build_local_proposal_payload(
+$mismatched_artifact = Npcink_Cloud_Media_Derivative_Transport::build_local_proposal_payload(
 	maca_ability_fixture(),
 	array(
 		'data' => array(
@@ -287,7 +287,7 @@ maca_assert(
 	'Behavior: derivative artifact id must match the Cloud result when provided.'
 );
 
-$proposal = Magick_AI_Cloud_Media_Derivative_Transport::build_local_proposal_payload(
+$proposal = Npcink_Cloud_Media_Derivative_Transport::build_local_proposal_payload(
 	maca_ability_fixture(),
 	array(
 		'data' => array(
@@ -320,7 +320,7 @@ maca_assert(
 	'Behavior: valid Cloud artifacts become preview-only local WordPress host proposals.'
 );
 
-$proposal_from_runtime_artifact = Magick_AI_Cloud_Media_Derivative_Transport::build_local_proposal_payload(
+$proposal_from_runtime_artifact = Npcink_Cloud_Media_Derivative_Transport::build_local_proposal_payload(
 	maca_ability_fixture(),
 	array(
 		'data' => array(
@@ -362,7 +362,7 @@ maca_assert(
 
 $incomplete_metrics = maca_ability_fixture();
 unset( $incomplete_metrics['cloud_job_payload']['source_asset']['width'] );
-$proposal_with_warnings = Magick_AI_Cloud_Media_Derivative_Transport::build_local_proposal_payload(
+$proposal_with_warnings = Npcink_Cloud_Media_Derivative_Transport::build_local_proposal_payload(
 	$incomplete_metrics,
 	array(
 		'data' => array(
@@ -394,7 +394,7 @@ maca_assert(
 
 $invalid_source_type = maca_ability_fixture();
 $invalid_source_type['cloud_job_payload']['source_media_type'] = 'text/html';
-$invalid_source_result = Magick_AI_Cloud_Media_Derivative_Transport::dispatch_from_ability_response(
+$invalid_source_result = Npcink_Cloud_Media_Derivative_Transport::dispatch_from_ability_response(
 	$invalid_source_type,
 	array(
 		'artifact_id' => 'source_artifact',
@@ -408,7 +408,7 @@ maca_assert(
 
 $generic_source_type = maca_ability_fixture();
 $generic_source_type['cloud_job_payload']['source_media_type'] = 'image';
-$generic_source_result = Magick_AI_Cloud_Media_Derivative_Transport::dispatch_from_ability_response(
+$generic_source_result = Npcink_Cloud_Media_Derivative_Transport::dispatch_from_ability_response(
 	$generic_source_type,
 	array(
 		'artifact_id' => 'source_artifact',
@@ -420,13 +420,13 @@ maca_assert(
 	'Behavior: generic image source media type is accepted for ability contracts.'
 );
 
-$unsafe_url = Magick_AI_Cloud_Addon_Settings::build_settings_from_admin_payload(
+$unsafe_url = Npcink_Cloud_Addon_Settings::build_settings_from_admin_payload(
 	array(
 		'base_url' => 'http://cloud.example.test',
 		'api_key' => '{"site_id":"site_test","key_id":"key_test","secret":"secret_test"}',
 	)
 );
-$local_url = Magick_AI_Cloud_Addon_Settings::build_settings_from_admin_payload(
+$local_url = Npcink_Cloud_Addon_Settings::build_settings_from_admin_payload(
 	array(
 		'base_url' => 'http://127.0.0.1:8787',
 		'api_key' => '{"site_id":"site_test","key_id":"key_test","secret":"secret_test"}',

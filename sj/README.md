@@ -1,4 +1,4 @@
-# Magick AI Cloud Addon Listing Assets
+# Npcink Cloud Addon Listing Assets
 
 This folder is the working area for WordPress.org listing copy and visual
 assets. It is intentionally excluded from release archives through
@@ -30,7 +30,7 @@ Do not copy this whole `sj` folder into the plugin zip.
 
 ## Bilingual Release Notes
 
-The plugin code uses the `magick-ai-cloud-addon` text domain and declares
+The plugin code uses the `npcink-cloud-addon` text domain and declares
 `Domain Path: /languages`, so it is prepared for WordPress translation
 workflows. The WordPress.org listing should use English as the primary
 directory copy, while `listing-copy-zh.md` can be reused for Chinese launch

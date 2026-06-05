@@ -1,4 +1,4 @@
-=== Magick AI Cloud Addon ===
+=== Npcink Cloud Addon ===
 Contributors: muze233
 Tags: magick ai, cloud, hosted runtime
 Requires at least: 7.0
@@ -8,18 +8,18 @@ Stable tag: 0.1.0
 License: GPL-2.0-or-later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
-Thin Cloud connector for Magick AI hosted runtime access, signing, health checks, entitlement summaries, and opt-in metadata monitoring.
+Thin Cloud connector for Npcink hosted runtime access, signing, health checks, entitlement summaries, and opt-in metadata monitoring.
 
 == Description ==
 
-Magick AI Cloud Addon connects a local WordPress site to `magick-ai-cloud`.
+Npcink Cloud Addon connects a local WordPress site to `npcink-cloud`.
 
 It stores the Cloud Base URL and Cloud API Key, parses Cloud-issued keys, signs runtime requests, probes health, reads Cloud entitlement summaries, and can upload metadata-only plugin behavior events after explicit administrator opt-in.
 
 It does not execute WordPress writes, approve proposals, own billing truth, or manage prompts, routers, presets, workflow/task queues, scheduler truth, or workflow engines. Its observability buffer is only a bounded delivery buffer for monitoring metadata and is not Core audit, proposal, execution, billing, or workflow truth.
 
 For media derivative jobs, local host code may pass the read-only
-`magick-ai/build-media-derivative-cloud-request` ability output and a short TTL
+`npcink-abilities-toolkit/build-media-derivative-cloud-request` ability output and a short TTL
 source artifact descriptor to the addon for signed Cloud dispatch. The addon
 requires verified Cloud settings, rejects credential-bearing ability payloads,
 and returns proposal-ready data with `final_write_owner=local_wordpress_host`.
@@ -35,11 +35,11 @@ Authorization headers, database names, table names, or filesystem paths.
 
 == External Services ==
 
-This plugin connects to the Magick AI Cloud service configured by the site administrator through the Cloud Base URL setting.
+This plugin connects to the Npcink Cloud service configured by the site administrator through the Cloud Base URL setting.
 
-The plugin contacts the configured Cloud service only after an administrator enters a Cloud Base URL and Cloud API Key, saves the settings, verifies the connection, or a local Magick AI component explicitly uses the Cloud runtime client.
+The plugin contacts the configured Cloud service only after an administrator enters a Cloud Base URL and Cloud API Key, saves the settings, verifies the connection, or a local Npcink component explicitly uses the Cloud runtime client.
 
-Requests may include the configured site identifier, key identifier, request timestamp, nonce, trace identifier, idempotency key, HMAC signature headers, runtime request payloads supplied by local Magick AI components, metadata-only monitoring events when enabled, and read-only requests for health, run status, run result, usage statistics, entitlement summaries, and observability summaries. The stored Cloud API Key secret is used server-side for request signing and is not printed in wp-admin.
+Requests may include the configured site identifier, key identifier, request timestamp, nonce, trace identifier, idempotency key, HMAC signature headers, runtime request payloads supplied by local Npcink components, metadata-only monitoring events when enabled, and read-only requests for health, run status, run result, usage statistics, entitlement summaries, and observability summaries. The stored Cloud API Key secret is used server-side for request signing and is not printed in wp-admin.
 
 For host-supplied media derivative runtime jobs, requests may also include a
 short TTL source artifact descriptor and derivative request parameters from the
@@ -50,9 +50,9 @@ The configured Cloud service is responsible for its own privacy policy, terms of
 
 == Installation ==
 
-1. Place this directory in `wp-content/plugins/magick-ai-cloud-addon`.
-2. Activate `Magick AI Cloud Addon`.
-3. Open `Magick AI > Cloud Addon`.
+1. Place this directory in `wp-content/plugins/npcink-cloud-addon`.
+2. Activate `Npcink Cloud Addon`.
+3. Open `Npcink > Cloud Addon`.
 4. Enter Cloud Base URL and Cloud API Key.
 5. Click `Save and Verify`.
 
@@ -60,7 +60,7 @@ The configured Cloud service is responsible for its own privacy policy, terms of
 
 = Does this plugin create Cloud API Keys? =
 
-No. Keys are issued by Magick AI Cloud.
+No. Keys are issued by Npcink Cloud.
 
 = Does this plugin display the Cloud secret? =
 

@@ -2,7 +2,7 @@
 /**
  * Cloud addon settings page.
  *
- * @package MagickAICloudAddon
+ * @package NpcinkCloudAddon
  */
 
 declare(strict_types=1);
@@ -11,16 +11,16 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-if ( ! class_exists( 'Magick_AI_Cloud_Settings_Page' ) ) {
+if ( ! class_exists( 'Npcink_Cloud_Settings_Page' ) ) {
 	/**
-	 * Renders Magick AI > Cloud Addon and handles save-and-verify.
+	 * Renders Npcink > Cloud Addon and handles save-and-verify.
 	 */
-	final class Magick_AI_Cloud_Settings_Page {
-		private const PARENT_MENU_SLUG = 'magick-ai';
-		private const PAGE_SLUG = 'magick-ai-cloud-addon';
+	final class Npcink_Cloud_Settings_Page {
+		private const PARENT_MENU_SLUG = 'npcink';
+		private const PAGE_SLUG = 'npcink-cloud-addon';
 		private const MENU_CAPABILITY = 'manage_options';
-		private const ACTION_SAVE = 'magick_ai_cloud_addon_save';
-		private const ACTION_REFRESH_MONITORING = 'magick_ai_cloud_addon_refresh_monitoring';
+		private const ACTION_SAVE = 'npcink_cloud_addon_save';
+		private const ACTION_REFRESH_MONITORING = 'npcink_cloud_addon_refresh_monitoring';
 		private const DATETIME_DISPLAY_FORMAT = 'Y-m-d H:i:s';
 
 		/**
@@ -30,8 +30,29 @@ if ( ! class_exists( 'Magick_AI_Cloud_Settings_Page' ) ) {
 		 */
 		public static function register(): void {
 			add_action( 'admin_menu', array( __CLASS__, 'add_menu_page' ), 50 );
+			add_action( 'admin_enqueue_scripts', array( __CLASS__, 'enqueue_admin_assets' ) );
 			add_action( 'admin_post_' . self::ACTION_SAVE, array( __CLASS__, 'handle_save' ) );
 			add_action( 'admin_post_' . self::ACTION_REFRESH_MONITORING, array( __CLASS__, 'handle_refresh_monitoring' ) );
+		}
+
+		/**
+		 * Enqueues admin assets for the Cloud Addon pages.
+		 *
+		 * @param string $hook_suffix Admin hook suffix.
+		 * @return void
+		 */
+		public static function enqueue_admin_assets( string $hook_suffix ): void {
+			$is_cloud_page = false !== strpos( $hook_suffix, self::PAGE_SLUG ) || false !== strpos( $hook_suffix, self::PARENT_MENU_SLUG );
+			if ( ! $is_cloud_page ) {
+				return;
+			}
+
+			wp_enqueue_style(
+				'npcink-cloud-addon-admin',
+				plugins_url( 'assets/admin.css', NPCINK_CLOUD_ADDON_FILE ),
+				array(),
+				NPCINK_CLOUD_ADDON_VERSION
+			);
 		}
 
 		/**
@@ -44,8 +65,8 @@ if ( ! class_exists( 'Magick_AI_Cloud_Settings_Page' ) ) {
 
 			add_submenu_page(
 				self::PARENT_MENU_SLUG,
-				__( 'Magick AI Cloud Addon', 'magick-ai-cloud-addon' ),
-				__( 'Cloud Addon', 'magick-ai-cloud-addon' ),
+				__( 'Npcink Cloud Addon', 'npcink-cloud-addon' ),
+				__( 'Cloud Addon', 'npcink-cloud-addon' ),
 				self::MENU_CAPABILITY,
 				self::PAGE_SLUG,
 				array( __CLASS__, 'render' ),
@@ -54,7 +75,7 @@ if ( ! class_exists( 'Magick_AI_Cloud_Settings_Page' ) ) {
 		}
 
 		/**
-		 * Ensures the shared Magick AI parent menu exists.
+		 * Ensures the shared Npcink parent menu exists.
 		 *
 		 * @return void
 		 */
@@ -64,8 +85,8 @@ if ( ! class_exists( 'Magick_AI_Cloud_Settings_Page' ) ) {
 			}
 
 			add_menu_page(
-				__( 'Magick AI', 'magick-ai-cloud-addon' ),
-				__( 'Magick AI', 'magick-ai-cloud-addon' ),
+				__( 'Npcink', 'npcink-cloud-addon' ),
+				__( 'Npcink', 'npcink-cloud-addon' ),
 				self::MENU_CAPABILITY,
 				self::PARENT_MENU_SLUG,
 				array( __CLASS__, 'render_overview' ),
@@ -75,8 +96,8 @@ if ( ! class_exists( 'Magick_AI_Cloud_Settings_Page' ) ) {
 
 			add_submenu_page(
 				self::PARENT_MENU_SLUG,
-				__( 'Magick AI Overview', 'magick-ai-cloud-addon' ),
-				__( 'Overview', 'magick-ai-cloud-addon' ),
+				__( 'Npcink Overview', 'npcink-cloud-addon' ),
+				__( 'Overview', 'npcink-cloud-addon' ),
 				self::MENU_CAPABILITY,
 				self::PARENT_MENU_SLUG,
 				array( __CLASS__, 'render_overview' ),
@@ -85,7 +106,7 @@ if ( ! class_exists( 'Magick_AI_Cloud_Settings_Page' ) ) {
 		}
 
 		/**
-		 * Returns whether another Magick AI plugin already created the parent menu.
+		 * Returns whether another Npcink plugin already created the parent menu.
 		 *
 		 * @return bool
 		 */
@@ -102,26 +123,26 @@ if ( ! class_exists( 'Magick_AI_Cloud_Settings_Page' ) ) {
 		}
 
 		/**
-		 * Renders the shared Magick AI overview page.
+		 * Renders the shared Npcink overview page.
 		 *
 		 * @return void
 		 */
 		public static function render_overview(): void {
 			if ( ! current_user_can( self::MENU_CAPABILITY ) ) {
-				wp_die( esc_html__( 'You do not have permission to manage Magick AI settings.', 'magick-ai-cloud-addon' ) );
+				wp_die( esc_html__( 'You do not have permission to manage Npcink settings.', 'npcink-cloud-addon' ) );
 			}
 			?>
 			<div class="wrap">
-				<h1><?php esc_html_e( 'Magick AI', 'magick-ai-cloud-addon' ); ?></h1>
-				<p><?php esc_html_e( 'Local WordPress entry points for Magick AI governance, connections, cloud access, and ability packages.', 'magick-ai-cloud-addon' ); ?></p>
-				<h2><?php esc_html_e( 'Installed Surfaces', 'magick-ai-cloud-addon' ); ?></h2>
+				<h1><?php esc_html_e( 'Npcink', 'npcink-cloud-addon' ); ?></h1>
+				<p><?php esc_html_e( 'Local WordPress entry points for Npcink governance, connections, cloud access, and ability packages.', 'npcink-cloud-addon' ); ?></p>
+				<h2><?php esc_html_e( 'Installed Surfaces', 'npcink-cloud-addon' ); ?></h2>
 				<table class="widefat striped" style="max-width: 860px;">
 					<tbody>
 						<?php
-						self::render_overview_row( __( 'Core', 'magick-ai-cloud-addon' ), __( 'Review proposals, approval decisions, commit preflight, audit, and Core app keys.', 'magick-ai-cloud-addon' ), 'magick-ai-core' );
-						self::render_overview_row( __( 'Adapter', 'magick-ai-cloud-addon' ), __( 'Connect OpenClaw through the Adapter surface.', 'magick-ai-cloud-addon' ), 'magick-ai-adapter' );
-						self::render_overview_row( __( 'Abilities', 'magick-ai-cloud-addon' ), __( 'Verify WordPress Abilities API packages and demo ability controls.', 'magick-ai-cloud-addon' ), 'magick-ai-abilities' );
-						self::render_overview_row( __( 'Cloud Addon', 'magick-ai-cloud-addon' ), __( 'Connect this site to Magick AI Cloud without moving local control-plane truth.', 'magick-ai-cloud-addon' ), self::PAGE_SLUG );
+						self::render_overview_row( __( 'Core', 'npcink-cloud-addon' ), __( 'Review proposals, approval decisions, commit preflight, audit, and Core app keys.', 'npcink-cloud-addon' ), 'npcink-governance-core' );
+						self::render_overview_row( __( 'Adapter', 'npcink-cloud-addon' ), __( 'Connect OpenClaw through the Adapter surface.', 'npcink-cloud-addon' ), 'npcink-openclaw-adapter' );
+						self::render_overview_row( __( 'Abilities', 'npcink-cloud-addon' ), __( 'Verify WordPress Abilities API packages and demo ability controls.', 'npcink-cloud-addon' ), 'npcink-abilities-toolkit' );
+						self::render_overview_row( __( 'Cloud Addon', 'npcink-cloud-addon' ), __( 'Connect this site to Npcink Cloud without moving local control-plane truth.', 'npcink-cloud-addon' ), self::PAGE_SLUG );
 						?>
 					</tbody>
 				</table>
@@ -144,9 +165,9 @@ if ( ! class_exists( 'Magick_AI_Cloud_Settings_Page' ) ) {
 				<td><?php echo esc_html( $description ); ?></td>
 				<td>
 					<?php if ( self::is_submenu_registered( $slug ) ) : ?>
-						<a class="button" href="<?php echo esc_url( admin_url( 'admin.php?page=' . $slug ) ); ?>"><?php esc_html_e( 'Open', 'magick-ai-cloud-addon' ); ?></a>
+						<a class="button" href="<?php echo esc_url( admin_url( 'admin.php?page=' . $slug ) ); ?>"><?php esc_html_e( 'Open', 'npcink-cloud-addon' ); ?></a>
 					<?php else : ?>
-						<span style="color: #646970;"><?php esc_html_e( 'Not installed', 'magick-ai-cloud-addon' ); ?></span>
+						<span style="color: #646970;"><?php esc_html_e( 'Not installed', 'npcink-cloud-addon' ); ?></span>
 					<?php endif; ?>
 				</td>
 			</tr>
@@ -154,7 +175,7 @@ if ( ! class_exists( 'Magick_AI_Cloud_Settings_Page' ) ) {
 		}
 
 		/**
-		 * Returns whether a Magick AI submenu has been registered.
+		 * Returns whether a Npcink submenu has been registered.
 		 *
 		 * @param string $slug Menu page slug.
 		 * @return bool
@@ -178,7 +199,7 @@ if ( ! class_exists( 'Magick_AI_Cloud_Settings_Page' ) ) {
 		 */
 		public static function handle_save(): void {
 			if ( ! current_user_can( 'manage_options' ) ) {
-				wp_die( esc_html__( 'You do not have permission to manage Magick AI Cloud settings.', 'magick-ai-cloud-addon' ) );
+				wp_die( esc_html__( 'You do not have permission to manage Npcink Cloud settings.', 'npcink-cloud-addon' ) );
 			}
 
 			check_admin_referer( self::ACTION_SAVE );
@@ -195,25 +216,25 @@ if ( ! class_exists( 'Magick_AI_Cloud_Settings_Page' ) ) {
 				'monitoring_enabled' => $monitoring_enabled,
 			);
 
-			$settings = Magick_AI_Cloud_Addon_Settings::build_settings_from_admin_payload( $payload );
+			$settings = Npcink_Cloud_Addon_Settings::build_settings_from_admin_payload( $payload );
 			if ( is_wp_error( $settings ) ) {
 				self::set_admin_notice( 'error', $settings->get_error_message() );
 				self::redirect_to_page();
 			}
 
-			Magick_AI_Cloud_Addon_Settings::write_settings( $settings );
+			Npcink_Cloud_Addon_Settings::write_settings( $settings );
 
-			$client = new Magick_AI_Cloud_Runtime_Client( $settings );
+			$client = new Npcink_Cloud_Runtime_Client( $settings );
 			$probe = $client->probe_connectivity();
 			if ( ! empty( $probe['ok'] ) ) {
-				Magick_AI_Cloud_Addon_Settings::mark_verification_result( true, '' );
-				Magick_AI_Cloud_Observability_Collector::sync_schedule();
-				Magick_AI_Cloud_Entitlement_Summary::refresh();
-				self::set_admin_notice( 'success', __( 'Cloud settings saved and verified.', 'magick-ai-cloud-addon' ) );
+				Npcink_Cloud_Addon_Settings::mark_verification_result( true, '' );
+				Npcink_Cloud_Observability_Collector::sync_schedule();
+				Npcink_Cloud_Entitlement_Summary::refresh();
+				self::set_admin_notice( 'success', __( 'Cloud settings saved and verified.', 'npcink-cloud-addon' ) );
 			} else {
 				$message = self::format_probe_failure_message( $probe );
-				Magick_AI_Cloud_Addon_Settings::mark_verification_result( false, $message );
-				Magick_AI_Cloud_Observability_Collector::sync_schedule();
+				Npcink_Cloud_Addon_Settings::mark_verification_result( false, $message );
+				Npcink_Cloud_Observability_Collector::sync_schedule();
 				self::set_admin_notice( 'error', $message );
 			}
 
@@ -227,27 +248,27 @@ if ( ! class_exists( 'Magick_AI_Cloud_Settings_Page' ) ) {
 		 */
 		public static function handle_refresh_monitoring(): void {
 			if ( ! current_user_can( 'manage_options' ) ) {
-				wp_die( esc_html__( 'You do not have permission to manage Magick AI Cloud settings.', 'magick-ai-cloud-addon' ) );
+				wp_die( esc_html__( 'You do not have permission to manage Npcink Cloud settings.', 'npcink-cloud-addon' ) );
 			}
 
 			check_admin_referer( self::ACTION_REFRESH_MONITORING );
 
-			if ( ! Magick_AI_Cloud_Addon_Settings::is_monitoring_enabled() ) {
-				self::set_admin_notice( 'error', __( 'Monitoring is disabled or Cloud is not verified.', 'magick-ai-cloud-addon' ) );
+			if ( ! Npcink_Cloud_Addon_Settings::is_monitoring_enabled() ) {
+				self::set_admin_notice( 'error', __( 'Monitoring is disabled or Cloud is not verified.', 'npcink-cloud-addon' ) );
 				self::redirect_to_page( 'monitoring' );
 			}
 
-			$upload = Magick_AI_Cloud_Observability_Collector::flush_buffer();
+			$upload = Npcink_Cloud_Observability_Collector::flush_buffer();
 			if ( empty( $upload['last_upload_ok'] ) ) {
 				$message = sanitize_text_field( (string) ( $upload['last_upload_error'] ?? '' ) );
-				self::set_admin_notice( 'error', '' !== $message ? $message : __( 'Monitoring upload failed.', 'magick-ai-cloud-addon' ) );
+				self::set_admin_notice( 'error', '' !== $message ? $message : __( 'Monitoring upload failed.', 'npcink-cloud-addon' ) );
 				self::redirect_to_page( 'monitoring' );
 			}
 
-			$summary = Magick_AI_Cloud_Observability_Collector::refresh_summary();
+			$summary = Npcink_Cloud_Observability_Collector::refresh_summary();
 			if ( empty( $summary['last_refresh_ok'] ) ) {
 				$message = sanitize_text_field( (string) ( $summary['last_refresh_error'] ?? '' ) );
-				self::set_admin_notice( 'error', '' !== $message ? $message : __( 'Monitoring summary refresh failed.', 'magick-ai-cloud-addon' ) );
+				self::set_admin_notice( 'error', '' !== $message ? $message : __( 'Monitoring summary refresh failed.', 'npcink-cloud-addon' ) );
 				self::redirect_to_page( 'monitoring' );
 			}
 
@@ -256,7 +277,7 @@ if ( ! class_exists( 'Magick_AI_Cloud_Settings_Page' ) ) {
 				'success',
 				sprintf(
 					/* translators: %d: remaining buffered event count. */
-					__( 'Monitoring refreshed. Remaining buffered events: %d.', 'magick-ai-cloud-addon' ),
+					__( 'Monitoring refreshed. Remaining buffered events: %d.', 'npcink-cloud-addon' ),
 					$remaining
 				)
 			);
@@ -273,44 +294,43 @@ if ( ! class_exists( 'Magick_AI_Cloud_Settings_Page' ) ) {
 				return;
 			}
 
-			$settings = Magick_AI_Cloud_Addon_Settings::get_settings();
-			$state = Magick_AI_Cloud_Addon_Settings::get_credential_state();
-			$entitlement = Magick_AI_Cloud_Entitlement_Summary::get_summary();
-			$monitoring = Magick_AI_Cloud_Observability_Collector::get_status();
+			$settings = Npcink_Cloud_Addon_Settings::get_settings();
+			$state = Npcink_Cloud_Addon_Settings::get_credential_state();
+			$entitlement = Npcink_Cloud_Entitlement_Summary::get_summary();
+			$monitoring = Npcink_Cloud_Observability_Collector::get_status();
 			$is_verified = ! empty( $state['verified'] );
 			$active_tab = self::get_active_tab( $is_verified );
 			?>
-			<div class="wrap magick-ai-cloud-addon">
-				<?php self::render_page_styles(); ?>
-				<h1><?php esc_html_e( 'Magick AI Cloud Addon', 'magick-ai-cloud-addon' ); ?></h1>
-				<p><?php esc_html_e( 'Cloud connector status and access settings for this WordPress site.', 'magick-ai-cloud-addon' ); ?></p>
+			<div class="wrap npcink-cloud-addon">
+				<h1><?php esc_html_e( 'Npcink Cloud Addon', 'npcink-cloud-addon' ); ?></h1>
+				<p><?php esc_html_e( 'Cloud connector status and access settings for this WordPress site.', 'npcink-cloud-addon' ); ?></p>
 				<?php self::render_admin_notice(); ?>
 
 				<?php self::render_connection_summary( $settings, $state, $entitlement ); ?>
 				<?php self::render_tab_navigation( $active_tab, $is_verified ); ?>
 
 				<?php if ( 'entitlement' === $active_tab ) : ?>
-					<section class="magick-ai-cloud-section magick-ai-cloud-tab-panel">
-						<h2><?php esc_html_e( 'Entitlement Summary', 'magick-ai-cloud-addon' ); ?></h2>
+					<section class="npcink-cloud-section npcink-cloud-tab-panel">
+						<h2><?php esc_html_e( 'Entitlement Summary', 'npcink-cloud-addon' ); ?></h2>
 						<?php self::render_entitlement_summary( $entitlement, $is_verified ); ?>
 					</section>
 				<?php elseif ( 'monitoring' === $active_tab ) : ?>
-					<section class="magick-ai-cloud-section magick-ai-cloud-tab-panel">
-						<h2><?php esc_html_e( 'Monitoring', 'magick-ai-cloud-addon' ); ?></h2>
+					<section class="npcink-cloud-section npcink-cloud-tab-panel">
+						<h2><?php esc_html_e( 'Monitoring', 'npcink-cloud-addon' ); ?></h2>
 						<?php self::render_monitoring_summary( $monitoring ); ?>
 					</section>
 				<?php elseif ( 'advanced' === $active_tab ) : ?>
-					<section class="magick-ai-cloud-section magick-ai-cloud-tab-panel">
-						<h2><?php esc_html_e( 'Advanced Information', 'magick-ai-cloud-addon' ); ?></h2>
+					<section class="npcink-cloud-section npcink-cloud-tab-panel">
+						<h2><?php esc_html_e( 'Advanced Information', 'npcink-cloud-addon' ); ?></h2>
 						<?php self::render_advanced_information( $settings, $state, $entitlement ); ?>
 					</section>
 				<?php else : ?>
-					<section class="magick-ai-cloud-section magick-ai-cloud-tab-panel">
-						<h2><?php esc_html_e( 'Cloud Settings', 'magick-ai-cloud-addon' ); ?></h2>
+					<section class="npcink-cloud-section npcink-cloud-tab-panel">
+						<h2><?php esc_html_e( 'Cloud Settings', 'npcink-cloud-addon' ); ?></h2>
 						<?php if ( $is_verified ) : ?>
-							<p><?php esc_html_e( 'Update the connector or replace the stored key.', 'magick-ai-cloud-addon' ); ?></p>
+							<p><?php esc_html_e( 'Update the connector or replace the stored key.', 'npcink-cloud-addon' ); ?></p>
 						<?php else : ?>
-							<p><?php esc_html_e( 'Save a Cloud Base URL and Cloud API Key to verify this connector.', 'magick-ai-cloud-addon' ); ?></p>
+							<p><?php esc_html_e( 'Save a Cloud Base URL and Cloud API Key to verify this connector.', 'npcink-cloud-addon' ); ?></p>
 						<?php endif; ?>
 						<?php self::render_settings_form( $settings ); ?>
 					</section>
@@ -328,7 +348,8 @@ if ( ! class_exists( 'Magick_AI_Cloud_Settings_Page' ) ) {
 		private static function get_active_tab( bool $is_verified ): string {
 			$tabs = self::get_tab_labels( $is_verified );
 			$default = $is_verified ? 'entitlement' : 'settings';
-			$requested = isset( $_GET['tab'] ) ? sanitize_key( wp_unslash( $_GET['tab'] ) ) : '';
+			$raw_tab = filter_input( INPUT_GET, 'tab', FILTER_UNSAFE_RAW );
+			$requested = is_string( $raw_tab ) ? sanitize_key( wp_unslash( $raw_tab ) ) : '';
 
 			return isset( $tabs[ $requested ] ) ? $requested : $default;
 		}
@@ -342,16 +363,16 @@ if ( ! class_exists( 'Magick_AI_Cloud_Settings_Page' ) ) {
 		private static function get_tab_labels( bool $is_verified ): array {
 			if ( $is_verified ) {
 				return array(
-					'entitlement' => __( 'Entitlement', 'magick-ai-cloud-addon' ),
-					'monitoring'  => __( 'Monitoring', 'magick-ai-cloud-addon' ),
-					'settings'    => __( 'Settings', 'magick-ai-cloud-addon' ),
-					'advanced'    => __( 'Advanced', 'magick-ai-cloud-addon' ),
+					'entitlement' => __( 'Entitlement', 'npcink-cloud-addon' ),
+					'monitoring'  => __( 'Monitoring', 'npcink-cloud-addon' ),
+					'settings'    => __( 'Settings', 'npcink-cloud-addon' ),
+					'advanced'    => __( 'Advanced', 'npcink-cloud-addon' ),
 				);
 			}
 
 			return array(
-				'settings' => __( 'Settings', 'magick-ai-cloud-addon' ),
-				'advanced' => __( 'Advanced', 'magick-ai-cloud-addon' ),
+				'settings' => __( 'Settings', 'npcink-cloud-addon' ),
+				'advanced' => __( 'Advanced', 'npcink-cloud-addon' ),
 			);
 		}
 
@@ -365,7 +386,7 @@ if ( ! class_exists( 'Magick_AI_Cloud_Settings_Page' ) ) {
 		private static function render_tab_navigation( string $active_tab, bool $is_verified ): void {
 			$tabs = self::get_tab_labels( $is_verified );
 			?>
-			<nav class="nav-tab-wrapper magick-ai-cloud-tabs" aria-label="<?php esc_attr_e( 'Cloud addon sections', 'magick-ai-cloud-addon' ); ?>">
+			<nav class="nav-tab-wrapper npcink-cloud-tabs" aria-label="<?php esc_attr_e( 'Cloud addon sections', 'npcink-cloud-addon' ); ?>">
 				<?php foreach ( $tabs as $slug => $label ) : ?>
 					<?php
 					$url = add_query_arg(
@@ -390,179 +411,6 @@ if ( ! class_exists( 'Magick_AI_Cloud_Settings_Page' ) ) {
 		}
 
 		/**
-		 * Renders page-local styles for the compact admin surface.
-		 *
-		 * @return void
-		 */
-		private static function render_page_styles(): void {
-			?>
-			<style>
-				.magick-ai-cloud-addon {
-					max-width: 960px;
-				}
-
-				.magick-ai-cloud-summary,
-				.magick-ai-cloud-section,
-				.magick-ai-cloud-disclosure,
-				.magick-ai-cloud-tabs {
-					box-sizing: border-box;
-					max-width: 860px;
-				}
-
-				.magick-ai-cloud-summary {
-					background: #fff;
-					border: 1px solid #c3c4c7;
-					margin: 16px 0 18px;
-					padding: 16px;
-				}
-
-				.magick-ai-cloud-summary__header {
-					align-items: flex-start;
-					display: flex;
-					gap: 16px;
-					justify-content: space-between;
-				}
-
-				.magick-ai-cloud-summary__state {
-					margin: 0 0 4px;
-				}
-
-				.magick-ai-cloud-summary__message {
-					margin: 0;
-					color: #50575e;
-				}
-
-				.magick-ai-cloud-badge {
-					border-radius: 999px;
-					display: inline-block;
-					font-size: 12px;
-					font-weight: 600;
-					line-height: 1;
-					margin-right: 8px;
-					padding: 5px 8px;
-				}
-
-				.magick-ai-cloud-badge--ok {
-					background: #edfaef;
-					color: #008a20;
-				}
-
-				.magick-ai-cloud-badge--error {
-					background: #fcf0f1;
-					color: #b32d2e;
-				}
-
-				.magick-ai-cloud-badge--pending,
-				.magick-ai-cloud-badge--inactive {
-					background: #fcf9e8;
-					color: #8a5a00;
-				}
-
-				.magick-ai-cloud-summary__grid {
-					border-top: 1px solid #dcdcde;
-					display: grid;
-					gap: 0;
-					grid-template-columns: repeat(2, minmax(0, 1fr));
-					margin-top: 14px;
-				}
-
-				.magick-ai-cloud-summary__item {
-					border-bottom: 1px solid #f0f0f1;
-					padding: 10px 12px 10px 0;
-				}
-
-				.magick-ai-cloud-summary__label {
-					color: #646970;
-					display: block;
-					font-size: 12px;
-					margin-bottom: 3px;
-				}
-
-				.magick-ai-cloud-summary__value {
-					display: block;
-					font-weight: 600;
-					overflow-wrap: anywhere;
-				}
-
-				.magick-ai-cloud-verify-form {
-					margin: 0;
-					min-width: 96px;
-				}
-
-				.magick-ai-cloud-section {
-					margin-top: 18px;
-				}
-
-				.magick-ai-cloud-tabs {
-					margin-top: 14px;
-				}
-
-				.magick-ai-cloud-tab-panel {
-					background: #fff;
-					border: 1px solid #dcdcde;
-					border-top: 0;
-					margin-top: 0;
-					padding: 16px;
-				}
-
-				.magick-ai-cloud-tab-panel > h2:first-child {
-					margin-top: 0;
-				}
-
-				.magick-ai-cloud-disclosure {
-					background: #fff;
-					border: 1px solid #dcdcde;
-					margin-top: 16px;
-				}
-
-				.magick-ai-cloud-disclosure > summary {
-					cursor: pointer;
-					display: flex;
-					gap: 8px;
-					justify-content: space-between;
-					padding: 12px 14px;
-				}
-
-				.magick-ai-cloud-disclosure > summary:hover {
-					background: #f6f7f7;
-				}
-
-				.magick-ai-cloud-disclosure > summary span {
-					color: #646970;
-				}
-
-				.magick-ai-cloud-disclosure form,
-				.magick-ai-cloud-disclosure table {
-					margin: 0 14px 14px;
-				}
-
-				.magick-ai-cloud-empty {
-					background: #fff;
-					border-left: 4px solid #dba617;
-					margin: 0;
-					max-width: 820px;
-					padding: 10px 12px;
-				}
-
-				@media (max-width: 782px) {
-					.magick-ai-cloud-summary__header,
-					.magick-ai-cloud-disclosure > summary {
-						display: block;
-					}
-
-					.magick-ai-cloud-summary__grid {
-						grid-template-columns: 1fr;
-					}
-
-					.magick-ai-cloud-verify-form {
-						margin-top: 12px;
-					}
-				}
-			</style>
-			<?php
-		}
-
-		/**
 		 * Renders the default connector summary.
 		 *
 		 * @param array<string,mixed> $settings Stored settings.
@@ -575,34 +423,34 @@ if ( ! class_exists( 'Magick_AI_Cloud_Settings_Page' ) ) {
 			$is_verified = ! empty( $state['verified'] );
 			$is_configured = ! empty( $state['configured'] );
 			?>
-			<section class="magick-ai-cloud-summary">
-				<div class="magick-ai-cloud-summary__header">
+			<section class="npcink-cloud-summary">
+				<div class="npcink-cloud-summary__header">
 					<div>
-						<p class="magick-ai-cloud-summary__state">
-							<span class="magick-ai-cloud-badge magick-ai-cloud-badge--<?php echo esc_attr( $severity ); ?>"><?php echo esc_html( (string) $state['label'] ); ?></span>
+						<p class="npcink-cloud-summary__state">
+							<span class="npcink-cloud-badge npcink-cloud-badge--<?php echo esc_attr( $severity ); ?>"><?php echo esc_html( (string) $state['label'] ); ?></span>
 						</p>
-						<p class="magick-ai-cloud-summary__message"><?php echo esc_html( (string) $state['message'] ); ?></p>
+						<p class="npcink-cloud-summary__message"><?php echo esc_html( (string) $state['message'] ); ?></p>
 					</div>
 					<?php if ( $is_configured ) : ?>
 						<?php self::render_reverify_form( $settings ); ?>
 					<?php endif; ?>
 				</div>
-				<div class="magick-ai-cloud-summary__grid">
-					<div class="magick-ai-cloud-summary__item">
-						<span class="magick-ai-cloud-summary__label"><?php esc_html_e( 'Cloud Base URL', 'magick-ai-cloud-addon' ); ?></span>
-						<span class="magick-ai-cloud-summary__value"><?php echo esc_html( self::format_setting_value( (string) $settings['base_url'], __( 'Not set', 'magick-ai-cloud-addon' ) ) ); ?></span>
+				<div class="npcink-cloud-summary__grid">
+					<div class="npcink-cloud-summary__item">
+						<span class="npcink-cloud-summary__label"><?php esc_html_e( 'Cloud Base URL', 'npcink-cloud-addon' ); ?></span>
+						<span class="npcink-cloud-summary__value"><?php echo esc_html( self::format_setting_value( (string) $settings['base_url'], __( 'Not set', 'npcink-cloud-addon' ) ) ); ?></span>
 					</div>
-					<div class="magick-ai-cloud-summary__item">
-						<span class="magick-ai-cloud-summary__label"><?php esc_html_e( 'Last verified', 'magick-ai-cloud-addon' ); ?></span>
-						<span class="magick-ai-cloud-summary__value"><?php echo esc_html( self::format_datetime_value( (string) $settings['verified_at'], __( 'Never', 'magick-ai-cloud-addon' ) ) ); ?></span>
+					<div class="npcink-cloud-summary__item">
+						<span class="npcink-cloud-summary__label"><?php esc_html_e( 'Last verified', 'npcink-cloud-addon' ); ?></span>
+						<span class="npcink-cloud-summary__value"><?php echo esc_html( self::format_datetime_value( (string) $settings['verified_at'], __( 'Never', 'npcink-cloud-addon' ) ) ); ?></span>
 					</div>
-					<div class="magick-ai-cloud-summary__item">
-						<span class="magick-ai-cloud-summary__label"><?php esc_html_e( 'Entitlement', 'magick-ai-cloud-addon' ); ?></span>
-						<span class="magick-ai-cloud-summary__value"><?php echo esc_html( self::format_entitlement_availability( $entitlement, $is_verified ) ); ?></span>
+					<div class="npcink-cloud-summary__item">
+						<span class="npcink-cloud-summary__label"><?php esc_html_e( 'Entitlement', 'npcink-cloud-addon' ); ?></span>
+						<span class="npcink-cloud-summary__value"><?php echo esc_html( self::format_entitlement_availability( $entitlement, $is_verified ) ); ?></span>
 					</div>
-					<div class="magick-ai-cloud-summary__item">
-						<span class="magick-ai-cloud-summary__label"><?php esc_html_e( 'Package', 'magick-ai-cloud-addon' ); ?></span>
-						<span class="magick-ai-cloud-summary__value"><?php echo esc_html( $is_verified ? self::format_empty( (string) ( $entitlement['package_label'] ?? '' ) ) : __( 'Not checked', 'magick-ai-cloud-addon' ) ); ?></span>
+					<div class="npcink-cloud-summary__item">
+						<span class="npcink-cloud-summary__label"><?php esc_html_e( 'Package', 'npcink-cloud-addon' ); ?></span>
+						<span class="npcink-cloud-summary__value"><?php echo esc_html( $is_verified ? self::format_empty( (string) ( $entitlement['package_label'] ?? '' ) ) : __( 'Not checked', 'npcink-cloud-addon' ) ); ?></span>
 					</div>
 				</div>
 			</section>
@@ -617,14 +465,14 @@ if ( ! class_exists( 'Magick_AI_Cloud_Settings_Page' ) ) {
 		 */
 		private static function render_reverify_form( array $settings ): void {
 			?>
-			<form class="magick-ai-cloud-verify-form" method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>">
+			<form class="npcink-cloud-verify-form" method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>">
 				<input type="hidden" name="_wpnonce" value="<?php echo esc_attr( wp_create_nonce( self::ACTION_SAVE ) ); ?>" />
 				<input type="hidden" name="action" value="<?php echo esc_attr( self::ACTION_SAVE ); ?>" />
 				<input type="hidden" name="base_url" value="<?php echo esc_attr( (string) $settings['base_url'] ); ?>" />
 				<input type="hidden" name="api_key" value="" />
 				<input type="hidden" name="timeout" value="<?php echo esc_attr( (string) $settings['timeout'] ); ?>" />
 				<input type="hidden" name="monitoring_enabled" value="<?php echo esc_attr( ! empty( $settings['monitoring_enabled'] ) ? '1' : '0' ); ?>" />
-				<button type="submit" class="button button-secondary"><?php esc_html_e( 'Re-verify', 'magick-ai-cloud-addon' ); ?></button>
+				<button type="submit" class="button button-secondary"><?php esc_html_e( 'Re-verify', 'npcink-cloud-addon' ); ?></button>
 			</form>
 			<?php
 		}
@@ -644,13 +492,13 @@ if ( ! class_exists( 'Magick_AI_Cloud_Settings_Page' ) ) {
 					<tbody>
 						<tr>
 							<th scope="row">
-								<label for="magick-ai-cloud-base-url"><?php esc_html_e( 'Cloud Base URL', 'magick-ai-cloud-addon' ); ?></label>
+								<label for="npcink-cloud-base-url"><?php esc_html_e( 'Cloud Base URL', 'npcink-cloud-addon' ); ?></label>
 							</th>
 							<td>
 								<input
 									type="url"
 									class="regular-text code"
-									id="magick-ai-cloud-base-url"
+									id="npcink-cloud-base-url"
 									name="base_url"
 									value="<?php echo esc_attr( (string) $settings['base_url'] ); ?>"
 									placeholder="https://cloud.example.com"
@@ -660,57 +508,57 @@ if ( ! class_exists( 'Magick_AI_Cloud_Settings_Page' ) ) {
 						</tr>
 						<tr>
 							<th scope="row">
-								<label for="magick-ai-cloud-api-key"><?php esc_html_e( 'Cloud API Key', 'magick-ai-cloud-addon' ); ?></label>
+								<label for="npcink-cloud-api-key"><?php esc_html_e( 'Cloud API Key', 'npcink-cloud-addon' ); ?></label>
 							</th>
 							<td>
 								<input
 									type="password"
 									class="regular-text code"
-									id="magick-ai-cloud-api-key"
+									id="npcink-cloud-api-key"
 									name="api_key"
 									value=""
 									autocomplete="new-password"
-									placeholder="<?php echo esc_attr__( 'Paste a mak1_ key or JSON key to replace the stored key', 'magick-ai-cloud-addon' ); ?>"
+									placeholder="<?php echo esc_attr__( 'Paste a mak1_ key or JSON key to replace the stored key', 'npcink-cloud-addon' ); ?>"
 								/>
-								<p class="description"><?php esc_html_e( 'Leave blank to keep the stored Cloud API Key. The secret is never printed in this page.', 'magick-ai-cloud-addon' ); ?></p>
+								<p class="description"><?php esc_html_e( 'Leave blank to keep the stored Cloud API Key. The secret is never printed in this page.', 'npcink-cloud-addon' ); ?></p>
 							</td>
 						</tr>
 						<tr>
 							<th scope="row">
-								<label for="magick-ai-cloud-timeout"><?php esc_html_e( 'Timeout', 'magick-ai-cloud-addon' ); ?></label>
+								<label for="npcink-cloud-timeout"><?php esc_html_e( 'Timeout', 'npcink-cloud-addon' ); ?></label>
 							</th>
 							<td>
 								<input
 									type="number"
-									id="magick-ai-cloud-timeout"
+									id="npcink-cloud-timeout"
 									name="timeout"
 									min="5"
 									max="60"
 									step="1"
 									value="<?php echo esc_attr( (string) $settings['timeout'] ); ?>"
 								/>
-								<span><?php esc_html_e( 'seconds', 'magick-ai-cloud-addon' ); ?></span>
+								<span><?php esc_html_e( 'seconds', 'npcink-cloud-addon' ); ?></span>
 							</td>
 						</tr>
 						<tr>
-							<th scope="row"><?php esc_html_e( 'Monitoring', 'magick-ai-cloud-addon' ); ?></th>
+							<th scope="row"><?php esc_html_e( 'Monitoring', 'npcink-cloud-addon' ); ?></th>
 							<td>
-								<label for="magick-ai-cloud-monitoring-enabled">
+								<label for="npcink-cloud-monitoring-enabled">
 									<input
 										type="checkbox"
-										id="magick-ai-cloud-monitoring-enabled"
+										id="npcink-cloud-monitoring-enabled"
 										name="monitoring_enabled"
 										value="1"
 										<?php checked( ! empty( $settings['monitoring_enabled'] ) ); ?>
 									/>
-									<?php esc_html_e( 'Enable Cloud monitoring for installed Magick AI plugins.', 'magick-ai-cloud-addon' ); ?>
+									<?php esc_html_e( 'Enable Cloud monitoring for installed Npcink plugins.', 'npcink-cloud-addon' ); ?>
 								</label>
-								<p class="description"><?php esc_html_e( 'The addon collects local metadata events only: plugin, event kind, status, timing, ids, and error codes. Prompts, content, results, secrets, and raw request payloads are not collected.', 'magick-ai-cloud-addon' ); ?></p>
+								<p class="description"><?php esc_html_e( 'The addon collects local metadata events only: plugin, event kind, status, timing, ids, and error codes. Prompts, content, results, secrets, and raw request payloads are not collected.', 'npcink-cloud-addon' ); ?></p>
 							</td>
 						</tr>
 					</tbody>
 				</table>
-				<?php submit_button( __( 'Save and Verify', 'magick-ai-cloud-addon' ) ); ?>
+				<?php submit_button( __( 'Save and Verify', 'npcink-cloud-addon' ) ); ?>
 			</form>
 			<?php
 		}
@@ -729,32 +577,32 @@ if ( ! class_exists( 'Magick_AI_Cloud_Settings_Page' ) ) {
 			$cloud_plugins = is_array( $summary['plugins'] ?? null ) ? $summary['plugins'] : array();
 			$recent_errors = is_array( $summary['recent_errors'] ?? null ) ? $summary['recent_errors'] : array();
 			?>
-			<form class="magick-ai-cloud-verify-form" method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" style="margin: 0 0 12px;">
+			<form class="npcink-cloud-verify-form" method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" style="margin: 0 0 12px;">
 				<?php wp_nonce_field( self::ACTION_REFRESH_MONITORING ); ?>
 				<input type="hidden" name="action" value="<?php echo esc_attr( self::ACTION_REFRESH_MONITORING ); ?>" />
-				<button type="submit" class="button button-secondary"><?php esc_html_e( 'Refresh monitoring', 'magick-ai-cloud-addon' ); ?></button>
+				<button type="submit" class="button button-secondary"><?php esc_html_e( 'Refresh monitoring', 'npcink-cloud-addon' ); ?></button>
 			</form>
 			<table class="widefat striped" style="max-width: 860px;">
 				<tbody>
 					<tr>
-						<th scope="row"><?php esc_html_e( 'Collection', 'magick-ai-cloud-addon' ); ?></th>
-						<td><?php echo ! empty( $monitoring['enabled'] ) ? esc_html__( 'enabled', 'magick-ai-cloud-addon' ) : esc_html__( 'disabled', 'magick-ai-cloud-addon' ); ?></td>
+						<th scope="row"><?php esc_html_e( 'Collection', 'npcink-cloud-addon' ); ?></th>
+						<td><?php echo ! empty( $monitoring['enabled'] ) ? esc_html__( 'enabled', 'npcink-cloud-addon' ) : esc_html__( 'disabled', 'npcink-cloud-addon' ); ?></td>
 					</tr>
 					<tr>
-						<th scope="row"><?php esc_html_e( 'Buffered events', 'magick-ai-cloud-addon' ); ?></th>
+						<th scope="row"><?php esc_html_e( 'Buffered events', 'npcink-cloud-addon' ); ?></th>
 						<td><?php echo esc_html( (string) absint( $monitoring['buffer_count'] ?? 0 ) ); ?></td>
 					</tr>
 					<tr>
-						<th scope="row"><?php esc_html_e( 'Last captured', 'magick-ai-cloud-addon' ); ?></th>
+						<th scope="row"><?php esc_html_e( 'Last captured', 'npcink-cloud-addon' ); ?></th>
 						<td><?php echo esc_html( self::format_datetime_value( (string) ( $monitoring['last_captured_at'] ?? '' ) ) ); ?></td>
 					</tr>
 					<tr>
-						<th scope="row"><?php esc_html_e( 'Sent events', 'magick-ai-cloud-addon' ); ?></th>
+						<th scope="row"><?php esc_html_e( 'Sent events', 'npcink-cloud-addon' ); ?></th>
 						<td>
 							<?php
 							printf(
 								/* translators: 1: last sent count, 2: total sent count. */
-								esc_html__( 'last %1$d / total %2$d', 'magick-ai-cloud-addon' ),
+								esc_html__( 'last %1$d / total %2$d', 'npcink-cloud-addon' ),
 								absint( $monitoring['last_sent_count'] ?? 0 ),
 								absint( $monitoring['total_sent'] ?? ( $monitoring['total_uploaded'] ?? 0 ) )
 							);
@@ -762,12 +610,12 @@ if ( ! class_exists( 'Magick_AI_Cloud_Settings_Page' ) ) {
 						</td>
 					</tr>
 					<tr>
-						<th scope="row"><?php esc_html_e( 'Stored events', 'magick-ai-cloud-addon' ); ?></th>
+						<th scope="row"><?php esc_html_e( 'Stored events', 'npcink-cloud-addon' ); ?></th>
 						<td>
 							<?php
 							printf(
 								/* translators: 1: last stored count, 2: total stored count. */
-								esc_html__( 'last %1$d / total %2$d', 'magick-ai-cloud-addon' ),
+								esc_html__( 'last %1$d / total %2$d', 'npcink-cloud-addon' ),
 								absint( $monitoring['last_stored_count'] ?? 0 ),
 								absint( $monitoring['total_stored'] ?? 0 )
 							);
@@ -775,12 +623,12 @@ if ( ! class_exists( 'Magick_AI_Cloud_Settings_Page' ) ) {
 						</td>
 					</tr>
 					<tr>
-						<th scope="row"><?php esc_html_e( 'Duplicate events', 'magick-ai-cloud-addon' ); ?></th>
+						<th scope="row"><?php esc_html_e( 'Duplicate events', 'npcink-cloud-addon' ); ?></th>
 						<td>
 							<?php
 							printf(
 								/* translators: 1: last duplicate count, 2: total duplicate count. */
-								esc_html__( 'last %1$d / total %2$d', 'magick-ai-cloud-addon' ),
+								esc_html__( 'last %1$d / total %2$d', 'npcink-cloud-addon' ),
 								absint( $monitoring['last_duplicate_count'] ?? 0 ),
 								absint( $monitoring['total_duplicate'] ?? 0 )
 							);
@@ -788,32 +636,32 @@ if ( ! class_exists( 'Magick_AI_Cloud_Settings_Page' ) ) {
 						</td>
 					</tr>
 					<tr>
-						<th scope="row"><?php esc_html_e( 'Last upload status', 'magick-ai-cloud-addon' ); ?></th>
+						<th scope="row"><?php esc_html_e( 'Last upload status', 'npcink-cloud-addon' ); ?></th>
 						<td>
 							<?php
 							$has_upload_state = '' !== (string) ( $monitoring['last_uploaded_at'] ?? '' )
 								|| '' !== (string) ( $monitoring['last_upload_error'] ?? '' );
 							if ( ! $has_upload_state ) {
-								echo esc_html__( 'never', 'magick-ai-cloud-addon' );
+								echo esc_html__( 'never', 'npcink-cloud-addon' );
 							} else {
 								$upload_status = ! empty( $monitoring['last_upload_ok'] )
-									? __( 'ok', 'magick-ai-cloud-addon' )
-									: __( 'failed', 'magick-ai-cloud-addon' );
+									? __( 'ok', 'npcink-cloud-addon' )
+									: __( 'failed', 'npcink-cloud-addon' );
 								echo esc_html( $upload_status );
 							}
 							?>
 						</td>
 					</tr>
 					<tr>
-						<th scope="row"><?php esc_html_e( 'Last uploaded', 'magick-ai-cloud-addon' ); ?></th>
+						<th scope="row"><?php esc_html_e( 'Last uploaded', 'npcink-cloud-addon' ); ?></th>
 						<td><?php echo esc_html( self::format_datetime_value( (string) ( $monitoring['last_uploaded_at'] ?? '' ) ) ); ?></td>
 					</tr>
 					<tr>
-						<th scope="row"><?php esc_html_e( 'Last upload error', 'magick-ai-cloud-addon' ); ?></th>
+						<th scope="row"><?php esc_html_e( 'Last upload error', 'npcink-cloud-addon' ); ?></th>
 						<td><?php echo esc_html( self::format_empty( (string) ( $monitoring['last_upload_error'] ?? '' ) ) ); ?></td>
 					</tr>
 					<tr>
-						<th scope="row"><?php esc_html_e( 'Last event', 'magick-ai-cloud-addon' ); ?></th>
+						<th scope="row"><?php esc_html_e( 'Last event', 'npcink-cloud-addon' ); ?></th>
 						<td>
 							<code><?php echo esc_html( self::format_empty( (string) ( $monitoring['last_event_kind'] ?? '' ) ) ); ?></code>
 							<?php if ( '' !== (string) ( $monitoring['last_plugin_slug'] ?? '' ) ) : ?>
@@ -826,48 +674,48 @@ if ( ! class_exists( 'Magick_AI_Cloud_Settings_Page' ) ) {
 			<table class="widefat striped" style="max-width: 860px; margin-top: 12px;">
 				<tbody>
 					<tr>
-						<th scope="row"><?php esc_html_e( 'Cloud window', 'magick-ai-cloud-addon' ); ?></th>
+						<th scope="row"><?php esc_html_e( 'Cloud window', 'npcink-cloud-addon' ); ?></th>
 						<td>
 							<?php
 							$window = is_array( $summary['window'] ?? null ) ? $summary['window'] : array();
 							printf(
 								/* translators: %d: window hours. */
-								esc_html__( '%d hours', 'magick-ai-cloud-addon' ),
+								esc_html__( '%d hours', 'npcink-cloud-addon' ),
 								absint( $window['hours'] ?? 0 )
 							);
 							?>
 						</td>
 					</tr>
 					<tr>
-						<th scope="row"><?php esc_html_e( 'Cloud events', 'magick-ai-cloud-addon' ); ?></th>
+						<th scope="row"><?php esc_html_e( 'Cloud events', 'npcink-cloud-addon' ); ?></th>
 						<td><?php echo esc_html( (string) absint( $totals['events_total'] ?? 0 ) ); ?></td>
 					</tr>
 					<tr>
-						<th scope="row"><?php esc_html_e( 'Cloud errors', 'magick-ai-cloud-addon' ); ?></th>
+						<th scope="row"><?php esc_html_e( 'Cloud errors', 'npcink-cloud-addon' ); ?></th>
 						<td><?php echo esc_html( (string) absint( $totals['error_total'] ?? 0 ) ); ?></td>
 					</tr>
 					<tr>
-						<th scope="row"><?php esc_html_e( 'Success rate', 'magick-ai-cloud-addon' ); ?></th>
+						<th scope="row"><?php esc_html_e( 'Success rate', 'npcink-cloud-addon' ); ?></th>
 						<td><?php echo esc_html( self::format_percent( (float) ( $totals['success_rate'] ?? 0 ) ) ); ?></td>
 					</tr>
 					<tr>
-						<th scope="row"><?php esc_html_e( 'Average latency', 'magick-ai-cloud-addon' ); ?></th>
+						<th scope="row"><?php esc_html_e( 'Average latency', 'npcink-cloud-addon' ); ?></th>
 						<td>
 							<?php
 							printf(
 								/* translators: %d: latency in milliseconds. */
-								esc_html__( '%d ms', 'magick-ai-cloud-addon' ),
+								esc_html__( '%d ms', 'npcink-cloud-addon' ),
 								absint( $totals['avg_latency_ms'] ?? 0 )
 							);
 							?>
 						</td>
 					</tr>
 					<tr>
-						<th scope="row"><?php esc_html_e( 'Summary refreshed', 'magick-ai-cloud-addon' ); ?></th>
+						<th scope="row"><?php esc_html_e( 'Summary refreshed', 'npcink-cloud-addon' ); ?></th>
 						<td><?php echo esc_html( self::format_datetime_value( (string) ( $remote['last_refreshed_at'] ?? '' ) ) ); ?></td>
 					</tr>
 					<tr>
-						<th scope="row"><?php esc_html_e( 'Summary error', 'magick-ai-cloud-addon' ); ?></th>
+						<th scope="row"><?php esc_html_e( 'Summary error', 'npcink-cloud-addon' ); ?></th>
 						<td><?php echo esc_html( self::format_empty( (string) ( $remote['last_refresh_error'] ?? '' ) ) ); ?></td>
 					</tr>
 				</tbody>
@@ -876,11 +724,11 @@ if ( ! class_exists( 'Magick_AI_Cloud_Settings_Page' ) ) {
 				<table class="widefat striped" style="max-width: 860px; margin-top: 12px;">
 					<thead>
 						<tr>
-							<th scope="col"><?php esc_html_e( 'Cloud plugin', 'magick-ai-cloud-addon' ); ?></th>
-							<th scope="col"><?php esc_html_e( 'Events', 'magick-ai-cloud-addon' ); ?></th>
-							<th scope="col"><?php esc_html_e( 'Errors', 'magick-ai-cloud-addon' ); ?></th>
-							<th scope="col"><?php esc_html_e( 'Success', 'magick-ai-cloud-addon' ); ?></th>
-							<th scope="col"><?php esc_html_e( 'Avg latency', 'magick-ai-cloud-addon' ); ?></th>
+							<th scope="col"><?php esc_html_e( 'Cloud plugin', 'npcink-cloud-addon' ); ?></th>
+							<th scope="col"><?php esc_html_e( 'Events', 'npcink-cloud-addon' ); ?></th>
+							<th scope="col"><?php esc_html_e( 'Errors', 'npcink-cloud-addon' ); ?></th>
+							<th scope="col"><?php esc_html_e( 'Success', 'npcink-cloud-addon' ); ?></th>
+							<th scope="col"><?php esc_html_e( 'Avg latency', 'npcink-cloud-addon' ); ?></th>
 						</tr>
 					</thead>
 					<tbody>
@@ -901,10 +749,10 @@ if ( ! class_exists( 'Magick_AI_Cloud_Settings_Page' ) ) {
 				<table class="widefat striped" style="max-width: 860px; margin-top: 12px;">
 					<thead>
 						<tr>
-							<th scope="col"><?php esc_html_e( 'Recent error', 'magick-ai-cloud-addon' ); ?></th>
-							<th scope="col"><?php esc_html_e( 'Plugin', 'magick-ai-cloud-addon' ); ?></th>
-							<th scope="col"><?php esc_html_e( 'Event', 'magick-ai-cloud-addon' ); ?></th>
-							<th scope="col"><?php esc_html_e( 'Seen', 'magick-ai-cloud-addon' ); ?></th>
+							<th scope="col"><?php esc_html_e( 'Recent error', 'npcink-cloud-addon' ); ?></th>
+							<th scope="col"><?php esc_html_e( 'Plugin', 'npcink-cloud-addon' ); ?></th>
+							<th scope="col"><?php esc_html_e( 'Event', 'npcink-cloud-addon' ); ?></th>
+							<th scope="col"><?php esc_html_e( 'Seen', 'npcink-cloud-addon' ); ?></th>
 						</tr>
 					</thead>
 					<tbody>
@@ -923,10 +771,10 @@ if ( ! class_exists( 'Magick_AI_Cloud_Settings_Page' ) ) {
 			<table class="widefat striped" style="max-width: 860px; margin-top: 12px;">
 				<thead>
 					<tr>
-						<th scope="col"><?php esc_html_e( 'Plugin', 'magick-ai-cloud-addon' ); ?></th>
-						<th scope="col"><?php esc_html_e( 'Installed', 'magick-ai-cloud-addon' ); ?></th>
-						<th scope="col"><?php esc_html_e( 'Active', 'magick-ai-cloud-addon' ); ?></th>
-						<th scope="col"><?php esc_html_e( 'Version', 'magick-ai-cloud-addon' ); ?></th>
+						<th scope="col"><?php esc_html_e( 'Plugin', 'npcink-cloud-addon' ); ?></th>
+						<th scope="col"><?php esc_html_e( 'Installed', 'npcink-cloud-addon' ); ?></th>
+						<th scope="col"><?php esc_html_e( 'Active', 'npcink-cloud-addon' ); ?></th>
+						<th scope="col"><?php esc_html_e( 'Version', 'npcink-cloud-addon' ); ?></th>
 					</tr>
 				</thead>
 				<tbody>
@@ -934,8 +782,8 @@ if ( ! class_exists( 'Magick_AI_Cloud_Settings_Page' ) ) {
 						<?php $plugin = is_array( $plugin ) ? $plugin : array(); ?>
 						<tr>
 							<th scope="row"><?php echo esc_html( (string) ( $plugin['label'] ?? '' ) ); ?></th>
-							<td><?php echo ! empty( $plugin['installed'] ) ? esc_html__( 'yes', 'magick-ai-cloud-addon' ) : esc_html__( 'no', 'magick-ai-cloud-addon' ); ?></td>
-							<td><?php echo ! empty( $plugin['active'] ) ? esc_html__( 'yes', 'magick-ai-cloud-addon' ) : esc_html__( 'no', 'magick-ai-cloud-addon' ); ?></td>
+							<td><?php echo ! empty( $plugin['installed'] ) ? esc_html__( 'yes', 'npcink-cloud-addon' ) : esc_html__( 'no', 'npcink-cloud-addon' ); ?></td>
+							<td><?php echo ! empty( $plugin['active'] ) ? esc_html__( 'yes', 'npcink-cloud-addon' ) : esc_html__( 'no', 'npcink-cloud-addon' ); ?></td>
 							<td><code><?php echo esc_html( self::format_empty( (string) ( $plugin['version'] ?? '' ) ) ); ?></code></td>
 						</tr>
 					<?php endforeach; ?>
@@ -954,7 +802,7 @@ if ( ! class_exists( 'Magick_AI_Cloud_Settings_Page' ) ) {
 		private static function render_entitlement_summary( array $summary, bool $is_verified ): void {
 			if ( ! $is_verified ) {
 				?>
-				<p class="magick-ai-cloud-empty"><?php esc_html_e( 'Entitlement is checked after the connector verifies successfully.', 'magick-ai-cloud-addon' ); ?></p>
+				<p class="npcink-cloud-empty"><?php esc_html_e( 'Entitlement is checked after the connector verifies successfully.', 'npcink-cloud-addon' ); ?></p>
 				<?php
 				return;
 			}
@@ -962,19 +810,19 @@ if ( ! class_exists( 'Magick_AI_Cloud_Settings_Page' ) ) {
 			<table class="widefat striped" style="max-width: 860px;">
 				<tbody>
 					<tr>
-						<th scope="row"><?php esc_html_e( 'Availability', 'magick-ai-cloud-addon' ); ?></th>
-						<td><?php echo ! empty( $summary['available'] ) ? esc_html__( 'available', 'magick-ai-cloud-addon' ) : esc_html__( 'unavailable', 'magick-ai-cloud-addon' ); ?></td>
+						<th scope="row"><?php esc_html_e( 'Availability', 'npcink-cloud-addon' ); ?></th>
+						<td><?php echo ! empty( $summary['available'] ) ? esc_html__( 'available', 'npcink-cloud-addon' ) : esc_html__( 'unavailable', 'npcink-cloud-addon' ); ?></td>
 					</tr>
 					<tr>
-						<th scope="row"><?php esc_html_e( 'Package', 'magick-ai-cloud-addon' ); ?></th>
+						<th scope="row"><?php esc_html_e( 'Package', 'npcink-cloud-addon' ); ?></th>
 						<td><?php echo esc_html( self::format_empty( (string) ( $summary['package_label'] ?? '' ) ) ); ?></td>
 					</tr>
 					<tr>
-						<th scope="row"><?php esc_html_e( 'Entitlement status', 'magick-ai-cloud-addon' ); ?></th>
+						<th scope="row"><?php esc_html_e( 'Entitlement status', 'npcink-cloud-addon' ); ?></th>
 						<td><?php echo esc_html( self::format_empty( (string) ( $summary['entitlement_status'] ?? '' ) ) ); ?></td>
 					</tr>
 					<tr>
-						<th scope="row"><?php esc_html_e( 'Synced at', 'magick-ai-cloud-addon' ); ?></th>
+						<th scope="row"><?php esc_html_e( 'Synced at', 'npcink-cloud-addon' ); ?></th>
 						<td><?php echo esc_html( self::format_datetime_value( (string) ( $summary['synced_at'] ?? '' ) ) ); ?></td>
 					</tr>
 				</tbody>
@@ -992,35 +840,35 @@ if ( ! class_exists( 'Magick_AI_Cloud_Settings_Page' ) ) {
 		 */
 		private static function render_advanced_information( array $settings, array $state, array $entitlement ): void {
 			?>
-			<p><?php esc_html_e( 'Timeout, verification failure, and entitlement message.', 'magick-ai-cloud-addon' ); ?></p>
+			<p><?php esc_html_e( 'Timeout, verification failure, and entitlement message.', 'npcink-cloud-addon' ); ?></p>
 			<table class="widefat striped">
 				<tbody>
 					<tr>
-						<th scope="row"><?php esc_html_e( 'Timeout', 'magick-ai-cloud-addon' ); ?></th>
+						<th scope="row"><?php esc_html_e( 'Timeout', 'npcink-cloud-addon' ); ?></th>
 						<td>
 							<?php
 							printf(
 								/* translators: %d: timeout in seconds. */
-								esc_html__( '%d seconds', 'magick-ai-cloud-addon' ),
+								esc_html__( '%d seconds', 'npcink-cloud-addon' ),
 								absint( $settings['timeout'] )
 							);
 							?>
 						</td>
 					</tr>
 					<tr>
-						<th scope="row"><?php esc_html_e( 'Connection code', 'magick-ai-cloud-addon' ); ?></th>
+						<th scope="row"><?php esc_html_e( 'Connection code', 'npcink-cloud-addon' ); ?></th>
 						<td><code><?php echo esc_html( (string) $state['code'] ); ?></code></td>
 					</tr>
 					<tr>
-						<th scope="row"><?php esc_html_e( 'Last failure', 'magick-ai-cloud-addon' ); ?></th>
+						<th scope="row"><?php esc_html_e( 'Last failure', 'npcink-cloud-addon' ); ?></th>
 						<td><?php echo esc_html( self::format_empty( (string) ( $state['last_verification_error'] ?? '' ) ) ); ?></td>
 					</tr>
 					<tr>
-						<th scope="row"><?php esc_html_e( 'Entitlement message', 'magick-ai-cloud-addon' ); ?></th>
+						<th scope="row"><?php esc_html_e( 'Entitlement message', 'npcink-cloud-addon' ); ?></th>
 						<td><?php echo esc_html( self::format_empty( (string) ( $entitlement['message'] ?? '' ) ) ); ?></td>
 					</tr>
 					<tr>
-						<th scope="row"><?php esc_html_e( 'Entitlement state', 'magick-ai-cloud-addon' ); ?></th>
+						<th scope="row"><?php esc_html_e( 'Entitlement state', 'npcink-cloud-addon' ); ?></th>
 						<td><code><?php echo esc_html( self::format_empty( (string) ( $entitlement['state'] ?? '' ) ) ); ?></code></td>
 					</tr>
 				</tbody>
@@ -1039,21 +887,21 @@ if ( ! class_exists( 'Magick_AI_Cloud_Settings_Page' ) ) {
 			if ( empty( $probe['live_ok'] ) && ! empty( $probe['live_message'] ) ) {
 				$messages[] = sprintf(
 					/* translators: %s: liveness error. */
-					__( 'Live check failed: %s', 'magick-ai-cloud-addon' ),
+					__( 'Live check failed: %s', 'npcink-cloud-addon' ),
 					(string) $probe['live_message']
 				);
 			}
 			if ( empty( $probe['auth_ok'] ) && ! empty( $probe['auth_message'] ) ) {
 				$messages[] = sprintf(
 					/* translators: %s: signed verification error. */
-					__( 'Signed verification failed: %s', 'magick-ai-cloud-addon' ),
+					__( 'Signed verification failed: %s', 'npcink-cloud-addon' ),
 					(string) $probe['auth_message']
 				);
 			}
 
 			return '' !== implode( ' ', $messages )
 				? sanitize_text_field( implode( ' ', $messages ) )
-				: __( 'Cloud verification failed.', 'magick-ai-cloud-addon' );
+				: __( 'Cloud verification failed.', 'npcink-cloud-addon' );
 		}
 
 		/**
@@ -1127,12 +975,12 @@ if ( ! class_exists( 'Magick_AI_Cloud_Settings_Page' ) ) {
 		 */
 		private static function format_entitlement_availability( array $summary, bool $is_verified ): string {
 			if ( ! $is_verified ) {
-				return __( 'Not checked', 'magick-ai-cloud-addon' );
+				return __( 'Not checked', 'npcink-cloud-addon' );
 			}
 
 			return ! empty( $summary['available'] )
-				? __( 'available', 'magick-ai-cloud-addon' )
-				: __( 'unavailable', 'magick-ai-cloud-addon' );
+				? __( 'available', 'npcink-cloud-addon' )
+				: __( 'unavailable', 'npcink-cloud-addon' );
 		}
 
 		/**
@@ -1153,7 +1001,7 @@ if ( ! class_exists( 'Magick_AI_Cloud_Settings_Page' ) ) {
 		 * @return string
 		 */
 		private static function format_empty( string $value ): string {
-			return '' !== $value ? $value : __( 'unavailable', 'magick-ai-cloud-addon' );
+			return '' !== $value ? $value : __( 'unavailable', 'npcink-cloud-addon' );
 		}
 
 		/**
@@ -1166,7 +1014,7 @@ if ( ! class_exists( 'Magick_AI_Cloud_Settings_Page' ) ) {
 		private static function format_datetime_value( string $value, string $fallback = '' ): string {
 			$value = trim( $value );
 			if ( '' === $value ) {
-				return '' !== $fallback ? $fallback : __( 'unavailable', 'magick-ai-cloud-addon' );
+				return '' !== $fallback ? $fallback : __( 'unavailable', 'npcink-cloud-addon' );
 			}
 
 			$has_timezone = (bool) preg_match( '/(?:Z|UTC|[+-]\d{2}:?\d{2})$/i', $value );

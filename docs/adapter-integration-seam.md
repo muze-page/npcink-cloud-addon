@@ -2,26 +2,26 @@
 
 ## Rule
 
-`magick-ai-adapter` must not store Cloud credentials.
+`npcink-openclaw-adapter` must not store Cloud credentials.
 
 Adapter code should call this addon through the public PHP functions and runtime client.
 
 ## Public Functions
 
 ```php
-magick_ai_cloud_addon_is_configured(): bool
-magick_ai_cloud_addon_get_settings(): array
-magick_ai_cloud_addon_runtime_client(): ?Magick_AI_Cloud_Runtime_Client
-magick_ai_cloud_addon_verified_runtime_client(): ?Magick_AI_Cloud_Runtime_Client
-magick_ai_cloud_addon_dispatch_media_derivative_cloud_request(array $ability_response, array $source_artifact, string $trace_id = '', string $idempotency_key = '', array $watermark_artifact = array())
-magick_ai_cloud_addon_build_media_derivative_proposal_payload(array $ability_response, array $cloud_result, array $derivative_artifact)
-magick_ai_cloud_addon_download_media_derivative_artifact(array $derivative_artifact, string $trace_id = '')
+npcink_cloud_addon_is_configured(): bool
+npcink_cloud_addon_get_settings(): array
+npcink_cloud_addon_runtime_client(): ?Npcink_Cloud_Runtime_Client
+npcink_cloud_addon_verified_runtime_client(): ?Npcink_Cloud_Runtime_Client
+npcink_cloud_addon_dispatch_media_derivative_cloud_request(array $ability_response, array $source_artifact, string $trace_id = '', string $idempotency_key = '', array $watermark_artifact = array())
+npcink_cloud_addon_build_media_derivative_proposal_payload(array $ability_response, array $cloud_result, array $derivative_artifact)
+npcink_cloud_addon_download_media_derivative_artifact(array $derivative_artifact, string $trace_id = '')
 ```
 
 ## Expected Adapter Flow
 
-1. Check `function_exists( 'magick_ai_cloud_addon_runtime_client' )`.
-2. Call `magick_ai_cloud_addon_runtime_client()`.
+1. Check `function_exists( 'npcink_cloud_addon_runtime_client' )`.
+2. Call `npcink_cloud_addon_runtime_client()`.
 3. If it returns `null`, fail closed or use the local fallback path.
 4. Shape the OpenClaw/Core payload in adapter code.
 5. Call `execute_runtime()`.
@@ -30,7 +30,7 @@ magick_ai_cloud_addon_download_media_derivative_artifact(array $derivative_artif
 
 ## Media Derivative Flow
 
-For `magick-ai/build-media-derivative-cloud-request`:
+For `npcink-abilities-toolkit/build-media-derivative-cloud-request`:
 
 1. Host/Adapter calls the local WordPress ability and receives the read-only
    request contract.
@@ -38,18 +38,18 @@ For `magick-ai/build-media-derivative-cloud-request`:
    short TTL source artifact id. The addon does not invent undocumented generic
    upload/download endpoints.
 3. Host/Adapter calls
-   `magick_ai_cloud_addon_dispatch_media_derivative_cloud_request()`.
+   `npcink_cloud_addon_dispatch_media_derivative_cloud_request()`.
 4. The addon validates that the ability payload has no credentials,
    Authorization data, or signed headers, and fails closed when Cloud settings
    are not verified.
 5. Host/Adapter polls `get_run()` and `get_run_result()`.
 6. Host/Adapter may call
-   `magick_ai_cloud_addon_download_media_derivative_artifact()` to serve a
+   `npcink_cloud_addon_download_media_derivative_artifact()` to serve a
    same-origin local preview proxy for a non-expired derivative artifact. The
    addon signs the Cloud download and verifies MIME, size, and optional
    checksum, but does not persist or register the artifact.
 7. Host/Adapter calls
-   `magick_ai_cloud_addon_build_media_derivative_proposal_payload()` to produce
+   `npcink_cloud_addon_build_media_derivative_proposal_payload()` to produce
    Core proposal input.
 8. Core/local host owns proposal display, approval, record, replace, rollback,
    and all WordPress writes.
@@ -72,12 +72,12 @@ branding, approve adoption, or write attachment metadata.
 ## Example
 
 ```php
-$client = function_exists( 'magick_ai_cloud_addon_runtime_client' )
-	? magick_ai_cloud_addon_runtime_client()
+$client = function_exists( 'npcink_cloud_addon_runtime_client' )
+	? npcink_cloud_addon_runtime_client()
 	: null;
 
 if ( ! $client ) {
-	return new WP_Error( 'cloud_addon_unavailable', 'Magick AI Cloud Addon is not configured.' );
+	return new WP_Error( 'cloud_addon_unavailable', 'Npcink Cloud Addon is not configured.' );
 }
 
 $response = $client->execute_runtime(

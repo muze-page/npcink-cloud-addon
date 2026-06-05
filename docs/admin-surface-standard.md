@@ -37,6 +37,17 @@ Low-frequency details may include:
 - aggregate Cloud observability counters;
 - last verification failure text.
 
+## Time Display
+
+Cloud settings, entitlement summaries, and observability buffers may store UTC
+or ISO timestamps for machine use, cache freshness, signing, upload status, or
+Cloud correlation. Keep those stored values stable.
+
+Any timestamp shown in the wp-admin settings page must be formatted through the
+WordPress site timezone as `Y-m-d H:i:s`. Do not print raw UTC strings, ISO
+timestamps, or Cloud machine timestamps directly in the human-facing admin UI
+unless the label explicitly describes a machine/debug value.
+
 ## Do Not Add
 
 Cloud Addon admin must not add:

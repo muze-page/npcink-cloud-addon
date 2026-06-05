@@ -21,6 +21,7 @@ if ( ! class_exists( 'Magick_AI_Cloud_Settings_Page' ) ) {
 		private const MENU_CAPABILITY = 'manage_options';
 		private const ACTION_SAVE = 'magick_ai_cloud_addon_save';
 		private const ACTION_REFRESH_MONITORING = 'magick_ai_cloud_addon_refresh_monitoring';
+		private const DATETIME_DISPLAY_FORMAT = 'Y-m-d H:i:s';
 
 		/**
 		 * Registers admin hooks.
@@ -593,7 +594,7 @@ if ( ! class_exists( 'Magick_AI_Cloud_Settings_Page' ) ) {
 					</div>
 					<div class="magick-ai-cloud-summary__item">
 						<span class="magick-ai-cloud-summary__label"><?php esc_html_e( 'Last verified', 'magick-ai-cloud-addon' ); ?></span>
-						<span class="magick-ai-cloud-summary__value"><?php echo esc_html( self::format_setting_value( (string) $settings['verified_at'], __( 'Never', 'magick-ai-cloud-addon' ) ) ); ?></span>
+						<span class="magick-ai-cloud-summary__value"><?php echo esc_html( self::format_datetime_value( (string) $settings['verified_at'], __( 'Never', 'magick-ai-cloud-addon' ) ) ); ?></span>
 					</div>
 					<div class="magick-ai-cloud-summary__item">
 						<span class="magick-ai-cloud-summary__label"><?php esc_html_e( 'Entitlement', 'magick-ai-cloud-addon' ); ?></span>
@@ -745,7 +746,7 @@ if ( ! class_exists( 'Magick_AI_Cloud_Settings_Page' ) ) {
 					</tr>
 					<tr>
 						<th scope="row"><?php esc_html_e( 'Last captured', 'magick-ai-cloud-addon' ); ?></th>
-						<td><?php echo esc_html( self::format_empty( (string) ( $monitoring['last_captured_at'] ?? '' ) ) ); ?></td>
+						<td><?php echo esc_html( self::format_datetime_value( (string) ( $monitoring['last_captured_at'] ?? '' ) ) ); ?></td>
 					</tr>
 					<tr>
 						<th scope="row"><?php esc_html_e( 'Sent events', 'magick-ai-cloud-addon' ); ?></th>
@@ -805,7 +806,7 @@ if ( ! class_exists( 'Magick_AI_Cloud_Settings_Page' ) ) {
 					</tr>
 					<tr>
 						<th scope="row"><?php esc_html_e( 'Last uploaded', 'magick-ai-cloud-addon' ); ?></th>
-						<td><?php echo esc_html( self::format_empty( (string) ( $monitoring['last_uploaded_at'] ?? '' ) ) ); ?></td>
+						<td><?php echo esc_html( self::format_datetime_value( (string) ( $monitoring['last_uploaded_at'] ?? '' ) ) ); ?></td>
 					</tr>
 					<tr>
 						<th scope="row"><?php esc_html_e( 'Last upload error', 'magick-ai-cloud-addon' ); ?></th>
@@ -863,7 +864,7 @@ if ( ! class_exists( 'Magick_AI_Cloud_Settings_Page' ) ) {
 					</tr>
 					<tr>
 						<th scope="row"><?php esc_html_e( 'Summary refreshed', 'magick-ai-cloud-addon' ); ?></th>
-						<td><?php echo esc_html( self::format_empty( (string) ( $remote['last_refreshed_at'] ?? '' ) ) ); ?></td>
+						<td><?php echo esc_html( self::format_datetime_value( (string) ( $remote['last_refreshed_at'] ?? '' ) ) ); ?></td>
 					</tr>
 					<tr>
 						<th scope="row"><?php esc_html_e( 'Summary error', 'magick-ai-cloud-addon' ); ?></th>
@@ -913,7 +914,7 @@ if ( ! class_exists( 'Magick_AI_Cloud_Settings_Page' ) ) {
 								<td><code><?php echo esc_html( (string) ( $error['error_code'] ?? '' ) ); ?></code></td>
 								<td><code><?php echo esc_html( (string) ( $error['plugin_slug'] ?? '' ) ); ?></code></td>
 								<td><code><?php echo esc_html( (string) ( $error['event_kind'] ?? '' ) ); ?></code></td>
-								<td><?php echo esc_html( self::format_empty( (string) ( $error['received_at'] ?? '' ) ) ); ?></td>
+								<td><?php echo esc_html( self::format_datetime_value( (string) ( $error['received_at'] ?? '' ) ) ); ?></td>
 							</tr>
 						<?php endforeach; ?>
 					</tbody>
@@ -974,7 +975,7 @@ if ( ! class_exists( 'Magick_AI_Cloud_Settings_Page' ) ) {
 					</tr>
 					<tr>
 						<th scope="row"><?php esc_html_e( 'Synced at', 'magick-ai-cloud-addon' ); ?></th>
-						<td><?php echo esc_html( self::format_empty( (string) ( $summary['synced_at'] ?? '' ) ) ); ?></td>
+						<td><?php echo esc_html( self::format_datetime_value( (string) ( $summary['synced_at'] ?? '' ) ) ); ?></td>
 					</tr>
 				</tbody>
 			</table>
@@ -1153,6 +1154,36 @@ if ( ! class_exists( 'Magick_AI_Cloud_Settings_Page' ) ) {
 		 */
 		private static function format_empty( string $value ): string {
 			return '' !== $value ? $value : __( 'unavailable', 'magick-ai-cloud-addon' );
+		}
+
+		/**
+		 * Formats a stored UTC datetime for the site's WordPress timezone.
+		 *
+		 * @param string $value    UTC datetime string.
+		 * @param string $fallback Fallback text.
+		 * @return string
+		 */
+		private static function format_datetime_value( string $value, string $fallback = '' ): string {
+			$value = trim( $value );
+			if ( '' === $value ) {
+				return '' !== $fallback ? $fallback : __( 'unavailable', 'magick-ai-cloud-addon' );
+			}
+
+			$has_timezone = (bool) preg_match( '/(?:Z|UTC|[+-]\d{2}:?\d{2})$/i', $value );
+			$timestamp    = strtotime( $has_timezone ? $value : $value . ' UTC' );
+			if ( false === $timestamp ) {
+				return $value;
+			}
+
+			if ( function_exists( 'wp_date' ) ) {
+				return wp_date( self::DATETIME_DISPLAY_FORMAT, $timestamp );
+			}
+
+			if ( function_exists( 'date_i18n' ) ) {
+				return date_i18n( self::DATETIME_DISPLAY_FORMAT, $timestamp, true );
+			}
+
+			return gmdate( self::DATETIME_DISPLAY_FORMAT, $timestamp );
 		}
 
 		/**

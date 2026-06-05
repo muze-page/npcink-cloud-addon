@@ -21,6 +21,7 @@ $runtime_contract = maca_read( $root . '/docs/cloud-runtime-client-contract.md' 
 $adapter_doc = maca_read( $root . '/docs/adapter-integration-seam.md' );
 $complexity_doc = maca_read( $root . '/docs/cloud-addon-complexity-budget.md' );
 $cloud_bulk_article_doc = maca_read( $root . '/docs/cloud-bulk-article-run-seam.md' );
+$admin_surface_standard = maca_read( $root . '/docs/admin-surface-standard.md' );
 $agents = maca_read( $root . '/AGENTS.md' );
 $readme = maca_read( $root . '/README.md' );
 
@@ -249,9 +250,23 @@ maca_assert(
 maca_assert(
 	false !== strpos( $settings_page, 'Buffered events' )
 	&& false !== strpos( $settings_page, 'buffer_count' )
+	&& false !== strpos( $settings_page, "DATETIME_DISPLAY_FORMAT = 'Y-m-d H:i:s'" )
+	&& false !== strpos( $settings_page, 'format_datetime_value' )
+	&& false !== strpos( $settings_page, 'wp_date( self::DATETIME_DISPLAY_FORMAT, $timestamp )' )
+	&& false !== strpos( $settings_page, "self::format_datetime_value( (string) \$settings['verified_at']" )
+	&& false !== strpos( $settings_page, "self::format_datetime_value( (string) ( \$monitoring['last_uploaded_at'] ?? '' ) )" )
+	&& false !== strpos( $settings_page, "self::format_datetime_value( (string) ( \$summary['synced_at'] ?? '' ) )" )
 	&& false !== strpos( $boundary_doc, 'Cloud observability summaries are read-only dashboard projections' )
 	&& false !== strpos( $runtime_contract, 'must not be treated as Core audit truth' ),
 	'Monitoring UI and docs keep observability as dashboard projection, not governance truth.'
+);
+
+maca_assert(
+	false !== strpos( $admin_surface_standard, 'Time Display' )
+	&& false !== strpos( $admin_surface_standard, 'WordPress site timezone' )
+	&& false !== strpos( $admin_surface_standard, 'Y-m-d H:i:s' )
+	&& false !== strpos( $admin_surface_standard, 'Do not print raw UTC strings' ),
+	'Admin surface standard documents WordPress-time display for human-facing timestamps.'
 );
 
 maca_assert(

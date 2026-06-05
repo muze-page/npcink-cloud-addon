@@ -378,6 +378,10 @@ if ( ! class_exists( 'Magick_AI_Cloud_Media_Derivative_Transport' ) ) {
 			$job_payload = is_array( $contract['cloud_job_payload'] ?? null ) ? $contract['cloud_job_payload'] : array();
 			$requested = is_array( $job_payload['requested_derivative'] ?? null ) ? $job_payload['requested_derivative'] : array();
 			$watermark = is_array( $job_payload['watermark'] ?? null ) ? $job_payload['watermark'] : array();
+			$watermark_type = sanitize_key( (string) ( $watermark['type'] ?? 'image' ) );
+			if ( ! in_array( $watermark_type, array( 'image', 'text' ), true ) ) {
+				$watermark_type = 'image';
+			}
 
 			if ( ( ! empty( $watermark_reference ) || $has_watermark_upload ) && empty( $watermark ) ) {
 				return new WP_Error(
@@ -386,14 +390,21 @@ if ( ! class_exists( 'Magick_AI_Cloud_Media_Derivative_Transport' ) ) {
 					array( 'status' => 400 )
 				);
 			}
-			if ( $has_watermark_upload && ! empty( $watermark['artifact_id'] ) ) {
+			if ( 'text' === $watermark_type && ( $has_watermark_upload || ! empty( $watermark_reference ) || ! empty( $watermark['artifact_id'] ) ) ) {
+				return new WP_Error(
+					'cloud_media_derivative_watermark_source_conflict',
+					__( 'Text watermark plans must not include a watermark upload or artifact id.', 'magick-ai-cloud-addon' ),
+					array( 'status' => 400 )
+				);
+			}
+			if ( 'image' === $watermark_type && $has_watermark_upload && ! empty( $watermark['artifact_id'] ) ) {
 				return new WP_Error(
 					'cloud_media_derivative_watermark_source_conflict',
 					__( 'Watermark upload and watermark artifact id cannot be sent together.', 'magick-ai-cloud-addon' ),
 					array( 'status' => 400 )
 				);
 			}
-			if ( ! empty( $watermark ) && empty( $watermark['artifact_id'] ) && empty( $watermark_reference ) && ! $has_watermark_upload ) {
+			if ( 'image' === $watermark_type && ! empty( $watermark ) && empty( $watermark['artifact_id'] ) && empty( $watermark_reference ) && ! $has_watermark_upload ) {
 				return new WP_Error(
 					'cloud_media_derivative_watermark_source_missing',
 					__( 'Watermark plans require a watermark upload or artifact id before Cloud dispatch.', 'magick-ai-cloud-addon' ),
@@ -483,6 +494,30 @@ if ( ! class_exists( 'Magick_AI_Cloud_Media_Derivative_Transport' ) ) {
 		 * @return array<string,mixed>
 		 */
 		private static function sanitize_watermark_payload( array $watermark ): array {
+			$type = sanitize_key( (string) ( $watermark['type'] ?? 'image' ) );
+			if ( ! in_array( $type, array( 'image', 'text' ), true ) ) {
+				$type = 'image';
+			}
+
+			if ( 'text' === $type ) {
+				$text = sanitize_text_field( (string) ( $watermark['text'] ?? 'AI' ) );
+				if ( '' === $text ) {
+					$text = 'AI';
+				}
+				$text = function_exists( 'mb_substr' ) ? mb_substr( $text, 0, 64 ) : substr( $text, 0, 64 );
+
+				return array(
+					'type'       => 'text',
+					'text'       => $text,
+					'position'   => sanitize_key( (string) ( $watermark['position'] ?? 'bottom_right' ) ),
+					'opacity'    => is_numeric( $watermark['opacity'] ?? null ) ? max( 0.0, min( 1.0, (float) $watermark['opacity'] ) ) : 0.75,
+					'font_size'  => max( 8, min( 256, absint( $watermark['font_size'] ?? 48 ) ) ),
+					'color'      => self::sanitize_watermark_color( $watermark['color'] ?? '#FFFFFF', '#FFFFFF' ),
+					'background' => self::sanitize_watermark_color( $watermark['background'] ?? 'rgba(0,0,0,0.35)', 'rgba(0,0,0,0.35)' ),
+					'margin_px'  => max( 0, min( 1000, absint( $watermark['margin_px'] ?? 24 ) ) ),
+				);
+			}
+
 			$sanitized = array(
 				'type'          => 'image',
 				'position'      => sanitize_key( (string) ( $watermark['position'] ?? 'bottom_right' ) ),
@@ -496,6 +531,35 @@ if ( ! class_exists( 'Magick_AI_Cloud_Media_Derivative_Transport' ) ) {
 			}
 
 			return $sanitized;
+		}
+
+		/**
+		 * Sanitizes a text watermark color token for Cloud transport.
+		 *
+		 * @param mixed  $value Raw color.
+		 * @param string $default Default color.
+		 * @return string
+		 */
+		private static function sanitize_watermark_color( $value, string $default ): string {
+			$color = trim( sanitize_text_field( (string) $value ) );
+			if ( 'transparent' === strtolower( $color ) ) {
+				return 'transparent';
+			}
+			if ( 1 === preg_match( '/^#[0-9A-Fa-f]{3}([0-9A-Fa-f]{3})?$/', $color ) ) {
+				return strtoupper( $color );
+			}
+			if ( 1 === preg_match( '/^rgba?\(\s*(\d{1,3})\s*,\s*(\d{1,3})\s*,\s*(\d{1,3})(?:\s*,\s*(0|1|0?\.\d+))?\s*\)$/', $color, $matches ) ) {
+				$r     = max( 0, min( 255, (int) $matches[1] ) );
+				$g     = max( 0, min( 255, (int) $matches[2] ) );
+				$b     = max( 0, min( 255, (int) $matches[3] ) );
+				$alpha = isset( $matches[4] ) && '' !== $matches[4] ? max( 0, min( 1, (float) $matches[4] ) ) : null;
+
+				return null === $alpha
+					? sprintf( 'rgb(%d,%d,%d)', $r, $g, $b )
+					: sprintf( 'rgba(%d,%d,%d,%s)', $r, $g, $b, rtrim( rtrim( sprintf( '%.3F', $alpha ), '0' ), '.' ) );
+			}
+
+			return $default;
 		}
 
 		/**

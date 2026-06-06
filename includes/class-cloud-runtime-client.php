@@ -358,9 +358,17 @@ if ( ! class_exists( 'Npcink_Cloud_Runtime_Client' ) ) {
 				$body = $encoded;
 			}
 
+			$timeout = max( 5, absint( $this->config['timeout'] ?? 8 ) );
+			if ( 'POST' === $method && '/v1/runtime/execute' === $path && is_array( $payload ) ) {
+				$requested_timeout = absint( $payload['timeout_seconds'] ?? 0 );
+				if ( $requested_timeout > 0 ) {
+					$timeout = max( $timeout, min( 60, $requested_timeout ) );
+				}
+			}
+
 			$args = array(
 				'method' => $method,
-				'timeout' => max( 5, absint( $this->config['timeout'] ?? 8 ) ),
+				'timeout' => $timeout,
 				'headers' => $this->build_signed_headers( $method, $path, $body, $idempotency_key, $trace_id, $content_type ),
 			);
 

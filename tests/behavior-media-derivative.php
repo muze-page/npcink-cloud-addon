@@ -177,6 +177,22 @@ maca_assert(
 
 maca_reset_test_state();
 maca_seed_settings( true );
+$client = new Npcink_Cloud_Runtime_Client( Npcink_Cloud_Addon_Settings::get_settings() );
+$runtime_timeout_result = $client->execute_runtime(
+	array(
+		'ability_name'    => 'magick-ai-cloud/generate-image',
+		'timeout_seconds' => 60,
+	)
+);
+$runtime_timeout_request = end( $GLOBALS['maca_http_requests'] );
+maca_assert(
+	is_array( $runtime_timeout_result )
+	&& 60 === (int) ( $runtime_timeout_request['args']['timeout'] ?? 0 ),
+	'Behavior: runtime execute honors bounded payload timeout for longer hosted image generation.'
+);
+
+maca_reset_test_state();
+maca_seed_settings( true );
 $preview_bytes = 'derivative-preview-bytes';
 $GLOBALS['maca_http_response_queue'][] = array(
 	'response' => array( 'code' => 200 ),

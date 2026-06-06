@@ -16,7 +16,7 @@ if ( ! class_exists( 'Npcink_Cloud_Settings_Page' ) ) {
 	 * Renders Npcink > Cloud Addon and handles save-and-verify.
 	 */
 	final class Npcink_Cloud_Settings_Page {
-		private const PARENT_MENU_SLUG = 'npcink';
+		private const PARENT_MENU_SLUG = 'npcink-ai';
 		private const PAGE_SLUG = 'npcink-cloud-addon';
 		private const MENU_CAPABILITY = 'manage_options';
 		private const ACTION_SAVE = 'npcink_cloud_addon_save';

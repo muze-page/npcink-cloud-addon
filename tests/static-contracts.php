@@ -26,6 +26,11 @@ $agents = maca_read( $root . '/AGENTS.md' );
 $readme = maca_read( $root . '/README.md' );
 
 maca_assert(
+	false !== strpos( $settings_page, "private const PARENT_MENU_SLUG = 'npcink-ai';" ),
+	'Settings page targets the shared Npcink AI parent menu slug.'
+);
+
+maca_assert(
 	false !== strpos( $bootstrap, 'class-cloud-media-derivative-transport.php' )
 	&& false !== strpos( $bootstrap, 'npcink_cloud_addon_verified_runtime_client' )
 	&& false !== strpos( $bootstrap, 'npcink_cloud_addon_dispatch_media_derivative_cloud_request' )

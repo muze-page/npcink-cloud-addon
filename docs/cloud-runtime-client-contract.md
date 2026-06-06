@@ -39,6 +39,7 @@ get_current_entitlement(string $trace_id = '')
 get_profile_stats(string $profile_id, string $trace_id = '')
 get_instance_stats(string $instance_id, string $trace_id = '')
 send_observability_events(array $events, string $trace_id = '', string $idempotency_key = '')
+send_agent_feedback_event(array $payload, string $trace_id = '', string $idempotency_key = '')
 get_observability_summary(int $window_hours = 24, string $trace_id = '')
 ```
 
@@ -66,6 +67,7 @@ It returns `null` until the addon settings have passed Save and Verify.
 | `get_profile_stats()` | `GET /v1/stats/profiles/{profile_id}` |
 | `get_instance_stats()` | `GET /v1/stats/instances/{instance_id}` |
 | `send_observability_events()` | `POST /v1/observability/plugin-events` |
+| `send_agent_feedback_event()` | `POST /v1/agent-feedback/events` |
 | `get_observability_summary()` | `GET /v1/observability/plugin-summary` |
 
 ## Signing
@@ -115,6 +117,12 @@ by an explicit allowlist before they reach the runtime client.
 
 `get_observability_summary()` reads a Cloud-generated aggregate dashboard
 projection. The local Addon may cache the summary for display only.
+
+`send_agent_feedback_event()` may send only `cloud_agent_feedback.v1` local
+operator feedback for Cloud eval and quality rollups. The payload must preserve
+local approval, preflight, and final write truth; Cloud must not treat it as
+training permission, workflow truth, proposal truth, or WordPress write
+authority.
 
 Observability transport must not send prompts, generated content, article body
 content, media bytes, raw request payloads, raw response payloads, provider

@@ -300,6 +300,36 @@ if ( ! class_exists( 'Npcink_Cloud_Runtime_Client' ) ) {
 		}
 
 		/**
+		 * Sends one local Agent handoff feedback event for Cloud eval rollups.
+		 *
+		 * @param array<string,mixed> $payload Agent feedback payload.
+		 * @param string              $trace_id Optional trace id.
+		 * @param string              $idempotency_key Optional idempotency key.
+		 * @return array<string,mixed>|WP_Error
+		 */
+		public function send_agent_feedback_event( array $payload, string $trace_id = '', string $idempotency_key = '' ) {
+			if ( empty( $payload ) || 'cloud_agent_feedback.v1' !== (string) ( $payload['contract_version'] ?? '' ) ) {
+				return new WP_Error(
+					'cloud_agent_feedback_payload_invalid',
+					__( 'Agent feedback requires the cloud_agent_feedback.v1 contract.', 'npcink-cloud-addon' ),
+					array( 'status' => 400 )
+				);
+			}
+
+			if ( '' === $idempotency_key ) {
+				$idempotency_key = 'agent_feedback_' . wp_generate_uuid4();
+			}
+
+			return $this->request(
+				'POST',
+				'/v1/agent-feedback/events',
+				$payload,
+				$idempotency_key,
+				$trace_id
+			);
+		}
+
+		/**
 		 * Reads the Cloud plugin observability summary.
 		 *
 		 * @param int    $window_hours Summary window in hours.
@@ -707,6 +737,9 @@ if ( ! class_exists( 'Npcink_Cloud_Runtime_Client' ) ) {
 				return true;
 			}
 			if ( 'POST' === $method && '/v1/observability/plugin-events' === $path_only ) {
+				return true;
+			}
+			if ( 'POST' === $method && '/v1/agent-feedback/events' === $path_only ) {
 				return true;
 			}
 			if ( 'GET' === $method && '/v1/observability/plugin-summary' === $path_only ) {

@@ -217,14 +217,18 @@ maca_assert(
 	false !== strpos( $runtime_client, 'function send_observability_events' )
 	&& false !== strpos( $runtime_client, "'POST'" )
 	&& false !== strpos( $runtime_client, "'/v1/observability/plugin-events'" )
+	&& false !== strpos( $runtime_client, 'function send_agent_feedback_event' )
+	&& false !== strpos( $runtime_client, "'/v1/agent-feedback/events'" )
 	&& false !== strpos( $runtime_client, 'function get_observability_summary' )
 	&& false !== strpos( $runtime_client, "'GET'" )
 	&& false !== strpos( $runtime_client, "'/v1/observability/plugin-summary?window_hours='" )
 	&& false !== strpos( $runtime_contract, 'send_observability_events()' )
+	&& false !== strpos( $runtime_contract, 'send_agent_feedback_event()' )
 	&& false !== strpos( $runtime_contract, 'get_observability_summary()' )
 	&& false !== strpos( $boundary_doc, 'POST /v1/observability/plugin-events' )
+	&& false !== strpos( $boundary_doc, 'POST /v1/agent-feedback/events' )
 	&& false !== strpos( $boundary_doc, 'GET /v1/observability/plugin-summary' ),
-	'Observability transport endpoints are explicitly allowed by code and docs.'
+	'Observability and Agent feedback transport endpoints are explicitly allowed by code and docs.'
 );
 
 maca_assert(

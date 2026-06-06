@@ -118,6 +118,7 @@ Allowed Cloud contract endpoints:
 - `GET /v1/stats/*`
 - `GET /v1/entitlements/current`
 - `POST /v1/observability/plugin-events`
+- `POST /v1/agent-feedback/events`
 - `GET /v1/observability/plugin-summary`
 
 Forbidden legacy endpoint:
@@ -132,6 +133,11 @@ or logo registry endpoints to the addon.
 Observability transport must use only the observability endpoints above. Do not
 add ad hoc log upload, support bundle, file upload, database export, or raw
 payload endpoints to the addon.
+
+Agent feedback transport must use only `POST /v1/agent-feedback/events` and
+only for `cloud_agent_feedback.v1` local operator feedback. It is eval/quality
+metadata, not approval truth, proposal truth, workflow truth, or WordPress write
+authority.
 
 ## UI Rule
 

@@ -601,7 +601,7 @@ if ( ! class_exists( 'Npcink_Cloud_Settings_Page' ) ) {
 						<td>
 							<?php
 							printf(
-								/* translators: 1: last sent count, 2: total sent count. */
+								/* translators: 1: latest batch count, 2: total count. */
 								esc_html__( 'last %1$d / total %2$d', 'npcink-cloud-addon' ),
 								absint( $monitoring['last_sent_count'] ?? 0 ),
 								absint( $monitoring['total_sent'] ?? ( $monitoring['total_uploaded'] ?? 0 ) )
@@ -614,7 +614,7 @@ if ( ! class_exists( 'Npcink_Cloud_Settings_Page' ) ) {
 						<td>
 							<?php
 							printf(
-								/* translators: 1: last stored count, 2: total stored count. */
+								/* translators: 1: latest batch count, 2: total count. */
 								esc_html__( 'last %1$d / total %2$d', 'npcink-cloud-addon' ),
 								absint( $monitoring['last_stored_count'] ?? 0 ),
 								absint( $monitoring['total_stored'] ?? 0 )
@@ -627,7 +627,7 @@ if ( ! class_exists( 'Npcink_Cloud_Settings_Page' ) ) {
 						<td>
 							<?php
 							printf(
-								/* translators: 1: last duplicate count, 2: total duplicate count. */
+								/* translators: 1: latest batch count, 2: total count. */
 								esc_html__( 'last %1$d / total %2$d', 'npcink-cloud-addon' ),
 								absint( $monitoring['last_duplicate_count'] ?? 0 ),
 								absint( $monitoring['total_duplicate'] ?? 0 )

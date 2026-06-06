@@ -31,6 +31,15 @@ maca_assert(
 );
 
 maca_assert(
+	false !== strpos( maca_read( $root . '/npcink-cloud-addon.php' ), 'Text Domain:       npcink-cloud-addon' )
+	&& false !== strpos( maca_read( $root . '/npcink-cloud-addon.php' ), 'Domain Path:       /languages' )
+	&& false !== strpos( maca_read( $root . '/languages/npcink-cloud-addon.pot' ), 'X-Domain: npcink-cloud-addon' )
+	&& false !== strpos( maca_read( $root . '/languages/npcink-cloud-addon-zh_CN.po' ), 'Language: zh_CN' )
+	&& false === strpos( $bootstrap, 'load_plugin_textdomain' ),
+	'Plugin declares the npcink-cloud-addon text domain and ships generated language files.'
+);
+
+maca_assert(
 	false !== strpos( $bootstrap, 'class-cloud-media-derivative-transport.php' )
 	&& false !== strpos( $bootstrap, 'npcink_cloud_addon_verified_runtime_client' )
 	&& false !== strpos( $bootstrap, 'npcink_cloud_addon_dispatch_media_derivative_cloud_request' )

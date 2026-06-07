@@ -45,3 +45,12 @@ maca_assert(
 	&& 'agent-feedback-test' === (string) ( $request['args']['headers']['Idempotency-Key'] ?? '' ),
 	'Behavior: Agent feedback transport posts one signed event to the explicit Cloud endpoint.'
 );
+
+$summary = $client->get_agent_feedback_summary( 48, 'agent_feedback_summary_trace' );
+$summary_request = $GLOBALS['maca_http_requests'][1] ?? array();
+maca_assert(
+	is_array( $summary )
+	&& false !== strpos( (string) ( $summary_request['url'] ?? '' ), '/v1/agent-feedback/summary?window_hours=48' )
+	&& 'GET' === (string) ( $summary_request['args']['method'] ?? '' ),
+	'Behavior: Agent feedback summary reads the explicit Cloud eval summary endpoint.'
+);

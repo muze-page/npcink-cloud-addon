@@ -330,6 +330,19 @@ if ( ! class_exists( 'Npcink_Cloud_Runtime_Client' ) ) {
 		}
 
 		/**
+		 * Reads the Cloud Agent feedback eval summary.
+		 *
+		 * @param int    $window_hours Summary window in hours.
+		 * @param string $trace_id Optional trace id.
+		 * @return array<string,mixed>|WP_Error
+		 */
+		public function get_agent_feedback_summary( int $window_hours = 24, string $trace_id = '' ) {
+			$window_hours = min( 168, max( 1, absint( $window_hours ) ) );
+
+			return $this->request( 'GET', '/v1/agent-feedback/summary?window_hours=' . rawurlencode( (string) $window_hours ), null, '', $trace_id );
+		}
+
+		/**
 		 * Reads the Cloud plugin observability summary.
 		 *
 		 * @param int    $window_hours Summary window in hours.
@@ -740,6 +753,9 @@ if ( ! class_exists( 'Npcink_Cloud_Runtime_Client' ) ) {
 				return true;
 			}
 			if ( 'POST' === $method && '/v1/agent-feedback/events' === $path_only ) {
+				return true;
+			}
+			if ( 'GET' === $method && '/v1/agent-feedback/summary' === $path_only ) {
 				return true;
 			}
 			if ( 'GET' === $method && '/v1/observability/plugin-summary' === $path_only ) {

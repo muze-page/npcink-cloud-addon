@@ -134,8 +134,9 @@ Observability transport must use only the observability endpoints above. Do not
 add ad hoc log upload, support bundle, file upload, database export, or raw
 payload endpoints to the addon.
 
-Agent feedback transport must use only `POST /v1/agent-feedback/events` and
-only for `cloud_agent_feedback.v1` local operator feedback. It is eval/quality
+Agent feedback transport must use only `POST /v1/agent-feedback/events` for
+`cloud_agent_feedback.v1` local operator feedback and
+`GET /v1/agent-feedback/summary` for read-only eval rollups. It is eval/quality
 metadata, not approval truth, proposal truth, workflow truth, or WordPress write
 authority.
 
@@ -149,6 +150,6 @@ The local UI stays shallow:
 - site/key ids
 - last verification time
 - entitlement summary
-- opt-in monitoring status and read-only Cloud observability summary
+- opt-in monitoring status and read-only Cloud observability / Agent feedback summaries
 
 It must not become a second control plane.

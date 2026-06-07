@@ -40,6 +40,7 @@ get_profile_stats(string $profile_id, string $trace_id = '')
 get_instance_stats(string $instance_id, string $trace_id = '')
 send_observability_events(array $events, string $trace_id = '', string $idempotency_key = '')
 send_agent_feedback_event(array $payload, string $trace_id = '', string $idempotency_key = '')
+get_agent_feedback_summary(int $window_hours = 24, string $trace_id = '')
 get_observability_summary(int $window_hours = 24, string $trace_id = '')
 ```
 
@@ -68,6 +69,7 @@ It returns `null` until the addon settings have passed Save and Verify.
 | `get_instance_stats()` | `GET /v1/stats/instances/{instance_id}` |
 | `send_observability_events()` | `POST /v1/observability/plugin-events` |
 | `send_agent_feedback_event()` | `POST /v1/agent-feedback/events` |
+| `get_agent_feedback_summary()` | `GET /v1/agent-feedback/summary` |
 | `get_observability_summary()` | `GET /v1/observability/plugin-summary` |
 
 ## Signing
@@ -123,6 +125,10 @@ operator feedback for Cloud eval and quality rollups. The payload must preserve
 local approval, preflight, and final write truth; Cloud must not treat it as
 training permission, workflow truth, proposal truth, or WordPress write
 authority.
+
+`get_agent_feedback_summary()` reads an aggregate eval/quality projection for
+display. It is read-only and must not become local approval, proposal, workflow,
+or WordPress write authority.
 
 Observability transport must not send prompts, generated content, article body
 content, media bytes, raw request payloads, raw response payloads, provider

@@ -102,6 +102,8 @@ maca_assert(
 	&& false !== strpos( $transport, 'Watermark plans require a watermark upload or artifact id' )
 	&& false !== strpos( $transport, 'Text watermark plans must not include a watermark upload or artifact id' )
 	&& false !== strpos( $transport, "'type'       => 'text'" )
+	&& false !== strpos( $transport, 'sanitize_crop_payload' )
+	&& false !== strpos( $transport, "'crop'" )
 	&& false !== strpos( $transport, 'sanitize_watermark_color' )
 	&& false !== strpos( $transport, 'array $watermark_artifact = array()' )
 	&& false !== strpos( $transport, 'sanitize_watermark_payload' )

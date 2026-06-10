@@ -123,6 +123,32 @@ maca_assert(
 	'Behavior: text watermark plans dispatch without a watermark upload or artifact id.'
 );
 
+$crop_payload = maca_ability_fixture();
+$crop_payload['cloud_job_payload']['crop'] = array(
+	'type'         => 'aspect_ratio',
+	'aspect_ratio' => '16:9',
+	'position'     => 'center',
+);
+$crop_result = Npcink_Cloud_Media_Derivative_Transport::dispatch_from_ability_response(
+	$crop_payload,
+	array(
+		'artifact_id' => 'source_artifact',
+		'expires_at' => maca_future_expiry(),
+	),
+	'trace-crop',
+	'idempotency-crop'
+);
+$crop_request = end( $GLOBALS['maca_http_requests'] );
+$crop_body = json_decode( (string) ( $crop_request['args']['body'] ?? '' ), true );
+maca_assert(
+	is_array( $crop_result )
+	&& 'ok' === (string) ( $crop_result['status'] ?? '' )
+	&& 'aspect_ratio' === (string) ( $crop_body['cloud_job_payload']['crop']['type'] ?? '' )
+	&& '16:9' === (string) ( $crop_body['cloud_job_payload']['crop']['aspect_ratio'] ?? '' )
+	&& 'center' === (string) ( $crop_body['cloud_job_payload']['crop']['position'] ?? '' ),
+	'Behavior: aspect-ratio crop plans are forwarded to Cloud media derivative requests.'
+);
+
 $text_watermark_source_conflict = Npcink_Cloud_Media_Derivative_Transport::dispatch_from_ability_response(
 	$text_watermark_payload,
 	array(

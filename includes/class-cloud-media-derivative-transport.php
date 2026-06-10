@@ -457,6 +457,9 @@ if ( ! class_exists( 'Npcink_Cloud_Media_Derivative_Transport' ) ) {
 			if ( '' !== $source_media_type ) {
 				$cloud_job_payload['source_media_type'] = $source_media_type;
 			}
+			if ( is_array( $job_payload['crop'] ?? null ) && ! empty( $job_payload['crop'] ) ) {
+				$cloud_job_payload['crop'] = self::sanitize_crop_payload( $job_payload['crop'] );
+			}
 			if ( ! empty( $watermark ) ) {
 				$cloud_job_payload['watermark'] = self::sanitize_watermark_payload( $watermark );
 				if ( ! empty( $watermark_reference['artifact_id'] ) ) {
@@ -485,6 +488,32 @@ if ( ! class_exists( 'Npcink_Cloud_Media_Derivative_Transport' ) ) {
 			}
 
 			return $payload;
+		}
+
+		/**
+		 * Sanitizes Cloud crop options for bounded aspect-ratio derivative processing.
+		 *
+		 * @param array<string,mixed> $crop Crop payload.
+		 * @return array<string,string>
+		 */
+		private static function sanitize_crop_payload( array $crop ): array {
+			$aspect_ratio = trim( sanitize_text_field( (string) ( $crop['aspect_ratio'] ?? '16:9' ) ) );
+			if ( 1 !== preg_match( '/^([1-9][0-9]{0,2}):([1-9][0-9]{0,2})$/', $aspect_ratio, $matches ) ) {
+				$aspect_ratio = '16:9';
+			} else {
+				$aspect_ratio = max( 1, min( 100, absint( $matches[1] ) ) ) . ':' . max( 1, min( 100, absint( $matches[2] ) ) );
+			}
+
+			$position = sanitize_key( (string) ( $crop['position'] ?? 'center' ) );
+			if ( ! in_array( $position, array( 'top_left', 'top', 'top_right', 'left', 'center', 'right', 'bottom_left', 'bottom', 'bottom_right' ), true ) ) {
+				$position = 'center';
+			}
+
+			return array(
+				'type'         => 'aspect_ratio',
+				'aspect_ratio' => $aspect_ratio,
+				'position'     => $position,
+			);
 		}
 
 		/**

@@ -82,9 +82,10 @@ proposal.
 
 Source media can be sent either as a local upload descriptor (`path`, `bytes`,
 or `content`) or as a same-site short TTL Cloud artifact id. Optional
-watermarks require `cloud_job_payload.watermark` in the ability response; the
-fifth dispatch parameter can then provide a watermark upload descriptor or a
-short TTL watermark artifact id.
+aspect-ratio crop plans in `cloud_job_payload.crop` are forwarded as bounded
+Cloud runtime options. Optional watermarks require `cloud_job_payload.watermark`
+in the ability response; the fifth dispatch parameter can then provide a
+watermark upload descriptor or a short TTL watermark artifact id.
 
 Expired Cloud artifacts are rejected before proposal adoption payloads are
 built. The default action is preview-only and original attachment files are not

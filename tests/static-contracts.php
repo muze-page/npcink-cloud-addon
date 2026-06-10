@@ -31,6 +31,13 @@ maca_assert(
 );
 
 maca_assert(
+	false !== strpos( $bootstrap, 'plugin_action_links_' )
+	&& false !== strpos( $bootstrap, 'npcink_cloud_addon_filter_plugin_action_links' )
+	&& false !== strpos( $bootstrap, 'admin.php?page=npcink-cloud-addon' ),
+	'Plugin screen exposes a Settings shortcut to the Cloud Addon admin page.'
+);
+
+maca_assert(
 	false !== strpos( maca_read( $root . '/npcink-cloud-addon.php' ), 'Text Domain:       npcink-cloud-addon' )
 	&& false !== strpos( maca_read( $root . '/npcink-cloud-addon.php' ), 'Domain Path:       /languages' )
 	&& false !== strpos( maca_read( $root . '/languages/npcink-cloud-addon.pot' ), 'X-Domain: npcink-cloud-addon' )

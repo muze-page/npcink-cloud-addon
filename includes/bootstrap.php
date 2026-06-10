@@ -150,4 +150,26 @@ if ( ! function_exists( 'npcink_cloud_addon_bootstrap' ) ) {
 	}
 }
 
+if ( ! function_exists( 'npcink_cloud_addon_filter_plugin_action_links' ) ) {
+	/**
+	 * Adds a settings shortcut on the WordPress plugins screen.
+	 *
+	 * @param array<int|string,string> $links Existing plugin action links.
+	 * @return array<int|string,string>
+	 */
+	function npcink_cloud_addon_filter_plugin_action_links( array $links ): array {
+		array_unshift(
+			$links,
+			sprintf(
+				'<a href="%1$s">%2$s</a>',
+				esc_url( admin_url( 'admin.php?page=npcink-cloud-addon' ) ),
+				esc_html__( 'Settings', 'default' )
+			)
+		);
+
+		return $links;
+	}
+}
+
 add_action( 'plugins_loaded', 'npcink_cloud_addon_bootstrap', 20 );
+add_filter( 'plugin_action_links_' . plugin_basename( NPCINK_CLOUD_ADDON_FILE ), 'npcink_cloud_addon_filter_plugin_action_links' );

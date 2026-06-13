@@ -24,6 +24,25 @@ $cloud_bulk_article_doc = maca_read( $root . '/docs/cloud-bulk-article-run-seam.
 $admin_surface_standard = maca_read( $root . '/docs/admin-surface-standard.md' );
 $agents = maca_read( $root . '/AGENTS.md' );
 $readme = maca_read( $root . '/README.md' );
+$composer = maca_read( $root . '/composer.json' );
+$eval_lab_proxy = maca_read( $root . '/scripts/eval-lab.sh' );
+
+maca_assert(
+	false !== strpos( $composer, '"eval:project:quality": "sh scripts/eval-lab.sh task=project_quality_gate' )
+	&& false !== strpos( $eval_lab_proxy, 'MAGICK_AI_EVAL_LAB_PATH' )
+	&& false !== strpos( $eval_lab_proxy, 'composer eval:task -- "$@"' ),
+	'Cloud Addon exposes optional eval-lab project quality gate through the task registry.'
+);
+maca_assert(
+	false === strpos( $composer, '@eval:lab' )
+	&& false === strpos( $composer, '@eval:project:quality' )
+	&& false !== strpos( $eval_lab_proxy, 'composer "$SCRIPT" -- "$@"' ),
+	'Cloud Addon default tests stay independent from eval-lab and the wrapper keeps legacy Composer compatibility.'
+);
+maca_assert(
+	false === strpos( $composer . "\n" . $eval_lab_proxy, 'sk-' ),
+	'Cloud Addon eval-lab integration does not contain committed provider keys.'
+);
 
 maca_assert(
 	false !== strpos( $settings_page, "private const PARENT_MENU_SLUG = 'npcink-ai';" ),

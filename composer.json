@@ -9,6 +9,8 @@
   "scripts": {
     "lint:php": "find . -name '*.php' -not -path './.git/*' -not -path './build/*' -print0 | xargs -0 -n1 php -l",
     "test:contracts": "php tests/run.php",
+    "eval:lab": "sh scripts/eval-lab.sh",
+    "eval:project:quality": "sh scripts/eval-lab.sh task=project_quality_gate \"project=$PWD\" mode=working_diff",
     "check:wporg": "@php scripts/check-wordpress-org-review-rules.php",
     "i18n:pot": "WP_CLI_BIN=\"${WP_CLI_BIN:-/tmp/wp-cli.phar}\"; php \"$WP_CLI_BIN\" i18n make-pot . languages/npcink-cloud-addon.pot --slug=npcink-cloud-addon --domain=npcink-cloud-addon --exclude=build,dist,sj,tests,scripts --skip-js",
     "i18n:update-po": "WP_CLI_BIN=\"${WP_CLI_BIN:-/tmp/wp-cli.phar}\"; php \"$WP_CLI_BIN\" i18n update-po languages/npcink-cloud-addon.pot languages",

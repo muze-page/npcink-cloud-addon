@@ -72,10 +72,13 @@ With valid Cloud credentials:
 - `get_run_result()` calls `/v1/runs/{run_id}/result`.
 - `get_profile_stats()` and `get_instance_stats()` only read `/v1/stats/*`.
 - `get_current_entitlement()` only reads `/v1/entitlements/current`.
+- When the Cloud response includes `entitlement.pro_cloud_runtime`, the local
+  entitlement summary preserves the Pro Cloud Runtime quota detail as read-only
+  display data.
 - `send_observability_events()` only writes metadata-only events to
   `/v1/observability/plugin-events`.
 - `get_observability_summary()` only reads `/v1/observability/plugin-summary`.
 
-Stats and entitlement data are read projections only. They must not become local billing truth.
+Stats and entitlement data are read projections only. They must not become local billing truth, local quota engines, scheduler truth, or WordPress write authority.
 Observability summaries are dashboard projections only. They must not become
 Core audit, proposal, approval, execution, billing, or workflow truth.

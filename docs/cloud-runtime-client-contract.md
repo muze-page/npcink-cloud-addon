@@ -74,6 +74,20 @@ It returns `null` until the addon settings have passed Save and Verify.
 
 ## Signing
 
+## Entitlement Projection
+
+`get_current_entitlement()` returns Cloud entitlement detail for local display.
+When Cloud includes `entitlement.pro_cloud_runtime`, the addon summary preserves
+that read-only detail for local plugins that need Pro Cloud Runtime status, such
+as Nightly Site Inspection run quota, remaining runs, batch limits, result
+retention, payload modes, and quota exhaustion.
+
+This projection must not be treated as local billing truth, a local quota
+engine, scheduler truth, queue state, retry ownership, or WordPress write
+authority.
+
+## Signing
+
 Signed requests include:
 
 - `X-Magick-Site-Id`

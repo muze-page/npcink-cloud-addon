@@ -30,6 +30,13 @@ router ownership, or preset ownership. Its local observability buffer is only a
 bounded delivery buffer for metadata uploads; it is not audit, execution,
 billing, or workflow truth.
 
+The entitlement summary preserves Cloud `pro_cloud_runtime` detail such as
+Nightly Site Inspection run limits, used and remaining runs, batch limits,
+retention, payload modes, and quota-exhausted state. These fields are read-only
+display projections for local plugins such as Toolbox; the addon does not turn
+them into local billing truth, a local quota engine, scheduler truth, or a
+WordPress write path.
+
 ## Public PHP Interface
 
 ```php

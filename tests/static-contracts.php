@@ -13,6 +13,7 @@ $root = MACA_TEST_ROOT;
 $bootstrap = maca_read( $root . '/includes/bootstrap.php' );
 $transport = maca_read( $root . '/includes/class-cloud-media-derivative-transport.php' );
 $runtime_client = maca_read( $root . '/includes/class-cloud-runtime-client.php' );
+$entitlement_summary = maca_read( $root . '/includes/class-cloud-entitlement-summary.php' );
 $observability = maca_read( $root . '/includes/class-cloud-observability-collector.php' );
 $settings = maca_read( $root . '/includes/class-cloud-addon-settings.php' );
 $settings_page = maca_read( $root . '/includes/class-cloud-settings-page.php' );
@@ -186,6 +187,16 @@ maca_assert(
 	&& false === strpos( $transport, '/v1/runtime/workflows/' . 'runs' )
 	&& false === strpos( $transport, '/v1/artifacts' ),
 	'Runtime client keeps Cloud calls on named allowlisted contract surfaces.'
+);
+
+maca_assert(
+	false !== strpos( $entitlement_summary, 'normalize_pro_cloud_runtime' )
+	&& false !== strpos( $entitlement_summary, "'pro_cloud_runtime'" )
+	&& false !== strpos( $entitlement_summary, "'nightly_site_inspection_runs'" )
+	&& false !== strpos( $entitlement_summary, "'local_billing_truth' => false" )
+	&& false !== strpos( $settings_page, 'render_pro_cloud_runtime_summary' )
+	&& false !== strpos( $settings_page, 'This addon does not own billing truth, scheduling, queues, or WordPress writes.' ),
+	'Entitlement summary preserves Pro Cloud Runtime detail as a read-only projection without local billing or scheduler truth.'
 );
 
 maca_assert(

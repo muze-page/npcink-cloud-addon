@@ -827,6 +827,71 @@ if ( ! class_exists( 'Npcink_Cloud_Settings_Page' ) ) {
 					</tr>
 				</tbody>
 			</table>
+			<?php self::render_pro_cloud_runtime_summary( $summary ); ?>
+			<?php
+		}
+
+		/**
+		 * Renders read-only Pro Cloud Runtime entitlement detail.
+		 *
+		 * @param array<string,mixed> $summary Entitlement summary.
+		 * @return void
+		 */
+		private static function render_pro_cloud_runtime_summary( array $summary ): void {
+			$runtime = is_array( $summary['pro_cloud_runtime'] ?? null ) ? $summary['pro_cloud_runtime'] : array();
+			$local_truth = is_array( $runtime['local_truth'] ?? null ) ? $runtime['local_truth'] : array();
+			if ( empty( $summary['available'] ) || empty( $runtime['feature_id'] ) ) {
+				return;
+			}
+			?>
+			<h3><?php esc_html_e( 'Pro Cloud Runtime', 'npcink-cloud-addon' ); ?></h3>
+			<p class="description"><?php esc_html_e( 'Read-only Cloud entitlement detail for local plugin displays. This addon does not own billing truth, scheduling, queues, or WordPress writes.', 'npcink-cloud-addon' ); ?></p>
+			<table class="widefat striped" style="max-width: 860px;">
+				<tbody>
+					<tr>
+						<th scope="row"><?php esc_html_e( 'Feature', 'npcink-cloud-addon' ); ?></th>
+						<td><code><?php echo esc_html( (string) ( $runtime['feature_id'] ?? '' ) ); ?></code></td>
+					</tr>
+					<tr>
+						<th scope="row"><?php esc_html_e( 'Nightly runs', 'npcink-cloud-addon' ); ?></th>
+						<td>
+							<?php
+							printf(
+								/* translators: 1: used runs, 2: max runs, 3: remaining runs. */
+								esc_html__( '%1$d used / %2$d limit / %3$d remaining', 'npcink-cloud-addon' ),
+								absint( $runtime['used_nightly_inspection_runs'] ?? 0 ),
+								absint( $runtime['max_nightly_inspection_runs_per_period'] ?? 0 ),
+								absint( $runtime['remaining_nightly_inspection_runs'] ?? 0 )
+							);
+							?>
+						</td>
+					</tr>
+					<tr>
+						<th scope="row"><?php esc_html_e( 'Batch limit', 'npcink-cloud-addon' ); ?></th>
+						<td><?php echo esc_html( (string) absint( $runtime['max_batch_items'] ?? 0 ) ); ?></td>
+					</tr>
+					<tr>
+						<th scope="row"><?php esc_html_e( 'Retention', 'npcink-cloud-addon' ); ?></th>
+						<td>
+							<?php
+							printf(
+								/* translators: %d: retention days. */
+								esc_html__( '%d days', 'npcink-cloud-addon' ),
+								absint( $runtime['result_retention_days'] ?? 0 )
+							);
+							?>
+						</td>
+					</tr>
+					<tr>
+						<th scope="row"><?php esc_html_e( 'Quota exhausted', 'npcink-cloud-addon' ); ?></th>
+						<td><?php echo ! empty( $runtime['quota_exhausted'] ) ? esc_html__( 'yes', 'npcink-cloud-addon' ) : esc_html__( 'no', 'npcink-cloud-addon' ); ?></td>
+					</tr>
+					<tr>
+						<th scope="row"><?php esc_html_e( 'Local truth', 'npcink-cloud-addon' ); ?></th>
+						<td><code><?php echo esc_html( (string) ( $local_truth['final_write_path'] ?? 'core_proposal_required' ) ); ?></code></td>
+					</tr>
+				</tbody>
+			</table>
 			<?php
 		}
 

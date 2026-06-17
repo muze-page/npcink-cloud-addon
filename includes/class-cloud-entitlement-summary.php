@@ -119,6 +119,7 @@ if ( ! class_exists( 'Npcink_Cloud_Entitlement_Summary' ) ) {
 			$period = is_array( $data['period'] ?? null ) ? $data['period'] : array();
 			$quota = is_array( $entitlement['hosted_runtime_quota'] ?? null ) ? $entitlement['hosted_runtime_quota'] : array();
 			$usage_limits = is_array( $entitlement['usage_limits'] ?? null ) ? $entitlement['usage_limits'] : array();
+			$pro_cloud_runtime = is_array( $entitlement['pro_cloud_runtime'] ?? null ) ? $entitlement['pro_cloud_runtime'] : array();
 
 			return array(
 				'state' => 'fresh',
@@ -136,9 +137,52 @@ if ( ! class_exists( 'Npcink_Cloud_Entitlement_Summary' ) ) {
 					'max_batch_items' => absint( $quota['max_batch_items'] ?? 0 ),
 					'execution_tiers' => self::sanitize_string_list( $quota['execution_tiers'] ?? array() ),
 				),
+				'pro_cloud_runtime' => self::normalize_pro_cloud_runtime( $pro_cloud_runtime ),
 				'links' => self::build_portal_links( $settings ),
 				'synced_at' => gmdate( 'Y-m-d H:i:s' ) . ' UTC',
 				'fresh_until' => gmdate( 'Y-m-d H:i:s', time() + self::CACHE_TTL_SECONDS ) . ' UTC',
+			);
+		}
+
+		/**
+		 * Normalizes Pro Cloud Runtime entitlement detail for local display.
+		 *
+		 * This is a read-only projection. It must not become a local billing ledger,
+		 * quota engine, scheduler truth, or WordPress write owner.
+		 *
+		 * @param mixed $runtime Raw Pro Cloud Runtime payload.
+		 * @return array<string,mixed>
+		 */
+		private static function normalize_pro_cloud_runtime( $runtime ): array {
+			$runtime = is_array( $runtime ) ? $runtime : array();
+			$local_truth = is_array( $runtime['local_truth'] ?? null ) ? $runtime['local_truth'] : array();
+			$max_runs = absint( $runtime['max_nightly_inspection_runs_per_period'] ?? 0 );
+			$used_runs = absint( $runtime['used_nightly_inspection_runs'] ?? 0 );
+			$remaining_runs = array_key_exists( 'remaining_nightly_inspection_runs', $runtime )
+				? absint( $runtime['remaining_nightly_inspection_runs'] )
+				: ( $max_runs > 0 ? max( 0, $max_runs - $used_runs ) : 0 );
+
+			return array(
+				'contract_version' => sanitize_text_field( (string) ( $runtime['contract_version'] ?? 'pro-cloud-runtime-entitlement-v1' ) ),
+				'feature_id' => sanitize_key( (string) ( $runtime['feature_id'] ?? 'nightly_site_inspection' ) ),
+				'execution_pattern' => sanitize_key( (string) ( $runtime['execution_pattern'] ?? 'whole_run_offload' ) ),
+				'meter_key' => sanitize_key( (string) ( $runtime['meter_key'] ?? 'nightly_site_inspection_runs' ) ),
+				'limit_enforced' => ! empty( $runtime['limit_enforced'] ),
+				'max_nightly_inspection_runs_per_period' => $max_runs,
+				'used_nightly_inspection_runs' => $used_runs,
+				'remaining_nightly_inspection_runs' => $remaining_runs,
+				'quota_exhausted' => ! empty( $runtime['quota_exhausted'] ) || ( $max_runs > 0 && $used_runs >= $max_runs ),
+				'max_batch_items' => absint( $runtime['max_batch_items'] ?? 0 ),
+				'result_retention_days' => absint( $runtime['result_retention_days'] ?? 0 ),
+				'payload_modes' => self::sanitize_string_list( $runtime['payload_modes'] ?? array() ),
+				'cloud_role' => sanitize_key( (string) ( $runtime['cloud_role'] ?? 'runtime_detail' ) ),
+				'local_truth' => array(
+					'schedule_owner' => sanitize_text_field( (string) ( $local_truth['schedule_owner'] ?? 'npcink-local-automation-runtime' ) ),
+					'runtime_owner' => sanitize_text_field( (string) ( $local_truth['runtime_owner'] ?? 'npcink-local-automation-runtime' ) ),
+					'final_write_path' => sanitize_key( (string) ( $local_truth['final_write_path'] ?? 'core_proposal_required' ) ),
+					'direct_wordpress_write' => false,
+				),
+				'local_billing_truth' => false,
 			);
 		}
 
@@ -217,6 +261,7 @@ if ( ! class_exists( 'Npcink_Cloud_Entitlement_Summary' ) ) {
 				'renews_at' => '',
 				'usage_limits' => array(),
 				'hosted_runtime_quota' => array(),
+				'pro_cloud_runtime' => self::normalize_pro_cloud_runtime( array() ),
 				'links' => array(),
 				'synced_at' => '',
 				'fresh_until' => '',

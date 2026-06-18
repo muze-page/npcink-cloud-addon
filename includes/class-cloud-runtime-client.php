@@ -183,6 +183,51 @@ if ( ! class_exists( 'Npcink_Cloud_Runtime_Client' ) ) {
 		}
 
 		/**
+		 * Reads recent Nightly Inspection run cards for the current site.
+		 *
+		 * @param int    $limit Maximum run cards to read.
+		 * @param string $trace_id Optional trace id.
+		 * @return array<string,mixed>|WP_Error
+		 */
+		public function get_recent_nightly_inspection_runs( int $limit = 10, string $trace_id = '' ) {
+			$limit = max( 1, min( 50, absint( $limit ) ) );
+
+			return $this->request( 'GET', '/v1/runs/nightly-inspection/recent?limit=' . rawurlencode( (string) $limit ), null, '', $trace_id );
+		}
+
+		/**
+		 * Queues a Cloud-owned retry for one terminal Nightly Inspection run.
+		 *
+		 * @param string              $run_id Cloud source run id.
+		 * @param array<string,mixed> $input Runtime input payload for the retry.
+		 * @param string              $trace_id Optional trace id.
+		 * @param string              $idempotency_key Required idempotency key.
+		 * @return array<string,mixed>|WP_Error
+		 */
+		public function retry_run( string $run_id, array $input, string $trace_id = '', string $idempotency_key = '' ) {
+			$run_id = $this->normalize_identifier( $run_id );
+			if ( '' === $run_id ) {
+				return new WP_Error(
+					'cloud_runtime_run_missing',
+					__( 'Cloud run_id is required.', 'npcink-cloud-addon' )
+				);
+			}
+			if ( '' === $idempotency_key ) {
+				$idempotency_key = 'runtime_retry_' . wp_generate_uuid4();
+			}
+
+			return $this->request(
+				'POST',
+				'/v1/runs/' . rawurlencode( $run_id ) . '/retry',
+				array(
+					'input' => $input,
+				),
+				$idempotency_key,
+				$trace_id
+			);
+		}
+
+		/**
 		 * Downloads one short-TTL derivative artifact through a signed runtime request.
 		 *
 		 * @param string $artifact_id Cloud artifact id.
@@ -741,6 +786,12 @@ if ( ! class_exists( 'Npcink_Cloud_Runtime_Client' ) ) {
 				return true;
 			}
 			if ( 'GET' === $method && 1 === preg_match( '#^/v1/runs/[A-Za-z0-9._:-]+(?:/result)?$#', $path_only ) ) {
+				return true;
+			}
+			if ( 'GET' === $method && '/v1/runs/nightly-inspection/recent' === $path_only ) {
+				return true;
+			}
+			if ( 'POST' === $method && 1 === preg_match( '#^/v1/runs/[A-Za-z0-9._:-]+/retry$#', $path_only ) ) {
 				return true;
 			}
 			if ( 'GET' === $method && 1 === preg_match( '#^/v1/runtime/artifacts/[A-Za-z0-9._:-]+/download$#', $path_only ) ) {

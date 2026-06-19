@@ -111,6 +111,116 @@ if ( ! class_exists( 'Npcink_Cloud_Media_Derivative_Transport' ) ) {
 		}
 
 		/**
+		 * Reads and projects one Cloud media derivative run.
+		 *
+		 * @param string $run_id Cloud run id.
+		 * @param string $trace_id Optional trace id.
+		 * @return array<string,mixed>|WP_Error
+		 */
+		public static function get_run_projection( string $run_id, string $trace_id = '' ) {
+			$client = self::verified_client();
+			if ( is_wp_error( $client ) ) {
+				return $client;
+			}
+
+			$result = $client->get_run( $run_id, $trace_id );
+			if ( is_wp_error( $result ) ) {
+				return $result;
+			}
+
+			return self::public_cloud_projection( $result );
+		}
+
+		/**
+		 * Reads and projects one Cloud media derivative run result.
+		 *
+		 * @param string $run_id Cloud run id.
+		 * @param string $trace_id Optional trace id.
+		 * @return array<string,mixed>|WP_Error
+		 */
+		public static function get_run_result_projection( string $run_id, string $trace_id = '' ) {
+			$client = self::verified_client();
+			if ( is_wp_error( $client ) ) {
+				return $client;
+			}
+
+			$result = $client->get_run_result( $run_id, $trace_id );
+			if ( is_wp_error( $result ) ) {
+				return $result;
+			}
+
+			return self::public_cloud_projection( $result );
+		}
+
+		/**
+		 * Extracts a run id from supported Cloud response shapes.
+		 *
+		 * @param array<string,mixed> $cloud_response Cloud response.
+		 * @return string
+		 */
+		public static function run_id( array $cloud_response ): string {
+			$data = is_array( $cloud_response['data'] ?? null ) ? $cloud_response['data'] : $cloud_response;
+			return sanitize_text_field( (string) ( $data['run_id'] ?? $data['id'] ?? $cloud_response['run_id'] ?? '' ) );
+		}
+
+		/**
+		 * Returns a bounded run/result projection for local channel adapters.
+		 *
+		 * @param array<string,mixed> $cloud_response Cloud response.
+		 * @return array<string,mixed>
+		 */
+		public static function public_cloud_projection( array $cloud_response ): array {
+			$data       = is_array( $cloud_response['data'] ?? null ) ? $cloud_response['data'] : $cloud_response;
+			$derivative = self::public_artifact_descriptor( self::artifact_from_cloud_result( $data ) );
+			$error      = is_array( $data['error'] ?? null ) ? $data['error'] : array();
+			$warnings   = is_array( $data['warnings'] ?? null ) ? $data['warnings'] : array();
+			if ( empty( $warnings ) && is_array( $derivative['processing_warnings'] ?? null ) ) {
+				$warnings = $derivative['processing_warnings'];
+			}
+
+			return array(
+				'run_id'     => sanitize_text_field( (string) ( $data['run_id'] ?? $data['id'] ?? '' ) ),
+				'status'     => sanitize_key( (string) ( $data['status'] ?? $cloud_response['status'] ?? '' ) ),
+				'job_type'   => sanitize_key( (string) ( $data['job_type'] ?? $data['cloud_job_payload']['job_type'] ?? '' ) ),
+				'created_at' => sanitize_text_field( (string) ( $data['created_at'] ?? '' ) ),
+				'updated_at' => sanitize_text_field( (string) ( $data['updated_at'] ?? '' ) ),
+				'derivative' => $derivative,
+				'warnings'   => array_values( array_map( 'sanitize_text_field', $warnings ) ),
+				'error'      => self::sanitize_projection_value( $error ),
+			);
+		}
+
+		/**
+		 * Infers a derivative artifact descriptor from a Cloud result.
+		 *
+		 * @param array<string,mixed> $cloud_result Cloud result.
+		 * @return array<string,mixed>
+		 */
+		public static function artifact_from_cloud_result( array $cloud_result ): array {
+			$data       = is_array( $cloud_result['data'] ?? null ) ? $cloud_result['data'] : $cloud_result;
+			$derivative = is_array( $data['derivative'] ?? null ) ? $data['derivative'] : array();
+			if ( empty( $derivative ) && is_array( $data['result']['artifact'] ?? null ) ) {
+				$derivative = $data['result']['artifact'];
+			}
+
+			return self::sanitize_descriptor_for_projection( $derivative );
+		}
+
+		/**
+		 * Removes local-only and inline-content artifact fields from projections.
+		 *
+		 * @param array<string,mixed> $artifact Artifact descriptor.
+		 * @return array<string,mixed>
+		 */
+		public static function public_artifact_descriptor( array $artifact ): array {
+			foreach ( array( 'path', 'file_path', 'tmp_name', 'bytes', 'content' ) as $key ) {
+				unset( $artifact[ $key ] );
+			}
+
+			return $artifact;
+		}
+
+		/**
 		 * Builds a local-host proposal payload from a Cloud result artifact.
 		 *
 		 * This method does not store a proposal and does not mutate WordPress. The
@@ -179,6 +289,58 @@ if ( ! class_exists( 'Npcink_Cloud_Media_Derivative_Transport' ) ) {
 					'attachment_metadata_write_included' => false,
 				),
 			);
+		}
+
+		/**
+		 * Builds a Core from-plan media optimization payload for local adapters.
+		 *
+		 * This does not create, approve, preflight, or execute a proposal.
+		 *
+		 * @param array<string,mixed> $ability_response Ability response envelope.
+		 * @param array<string,mixed> $cloud_result Cloud run result envelope.
+		 * @param array<string,mixed> $derivative_artifact Cloud derivative artifact descriptor.
+		 * @param array<string,mixed> $media_details_input Reviewed media metadata input.
+		 * @return array<string,mixed>|WP_Error
+		 */
+		public static function build_media_optimization_payload( array $ability_response, array $cloud_result, array $derivative_artifact, array $media_details_input ) {
+			if ( empty( $derivative_artifact ) ) {
+				$derivative_artifact = self::artifact_from_cloud_result( $cloud_result );
+			}
+
+			$proposal_payload = self::build_local_proposal_payload( $ability_response, $cloud_result, $derivative_artifact );
+			if ( is_wp_error( $proposal_payload ) ) {
+				return $proposal_payload;
+			}
+
+			$ability_data = is_array( $ability_response['data'] ?? null ) ? $ability_response['data'] : array();
+			if ( is_array( $ability_data['content_reference_repairs_preview'] ?? null ) && ! is_array( $proposal_payload['content_reference_repairs_preview'] ?? null ) ) {
+				$proposal_payload['content_reference_repairs_preview'] = $ability_data['content_reference_repairs_preview'];
+			}
+
+			$optimization_plan = self::media_optimization_plan_from_derivative_payload( $proposal_payload, $media_details_input );
+			$response_payload  = array(
+				'contract_version'        => 'media_derivative_cloud_optimization_payload.v1',
+				'proposal_payload'        => $proposal_payload,
+				'media_optimization_plan' => $optimization_plan,
+				'core_proposal_required'  => true,
+				'commit_execution'        => false,
+				'proposal_ready'          => true === (bool) ( $optimization_plan['proposal_ready'] ?? false ),
+				'preferred_core_route'    => 'POST /proposals/from-plan',
+				'legacy_derivative_proposal_payload_available' => true,
+				'required_plan_ability_id' => 'npcink-abilities-toolkit/build-media-optimization-plan',
+			);
+
+			if ( is_array( $optimization_plan['write_actions'] ?? null ) && count( (array) $optimization_plan['write_actions'] ) >= 2 ) {
+				$response_payload['from_plan_request'] = array(
+					'plan_ability_id' => 'npcink-abilities-toolkit/build-media-optimization-plan',
+					'plan'            => $optimization_plan,
+				);
+				$response_payload['next_step'] = 'POST /proposals/from-plan with from_plan_request for one Core batch proposal.';
+			} else {
+				$response_payload['next_step'] = 'Provide reviewed media_details_input, then build the media derivative optimization payload again and submit the returned from_plan_request to Core; do not split one optimize-media intent into two proposals.';
+			}
+
+			return $response_payload;
 		}
 
 		/**
@@ -255,6 +417,267 @@ if ( ! class_exists( 'Npcink_Cloud_Media_Derivative_Transport' ) ) {
 				'sha256'         => $actual_sha256,
 				'expires_at'     => (string) $artifact['expires_at'],
 			);
+		}
+
+		/**
+		 * Builds the Core from-plan media optimization payload shape.
+		 *
+		 * @param array<string,mixed> $proposal_payload Cloud derivative proposal payload.
+		 * @param array<string,mixed> $media_details_input Reviewed metadata action input.
+		 * @return array<string,mixed>
+		 */
+		private static function media_optimization_plan_from_derivative_payload( array $proposal_payload, array $media_details_input ): array {
+			$attachment_id  = absint( $proposal_payload['attachment_id'] ?? 0 );
+			$artifact       = is_array( $proposal_payload['artifact'] ?? null ) ? $proposal_payload['artifact'] : array();
+			$original       = is_array( $proposal_payload['original'] ?? null ) ? $proposal_payload['original'] : array();
+			$derivative     = is_array( $proposal_payload['derivative'] ?? null ) ? $proposal_payload['derivative'] : array();
+			$metadata_input = self::sanitize_media_details_plan_input( $attachment_id, $media_details_input );
+
+			$metadata_preview = array(
+				'before' => array(),
+				'after'  => array_diff_key( $metadata_input, array( 'attachment_id' => true ) ),
+			);
+			$derivative_preview = array(
+				'before' => array(
+					'mime_type'      => sanitize_text_field( (string) ( $original['mime_type'] ?? '' ) ),
+					'width'          => absint( $original['width'] ?? 0 ),
+					'height'         => absint( $original['height'] ?? 0 ),
+					'filesize_bytes' => absint( $original['filesize_bytes'] ?? 0 ),
+				),
+				'after'  => array(
+					'artifact_id'    => sanitize_text_field( (string) ( $artifact['artifact_id'] ?? '' ) ),
+					'mime_type'      => sanitize_text_field( (string) ( $derivative['mime_type'] ?? ( $artifact['mime_type'] ?? '' ) ) ),
+					'width'          => absint( $derivative['width'] ?? ( $artifact['width'] ?? 0 ) ),
+					'height'         => absint( $derivative['height'] ?? ( $artifact['height'] ?? 0 ) ),
+					'filesize_bytes' => absint( $derivative['filesize_bytes'] ?? ( $artifact['filesize_bytes'] ?? 0 ) ),
+				),
+			);
+			$content_reference_repairs_preview = array();
+			if ( is_array( $proposal_payload['content_reference_repairs_preview'] ?? null ) ) {
+				$content_reference_repairs_preview = $proposal_payload['content_reference_repairs_preview'];
+			} elseif ( is_array( $proposal_payload['derivative_preview']['content_reference_repairs'] ?? null ) ) {
+				$content_reference_repairs_preview = $proposal_payload['derivative_preview']['content_reference_repairs'];
+			} elseif ( is_array( $derivative['content_reference_repairs'] ?? null ) ) {
+				$content_reference_repairs_preview = $derivative['content_reference_repairs'];
+			}
+			if ( ! empty( $content_reference_repairs_preview ) ) {
+				$derivative_preview['content_reference_repairs'] = $content_reference_repairs_preview;
+			}
+
+			$plan = array(
+				'artifact_type'      => 'media_optimization_plan',
+				'version'            => 1,
+				'batch_id'           => 'media_optimization_' . $attachment_id . '_' . gmdate( 'Ymd_His' ),
+				'attachment_id'      => $attachment_id,
+				'optimization_goal'  => 'image_seo_and_derivative_adoption',
+				'requires_approval'  => true,
+				'dry_run'            => true,
+				'commit_execution'   => false,
+				'proposal_mode'      => 'batch',
+				'batch_approval'     => true,
+				'action_count'       => 0,
+				'action_ids'         => array(),
+				'target_ability_ids' => array(),
+				'metadata_preview'   => $metadata_preview,
+				'derivative_preview' => $derivative_preview,
+				'content_reference_repairs_preview' => $content_reference_repairs_preview,
+				'preview'            => array(),
+				'write_actions'      => array(),
+				'requires_input'     => array(),
+				'proposal_ready'     => false,
+				'risk'               => array(
+					'level'  => 'medium',
+					'reason' => 'One attachment metadata update and one reviewed Cloud derivative adoption share one Core approval.',
+				),
+			);
+
+			if ( $attachment_id <= 0 || empty( $artifact['artifact_id'] ) ) {
+				$plan['requires_input'][] = 'valid_derivative_proposal_payload';
+				return $plan;
+			}
+
+			if ( count( $metadata_input ) <= 1 ) {
+				$plan['requires_input'][] = 'media_details_input';
+				return $plan;
+			}
+
+			$derivative_input = array(
+				'attachment_id'       => $attachment_id,
+				'derivative_artifact' => $artifact,
+			);
+			$current_mime    = sanitize_text_field( (string) ( $original['mime_type'] ?? '' ) );
+			$derivative_mime = sanitize_text_field( (string) ( $derivative['mime_type'] ?? ( $artifact['mime_type'] ?? '' ) ) );
+			if ( '' !== $current_mime ) {
+				$derivative_input['expected_current_mime_type'] = $current_mime;
+			}
+			if ( '' !== $derivative_mime ) {
+				$derivative_input['expected_derivative_mime_type'] = $derivative_mime;
+			}
+			if ( ! empty( $content_reference_repairs_preview ) ) {
+				$derivative_input['expected_content_reference_post_ids'] = array_slice(
+					array_values(
+						array_unique(
+							array_filter(
+								array_map(
+									static function ( $repair ) {
+										return absint( is_array( $repair ) ? ( $repair['post_id'] ?? 0 ) : 0 );
+									},
+									(array) ( $content_reference_repairs_preview['repairs'] ?? array() )
+								)
+							)
+						)
+					),
+					0,
+					50
+				);
+				$derivative_input['expected_content_reference_post_count'] = absint( $content_reference_repairs_preview['post_count'] ?? 0 );
+				$derivative_input['expected_content_reference_replacement_count'] = absint( $content_reference_repairs_preview['replacement_count'] ?? 0 );
+			}
+
+			$write_actions = array(
+				self::plan_action( 'update_media_details_' . $attachment_id, 'npcink-abilities-toolkit/update-media-details', $metadata_input, 'medium', 'Apply reviewed media SEO and source metadata as part of one media optimization approval.' ),
+				self::plan_action( 'adopt_cloud_media_derivative_' . $attachment_id, 'npcink-abilities-toolkit/adopt-cloud-media-derivative', $derivative_input, 'medium', 'Adopt the reviewed Cloud derivative artifact as the attachment main file after Core approval.' ),
+			);
+			$action_ids = array_values(
+				array_map(
+					static function ( $action ) {
+						return is_array( $action ) ? sanitize_key( (string) ( $action['action_id'] ?? '' ) ) : '';
+					},
+					$write_actions
+				)
+			);
+			$target_ability_ids = array_values(
+				array_unique(
+					array_filter(
+						array_map(
+							static function ( $action ) {
+								return is_array( $action ) ? sanitize_text_field( (string) ( $action['target_ability_id'] ?? '' ) ) : '';
+							},
+							$write_actions
+						)
+					)
+				)
+			);
+			$plan['write_actions']      = $write_actions;
+			$plan['action_count']       = count( $plan['write_actions'] );
+			$plan['action_ids']         = $action_ids;
+			$plan['target_ability_ids'] = $target_ability_ids;
+			$plan['proposal_ready']     = true;
+			$plan['preview'][]          = array(
+				'attachment_id'    => $attachment_id,
+				'before'           => array(
+					'metadata'   => array(),
+					'derivative' => $derivative_preview['before'],
+				),
+				'after_suggestion' => array(
+					'metadata'   => $metadata_preview['after'],
+					'derivative' => $derivative_preview['after'],
+				),
+				'action_ids'         => $action_ids,
+				'target_ability_ids' => $target_ability_ids,
+			);
+
+			return $plan;
+		}
+
+		/**
+		 * Sanitizes update-media-details input for a generated plan.
+		 *
+		 * @param int                 $attachment_id Attachment id.
+		 * @param array<string,mixed> $input Raw metadata input.
+		 * @return array<string,mixed>
+		 */
+		private static function sanitize_media_details_plan_input( int $attachment_id, array $input ): array {
+			$output = array( 'attachment_id' => $attachment_id );
+			foreach ( array( 'title', 'alt', 'caption', 'description', 'source_page_url', 'photographer_name', 'attribution_text', 'copyright_notice' ) as $field ) {
+				if ( array_key_exists( $field, $input ) && '' !== (string) $input[ $field ] ) {
+					$output[ $field ] = 'source_page_url' === $field ? esc_url_raw( (string) $input[ $field ] ) : sanitize_text_field( (string) $input[ $field ] );
+				}
+			}
+			if ( array_key_exists( 'source_type', $input ) ) {
+				$source_type = sanitize_key( (string) $input['source_type'] );
+				if ( in_array( $source_type, array( 'owned', 'ai_generated', 'stock', 'external', 'test' ), true ) ) {
+					$output['source_type'] = $source_type;
+				}
+			}
+			return $output;
+		}
+
+		/**
+		 * Builds one local-host plan action.
+		 *
+		 * @param string              $action_id Action id.
+		 * @param string              $ability_id Target ability id.
+		 * @param array<string,mixed> $input Target ability input.
+		 * @param string              $risk Risk.
+		 * @param string              $reason Reason.
+		 * @return array<string,mixed>
+		 */
+		private static function plan_action( string $action_id, string $ability_id, array $input, string $risk, string $reason ): array {
+			$input['dry_run'] = true;
+			$input['commit']  = false;
+			return array(
+				'action_id'         => sanitize_key( $action_id ),
+				'target_ability_id' => sanitize_text_field( $ability_id ),
+				'input'             => $input,
+				'requires_approval' => true,
+				'commit_execution'  => false,
+				'required_scopes'   => array( 'media.write' ),
+				'risk'              => sanitize_key( $risk ),
+				'reason'            => sanitize_text_field( $reason ),
+				'requires_input'    => array(),
+				'proposal_ready'    => true,
+			);
+		}
+
+		/**
+		 * Sanitizes a descriptor for projection without enforcing artifact expiry.
+		 *
+		 * @param array<string,mixed> $descriptor Descriptor.
+		 * @return array<string,mixed>
+		 */
+		private static function sanitize_descriptor_for_projection( array $descriptor ): array {
+			$clean = array();
+			foreach ( array( 'artifact_id', 'id', 'download_url', 'url', 'expires_at', 'run_id', 'mime_type', 'format', 'path', 'file_path', 'tmp_name', 'filename', 'name', 'field_name', 'sha256', 'checksum' ) as $key ) {
+				if ( isset( $descriptor[ $key ] ) && is_scalar( $descriptor[ $key ] ) ) {
+					$clean[ $key ] = sanitize_text_field( (string) $descriptor[ $key ] );
+				}
+			}
+			if ( ! isset( $clean['sha256'] ) && isset( $clean['checksum'] ) && 0 === strpos( strtolower( (string) $clean['checksum'] ), 'sha256:' ) ) {
+				$clean['sha256'] = substr( strtolower( (string) $clean['checksum'] ), 7 );
+			}
+			foreach ( array( 'width', 'height', 'filesize_bytes', 'size_bytes' ) as $key ) {
+				if ( isset( $descriptor[ $key ] ) ) {
+					$clean[ $key ] = absint( $descriptor[ $key ] );
+				}
+			}
+			if ( is_array( $descriptor['processing_warnings'] ?? null ) ) {
+				$clean['processing_warnings'] = array_values( array_map( 'sanitize_text_field', $descriptor['processing_warnings'] ) );
+			}
+
+			return $clean;
+		}
+
+		/**
+		 * Sanitizes bounded Cloud projection values recursively.
+		 *
+		 * @param mixed $value Raw value.
+		 * @return mixed
+		 */
+		private static function sanitize_projection_value( $value ) {
+			if ( is_array( $value ) ) {
+				$clean = array();
+				foreach ( $value as $key => $item ) {
+					$clean[ is_int( $key ) ? $key : sanitize_key( (string) $key ) ] = self::sanitize_projection_value( $item );
+				}
+				return $clean;
+			}
+
+			if ( is_bool( $value ) || is_int( $value ) || is_float( $value ) || null === $value ) {
+				return $value;
+			}
+
+			return sanitize_text_field( (string) $value );
 		}
 
 		/**

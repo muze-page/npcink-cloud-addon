@@ -72,8 +72,12 @@ maca_assert(
 	&& false !== strpos( $bootstrap, 'npcink_cloud_addon_dispatch_media_derivative_cloud_request' )
 	&& false !== strpos( $bootstrap, 'array $watermark_artifact = array()' )
 	&& false !== strpos( $bootstrap, 'npcink_cloud_addon_build_media_derivative_proposal_payload' )
+	&& false !== strpos( $bootstrap, 'npcink_cloud_addon_get_media_derivative_run' )
+	&& false !== strpos( $bootstrap, 'npcink_cloud_addon_get_media_derivative_run_result' )
+	&& false !== strpos( $bootstrap, 'npcink_cloud_addon_public_media_derivative_cloud_projection' )
+	&& false !== strpos( $bootstrap, 'npcink_cloud_addon_build_media_derivative_optimization_payload' )
 	&& false !== strpos( $bootstrap, 'npcink_cloud_addon_download_media_derivative_artifact' ),
-	'Bootstrap exposes verified runtime and media derivative transport helpers with optional watermark transport and signed preview download.'
+	'Bootstrap exposes verified runtime and media derivative transport helpers with optional watermark transport, projections, optimization payloads, and signed preview download.'
 );
 
 maca_assert(
@@ -107,10 +111,14 @@ maca_assert(
 
 maca_assert(
 	false !== strpos( $transport, 'create_media_derivative' )
+	&& false !== strpos( $transport, 'get_run_projection' )
+	&& false !== strpos( $transport, 'get_run_result_projection' )
+	&& false !== strpos( $transport, 'public_cloud_projection' )
+	&& false !== strpos( $transport, 'build_media_optimization_payload' )
 	&& false !== strpos( $transport, 'build_media_derivative_request_payload' )
 	&& false !== strpos( $transport, 'normalize_upload_file_descriptor' )
 	&& false !== strpos( $transport, 'normalize_required_artifact_reference' ),
-	'Media derivative transport shapes strict Cloud requests from ability contracts and host artifacts.'
+	'Media derivative transport shapes strict Cloud requests, projections, and Core-ready optimization payloads from ability contracts and host artifacts.'
 );
 
 maca_assert(

@@ -362,6 +362,72 @@ maca_assert(
 	'Behavior: valid Cloud artifacts become preview-only local WordPress host proposals.'
 );
 
+$projection = Npcink_Cloud_Media_Derivative_Transport::public_cloud_projection(
+	array(
+		'data' => array(
+			'run_id' => 'run_media_1',
+			'status' => 'succeeded',
+			'job_type' => 'generate_optimized_media_derivative',
+			'derivative' => array(
+				'artifact_id' => 'derivative_artifact',
+				'expires_at' => maca_future_expiry(),
+				'mime_type' => 'image/webp',
+				'width' => 1200,
+				'height' => 675,
+				'filesize_bytes' => 180000,
+				'path' => '/tmp/private.webp',
+				'content' => 'private-bytes',
+			),
+		),
+	)
+);
+maca_assert(
+	is_array( $projection )
+	&& 'run_media_1' === $projection['run_id']
+	&& 'derivative_artifact' === $projection['derivative']['artifact_id']
+	&& ! isset( $projection['derivative']['path'] )
+	&& ! isset( $projection['derivative']['content'] ),
+	'Behavior: media derivative projections strip local-only artifact fields.'
+);
+
+$optimization_payload = Npcink_Cloud_Media_Derivative_Transport::build_media_optimization_payload(
+	maca_ability_fixture(),
+	array(
+		'data' => array(
+			'run_id' => 'run_media_1',
+			'derivative' => array(
+				'artifact_id' => 'derivative_artifact',
+				'width' => 1200,
+				'height' => 675,
+				'filesize_bytes' => 180000,
+				'mime_type' => 'image/webp',
+			),
+		),
+	),
+	array(
+		'artifact_id' => 'derivative_artifact',
+		'run_id' => 'run_media_1',
+		'expires_at' => maca_future_expiry(),
+		'mime_type' => 'image/webp',
+		'width' => 1200,
+		'height' => 675,
+		'filesize_bytes' => 180000,
+	),
+	array(
+		'title' => 'Reviewed media title',
+		'alt' => 'Reviewed media alt',
+		'source_type' => 'owned',
+	)
+);
+maca_assert(
+	is_array( $optimization_payload )
+	&& true === (bool) $optimization_payload['proposal_ready']
+	&& 'npcink-abilities-toolkit/build-media-optimization-plan' === (string) $optimization_payload['from_plan_request']['plan_ability_id']
+	&& 2 === (int) $optimization_payload['media_optimization_plan']['action_count']
+	&& in_array( 'npcink-abilities-toolkit/adopt-cloud-media-derivative', $optimization_payload['media_optimization_plan']['target_ability_ids'], true ),
+	'Behavior: Cloud Addon builds the media optimization from-plan payload without storing or executing a proposal.'
+);
+
 $proposal_from_runtime_artifact = Npcink_Cloud_Media_Derivative_Transport::build_local_proposal_payload(
 	maca_ability_fixture(),
 	array(

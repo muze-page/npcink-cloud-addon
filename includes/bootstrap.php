@@ -16,6 +16,7 @@ require_once __DIR__ . '/class-cloud-runtime-client.php';
 require_once __DIR__ . '/class-cloud-media-derivative-transport.php';
 require_once __DIR__ . '/class-cloud-entitlement-summary.php';
 require_once __DIR__ . '/class-cloud-observability-collector.php';
+require_once __DIR__ . '/class-cloud-site-knowledge-change-bridge.php';
 require_once __DIR__ . '/class-cloud-settings-page.php';
 
 if ( ! function_exists( 'npcink_cloud_addon_is_configured' ) ) {
@@ -221,6 +222,20 @@ if ( ! function_exists( 'npcink_cloud_addon_download_media_derivative_artifact' 
 	}
 }
 
+if ( ! function_exists( 'npcink_cloud_addon_site_knowledge_change_bridge_health' ) ) {
+	/**
+	 * Returns local Site Knowledge change bridge health for host plugins.
+	 *
+	 * The bridge only reports and transports public content change hints to
+	 * Cloud Site Knowledge. It is not a local index lifecycle owner.
+	 *
+	 * @return array<string,mixed>
+	 */
+	function npcink_cloud_addon_site_knowledge_change_bridge_health(): array {
+		return Npcink_Cloud_Site_Knowledge_Change_Bridge::health_snapshot();
+	}
+}
+
 if ( ! function_exists( 'npcink_cloud_addon_bootstrap' ) ) {
 	/**
 	 * Boots the standalone Cloud addon.
@@ -230,6 +245,7 @@ if ( ! function_exists( 'npcink_cloud_addon_bootstrap' ) ) {
 	function npcink_cloud_addon_bootstrap(): void {
 		Npcink_Cloud_Addon_Settings::register();
 		Npcink_Cloud_Observability_Collector::register();
+		Npcink_Cloud_Site_Knowledge_Change_Bridge::register();
 		Npcink_Cloud_Settings_Page::register();
 	}
 }

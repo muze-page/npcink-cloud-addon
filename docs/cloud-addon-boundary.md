@@ -11,6 +11,10 @@ plugins. Observability is metadata-only plugin monitoring for Cloud dashboards;
 it is not local governance truth, Cloud governance truth, or a workflow/task
 queue.
 
+It may also bridge public WordPress content-change hints to Cloud Site Knowledge.
+That bridge is delivery transport only; Cloud remains the Site Knowledge vector,
+index, freshness, and collection lifecycle owner.
+
 ## Addon Owns
 
 - Cloud Base URL.
@@ -25,6 +29,8 @@ queue.
 - Opt-in, verified, metadata-only plugin observability upload.
 - A bounded local observability buffer used only to survive temporary delivery
   failures before upload.
+- A bounded Site Knowledge public content-change buffer used only to survive
+  temporary delivery failures before Cloud refresh transport.
 - A light `Npcink -> Cloud Addon` page.
 
 ## Addon Does Not Own
@@ -41,6 +47,7 @@ queue.
 - Preset control plane.
 - Cloud service operations console.
 - Developer diagnostics routes.
+- Site Knowledge index lifecycle.
 
 ## Local Truth Rule
 
@@ -105,6 +112,17 @@ Cloud observability summaries are read-only dashboard projections. They must
 not drive local approval, proposal status, WordPress writes, router, prompt, or
 preset configuration.
 
+## Site Knowledge Change Bridge Rule
+
+Cloud Addon may listen for public `post`/`page` and approved comment changes,
+buffer affected post ids locally, and request a Cloud Site Knowledge refresh
+through `POST /v1/runtime/execute`.
+
+The bridge must send only public content manifests, affected post ids, and
+`write_posture=suggestion_only`. It must not create a local vector index,
+perform re-index policy decisions, own stale-index detection, become a workflow
+engine, become scheduler truth, or perform WordPress writes.
+
 ## Endpoint Rule
 
 Allowed Cloud contract endpoints:
@@ -120,6 +138,7 @@ Allowed Cloud contract endpoints:
 - `POST /v1/observability/plugin-events`
 - `POST /v1/agent-feedback/events`
 - `GET /v1/observability/plugin-summary`
+- `GET /v1/agent-feedback/summary`
 
 Forbidden legacy endpoint:
 
@@ -133,6 +152,11 @@ or logo registry endpoints to the addon.
 Observability transport must use only the observability endpoints above. Do not
 add ad hoc log upload, support bundle, file upload, database export, or raw
 payload endpoints to the addon.
+
+Site Knowledge change bridge transport must use the existing
+`POST /v1/runtime/execute` endpoint only. Do not add local collection lifecycle
+endpoints, generic indexing routes, or direct Cloud control-plane mutation paths
+to the addon.
 
 Agent feedback transport must use only `POST /v1/agent-feedback/events` for
 `cloud_agent_feedback.v1` local operator feedback and

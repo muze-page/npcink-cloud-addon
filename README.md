@@ -2,7 +2,7 @@
 
 Standalone WordPress plugin for connecting a local Npcink installation to `npcink-cloud`.
 
-The addon is a thin Cloud connector. It stores the Cloud Base URL and Cloud API Key, parses the key into signing credentials, sends signed runtime requests, reads health and entitlement status, transports opt-in metadata-only plugin observability events, and exposes a minimal PHP interface for local plugins.
+The addon is a thin Cloud connector. It stores the Cloud Base URL and Cloud API Key, parses the key into signing credentials, sends signed runtime requests, reads health and entitlement status, transports opt-in metadata-only plugin observability events, bridges public Site Knowledge change hints to Cloud, and exposes a minimal PHP interface for local plugins.
 
 ## Scope
 
@@ -22,13 +22,15 @@ The addon owns:
 - Opt-in plugin observability transport:
   - `POST /v1/observability/plugin-events`
   - `GET /v1/observability/plugin-summary`
+- Site Knowledge public content change bridge through `POST /v1/runtime/execute`.
 - `Npcink > Cloud Addon`.
 
 The addon does not own approval truth, proposal truth, WordPress writes,
 workflow/task queue control, scheduler truth, billing truth, prompt ownership,
-router ownership, or preset ownership. Its local observability buffer is only a
-bounded delivery buffer for metadata uploads; it is not audit, execution,
-billing, or workflow truth.
+router ownership, preset ownership, or Site Knowledge index lifecycle. Its local
+observability and Site Knowledge buffers are only bounded delivery buffers for
+Cloud transport; they are not audit, execution, billing, indexing, or workflow
+truth.
 
 The entitlement summary preserves Cloud `pro_cloud_runtime` detail such as
 Nightly Site Inspection run limits, used and remaining runs, batch limits,
@@ -47,6 +49,7 @@ npcink_cloud_addon_verified_runtime_client(): ?Npcink_Cloud_Runtime_Client
 npcink_cloud_addon_dispatch_media_derivative_cloud_request(array $ability_response, array $source_artifact, string $trace_id = '', string $idempotency_key = '')
 npcink_cloud_addon_build_media_derivative_proposal_payload(array $ability_response, array $cloud_result, array $derivative_artifact)
 npcink_cloud_addon_download_media_derivative_artifact(array $derivative_artifact, string $trace_id = '')
+npcink_cloud_addon_site_knowledge_change_bridge_health(): array
 ```
 
 `Npcink_Cloud_Runtime_Client` exposes:
@@ -128,6 +131,19 @@ Cloud observability summaries are dashboard projections only. They must not be
 used to approve proposals, change Core status, execute WordPress writes, or
 configure router, prompt, or preset behavior.
 
+## Site Knowledge Change Bridge
+
+When Cloud settings are configured, the addon listens for public post/page and
+approved comment changes, stores a bounded local delivery buffer, and sends a
+Cloud Site Knowledge refresh request through the existing
+`POST /v1/runtime/execute` runtime contract.
+
+The bridge only sends public content manifests and affected WordPress post ids
+with `write_posture=suggestion_only`. Cloud remains the Site Knowledge vector,
+index, freshness, and collection lifecycle owner. The addon does not create a
+local index, decide stale-index policy, register a workflow engine, own scheduler
+truth, or perform WordPress writes.
+
 ## Settings Page
 
 Admin path:
@@ -167,6 +183,6 @@ rg "/v1/runtime/workflows/runs|workflow engine|wp_insert_post|wp_update_post|app
 ```
 
 `workflow/task queue`, `scheduler truth`, and `workflow engine` may appear in
-documentation only as forbidden responsibilities. `observability buffer` and the
-WordPress cron flush hook are allowed only for opt-in metadata monitoring
-transport.
+documentation only as forbidden responsibilities. `observability buffer`,
+`Site Knowledge change buffer`, and their WordPress cron flush hooks are allowed
+only as bounded Cloud delivery transport.

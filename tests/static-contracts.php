@@ -15,6 +15,7 @@ $transport = maca_read( $root . '/includes/class-cloud-media-derivative-transpor
 $runtime_client = maca_read( $root . '/includes/class-cloud-runtime-client.php' );
 $entitlement_summary = maca_read( $root . '/includes/class-cloud-entitlement-summary.php' );
 $observability = maca_read( $root . '/includes/class-cloud-observability-collector.php' );
+$site_knowledge_bridge = maca_read( $root . '/includes/class-cloud-site-knowledge-change-bridge.php' );
 $settings = maca_read( $root . '/includes/class-cloud-addon-settings.php' );
 $settings_page = maca_read( $root . '/includes/class-cloud-settings-page.php' );
 $boundary_doc = maca_read( $root . '/docs/cloud-addon-boundary.md' );
@@ -303,6 +304,65 @@ maca_assert(
 	&& false !== strpos( $observability, 'wp_schedule_event' )
 	&& false !== strpos( $agents, 'Bounded observability buffering and WP-Cron flushing are allowed only' ),
 	'Observability capture and flush are gated by verified opt-in monitoring.'
+);
+
+maca_assert(
+	false !== strpos( $bootstrap, 'class-cloud-site-knowledge-change-bridge.php' )
+	&& false !== strpos( $bootstrap, 'npcink_cloud_addon_site_knowledge_change_bridge_health' )
+	&& false !== strpos( $bootstrap, 'Npcink_Cloud_Site_Knowledge_Change_Bridge::register()' )
+	&& false !== strpos( $readme, 'npcink_cloud_addon_site_knowledge_change_bridge_health(): array' ),
+	'Bootstrap exposes the Cloud Addon Site Knowledge change bridge health seam.'
+);
+
+maca_assert(
+	false !== strpos( $site_knowledge_bridge, 'BUFFER_OPTION' )
+	&& false !== strpos( $site_knowledge_bridge, 'npcink_cloud_addon_site_knowledge_change_buffer' )
+	&& false !== strpos( $site_knowledge_bridge, 'MAX_BUFFER_ITEMS = 500' )
+	&& false !== strpos( $site_knowledge_bridge, 'MAX_BATCH_ITEMS = 25' )
+	&& false === strpos( $site_knowledge_bridge, 'QUEUE_OPTION' )
+	&& false === strpos( $site_knowledge_bridge, 'MAX_QUEUE_ITEMS' ),
+	'Site Knowledge change bridge uses bounded delivery buffer language instead of queue ownership terms.'
+);
+
+maca_assert(
+	false !== strpos( $site_knowledge_bridge, 'transition_post_status' )
+	&& false !== strpos( $site_knowledge_bridge, "add_action( 'save_post'" )
+	&& false !== strpos( $site_knowledge_bridge, 'transition_comment_status' )
+	&& false !== strpos( $site_knowledge_bridge, 'comment_post' )
+	&& false !== strpos( $site_knowledge_bridge, 'edit_comment' )
+	&& false !== strpos( $site_knowledge_bridge, 'trashed_comment' ),
+	'Site Knowledge change bridge watches public post/page and approved comment changes.'
+);
+
+maca_assert(
+	false !== strpos( $site_knowledge_bridge, 'request_site_knowledge_refresh' )
+	&& false !== strpos( $site_knowledge_bridge, "'site_knowledge_sync.v1'" )
+	&& false !== strpos( $site_knowledge_bridge, "'sync_mode' => 'refresh'" )
+	&& false !== strpos( $site_knowledge_bridge, "'write_posture' => 'suggestion_only'" )
+	&& false !== strpos( $site_knowledge_bridge, 'execute_runtime' )
+	&& false !== strpos( $boundary_doc, 'Cloud remains the Site Knowledge vector' )
+	&& false !== strpos( $boundary_doc, 'index, freshness, and collection lifecycle owner' ),
+	'Site Knowledge change bridge forwards bounded public refresh hints to Cloud runtime only.'
+);
+
+maca_assert(
+	false !== strpos( $site_knowledge_bridge, 'wp_schedule_single_event' )
+	&& false !== strpos( $site_knowledge_bridge, 'wp_schedule_event' )
+	&& false !== strpos( $site_knowledge_bridge, 'MAX_DELIVERY_ATTEMPTS' )
+	&& false !== strpos( $site_knowledge_bridge, 'retry_or_drop_buffer' )
+	&& false !== strpos( $agents, 'Bounded Site Knowledge change buffering and WP-Cron flushing are allowed only' ),
+	'Site Knowledge change bridge has bounded delivery attempts and a low-frequency reconciliation safety net.'
+);
+
+maca_assert(
+	false === strpos( $site_knowledge_bridge, 'wp_insert_' . 'post' )
+	&& false === strpos( $site_knowledge_bridge, 'wp_update_' . 'post' )
+	&& false === strpos( $site_knowledge_bridge, 'update_post_meta' )
+	&& false === strpos( $site_knowledge_bridge, 'register_rest_route' )
+	&& false === strpos( $site_knowledge_bridge, 'ActionScheduler' )
+	&& false === strpos( $site_knowledge_bridge, 'as_enqueue' )
+	&& false !== strpos( $site_knowledge_bridge, "'index_lifecycle_owner' => 'cloud_service'" ),
+	'Site Knowledge change bridge does not introduce WordPress writes, REST control routes, Action Scheduler, or local index lifecycle ownership.'
 );
 
 maca_assert(

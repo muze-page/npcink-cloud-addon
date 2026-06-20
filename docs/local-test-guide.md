@@ -15,6 +15,9 @@ git diff --check
 - `tests/static-contracts.php` checks source and docs for boundary contracts.
 - `tests/behavior-media-derivative.php` calls public PHP APIs with WordPress
   stubs to prove fail-closed behavior.
+- `tests/behavior-site-knowledge-change-bridge.php` calls the Site Knowledge
+  bridge handlers with WordPress stubs to prove approved comments buffer their
+  parent public post for Cloud refresh transport.
 - `tests/helpers.php` contains shared assertions, stubs, and fixtures.
 
 Before expanding addon scope, read `docs/cloud-addon-complexity-budget.md`.

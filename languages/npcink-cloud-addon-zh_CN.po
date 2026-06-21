@@ -455,6 +455,7 @@ msgstr "保存 Cloud Base URL 和 Cloud API Key 以验证此连接器。"
 msgid "Entitlement"
 msgstr "权益"
 
+#: includes/bootstrap.php:266
 #: includes/class-cloud-settings-page.php:382
 #: includes/class-cloud-settings-page.php:388
 msgid "Settings"

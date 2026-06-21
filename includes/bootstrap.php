@@ -263,7 +263,7 @@ if ( ! function_exists( 'npcink_cloud_addon_filter_plugin_action_links' ) ) {
 			sprintf(
 				'<a href="%1$s">%2$s</a>',
 				esc_url( admin_url( 'admin.php?page=npcink-cloud-addon' ) ),
-				esc_html__( 'Settings', 'default' )
+				esc_html__( 'Settings', 'npcink-cloud-addon' )
 			)
 		);
 

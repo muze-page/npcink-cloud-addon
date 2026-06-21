@@ -46,7 +46,7 @@ short TTL source artifact descriptor and derivative request parameters from the
 local read-only ability output. Cloud credentials and signed headers are added
 by the addon transport and are not copied into the ability payload.
 
-The configured Cloud service is responsible for its own privacy policy, terms of service, data retention, and account/key issuance. Site administrators should only connect this plugin to a Cloud service whose terms and privacy policy they have reviewed.
+The configured Cloud service is responsible for its own privacy policy, terms of service, data retention, and account/key issuance. Because the Cloud Base URL is administrator-configured, this plugin does not hard-code one service policy URL. Site administrators should only connect this plugin to a Cloud service whose terms of service, privacy policy, data retention policy, and account/key issuance process they have reviewed.
 
 == Installation ==
 

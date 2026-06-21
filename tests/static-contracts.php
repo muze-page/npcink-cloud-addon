@@ -290,6 +290,18 @@ maca_assert(
 );
 
 maca_assert(
+	false !== strpos( $observability, 'AGENT_SUMMARY_OPTION' )
+	&& false !== strpos( $observability, 'refresh_agent_feedback_summary' )
+	&& false !== strpos( $observability, 'get_agent_feedback_summary( 24' )
+	&& false !== strpos( $observability, 'sanitize_agent_feedback_summary_payload' )
+	&& false !== strpos( $settings_page, 'Monitoring & Quality' )
+	&& false !== strpos( $settings_page, 'Refresh monitoring and quality' )
+	&& false !== strpos( $settings_page, 'Agent quality events' )
+	&& false !== strpos( $settings_page, 'Read-only Cloud eval summary. Approval, proposal, preflight, and WordPress writes remain local.' ),
+	'Cloud Addon Monitoring owns the read-only Agent quality summary without adding write or control-plane authority.'
+);
+
+maca_assert(
 	false !== strpos( $observability, 'BUFFER_OPTION' )
 	&& false !== strpos( $observability, 'npcink_cloud_addon_observability_buffer' )
 	&& false !== strpos( $observability, 'MAX_BUFFER_ITEMS = 200' )

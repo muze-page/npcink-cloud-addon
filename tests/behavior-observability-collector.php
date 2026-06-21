@@ -308,3 +308,48 @@ maca_assert(
 	&& ! array_key_exists( 'token', $cached_summary['digest'] ?? array() ),
 	'Behavior: Cloud summary refresh stores only sanitized allowlisted summary fields.'
 );
+
+maca_reset_test_state();
+maca_seed_settings( true );
+$GLOBALS['maca_http_response_queue'][] = array(
+	'response' => array( 'code' => 200 ),
+	'body'     => wp_json_encode(
+		array(
+			'status' => 'ok',
+			'data'   => array(
+				'contract_version'   => 'cloud_agent_feedback.v1',
+				'window_hours'       => 24,
+				'events_total'       => 4,
+				'source_runtimes'    => array( 'site_knowledge', 'image_candidates' ),
+				'low_quality_labels' => array(
+					array(
+						'label' => 'wrong_next_step',
+						'count' => 2,
+					),
+				),
+				'rejection_reasons'  => array(
+					'unsupported_claim' => 1,
+				),
+				'prompt'             => 'must not be stored',
+				'raw_request'        => array( 'body' => 'must not be stored' ),
+			),
+		)
+	),
+);
+$agent_summary = Npcink_Cloud_Observability_Collector::refresh_agent_feedback_summary();
+$status = Npcink_Cloud_Observability_Collector::get_status();
+$cached_agent_summary = is_array( $status['agent_feedback_summary']['summary'] ?? null ) ? $status['agent_feedback_summary']['summary'] : array();
+$agent_request = $GLOBALS['maca_http_requests'][0] ?? array();
+maca_assert(
+	! empty( $agent_summary['last_refresh_ok'] )
+	&& false !== strpos( (string) ( $agent_request['url'] ?? '' ), '/v1/agent-feedback/summary?window_hours=24' )
+	&& 4 === absint( $cached_agent_summary['events_total'] ?? 0 )
+	&& in_array( 'site_knowledge', $cached_agent_summary['source_runtimes'] ?? array(), true )
+	&& 'wrong_next_step' === (string) ( $cached_agent_summary['low_quality_labels'][0]['label'] ?? '' )
+	&& 'unsupported_claim' === (string) ( $cached_agent_summary['rejection_reasons'][0]['label'] ?? '' )
+	&& ! array_key_exists( 'prompt', $cached_agent_summary )
+	&& ! array_key_exists( 'raw_request', $cached_agent_summary )
+	&& false === (bool) ( $cached_agent_summary['production_mutation'] ?? true )
+	&& 'wordpress_local' === (string) ( $cached_agent_summary['approval_truth'] ?? '' ),
+	'Behavior: Agent feedback quality summary refresh is read-only, sanitized, and independent from monitoring upload opt-in.'
+);

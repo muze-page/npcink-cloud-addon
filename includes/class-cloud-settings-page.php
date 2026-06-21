@@ -242,7 +242,7 @@ if ( ! class_exists( 'Npcink_Cloud_Settings_Page' ) ) {
 		}
 
 		/**
-		 * Handles manual monitoring upload and summary refresh.
+		 * Handles manual monitoring upload and read-only quality summary refresh.
 		 *
 		 * @return void
 		 */
@@ -253,34 +253,48 @@ if ( ! class_exists( 'Npcink_Cloud_Settings_Page' ) ) {
 
 			check_admin_referer( self::ACTION_REFRESH_MONITORING );
 
-			if ( ! Npcink_Cloud_Addon_Settings::is_monitoring_enabled() ) {
-				self::set_admin_notice( 'error', __( 'Monitoring is disabled or Cloud is not verified.', 'npcink-cloud-addon' ) );
+			if ( ! Npcink_Cloud_Addon_Settings::is_verified() ) {
+				self::set_admin_notice( 'error', __( 'Cloud Addon settings are not verified.', 'npcink-cloud-addon' ) );
 				self::redirect_to_page( 'monitoring' );
 			}
 
-			$upload = Npcink_Cloud_Observability_Collector::flush_buffer();
-			if ( empty( $upload['last_upload_ok'] ) ) {
-				$message = sanitize_text_field( (string) ( $upload['last_upload_error'] ?? '' ) );
-				self::set_admin_notice( 'error', '' !== $message ? $message : __( 'Monitoring upload failed.', 'npcink-cloud-addon' ) );
-				self::redirect_to_page( 'monitoring' );
+			$upload = array( 'buffer_count' => Npcink_Cloud_Observability_Collector::get_status()['buffer_count'] ?? 0 );
+			if ( Npcink_Cloud_Addon_Settings::is_monitoring_enabled() ) {
+				$upload = Npcink_Cloud_Observability_Collector::flush_buffer();
+				if ( empty( $upload['last_upload_ok'] ) ) {
+					$message = sanitize_text_field( (string) ( $upload['last_upload_error'] ?? '' ) );
+					self::set_admin_notice( 'error', '' !== $message ? $message : __( 'Monitoring upload failed.', 'npcink-cloud-addon' ) );
+					self::redirect_to_page( 'monitoring' );
+				}
+
+				$summary = Npcink_Cloud_Observability_Collector::refresh_summary();
+				if ( empty( $summary['last_refresh_ok'] ) ) {
+					$message = sanitize_text_field( (string) ( $summary['last_refresh_error'] ?? '' ) );
+					self::set_admin_notice( 'error', '' !== $message ? $message : __( 'Monitoring summary refresh failed.', 'npcink-cloud-addon' ) );
+					self::redirect_to_page( 'monitoring' );
+				}
 			}
 
-			$summary = Npcink_Cloud_Observability_Collector::refresh_summary();
-			if ( empty( $summary['last_refresh_ok'] ) ) {
-				$message = sanitize_text_field( (string) ( $summary['last_refresh_error'] ?? '' ) );
-				self::set_admin_notice( 'error', '' !== $message ? $message : __( 'Monitoring summary refresh failed.', 'npcink-cloud-addon' ) );
+			$quality = Npcink_Cloud_Observability_Collector::refresh_agent_feedback_summary();
+			if ( empty( $quality['last_refresh_ok'] ) ) {
+				$message = sanitize_text_field( (string) ( $quality['last_refresh_error'] ?? '' ) );
+				self::set_admin_notice( 'error', '' !== $message ? $message : __( 'Agent quality summary refresh failed.', 'npcink-cloud-addon' ) );
 				self::redirect_to_page( 'monitoring' );
 			}
 
 			$remaining = absint( $upload['buffer_count'] ?? 0 );
-			self::set_admin_notice(
-				'success',
-				sprintf(
-					/* translators: %d: remaining buffered event count. */
-					__( 'Monitoring refreshed. Remaining buffered events: %d.', 'npcink-cloud-addon' ),
-					$remaining
-				)
-			);
+			if ( Npcink_Cloud_Addon_Settings::is_monitoring_enabled() ) {
+				self::set_admin_notice(
+					'success',
+					sprintf(
+						/* translators: %d: remaining buffered event count. */
+						__( 'Monitoring and quality refreshed. Remaining buffered events: %d.', 'npcink-cloud-addon' ),
+						$remaining
+					)
+				);
+			} else {
+				self::set_admin_notice( 'success', __( 'Agent quality summary refreshed. Monitoring collection is disabled.', 'npcink-cloud-addon' ) );
+			}
 			self::redirect_to_page( 'monitoring' );
 		}
 
@@ -364,7 +378,7 @@ if ( ! class_exists( 'Npcink_Cloud_Settings_Page' ) ) {
 			if ( $is_verified ) {
 				return array(
 					'entitlement' => __( 'Entitlement', 'npcink-cloud-addon' ),
-					'monitoring'  => __( 'Monitoring', 'npcink-cloud-addon' ),
+					'monitoring'  => __( 'Monitoring & Quality', 'npcink-cloud-addon' ),
 					'settings'    => __( 'Settings', 'npcink-cloud-addon' ),
 					'advanced'    => __( 'Advanced', 'npcink-cloud-addon' ),
 				);
@@ -573,6 +587,8 @@ if ( ! class_exists( 'Npcink_Cloud_Settings_Page' ) ) {
 			$plugins = is_array( $monitoring['plugins'] ?? null ) ? $monitoring['plugins'] : array();
 			$remote = is_array( $monitoring['remote_summary'] ?? null ) ? $monitoring['remote_summary'] : array();
 			$summary = is_array( $remote['summary'] ?? null ) ? $remote['summary'] : array();
+			$agent_feedback = is_array( $monitoring['agent_feedback_summary'] ?? null ) ? $monitoring['agent_feedback_summary'] : array();
+			$agent_summary = is_array( $agent_feedback['summary'] ?? null ) ? $agent_feedback['summary'] : array();
 			$totals = is_array( $summary['totals'] ?? null ) ? $summary['totals'] : array();
 			$cloud_plugins = is_array( $summary['plugins'] ?? null ) ? $summary['plugins'] : array();
 			$recent_errors = is_array( $summary['recent_errors'] ?? null ) ? $summary['recent_errors'] : array();
@@ -580,7 +596,7 @@ if ( ! class_exists( 'Npcink_Cloud_Settings_Page' ) ) {
 			<form class="npcink-cloud-verify-form" method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" style="margin: 0 0 12px;">
 				<?php wp_nonce_field( self::ACTION_REFRESH_MONITORING ); ?>
 				<input type="hidden" name="action" value="<?php echo esc_attr( self::ACTION_REFRESH_MONITORING ); ?>" />
-				<button type="submit" class="button button-secondary"><?php esc_html_e( 'Refresh monitoring', 'npcink-cloud-addon' ); ?></button>
+				<button type="submit" class="button button-secondary"><?php esc_html_e( 'Refresh monitoring and quality', 'npcink-cloud-addon' ); ?></button>
 			</form>
 			<table class="widefat striped" style="max-width: 860px;">
 				<tbody>
@@ -720,6 +736,39 @@ if ( ! class_exists( 'Npcink_Cloud_Settings_Page' ) ) {
 					</tr>
 				</tbody>
 			</table>
+			<table class="widefat striped" style="max-width: 860px; margin-top: 12px;">
+				<tbody>
+					<tr>
+						<th scope="row"><?php esc_html_e( 'Agent quality events', 'npcink-cloud-addon' ); ?></th>
+						<td><?php echo esc_html( (string) absint( $agent_summary['events_total'] ?? 0 ) ); ?></td>
+					</tr>
+					<tr>
+						<th scope="row"><?php esc_html_e( 'Agent quality window', 'npcink-cloud-addon' ); ?></th>
+						<td>
+							<?php
+							printf(
+								/* translators: %d: window hours. */
+								esc_html__( '%d hours', 'npcink-cloud-addon' ),
+								absint( $agent_summary['window_hours'] ?? 0 )
+							);
+							?>
+						</td>
+					</tr>
+					<tr>
+						<th scope="row"><?php esc_html_e( 'Agent quality refreshed', 'npcink-cloud-addon' ); ?></th>
+						<td><?php echo esc_html( self::format_datetime_value( (string) ( $agent_feedback['last_refreshed_at'] ?? '' ) ) ); ?></td>
+					</tr>
+					<tr>
+						<th scope="row"><?php esc_html_e( 'Agent quality error', 'npcink-cloud-addon' ); ?></th>
+						<td><?php echo esc_html( self::format_empty( (string) ( $agent_feedback['last_refresh_error'] ?? '' ) ) ); ?></td>
+					</tr>
+					<tr>
+						<th scope="row"><?php esc_html_e( 'Quality boundary', 'npcink-cloud-addon' ); ?></th>
+						<td><?php esc_html_e( 'Read-only Cloud eval summary. Approval, proposal, preflight, and WordPress writes remain local.', 'npcink-cloud-addon' ); ?></td>
+					</tr>
+				</tbody>
+			</table>
+			<?php self::render_agent_feedback_quality_lists( $agent_summary ); ?>
 			<?php if ( ! empty( $cloud_plugins ) ) : ?>
 				<table class="widefat striped" style="max-width: 860px; margin-top: 12px;">
 					<thead>
@@ -790,6 +839,71 @@ if ( ! class_exists( 'Npcink_Cloud_Settings_Page' ) ) {
 				</tbody>
 			</table>
 			<?php
+		}
+
+		/**
+		 * Renders read-only Agent feedback quality detail lists.
+		 *
+		 * @param array<string,mixed> $summary Sanitized Agent feedback summary.
+		 * @return void
+		 */
+		private static function render_agent_feedback_quality_lists( array $summary ): void {
+			$source_runtimes = is_array( $summary['source_runtimes'] ?? null ) ? $summary['source_runtimes'] : array();
+			$labels = is_array( $summary['low_quality_labels'] ?? null ) ? $summary['low_quality_labels'] : array();
+			if ( empty( $labels ) && is_array( $summary['labels'] ?? null ) ) {
+				$labels = $summary['labels'];
+			}
+			$reasons = is_array( $summary['rejection_reasons'] ?? null ) ? $summary['rejection_reasons'] : array();
+			if ( empty( $source_runtimes ) && empty( $labels ) && empty( $reasons ) ) {
+				return;
+			}
+			?>
+			<table class="widefat striped" style="max-width: 860px; margin-top: 12px;">
+				<thead>
+					<tr>
+						<th scope="col"><?php esc_html_e( 'Agent quality signal', 'npcink-cloud-addon' ); ?></th>
+						<th scope="col"><?php esc_html_e( 'Value', 'npcink-cloud-addon' ); ?></th>
+						<th scope="col"><?php esc_html_e( 'Count', 'npcink-cloud-addon' ); ?></th>
+					</tr>
+				</thead>
+				<tbody>
+					<?php foreach ( $source_runtimes as $runtime ) : ?>
+						<tr>
+							<th scope="row"><?php esc_html_e( 'Source runtime', 'npcink-cloud-addon' ); ?></th>
+							<td><code><?php echo esc_html( (string) $runtime ); ?></code></td>
+							<td><?php echo esc_html( self::format_empty( '' ) ); ?></td>
+						</tr>
+					<?php endforeach; ?>
+					<?php self::render_agent_feedback_metric_rows( __( 'Low quality label', 'npcink-cloud-addon' ), $labels ); ?>
+					<?php self::render_agent_feedback_metric_rows( __( 'Rejected reason', 'npcink-cloud-addon' ), $reasons ); ?>
+				</tbody>
+			</table>
+			<?php
+		}
+
+		/**
+		 * Renders sanitized Agent feedback metric rows.
+		 *
+		 * @param string              $kind Row kind label.
+		 * @param array<int,mixed>    $items Sanitized metric items.
+		 * @return void
+		 */
+		private static function render_agent_feedback_metric_rows( string $kind, array $items ): void {
+			foreach ( $items as $item ) {
+				$item = is_array( $item ) ? $item : array();
+				$value = (string) ( $item['label'] ?? ( $item['reason'] ?? ( $item['code'] ?? ( $item['bucket'] ?? '' ) ) ) );
+				if ( '' === $value ) {
+					continue;
+				}
+				$count = array_key_exists( 'count', $item ) ? (string) absint( $item['count'] ) : self::format_empty( '' );
+				?>
+				<tr>
+					<th scope="row"><?php echo esc_html( $kind ); ?></th>
+					<td><code><?php echo esc_html( $value ); ?></code></td>
+					<td><?php echo esc_html( $count ); ?></td>
+				</tr>
+				<?php
+			}
 		}
 
 		/**

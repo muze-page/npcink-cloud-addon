@@ -2,7 +2,7 @@
 
 Standalone WordPress plugin for connecting a local Npcink installation to `npcink-cloud`.
 
-The addon is a thin Cloud connector. It stores the Cloud Base URL and Cloud API Key, parses the key into signing credentials, sends signed runtime requests, reads health and entitlement status, transports opt-in metadata-only plugin observability events, bridges public Site Knowledge change hints to Cloud, and exposes a minimal PHP interface for local plugins.
+The addon is a thin Cloud connector. It stores the Cloud Base URL and Cloud API Key, parses the key into signing credentials, sends signed runtime requests, reads health and entitlement status, transports opt-in metadata-only plugin observability events, shows read-only Agent feedback quality summaries, bridges public Site Knowledge change hints to Cloud, and exposes a minimal PHP interface for local plugins.
 
 ## Scope
 
@@ -22,6 +22,8 @@ The addon owns:
 - Opt-in plugin observability transport:
   - `POST /v1/observability/plugin-events`
   - `GET /v1/observability/plugin-summary`
+- Read-only Agent feedback quality projection:
+  - `GET /v1/agent-feedback/summary`
 - Site Knowledge public content change bridge through `POST /v1/runtime/execute`.
 - `Npcink > Cloud Addon`.
 
@@ -117,6 +119,10 @@ Cloud, and reads aggregate Cloud summaries for the local monitoring view.
 The local monitoring status distinguishes sent events, Cloud-stored events, and
 Cloud-reported duplicates so operators do not confuse upload attempts with
 durable Cloud storage.
+The Monitoring view may also read the Cloud Agent feedback quality summary even
+when monitoring upload is disabled. That summary is aggregate eval metadata
+only; it is not approval, proposal, preflight, workflow, billing, prompt,
+router, preset, or WordPress write truth.
 
 Allowed uploaded fields are limited to operational metadata such as plugin
 slug/version, event kind, status, timing, error code, route, proposal id,

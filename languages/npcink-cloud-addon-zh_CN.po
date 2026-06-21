@@ -8,7 +8,7 @@ msgstr ""
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 "POT-Creation-Date: 2026-06-06T08:22:26+00:00\n"
-"PO-Revision-Date: 2026-06-06 00:00+0000\n"
+"PO-Revision-Date: 2026-06-21 00:00+0000\n"
 "Language: zh_CN\n"
 "X-Generator: WP-CLI 2.12.0; lightweight project zh_CN draft\n"
 "X-Domain: npcink-cloud-addon\n"
@@ -16,7 +16,7 @@ msgstr ""
 #. Plugin Name of the plugin
 #: npcink-cloud-addon.php
 #: includes/class-cloud-settings-page.php:68
-#: includes/class-cloud-settings-page.php:305
+#: includes/class-cloud-settings-page.php:319
 msgid "Npcink Cloud Addon"
 msgstr "Npcink Cloud Addon"
 
@@ -93,7 +93,7 @@ msgstr "读取权益信息前请先配置 Cloud 设置。"
 msgid "Entitlement is unavailable until Cloud settings verify successfully."
 msgstr "Cloud 设置验证成功前，权益信息不可用。"
 
-#: includes/class-cloud-entitlement-summary.php:127
+#: includes/class-cloud-entitlement-summary.php:128
 msgid "Entitlement summary synced."
 msgstr "权益摘要已同步。"
 
@@ -102,166 +102,165 @@ msgid "Source upload and source artifact id cannot be sent together."
 msgstr "不能同时发送源文件上传和源 artifact id。"
 
 #: includes/class-cloud-media-derivative-transport.php:72
-#: includes/class-cloud-media-derivative-transport.php:403
+#: includes/class-cloud-media-derivative-transport.php:826
 msgid "Watermark upload and watermark artifact id cannot be sent together."
 msgstr "不能同时发送水印上传和水印 artifact id。"
 
-#: includes/class-cloud-media-derivative-transport.php:217
+#: includes/class-cloud-media-derivative-transport.php:379
 msgid "Cloud derivative artifact download returned no bytes."
 msgstr "Cloud 衍生 artifact 下载未返回内容。"
 
-#: includes/class-cloud-media-derivative-transport.php:227
+#: includes/class-cloud-media-derivative-transport.php:389
 msgid "Cloud derivative artifact mime type does not match the descriptor."
 msgstr "Cloud 衍生 artifact 的 MIME 类型与描述不匹配。"
 
-#: includes/class-cloud-media-derivative-transport.php:236
-#: includes/class-cloud-media-derivative-transport.php:716
+#: includes/class-cloud-media-derivative-transport.php:398
+#: includes/class-cloud-media-derivative-transport.php:1168
 msgid "Media derivative artifact mime type must be a supported image type."
 msgstr "媒体衍生 artifact 的 MIME 类型必须是受支持的图片类型。"
 
-#: includes/class-cloud-media-derivative-transport.php:245
+#: includes/class-cloud-media-derivative-transport.php:407
 msgid "Derivative artifact checksum does not match the downloaded bytes."
 msgstr "衍生 artifact 校验和与下载内容不匹配。"
 
-#: includes/class-cloud-media-derivative-transport.php:269
+#: includes/class-cloud-media-derivative-transport.php:692
 msgid "Npcink Cloud credentials must verify before dispatching media derivative jobs."
 msgstr "派发媒体衍生任务前，Npcink Cloud 凭据必须先通过验证。"
 
-#: includes/class-cloud-media-derivative-transport.php:316
+#: includes/class-cloud-media-derivative-transport.php:739
 msgid "Media derivative request contract version is invalid."
 msgstr "媒体衍生请求的合同版本无效。"
 
-#: includes/class-cloud-media-derivative-transport.php:323
+#: includes/class-cloud-media-derivative-transport.php:746
 msgid "Media derivative request must be read-only and proposal-only."
 msgstr "媒体衍生请求必须是只读且仅生成提案。"
 
-#: includes/class-cloud-media-derivative-transport.php:330
+#: includes/class-cloud-media-derivative-transport.php:753
 msgid "Media derivative final write owner must remain the local WordPress host."
 msgstr "媒体衍生的最终写入所有者必须保留为本地 WordPress 主机。"
 
-#: includes/class-cloud-media-derivative-transport.php:337
+#: includes/class-cloud-media-derivative-transport.php:760
 msgid "Media derivative request must not include WordPress writes."
 msgstr "媒体衍生请求不得包含 WordPress 写入。"
 
-#: includes/class-cloud-media-derivative-transport.php:344
+#: includes/class-cloud-media-derivative-transport.php:767
 msgid "Media derivative ability payload must not include credentials or signed headers."
 msgstr "媒体衍生 ability payload 不得包含凭据或签名请求头。"
 
-#: includes/class-cloud-media-derivative-transport.php:353
+#: includes/class-cloud-media-derivative-transport.php:776
 msgid "Cloud media derivative job type is invalid."
 msgstr "Cloud 媒体衍生任务类型无效。"
 
-#: includes/class-cloud-media-derivative-transport.php:360
+#: includes/class-cloud-media-derivative-transport.php:783
 msgid "Media derivative jobs must not request original file replacement."
 msgstr "媒体衍生任务不得请求替换原始文件。"
 
-#: includes/class-cloud-media-derivative-transport.php:389
+#: includes/class-cloud-media-derivative-transport.php:812
 msgid "Watermark artifact transport requires a watermark plan in the ability response."
 msgstr "水印 artifact 传输要求 ability response 中包含水印计划。"
 
-#: includes/class-cloud-media-derivative-transport.php:396
+#: includes/class-cloud-media-derivative-transport.php:819
 msgid "Text watermark plans must not include a watermark upload or artifact id."
 msgstr "文本水印计划不得包含水印上传或 artifact id。"
 
-#: includes/class-cloud-media-derivative-transport.php:410
+#: includes/class-cloud-media-derivative-transport.php:833
 msgid "Watermark plans require a watermark upload or artifact id before Cloud dispatch."
 msgstr "派发到 Cloud 前，水印计划需要水印上传或 artifact id。"
 
-#: includes/class-cloud-media-derivative-transport.php:419
+#: includes/class-cloud-media-derivative-transport.php:842
 msgid "Media derivative request must include a bounded target format from the ability response."
 msgstr "媒体衍生请求必须包含 ability response 提供的受限目标格式。"
 
-#: includes/class-cloud-media-derivative-transport.php:428
+#: includes/class-cloud-media-derivative-transport.php:851
 msgid "Media derivative request must include max_width from the ability response."
 msgstr "媒体衍生请求必须包含 ability response 中的 max_width。"
 
-#: includes/class-cloud-media-derivative-transport.php:437
+#: includes/class-cloud-media-derivative-transport.php:860
 msgid "Media derivative request must include quality from the ability response."
 msgstr "媒体衍生请求必须包含 ability response 中的 quality。"
 
-#: includes/class-cloud-media-derivative-transport.php:453
+#: includes/class-cloud-media-derivative-transport.php:876
 msgid "Media derivative source media type must be a supported image type."
 msgstr "媒体衍生源媒体类型必须是受支持的图片类型。"
 
-#: includes/class-cloud-media-derivative-transport.php:466
+#: includes/class-cloud-media-derivative-transport.php:892
 msgid "Watermark artifact id does not match the ability watermark plan."
 msgstr "水印 artifact id 与 ability 水印计划不匹配。"
 
-#: includes/class-cloud-media-derivative-transport.php:586
+#: includes/class-cloud-media-derivative-transport.php:1038
 msgid "Media derivative upload file is not readable."
 msgstr "媒体衍生上传文件不可读。"
 
-#: includes/class-cloud-media-derivative-transport.php:594
-#: includes/class-cloud-media-derivative-transport.php:612
+#: includes/class-cloud-media-derivative-transport.php:1046
+#: includes/class-cloud-media-derivative-transport.php:1064
 msgid "Media derivative upload file exceeds the Cloud size limit."
 msgstr "媒体衍生上传文件超过 Cloud 大小限制。"
 
-#: includes/class-cloud-media-derivative-transport.php:605
+#: includes/class-cloud-media-derivative-transport.php:1057
 msgid "Media derivative upload file is empty."
 msgstr "媒体衍生上传文件为空。"
 
-#: includes/class-cloud-media-derivative-transport.php:662
+#: includes/class-cloud-media-derivative-transport.php:1114
 msgid "Media derivative runtime artifacts require an artifact id."
 msgstr "媒体衍生运行时 artifact 需要 artifact id。"
 
-#: includes/class-cloud-media-derivative-transport.php:682
+#: includes/class-cloud-media-derivative-transport.php:1134
 msgid "Media derivative artifact expiry is required."
 msgstr "媒体衍生 artifact 需要过期时间。"
 
-#: includes/class-cloud-media-derivative-transport.php:689
+#: includes/class-cloud-media-derivative-transport.php:1141
 msgid "Expired Cloud artifacts cannot be adopted."
 msgstr "已过期的 Cloud artifact 不能被采用。"
 
-#: includes/class-cloud-media-derivative-transport.php:698
+#: includes/class-cloud-media-derivative-transport.php:1150
 msgid "Derivative Cloud artifacts require an artifact id before local proposal adoption."
 msgstr "本地提案采用前，Cloud 衍生 artifact 需要 artifact id。"
 
-#: includes/class-cloud-media-derivative-transport.php:707
+#: includes/class-cloud-media-derivative-transport.php:1159
 msgid "Media derivative artifact requires an artifact id or download URL."
 msgstr "媒体衍生 artifact 需要 artifact id 或下载 URL。"
 
-#: includes/class-cloud-media-derivative-transport.php:820
+#: includes/class-cloud-media-derivative-transport.php:1272
 msgid "Derivative artifact id does not match the Cloud result."
 msgstr "衍生 artifact id 与 Cloud 结果不匹配。"
 
-#: includes/class-cloud-media-derivative-transport.php:830
+#: includes/class-cloud-media-derivative-transport.php:1282
 msgid "Derivative artifact run_id does not match the Cloud result."
 msgstr "衍生 artifact run_id 与 Cloud 结果不匹配。"
 
-#: includes/class-cloud-media-derivative-transport.php:840
+#: includes/class-cloud-media-derivative-transport.php:1292
 msgid "Derivative artifact checksum does not match the Cloud result."
 msgstr "衍生 artifact 校验和与 Cloud 结果不匹配。"
 
-#: includes/class-cloud-media-derivative-transport.php:858
+#: includes/class-cloud-media-derivative-transport.php:1310
 msgid "Original media metrics are incomplete."
 msgstr "原始媒体指标不完整。"
 
-#: includes/class-cloud-media-derivative-transport.php:861
+#: includes/class-cloud-media-derivative-transport.php:1313
 msgid "Derivative media metrics are incomplete."
 msgstr "衍生媒体指标不完整。"
 
-#: includes/class-cloud-observability-collector.php:101
-#: includes/class-cloud-observability-collector.php:175
-#: includes/class-cloud-settings-page.php:257
+#: includes/class-cloud-observability-collector.php:102
+#: includes/class-cloud-observability-collector.php:177
 msgid "Monitoring is disabled or Cloud is not verified."
 msgstr "监控已禁用，或 Cloud 尚未验证。"
 
-#: includes/class-cloud-observability-collector.php:748
+#: includes/class-cloud-observability-collector.php:959
 #: includes/class-cloud-settings-page.php:142
 msgid "Core"
 msgstr "治理核心"
 
-#: includes/class-cloud-observability-collector.php:753
+#: includes/class-cloud-observability-collector.php:964
 #: includes/class-cloud-settings-page.php:144
 msgid "Abilities"
 msgstr "原子能力"
 
-#: includes/class-cloud-observability-collector.php:758
+#: includes/class-cloud-observability-collector.php:969
 #: includes/class-cloud-settings-page.php:143
 msgid "Adapter"
 msgstr "渠道适配器"
 
-#: includes/class-cloud-observability-collector.php:763
+#: includes/class-cloud-observability-collector.php:974
 #: includes/class-cloud-settings-page.php:69
 #: includes/class-cloud-settings-page.php:145
 msgid "Cloud Addon"
@@ -285,77 +284,78 @@ msgstr "媒体衍生传输只允许 source_file 和 watermark_file 上传。"
 
 #: includes/class-cloud-runtime-client.php:159
 #: includes/class-cloud-runtime-client.php:178
+#: includes/class-cloud-runtime-client.php:212
 msgid "Cloud run_id is required."
 msgstr "Cloud run_id 为必填项。"
 
-#: includes/class-cloud-runtime-client.php:197
+#: includes/class-cloud-runtime-client.php:242
 msgid "Cloud artifact_id is required."
 msgstr "Cloud artifact_id 为必填项。"
 
-#: includes/class-cloud-runtime-client.php:222
+#: includes/class-cloud-runtime-client.php:267
 msgid "Cloud site_id is required."
 msgstr "Cloud site_id 为必填项。"
 
-#: includes/class-cloud-runtime-client.php:243
+#: includes/class-cloud-runtime-client.php:288
 msgid "Cloud profile_id is required."
 msgstr "Cloud profile_id 为必填项。"
 
-#: includes/class-cloud-runtime-client.php:262
+#: includes/class-cloud-runtime-client.php:307
 msgid "Cloud instance_id is required."
 msgstr "Cloud instance_id 为必填项。"
 
-#: includes/class-cloud-runtime-client.php:281
+#: includes/class-cloud-runtime-client.php:326
 msgid "No observability events are ready to upload."
 msgstr "没有可上传的 observability 事件。"
 
-#: includes/class-cloud-runtime-client.php:329
-#: includes/class-cloud-runtime-client.php:397
+#: includes/class-cloud-runtime-client.php:417
+#: includes/class-cloud-runtime-client.php:493
 msgid "Npcink Cloud is not configured."
 msgstr "Npcink Cloud 尚未配置。"
 
-#: includes/class-cloud-runtime-client.php:339
-#: includes/class-cloud-runtime-client.php:407
+#: includes/class-cloud-runtime-client.php:427
+#: includes/class-cloud-runtime-client.php:503
 msgid "This Cloud endpoint is not allowed by the Cloud Addon runtime contract."
 msgstr "Cloud Addon 运行时合同不允许此 Cloud 端点。"
 
-#: includes/class-cloud-runtime-client.php:355
+#: includes/class-cloud-runtime-client.php:443
 msgid "Cloud runtime request payload could not be encoded."
 msgstr "无法编码 Cloud runtime 请求 payload。"
 
-#: includes/class-cloud-runtime-client.php:447
+#: includes/class-cloud-runtime-client.php:543
 msgid "Cloud Base URL is required."
 msgstr "Cloud Base URL 为必填项。"
 
-#: includes/class-cloud-runtime-client.php:477
+#: includes/class-cloud-runtime-client.php:573
 msgid "Cloud liveness check failed."
 msgstr "Cloud 存活检查失败。"
 
-#: includes/class-cloud-runtime-client.php:483
+#: includes/class-cloud-runtime-client.php:579
 msgid "Cloud service is live."
 msgstr "Cloud 服务在线。"
 
-#: includes/class-cloud-runtime-client.php:504
+#: includes/class-cloud-runtime-client.php:600
 msgid "Cloud runtime request failed."
 msgstr "Cloud runtime 请求失败。"
 
-#: includes/class-cloud-runtime-client.php:540
+#: includes/class-cloud-runtime-client.php:636
 msgid "Cloud runtime artifact download failed."
 msgstr "Cloud runtime artifact 下载失败。"
 
-#: includes/class-cloud-runtime-client.php:557
+#: includes/class-cloud-runtime-client.php:653
 msgid "Cloud artifact download exceeds the local preview size limit."
 msgstr "Cloud artifact 下载超过本地预览大小限制。"
 
-#: includes/class-cloud-runtime-client.php:775
+#: includes/class-cloud-runtime-client.php:883
 msgid "Cloud media derivative request payload could not be encoded."
 msgstr "无法编码 Cloud 媒体衍生请求 payload。"
 
-#: includes/class-cloud-runtime-client.php:903
+#: includes/class-cloud-runtime-client.php:1011
 msgid "Cannot connect to Npcink Cloud. Check the Cloud Base URL."
 msgstr "无法连接到 Npcink Cloud。请检查 Cloud Base URL。"
 
 #. translators: 1: Cloud base URL, 2: transport error.
-#: includes/class-cloud-runtime-client.php:908
+#: includes/class-cloud-runtime-client.php:1016
 #, php-format
 msgid "Cannot connect to %1$s. Original error: %2$s"
 msgstr "无法连接到 %1$s。原始错误：%2$s"
@@ -413,370 +413,486 @@ msgstr "你没有管理 Npcink Cloud 设置的权限。"
 msgid "Cloud settings saved and verified."
 msgstr "Cloud 设置已保存并验证。"
 
-#: includes/class-cloud-settings-page.php:264
+#: includes/class-cloud-settings-page.php:266
 msgid "Monitoring upload failed."
 msgstr "监控上传失败。"
 
-#: includes/class-cloud-settings-page.php:271
+#: includes/class-cloud-settings-page.php:273
 msgid "Monitoring summary refresh failed."
 msgstr "监控摘要刷新失败。"
 
-#. translators: %d: remaining buffered event count.
-#: includes/class-cloud-settings-page.php:280
-#, php-format
-msgid "Monitoring refreshed. Remaining buffered events: %d."
-msgstr "监控已刷新。剩余缓冲事件：%d。"
-
-#: includes/class-cloud-settings-page.php:306
+#: includes/class-cloud-settings-page.php:320
 msgid "Cloud connector status and access settings for this WordPress site."
 msgstr "此 WordPress 站点的 Cloud 连接器状态和访问设置。"
 
-#: includes/class-cloud-settings-page.php:314
+#: includes/class-cloud-settings-page.php:328
 msgid "Entitlement Summary"
 msgstr "权益摘要"
 
-#: includes/class-cloud-settings-page.php:319
-#: includes/class-cloud-settings-page.php:367
-#: includes/class-cloud-settings-page.php:544
+#: includes/class-cloud-settings-page.php:333
+#: includes/class-cloud-settings-page.php:558
 msgid "Monitoring"
 msgstr "监控"
 
-#: includes/class-cloud-settings-page.php:324
+#: includes/class-cloud-settings-page.php:338
 msgid "Advanced Information"
 msgstr "高级信息"
 
-#: includes/class-cloud-settings-page.php:329
+#: includes/class-cloud-settings-page.php:343
 msgid "Cloud Settings"
 msgstr "Cloud 设置"
 
-#: includes/class-cloud-settings-page.php:331
+#: includes/class-cloud-settings-page.php:345
 msgid "Update the connector or replace the stored key."
 msgstr "更新连接器或替换已存储的密钥。"
 
-#: includes/class-cloud-settings-page.php:333
+#: includes/class-cloud-settings-page.php:347
 msgid "Save a Cloud Base URL and Cloud API Key to verify this connector."
 msgstr "保存 Cloud Base URL 和 Cloud API Key 以验证此连接器。"
 
-#: includes/class-cloud-settings-page.php:366
-#: includes/class-cloud-settings-page.php:448
+#: includes/class-cloud-settings-page.php:380
+#: includes/class-cloud-settings-page.php:462
 msgid "Entitlement"
 msgstr "权益"
 
-#: includes/class-cloud-settings-page.php:368
-#: includes/class-cloud-settings-page.php:374
+#: includes/class-cloud-settings-page.php:382
+#: includes/class-cloud-settings-page.php:388
 msgid "Settings"
 msgstr "设置"
 
-#: includes/class-cloud-settings-page.php:369
-#: includes/class-cloud-settings-page.php:375
+#: includes/class-cloud-settings-page.php:383
+#: includes/class-cloud-settings-page.php:389
 msgid "Advanced"
 msgstr "高级"
 
-#: includes/class-cloud-settings-page.php:389
+#: includes/class-cloud-settings-page.php:403
 msgid "Cloud addon sections"
 msgstr "Cloud addon 分区"
 
-#: includes/class-cloud-settings-page.php:440
-#: includes/class-cloud-settings-page.php:495
+#: includes/class-cloud-settings-page.php:454
+#: includes/class-cloud-settings-page.php:509
 msgid "Cloud Base URL"
 msgstr "Cloud Base URL"
 
-#: includes/class-cloud-settings-page.php:441
+#: includes/class-cloud-settings-page.php:455
 msgid "Not set"
 msgstr "未设置"
 
-#: includes/class-cloud-settings-page.php:444
+#: includes/class-cloud-settings-page.php:458
 msgid "Last verified"
 msgstr "上次验证"
 
-#: includes/class-cloud-settings-page.php:445
+#: includes/class-cloud-settings-page.php:459
 msgid "Never"
 msgstr "从未"
 
-#: includes/class-cloud-settings-page.php:452
-#: includes/class-cloud-settings-page.php:817
+#: includes/class-cloud-settings-page.php:466
+#: includes/class-cloud-settings-page.php:931
 msgid "Package"
 msgstr "套餐"
 
-#: includes/class-cloud-settings-page.php:453
-#: includes/class-cloud-settings-page.php:978
+#: includes/class-cloud-settings-page.php:467
+#: includes/class-cloud-settings-page.php:1157
 msgid "Not checked"
 msgstr "未检查"
 
-#: includes/class-cloud-settings-page.php:475
+#: includes/class-cloud-settings-page.php:489
 msgid "Re-verify"
 msgstr "重新验证"
 
-#: includes/class-cloud-settings-page.php:511
+#: includes/class-cloud-settings-page.php:525
 msgid "Cloud API Key"
 msgstr "Cloud API Key"
 
-#: includes/class-cloud-settings-page.php:521
+#: includes/class-cloud-settings-page.php:535
 msgid "Paste a mak1_ key or JSON key to replace the stored key"
 msgstr "粘贴 mak1_ 密钥或 JSON 密钥以替换已存储的密钥"
 
-#: includes/class-cloud-settings-page.php:523
+#: includes/class-cloud-settings-page.php:537
 msgid "Leave blank to keep the stored Cloud API Key. The secret is never printed in this page."
 msgstr "留空可保留已存储的 Cloud API Key。secret 永远不会显示在此页面中。"
 
-#: includes/class-cloud-settings-page.php:528
-#: includes/class-cloud-settings-page.php:847
+#: includes/class-cloud-settings-page.php:542
+#: includes/class-cloud-settings-page.php:1026
 msgid "Timeout"
 msgstr "超时"
 
-#: includes/class-cloud-settings-page.php:540
+#: includes/class-cloud-settings-page.php:554
 msgid "seconds"
 msgstr "秒"
 
-#: includes/class-cloud-settings-page.php:554
+#: includes/class-cloud-settings-page.php:568
 msgid "Enable Cloud monitoring for installed Npcink plugins."
 msgstr "为已安装的 Npcink 插件启用 Cloud 监控。"
 
-#: includes/class-cloud-settings-page.php:556
+#: includes/class-cloud-settings-page.php:570
 msgid "The addon collects local metadata events only: plugin, event kind, status, timing, ids, and error codes. Prompts, content, results, secrets, and raw request payloads are not collected."
 msgstr "此 addon 只收集本地元数据事件：插件、事件类型、状态、耗时、ID 和错误码。不会收集提示词、内容、结果、secret 或原始请求 payload。"
 
-#: includes/class-cloud-settings-page.php:561
+#: includes/class-cloud-settings-page.php:575
 msgid "Save and Verify"
 msgstr "保存并验证"
 
-#: includes/class-cloud-settings-page.php:583
-msgid "Refresh monitoring"
-msgstr "刷新监控"
-
-#: includes/class-cloud-settings-page.php:588
+#: includes/class-cloud-settings-page.php:604
 msgid "Collection"
 msgstr "收集"
 
-#: includes/class-cloud-settings-page.php:589
+#: includes/class-cloud-settings-page.php:605
 msgid "enabled"
 msgstr "已启用"
 
-#: includes/class-cloud-settings-page.php:589
+#: includes/class-cloud-settings-page.php:605
 msgid "disabled"
 msgstr "已禁用"
 
-#: includes/class-cloud-settings-page.php:592
+#: includes/class-cloud-settings-page.php:608
 msgid "Buffered events"
 msgstr "缓冲事件"
 
-#: includes/class-cloud-settings-page.php:596
+#: includes/class-cloud-settings-page.php:612
 msgid "Last captured"
 msgstr "上次捕获"
 
-#: includes/class-cloud-settings-page.php:600
+#: includes/class-cloud-settings-page.php:616
 msgid "Sent events"
 msgstr "已发送事件"
 
 #. translators: 1: latest batch count, 2: total count.
-#: includes/class-cloud-settings-page.php:605
-#: includes/class-cloud-settings-page.php:618
-#: includes/class-cloud-settings-page.php:631
+#: includes/class-cloud-settings-page.php:621
+#: includes/class-cloud-settings-page.php:634
+#: includes/class-cloud-settings-page.php:647
 #, php-format
 msgid "last %1$d / total %2$d"
 msgstr "上次 %1$d / 总计 %2$d"
 
-#: includes/class-cloud-settings-page.php:613
+#: includes/class-cloud-settings-page.php:629
 msgid "Stored events"
 msgstr "已存储事件"
 
-#: includes/class-cloud-settings-page.php:626
+#: includes/class-cloud-settings-page.php:642
 msgid "Duplicate events"
 msgstr "重复事件"
 
-#: includes/class-cloud-settings-page.php:639
+#: includes/class-cloud-settings-page.php:655
 msgid "Last upload status"
 msgstr "上次上传状态"
 
-#: includes/class-cloud-settings-page.php:645
+#: includes/class-cloud-settings-page.php:661
 msgid "never"
 msgstr "从未"
 
-#: includes/class-cloud-settings-page.php:648
+#: includes/class-cloud-settings-page.php:664
 msgid "ok"
 msgstr "正常"
 
-#: includes/class-cloud-settings-page.php:649
+#: includes/class-cloud-settings-page.php:665
 msgid "failed"
 msgstr "失败"
 
-#: includes/class-cloud-settings-page.php:656
+#: includes/class-cloud-settings-page.php:672
 msgid "Last uploaded"
 msgstr "上次上传"
 
-#: includes/class-cloud-settings-page.php:660
+#: includes/class-cloud-settings-page.php:676
 msgid "Last upload error"
 msgstr "上次上传错误"
 
-#: includes/class-cloud-settings-page.php:664
+#: includes/class-cloud-settings-page.php:680
 msgid "Last event"
 msgstr "上次事件"
 
-#: includes/class-cloud-settings-page.php:677
+#: includes/class-cloud-settings-page.php:693
 msgid "Cloud window"
 msgstr "Cloud 时间窗口"
 
 #. translators: %d: window hours.
-#: includes/class-cloud-settings-page.php:683
+#: includes/class-cloud-settings-page.php:699
+#: includes/class-cloud-settings-page.php:751
 #, php-format
 msgid "%d hours"
 msgstr "%d 小时"
 
-#: includes/class-cloud-settings-page.php:690
+#: includes/class-cloud-settings-page.php:706
 msgid "Cloud events"
 msgstr "Cloud 事件"
 
-#: includes/class-cloud-settings-page.php:694
+#: includes/class-cloud-settings-page.php:710
 msgid "Cloud errors"
 msgstr "Cloud 错误"
 
-#: includes/class-cloud-settings-page.php:698
+#: includes/class-cloud-settings-page.php:714
 msgid "Success rate"
 msgstr "成功率"
 
-#: includes/class-cloud-settings-page.php:702
+#: includes/class-cloud-settings-page.php:718
 msgid "Average latency"
 msgstr "平均延迟"
 
 #. translators: %d: latency in milliseconds.
-#: includes/class-cloud-settings-page.php:707
+#: includes/class-cloud-settings-page.php:723
 #, php-format
 msgid "%d ms"
 msgstr "%d 毫秒"
 
-#: includes/class-cloud-settings-page.php:714
+#: includes/class-cloud-settings-page.php:730
 msgid "Summary refreshed"
 msgstr "摘要已刷新"
 
-#: includes/class-cloud-settings-page.php:718
+#: includes/class-cloud-settings-page.php:734
 msgid "Summary error"
 msgstr "摘要错误"
 
-#: includes/class-cloud-settings-page.php:727
+#: includes/class-cloud-settings-page.php:776
 msgid "Cloud plugin"
 msgstr "Cloud 插件"
 
-#: includes/class-cloud-settings-page.php:728
+#: includes/class-cloud-settings-page.php:777
 msgid "Events"
 msgstr "事件"
 
-#: includes/class-cloud-settings-page.php:729
+#: includes/class-cloud-settings-page.php:778
 msgid "Errors"
 msgstr "错误"
 
-#: includes/class-cloud-settings-page.php:730
+#: includes/class-cloud-settings-page.php:779
 msgid "Success"
 msgstr "成功"
 
-#: includes/class-cloud-settings-page.php:731
+#: includes/class-cloud-settings-page.php:780
 msgid "Avg latency"
 msgstr "平均延迟"
 
-#: includes/class-cloud-settings-page.php:752
+#: includes/class-cloud-settings-page.php:801
 msgid "Recent error"
 msgstr "最近错误"
 
-#: includes/class-cloud-settings-page.php:753
-#: includes/class-cloud-settings-page.php:774
+#: includes/class-cloud-settings-page.php:802
+#: includes/class-cloud-settings-page.php:823
 msgid "Plugin"
 msgstr "插件"
 
-#: includes/class-cloud-settings-page.php:754
+#: includes/class-cloud-settings-page.php:803
 msgid "Event"
 msgstr "事件"
 
-#: includes/class-cloud-settings-page.php:755
+#: includes/class-cloud-settings-page.php:804
 msgid "Seen"
 msgstr "出现时间"
 
-#: includes/class-cloud-settings-page.php:775
+#: includes/class-cloud-settings-page.php:824
 msgid "Installed"
 msgstr "已安装"
 
-#: includes/class-cloud-settings-page.php:776
+#: includes/class-cloud-settings-page.php:825
 msgid "Active"
 msgstr "已启用"
 
-#: includes/class-cloud-settings-page.php:777
+#: includes/class-cloud-settings-page.php:826
 msgid "Version"
 msgstr "版本"
 
-#: includes/class-cloud-settings-page.php:785
-#: includes/class-cloud-settings-page.php:786
+#: includes/class-cloud-settings-page.php:834
+#: includes/class-cloud-settings-page.php:835
+#: includes/class-cloud-settings-page.php:1001
 msgid "yes"
 msgstr "是"
 
-#: includes/class-cloud-settings-page.php:785
-#: includes/class-cloud-settings-page.php:786
+#: includes/class-cloud-settings-page.php:834
+#: includes/class-cloud-settings-page.php:835
+#: includes/class-cloud-settings-page.php:1001
 msgid "no"
 msgstr "否"
 
-#: includes/class-cloud-settings-page.php:805
+#: includes/class-cloud-settings-page.php:919
 msgid "Entitlement is checked after the connector verifies successfully."
 msgstr "连接器验证成功后会检查权益。"
 
-#: includes/class-cloud-settings-page.php:813
+#: includes/class-cloud-settings-page.php:927
 msgid "Availability"
 msgstr "可用性"
 
-#: includes/class-cloud-settings-page.php:814
-#: includes/class-cloud-settings-page.php:982
+#: includes/class-cloud-settings-page.php:928
+#: includes/class-cloud-settings-page.php:1161
 msgid "available"
 msgstr "可用"
 
-#: includes/class-cloud-settings-page.php:814
-#: includes/class-cloud-settings-page.php:983
-#: includes/class-cloud-settings-page.php:1004
-#: includes/class-cloud-settings-page.php:1017
+#: includes/class-cloud-settings-page.php:928
+#: includes/class-cloud-settings-page.php:1162
+#: includes/class-cloud-settings-page.php:1183
+#: includes/class-cloud-settings-page.php:1196
 msgid "unavailable"
 msgstr "不可用"
 
-#: includes/class-cloud-settings-page.php:821
+#: includes/class-cloud-settings-page.php:935
 msgid "Entitlement status"
 msgstr "权益状态"
 
-#: includes/class-cloud-settings-page.php:825
+#: includes/class-cloud-settings-page.php:939
 msgid "Synced at"
 msgstr "同步时间"
 
-#: includes/class-cloud-settings-page.php:843
+#: includes/class-cloud-settings-page.php:1022
 msgid "Timeout, verification failure, and entitlement message."
 msgstr "超时、验证失败和权益消息。"
 
 #. translators: %d: timeout in seconds.
-#: includes/class-cloud-settings-page.php:852
+#: includes/class-cloud-settings-page.php:1031
 #, php-format
 msgid "%d seconds"
 msgstr "%d 秒"
 
-#: includes/class-cloud-settings-page.php:859
+#: includes/class-cloud-settings-page.php:1038
 msgid "Connection code"
 msgstr "连接代码"
 
-#: includes/class-cloud-settings-page.php:863
+#: includes/class-cloud-settings-page.php:1042
 msgid "Last failure"
 msgstr "上次失败"
 
-#: includes/class-cloud-settings-page.php:867
+#: includes/class-cloud-settings-page.php:1046
 msgid "Entitlement message"
 msgstr "权益消息"
 
-#: includes/class-cloud-settings-page.php:871
+#: includes/class-cloud-settings-page.php:1050
 msgid "Entitlement state"
 msgstr "权益状态"
 
 #. translators: %s: liveness error.
-#: includes/class-cloud-settings-page.php:890
+#: includes/class-cloud-settings-page.php:1069
 #, php-format
 msgid "Live check failed: %s"
 msgstr "存活检查失败：%s"
 
 #. translators: %s: signed verification error.
-#: includes/class-cloud-settings-page.php:897
+#: includes/class-cloud-settings-page.php:1076
 #, php-format
 msgid "Signed verification failed: %s"
 msgstr "签名验证失败：%s"
 
-#: includes/class-cloud-settings-page.php:904
+#: includes/class-cloud-settings-page.php:1083
 msgid "Cloud verification failed."
 msgstr "Cloud 验证失败。"
+
+#: includes/class-cloud-runtime-client.php:359
+msgid "Agent feedback requires the cloud_agent_feedback.v1 contract."
+msgstr "Agent feedback 需要 cloud_agent_feedback.v1 合同。"
+
+#: includes/class-cloud-settings-page.php:961
+msgid "Pro Cloud Runtime"
+msgstr "Pro Cloud Runtime"
+
+#: includes/class-cloud-settings-page.php:962
+msgid "Read-only Cloud entitlement detail for local plugin displays. This addon does not own billing truth, scheduling, queues, or WordPress writes."
+msgstr "面向本地插件展示的只读 Cloud entitlement 详情。本 addon 不拥有计费事实、调度、队列或 WordPress 写入。"
+
+#: includes/class-cloud-settings-page.php:966
+msgid "Feature"
+msgstr "功能"
+
+#: includes/class-cloud-settings-page.php:970
+msgid "Nightly runs"
+msgstr "夜间运行"
+
+#. translators: 1: used runs, 2: max runs, 3: remaining runs.
+#: includes/class-cloud-settings-page.php:975
+#, php-format
+msgid "%1$d used / %2$d limit / %3$d remaining"
+msgstr "已用 %1$d / 上限 %2$d / 剩余 %3$d"
+
+#: includes/class-cloud-settings-page.php:984
+msgid "Batch limit"
+msgstr "批量上限"
+
+#: includes/class-cloud-settings-page.php:988
+msgid "Retention"
+msgstr "保留期"
+
+#. translators: %d: retention days.
+#: includes/class-cloud-settings-page.php:993
+#, php-format
+msgid "%d days"
+msgstr "%d 天"
+
+#: includes/class-cloud-settings-page.php:1000
+msgid "Quota exhausted"
+msgstr "配额已用尽"
+
+#: includes/class-cloud-settings-page.php:1004
+msgid "Local truth"
+msgstr "本地事实"
+
+#: includes/class-cloud-observability-collector.php:198
+#: includes/class-cloud-settings-page.php:257
+#: includes/class-cloud-site-knowledge-change-bridge.php:280
+msgid "Cloud Addon settings are not verified."
+msgstr "Cloud Addon 设置尚未验证。"
+
+#: includes/class-cloud-settings-page.php:281
+msgid "Agent quality summary refresh failed."
+msgstr "Agent 质量摘要刷新失败。"
+
+#. translators: %d: remaining buffered event count.
+#: includes/class-cloud-settings-page.php:291
+#, php-format
+msgid "Monitoring and quality refreshed. Remaining buffered events: %d."
+msgstr "Monitoring 和质量摘要已刷新。剩余缓冲事件：%d。"
+
+#: includes/class-cloud-settings-page.php:296
+msgid "Agent quality summary refreshed. Monitoring collection is disabled."
+msgstr "Agent 质量摘要已刷新。Monitoring 采集已禁用。"
+
+#: includes/class-cloud-settings-page.php:381
+msgid "Monitoring & Quality"
+msgstr "Monitoring 与质量"
+
+#: includes/class-cloud-settings-page.php:599
+msgid "Refresh monitoring and quality"
+msgstr "刷新 Monitoring 和质量"
+
+#: includes/class-cloud-settings-page.php:742
+msgid "Agent quality events"
+msgstr "Agent 质量事件"
+
+#: includes/class-cloud-settings-page.php:746
+msgid "Agent quality window"
+msgstr "Agent 质量窗口"
+
+#: includes/class-cloud-settings-page.php:758
+msgid "Agent quality refreshed"
+msgstr "Agent 质量刷新时间"
+
+#: includes/class-cloud-settings-page.php:762
+msgid "Agent quality error"
+msgstr "Agent 质量错误"
+
+#: includes/class-cloud-settings-page.php:766
+msgid "Quality boundary"
+msgstr "质量边界"
+
+#: includes/class-cloud-settings-page.php:767
+msgid "Read-only Cloud eval summary. Approval, proposal, preflight, and WordPress writes remain local."
+msgstr "只读 Cloud 评估摘要。审批、提案、预检和 WordPress 写入仍保留在本地。"
+
+#: includes/class-cloud-settings-page.php:864
+msgid "Agent quality signal"
+msgstr "Agent 质量信号"
+
+#: includes/class-cloud-settings-page.php:865
+msgid "Value"
+msgstr "值"
+
+#: includes/class-cloud-settings-page.php:866
+msgid "Count"
+msgstr "数量"
+
+#: includes/class-cloud-settings-page.php:872
+msgid "Source runtime"
+msgstr "来源运行时"
+
+#: includes/class-cloud-settings-page.php:877
+msgid "Low quality label"
+msgstr "低质量标签"
+
+#: includes/class-cloud-settings-page.php:878
+msgid "Rejected reason"
+msgstr "拒绝原因"

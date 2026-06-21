@@ -19,6 +19,7 @@ if ( ! class_exists( 'Npcink_Cloud_Observability_Collector' ) ) {
 		public const BUFFER_OPTION = 'npcink_cloud_addon_observability_buffer';
 		public const STATUS_OPTION = 'npcink_cloud_addon_observability_status';
 		public const SUMMARY_OPTION = 'npcink_cloud_addon_observability_summary';
+		public const AGENT_SUMMARY_OPTION = 'npcink_cloud_addon_agent_feedback_summary';
 			public const CRON_HOOK = 'npcink_cloud_addon_flush_observability';
 			private const MAX_BUFFER_ITEMS = 200;
 			private const MAX_BATCH_ITEMS = 50;
@@ -161,6 +162,7 @@ if ( ! class_exists( 'Npcink_Cloud_Observability_Collector' ) ) {
 				'total_stored'     => absint( $status['total_stored'] ?? 0 ),
 				'total_duplicate'  => absint( $status['total_duplicate'] ?? 0 ),
 				'remote_summary'   => self::get_summary_cache(),
+				'agent_feedback_summary' => self::get_agent_feedback_summary_cache(),
 				'plugins'          => self::plugin_snapshot(),
 			);
 		}
@@ -187,6 +189,27 @@ if ( ! class_exists( 'Npcink_Cloud_Observability_Collector' ) ) {
 		}
 
 		/**
+		 * Refreshes the read-only Cloud Agent feedback quality summary cache.
+		 *
+		 * @return array<string,mixed>
+		 */
+		public static function refresh_agent_feedback_summary(): array {
+			if ( ! Npcink_Cloud_Addon_Settings::is_verified() ) {
+				return self::record_agent_feedback_summary_result( false, array(), __( 'Cloud Addon settings are not verified.', 'npcink-cloud-addon' ) );
+			}
+
+			$client = new Npcink_Cloud_Runtime_Client();
+			$result = $client->get_agent_feedback_summary( 24, 'trace_cloud_agent_feedback_summary_' . wp_generate_uuid4() );
+			if ( is_wp_error( $result ) ) {
+				return self::record_agent_feedback_summary_result( false, array(), $result->get_error_message() );
+			}
+
+			$data = is_array( $result['data'] ?? null ) ? $result['data'] : array();
+
+			return self::record_agent_feedback_summary_result( true, $data, '' );
+		}
+
+		/**
 		 * Deletes addon-owned observability options.
 		 *
 		 * @return void
@@ -195,6 +218,7 @@ if ( ! class_exists( 'Npcink_Cloud_Observability_Collector' ) ) {
 			delete_option( self::BUFFER_OPTION );
 			delete_option( self::STATUS_OPTION );
 			delete_option( self::SUMMARY_OPTION );
+			delete_option( self::AGENT_SUMMARY_OPTION );
 			wp_clear_scheduled_hook( self::CRON_HOOK );
 		}
 
@@ -324,6 +348,43 @@ if ( ! class_exists( 'Npcink_Cloud_Observability_Collector' ) ) {
 			update_option( self::SUMMARY_OPTION, $cache, false );
 
 			return $cache;
+		}
+
+		/**
+		 * Stores the latest Cloud Agent feedback summary refresh result.
+		 *
+		 * @param bool                $ok Whether refresh passed.
+		 * @param array<string,mixed> $summary Summary payload.
+		 * @param string              $error Error message.
+		 * @return array<string,mixed>
+		 */
+		private static function record_agent_feedback_summary_result( bool $ok, array $summary, string $error ): array {
+			$cache = array(
+				'last_refresh_ok'    => $ok,
+				'last_refreshed_at'  => $ok ? gmdate( 'c' ) : '',
+				'last_refresh_error' => $ok ? '' : sanitize_text_field( $error ),
+				'summary'            => $ok ? self::sanitize_agent_feedback_summary_payload( $summary ) : self::get_agent_feedback_summary_cache()['summary'],
+			);
+			update_option( self::AGENT_SUMMARY_OPTION, $cache, false );
+
+			return $cache;
+		}
+
+		/**
+		 * Returns cached Cloud Agent feedback quality summary.
+		 *
+		 * @return array<string,mixed>
+		 */
+		private static function get_agent_feedback_summary_cache(): array {
+			$cache = get_option( self::AGENT_SUMMARY_OPTION, array() );
+			$cache = is_array( $cache ) ? $cache : array();
+
+			return array(
+				'last_refresh_ok'    => ! empty( $cache['last_refresh_ok'] ),
+				'last_refreshed_at'  => sanitize_text_field( (string) ( $cache['last_refreshed_at'] ?? '' ) ),
+				'last_refresh_error' => sanitize_text_field( (string) ( $cache['last_refresh_error'] ?? '' ) ),
+				'summary'            => is_array( $cache['summary'] ?? null ) ? $cache['summary'] : array(),
+			);
 		}
 
 		/**
@@ -548,6 +609,57 @@ if ( ! class_exists( 'Npcink_Cloud_Observability_Collector' ) ) {
 		}
 
 		/**
+		 * Sanitizes the Cloud Agent feedback quality summary projection.
+		 *
+		 * @param mixed $value Raw payload.
+		 * @return array<string,mixed>
+		 */
+		private static function sanitize_agent_feedback_summary_payload( $value ): array {
+			if ( ! is_array( $value ) ) {
+				return array();
+			}
+
+			$summary = self::sanitize_summary_fields(
+				$value,
+				array(
+					'artifact_type'        => 'text',
+					'contract_version'    => 'text',
+					'window_hours'        => 'int',
+					'events_total'        => 'int',
+					'production_mutation' => 'bool',
+					'approval_truth'      => 'text',
+					'preflight_truth'     => 'text',
+					'final_write_truth'   => 'text',
+				)
+			);
+
+			foreach ( array( 'outcomes', 'rates', 'nightly_inspection' ) as $key ) {
+				if ( is_array( $value[ $key ] ?? null ) ) {
+					$summary[ $key ] = self::sanitize_scalar_map( $value[ $key ], 20 );
+				}
+			}
+
+			foreach ( array( 'source_runtimes', 'local_surfaces', 'scenarios' ) as $key ) {
+				if ( is_array( $value[ $key ] ?? null ) ) {
+					$summary[ $key ] = self::sanitize_text_or_named_list( $value[ $key ], 20 );
+				}
+			}
+
+			foreach ( array( 'labels', 'low_quality_labels', 'rejection_reasons', 'quality_trend' ) as $key ) {
+				if ( is_array( $value[ $key ] ?? null ) ) {
+					$summary[ $key ] = self::sanitize_metric_list_or_map( $value[ $key ], 20 );
+				}
+			}
+
+			$summary['production_mutation'] = false;
+			$summary['approval_truth'] = 'wordpress_local';
+			$summary['preflight_truth'] = 'wordpress_local';
+			$summary['final_write_truth'] = 'wordpress_local';
+
+			return $summary;
+		}
+
+		/**
 		 * Sanitizes explicitly allowed summary fields.
 		 *
 		 * @param array<string,mixed>  $source Raw source.
@@ -706,6 +818,105 @@ if ( ! class_exists( 'Npcink_Cloud_Observability_Collector' ) ) {
 			}
 
 			return $clean;
+		}
+
+		/**
+		 * Sanitizes a small scalar-only metric map.
+		 *
+		 * @param mixed $source Raw source map.
+		 * @param int   $limit Maximum retained keys.
+		 * @return array<string,bool|float|int|string>
+		 */
+		private static function sanitize_scalar_map( $source, int $limit ): array {
+			if ( ! is_array( $source ) ) {
+				return array();
+			}
+
+			$clean = array();
+			foreach ( $source as $key => $value ) {
+				if ( count( $clean ) >= max( 0, $limit ) ) {
+					break;
+				}
+				if ( is_array( $value ) || is_object( $value ) ) {
+					continue;
+				}
+
+				$clean[ sanitize_key( (string) $key ) ] = self::sanitize_summary_scalar( $value, is_numeric( $value ) ? 'float' : 'text' );
+			}
+
+			return $clean;
+		}
+
+		/**
+		 * Sanitizes a list of text values or named aggregate objects.
+		 *
+		 * @param mixed $items Raw items.
+		 * @param int   $limit Maximum retained items.
+		 * @return array<int,string>
+		 */
+		private static function sanitize_text_or_named_list( $items, int $limit ): array {
+			$items = is_array( $items ) ? array_values( $items ) : array();
+			$items = array_slice( $items, 0, max( 0, $limit ) );
+			$clean = array();
+
+			foreach ( $items as $item ) {
+				if ( is_array( $item ) ) {
+					$name = (string) ( $item['source_runtime'] ?? ( $item['local_surface'] ?? ( $item['scenario'] ?? ( $item['name'] ?? '' ) ) ) );
+					if ( '' !== $name ) {
+						$clean[] = substr( sanitize_text_field( wp_unslash( $name ) ), 0, self::MAX_TEXT_FIELD_LENGTH );
+					}
+					continue;
+				}
+				if ( is_scalar( $item ) || null === $item ) {
+					$clean[] = substr( sanitize_text_field( wp_unslash( (string) $item ) ), 0, self::MAX_TEXT_FIELD_LENGTH );
+				}
+			}
+
+			return array_values( array_unique( $clean ) );
+		}
+
+		/**
+		 * Sanitizes label, reason, and trend aggregate lists.
+		 *
+		 * @param mixed $items Raw items.
+		 * @param int   $limit Maximum retained entries.
+		 * @return array<int,array<string,mixed>>
+		 */
+		private static function sanitize_metric_list_or_map( $items, int $limit ): array {
+			if ( ! is_array( $items ) ) {
+				return array();
+			}
+
+			$raw_items = array();
+			$is_list = array_keys( $items ) === range( 0, count( $items ) - 1 );
+			if ( $is_list ) {
+				$raw_items = array_values( $items );
+			} else {
+				foreach ( $items as $key => $value ) {
+					$raw_items[] = array(
+						'label' => $key,
+						'count' => $value,
+					);
+				}
+			}
+
+			return self::sanitize_summary_list(
+				$raw_items,
+				array(
+					'label'          => 'text',
+					'reason'         => 'text',
+					'code'           => 'text',
+					'bucket'         => 'text',
+					'period'         => 'text',
+					'count'          => 'int',
+					'events_total'   => 'int',
+					'accepted_total' => 'int',
+					'rejected_total' => 'int',
+					'rate'           => 'float',
+					'quality_rate'   => 'float',
+				),
+				$limit
+			);
 		}
 
 		/**

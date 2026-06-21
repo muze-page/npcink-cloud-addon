@@ -6,7 +6,8 @@ Status: active for `Npcink -> Cloud Addon`.
 
 The Cloud Addon admin page is a thin connector surface. It stores the Cloud
 Base URL and Cloud API Key, verifies signed connectivity, and shows read-only
-connection, entitlement, and opt-in monitoring state.
+connection, entitlement, opt-in monitoring state, and Agent feedback quality
+summary.
 
 ## Default View
 
@@ -24,7 +25,8 @@ When verified, the default page should prioritize:
 - compact Cloud status;
 - Site ID, Key ID, last verification time;
 - read-only entitlement summary;
-- opt-in monitoring state and read-only Cloud observability summary;
+- opt-in monitoring state and read-only Cloud observability / Agent feedback
+  quality summaries;
 - a clear path to update/re-verify settings.
 
 ## Advanced / Low-Frequency Details
@@ -35,6 +37,7 @@ Low-frequency details may include:
 - read-only entitlement fields;
 - metadata-only monitoring upload status;
 - aggregate Cloud observability counters;
+- aggregate Agent feedback quality counters;
 - last verification failure text.
 
 ## Time Display
@@ -59,9 +62,10 @@ Cloud Addon admin must not add:
 - billing truth, invoices, service operations console, or developer diagnostic
   routes.
 
-The admin page may expose a monitoring toggle and read-only observability
-summary only when that surface remains metadata-only and clearly separate from
-Core audit, proposal, approval, execution, billing, and workflow truth.
+The admin page may expose a monitoring toggle, read-only observability summary,
+and read-only Agent feedback quality summary only when those surfaces remain
+metadata-only and clearly separate from Core audit, proposal, approval,
+execution, billing, and workflow truth.
 
 ## Verification
 

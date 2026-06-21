@@ -39,9 +39,9 @@ Allowed runtime/read endpoints:
 Run before handing off changes:
 
 ```bash
-find /Users/muze/gitee/magick-ai-cloud-addon -name '*.php' -print0 | xargs -0 -n1 php -l
+composer run test:all
 git diff --check
-rg "/v1/runtime/workflows/runs|wp_insert_post|wp_update_post" /Users/muze/gitee/magick-ai-cloud-addon
+rg "/v1/runtime/workflows/runs|wp_insert_post|wp_update_post" --glob '*.php' --glob '!build/**' .
 ```
 
 Documentation may mention forbidden concepts only to describe what this addon must not own.

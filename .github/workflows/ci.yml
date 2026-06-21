@@ -1,0 +1,44 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - master
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  php-contracts:
+    name: PHP contracts
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.0'
+          coverage: none
+          tools: composer:v2
+
+      - name: Install Composer dependencies
+        run: composer install --no-interaction --no-progress --prefer-dist
+
+      - name: PHP lint
+        run: composer run lint:php
+
+      - name: Contract tests
+        run: composer run test:contracts
+
+      - name: Boundary search
+        run: |
+          ! grep -RInE '/v1/runtime/workflows/runs|wp_insert_post|wp_update_post' \
+            --include='*.php' \
+            --exclude-dir='.git' \
+            --exclude-dir='build' \
+            --exclude-dir='vendor' \
+            .

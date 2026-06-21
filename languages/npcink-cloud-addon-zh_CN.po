@@ -249,23 +249,23 @@ msgstr "监控已禁用，或 Cloud 尚未验证。"
 #: includes/class-cloud-observability-collector.php:748
 #: includes/class-cloud-settings-page.php:142
 msgid "Core"
-msgstr "Core"
+msgstr "治理核心"
 
 #: includes/class-cloud-observability-collector.php:753
 #: includes/class-cloud-settings-page.php:144
 msgid "Abilities"
-msgstr "Abilities"
+msgstr "原子能力"
 
 #: includes/class-cloud-observability-collector.php:758
 #: includes/class-cloud-settings-page.php:143
 msgid "Adapter"
-msgstr "Adapter"
+msgstr "渠道适配器"
 
 #: includes/class-cloud-observability-collector.php:763
 #: includes/class-cloud-settings-page.php:69
 #: includes/class-cloud-settings-page.php:145
 msgid "Cloud Addon"
-msgstr "Cloud Addon"
+msgstr "云端扩展"
 
 #: includes/class-cloud-runtime-client.php:66
 msgid "Signed verification was not attempted because the Cloud service is not reachable."

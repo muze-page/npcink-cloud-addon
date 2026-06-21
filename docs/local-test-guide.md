@@ -5,8 +5,7 @@
 Run:
 
 ```bash
-find /Users/muze/gitee/magick-ai-cloud-addon -name '*.php' -print0 | xargs -0 -n1 php -l
-php /Users/muze/gitee/magick-ai-cloud-addon/tests/run.php
+composer run test:all
 git diff --check
 ```
 
@@ -25,9 +24,9 @@ Before expanding addon scope, read `docs/cloud-addon-complexity-budget.md`.
 Boundary checks:
 
 ```bash
-rg "/v1/runtime/workflows/runs" /Users/muze/gitee/magick-ai-cloud-addon
-rg "wp_insert_post|wp_update_post|wp_delete_post" /Users/muze/gitee/magick-ai-cloud-addon
-rg "approval truth|proposal truth|billing truth|workflow engine" /Users/muze/gitee/magick-ai-cloud-addon
+rg "/v1/runtime/workflows/runs" --glob '*.php' --glob '!build/**' .
+rg "wp_insert_post|wp_update_post|wp_delete_post" --glob '*.php' --glob '!build/**' .
+rg "approval truth|proposal truth|billing truth|workflow engine" docs README.md AGENTS.md
 ```
 
 Expected:

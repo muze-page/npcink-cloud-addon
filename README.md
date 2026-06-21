@@ -168,18 +168,28 @@ secret and does not provide split credential editing.
 The admin page scope is documented in
 [`docs/admin-surface-standard.md`](docs/admin-surface-standard.md).
 
+## Repository Management
+
+GitHub is the primary remote for ongoing development:
+
+`https://github.com/muze-page/npcink-cloud-addon`
+
+The former Gitee remote may be kept as a read-only or backup mirror, but new
+work should branch, review, and merge through GitHub. Keep `master` as the
+default branch unless the CI and release process are intentionally migrated.
+
 ## Local Checks
 
 ```bash
-find /Users/muze/gitee/magick-ai-cloud-addon -name '*.php' -print0 | xargs -0 -n1 php -l
-php /Users/muze/gitee/magick-ai-cloud-addon/tests/run.php
+composer run test:all
 git diff --check
 ```
 
 Boundary checks:
 
 ```bash
-rg "/v1/runtime/workflows/runs|workflow engine|wp_insert_post|wp_update_post|approval truth|proposal truth|billing truth" /Users/muze/gitee/magick-ai-cloud-addon
+rg "/v1/runtime/workflows/runs|wp_insert_post|wp_update_post" --glob '*.php' --glob '!build/**' .
+rg "workflow engine|approval truth|proposal truth|billing truth" docs README.md AGENTS.md
 ```
 
 `workflow/task queue`, `scheduler truth`, and `workflow engine` may appear in

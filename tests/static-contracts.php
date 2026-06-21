@@ -319,9 +319,19 @@ maca_assert(
 	&& false !== strpos( $site_knowledge_bridge, 'npcink_cloud_addon_site_knowledge_change_buffer' )
 	&& false !== strpos( $site_knowledge_bridge, 'MAX_BUFFER_ITEMS = 500' )
 	&& false !== strpos( $site_knowledge_bridge, 'MAX_BATCH_ITEMS = 25' )
+	&& false !== strpos( $site_knowledge_bridge, 'Npcink_Cloud_Addon_Settings::is_verified()' )
 	&& false === strpos( $site_knowledge_bridge, 'QUEUE_OPTION' )
 	&& false === strpos( $site_knowledge_bridge, 'MAX_QUEUE_ITEMS' ),
-	'Site Knowledge change bridge uses bounded delivery buffer language instead of queue ownership terms.'
+	'Site Knowledge change bridge uses bounded delivery buffer language instead of queue ownership terms and waits for verified Cloud settings.'
+);
+
+maca_assert(
+	false !== strpos( $site_knowledge_bridge, "'status' => \$bridge_status" )
+	&& false !== strpos( $site_knowledge_bridge, "'last_delivery_at'" )
+	&& false !== strpos( $site_knowledge_bridge, "'last_success_at'" )
+	&& false !== strpos( $site_knowledge_bridge, "'last_error_code'" )
+	&& false !== strpos( $site_knowledge_bridge, "'legacy_toolbox_fallback' => false" ),
+	'Site Knowledge change bridge exposes stable health fields for Toolbox without re-enabling the Toolbox legacy fallback.'
 );
 
 maca_assert(

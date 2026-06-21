@@ -90,6 +90,23 @@ maca_assert(
 maca_reset_site_knowledge_bridge_state();
 maca_seed_settings( false );
 Npcink_Cloud_Site_Knowledge_Change_Bridge::handle_comment_posted(
+	1001,
+	1,
+	array( 'comment_post_ID' => 7001 )
+);
+$health = Npcink_Cloud_Site_Knowledge_Change_Bridge::health_snapshot();
+maca_assert(
+	array() === get_option( Npcink_Cloud_Site_Knowledge_Change_Bridge::BUFFER_OPTION, array() )
+	&& false === (bool) ( $health['enabled'] ?? true )
+	&& true === (bool) ( $health['configured'] ?? false )
+	&& false === (bool) ( $health['verified'] ?? true )
+	&& 'unverified' === (string) ( $health['status'] ?? '' ),
+	'Behavior: Site Knowledge comment bridge waits for verified Cloud settings before buffering.'
+);
+
+maca_reset_site_knowledge_bridge_state();
+maca_seed_settings( true );
+Npcink_Cloud_Site_Knowledge_Change_Bridge::handle_comment_posted(
 	102,
 	0,
 	array( 'comment_post_ID' => 702 )
@@ -100,7 +117,7 @@ maca_assert(
 );
 
 maca_reset_site_knowledge_bridge_state();
-maca_seed_settings( false );
+maca_seed_settings( true );
 Npcink_Cloud_Site_Knowledge_Change_Bridge::handle_comment_posted(
 	103,
 	1,
@@ -117,12 +134,15 @@ maca_assert(
 	&& 1 === absint( $health['buffer_count'] ?? 0 )
 	&& 'suggestion_only' === (string) ( $health['write_posture'] ?? '' )
 	&& false === (bool) ( $health['wordpress_write_included'] ?? true )
+	&& true === (bool) ( $health['enabled'] ?? false )
+	&& 'queued' === (string) ( $health['status'] ?? '' )
+	&& false === (bool) ( $health['legacy_toolbox_fallback'] ?? true )
 	&& false !== wp_next_scheduled( Npcink_Cloud_Site_Knowledge_Change_Bridge::FLUSH_HOOK ),
 	'Behavior: approved new comment data buffers the parent post for suggestion-only Site Knowledge refresh.'
 );
 
 maca_reset_site_knowledge_bridge_state();
-maca_seed_settings( false );
+maca_seed_settings( true );
 $GLOBALS['maca_comments'][104] = (object) array(
 	'comment_ID'      => 104,
 	'comment_post_ID' => 704,
@@ -138,7 +158,7 @@ maca_assert(
 );
 
 maca_reset_site_knowledge_bridge_state();
-maca_seed_settings( false );
+maca_seed_settings( true );
 Npcink_Cloud_Site_Knowledge_Change_Bridge::handle_comment_status_transition(
 	'approved',
 	'hold',

@@ -115,8 +115,8 @@ preset configuration.
 ## Site Knowledge Change Bridge Rule
 
 Cloud Addon may listen for public `post`/`page` and approved comment changes,
-buffer affected post ids locally, and request a Cloud Site Knowledge refresh
-through `POST /v1/runtime/execute`.
+after Cloud settings are verified, buffer affected post ids locally, and request
+a Cloud Site Knowledge refresh through `POST /v1/runtime/execute`.
 
 The bridge must send only public content manifests, affected post ids, and
 `write_posture=suggestion_only`. It must not create a local vector index,

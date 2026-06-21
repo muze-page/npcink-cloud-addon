@@ -52,12 +52,12 @@ if ( ! class_exists( 'Npcink_Cloud_Site_Knowledge_Change_Bridge' ) ) {
 		}
 
 		/**
-		 * Returns whether the bridge can deliver through configured Cloud settings.
+		 * Returns whether the bridge can deliver through verified Cloud settings.
 		 *
 		 * @return bool
 		 */
 		public static function is_enabled(): bool {
-			return Npcink_Cloud_Addon_Settings::is_configured();
+			return Npcink_Cloud_Addon_Settings::is_verified();
 		}
 
 		/**
@@ -70,20 +70,29 @@ if ( ! class_exists( 'Npcink_Cloud_Site_Knowledge_Change_Bridge' ) ) {
 			$status = self::get_status();
 			$next_flush = function_exists( 'wp_next_scheduled' ) ? wp_next_scheduled( self::FLUSH_HOOK ) : false;
 			$next_reconcile = function_exists( 'wp_next_scheduled' ) ? wp_next_scheduled( self::RECONCILE_HOOK ) : false;
+			$configured = Npcink_Cloud_Addon_Settings::is_configured();
+			$verified = Npcink_Cloud_Addon_Settings::is_verified();
+			$buffer_count = count( $buffer['post_ids'] );
+			$last_success_at = ! empty( $status['last_delivery_ok'] ) ? sanitize_text_field( (string) ( $status['last_delivered_at'] ?? '' ) ) : '';
+			$bridge_status = ! $configured ? 'not_configured' : ( ! $verified ? 'unverified' : ( $buffer_count > 0 ? 'queued' : 'idle' ) );
 
 			return array(
 				'owner' => 'cloud_addon',
 				'mode' => 'site_knowledge_change_bridge',
 				'enabled' => self::is_enabled(),
-				'configured' => Npcink_Cloud_Addon_Settings::is_configured(),
-				'verified' => Npcink_Cloud_Addon_Settings::is_verified(),
-				'buffer_count' => count( $buffer['post_ids'] ),
+				'configured' => $configured,
+				'verified' => $verified,
+				'status' => $bridge_status,
+				'buffer_count' => $buffer_count,
 				'max_buffer_items' => self::MAX_BUFFER_ITEMS,
 				'batch_size' => self::MAX_BATCH_ITEMS,
 				'max_delivery_attempts' => self::MAX_DELIVERY_ATTEMPTS,
 				'last_delivery_ok' => ! empty( $status['last_delivery_ok'] ),
 				'last_delivered_at' => sanitize_text_field( (string) ( $status['last_delivered_at'] ?? '' ) ),
+				'last_delivery_at' => sanitize_text_field( (string) ( $status['last_delivered_at'] ?? '' ) ),
+				'last_success_at' => $last_success_at,
 				'last_delivery_error' => sanitize_text_field( (string) ( $status['last_delivery_error'] ?? '' ) ),
+				'last_error_code' => sanitize_key( (string) ( $status['last_error_code'] ?? '' ) ),
 				'last_changed_at' => sanitize_text_field( (string) ( $status['last_changed_at'] ?? '' ) ),
 				'last_post_id' => absint( $status['last_post_id'] ?? 0 ),
 				'last_sent_count' => absint( $status['last_sent_count'] ?? 0 ),
@@ -96,6 +105,7 @@ if ( ! class_exists( 'Npcink_Cloud_Site_Knowledge_Change_Bridge' ) ) {
 				'write_posture' => 'suggestion_only',
 				'cloud_runtime_contract' => 'site_knowledge_sync.v1',
 				'index_lifecycle_owner' => 'cloud_service',
+				'legacy_toolbox_fallback' => false,
 				'scheduler_truth' => false,
 				'workflow_truth' => false,
 				'wordpress_write_included' => false,
@@ -267,7 +277,7 @@ if ( ! class_exists( 'Npcink_Cloud_Site_Knowledge_Change_Bridge' ) ) {
 		 */
 		public static function flush_buffer(): array {
 			if ( ! self::is_enabled() ) {
-				return self::record_delivery_result( false, 0, __( 'Cloud Addon is not configured.', 'npcink-cloud-addon' ) );
+				return self::record_delivery_result( false, 0, __( 'Cloud Addon settings are not verified.', 'npcink-cloud-addon' ), 'cloud_addon_unverified' );
 			}
 
 			$buffer = self::get_buffer();
@@ -492,13 +502,13 @@ if ( ! class_exists( 'Npcink_Cloud_Site_Knowledge_Change_Bridge' ) ) {
 			$attempts = absint( $buffer['attempts'] ?? 0 ) + 1;
 			if ( $attempts >= self::MAX_DELIVERY_ATTEMPTS ) {
 				self::save_buffer( array(), 0 );
-				return self::record_delivery_result( false, 0, $error );
+				return self::record_delivery_result( false, 0, $error, 'delivery_attempts_exhausted' );
 			}
 
 			self::save_buffer( $buffer['post_ids'], $attempts );
 			self::schedule_flush( self::RETRY_SECONDS );
 
-			return self::record_delivery_result( false, 0, $error );
+			return self::record_delivery_result( false, 0, $error, 'delivery_failed_retry_scheduled' );
 		}
 
 		/**
@@ -525,7 +535,7 @@ if ( ! class_exists( 'Npcink_Cloud_Site_Knowledge_Change_Bridge' ) ) {
 		 * @param string $error Error message.
 		 * @return array<string,mixed>
 		 */
-		private static function record_delivery_result( bool $ok, int $sent, string $error ): array {
+		private static function record_delivery_result( bool $ok, int $sent, string $error, string $error_code = '' ): array {
 			$buffer = self::get_buffer();
 			$status = array_merge(
 				self::get_status(),
@@ -533,6 +543,7 @@ if ( ! class_exists( 'Npcink_Cloud_Site_Knowledge_Change_Bridge' ) ) {
 					'last_delivery_ok' => $ok,
 					'last_delivered_at' => $ok ? gmdate( 'c' ) : (string) ( self::get_status()['last_delivered_at'] ?? '' ),
 					'last_delivery_error' => $ok ? '' : sanitize_text_field( $error ),
+					'last_error_code' => $ok ? '' : sanitize_key( $error_code ),
 					'last_sent_count' => $ok ? max( 0, $sent ) : 0,
 					'total_sent' => absint( self::get_status()['total_sent'] ?? 0 ) + ( $ok ? max( 0, $sent ) : 0 ),
 					'buffer_count' => count( $buffer['post_ids'] ),

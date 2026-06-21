@@ -133,7 +133,7 @@ configure router, prompt, or preset behavior.
 
 ## Site Knowledge Change Bridge
 
-When Cloud settings are configured, the addon listens for public post/page and
+When Cloud settings are verified, the addon listens for public post/page and
 approved comment changes, stores a bounded local delivery buffer, and sends a
 Cloud Site Knowledge refresh request through the existing
 `POST /v1/runtime/execute` runtime contract.

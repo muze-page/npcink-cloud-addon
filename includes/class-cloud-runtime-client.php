@@ -102,6 +102,55 @@ if ( ! class_exists( 'Npcink_Cloud_Runtime_Client' ) ) {
 		}
 
 		/**
+		 * Requests Cloud-owned image context evidence for weak media metadata.
+		 *
+		 * The addon only signs and transports the bounded request. Image
+		 * recognition execution, provider routing, and model ownership remain in
+		 * Cloud. Returned evidence is suggestion-only and never authorizes local
+		 * WordPress media writes.
+		 *
+		 * @param array<string,mixed> $image_context_evidence_request Toolbox image_context_evidence_request.v1 artifact.
+		 * @param string              $trace_id Optional trace id.
+		 * @param string              $idempotency_key Optional idempotency key.
+		 * @return array<string,mixed>|WP_Error
+		 */
+		public function request_image_context_evidence( array $image_context_evidence_request, string $trace_id = '', string $idempotency_key = '' ) {
+			$request = $this->normalize_image_context_evidence_request( $image_context_evidence_request );
+			if ( is_wp_error( $request ) ) {
+				return $request;
+			}
+			if ( '' === $idempotency_key ) {
+				$idempotency_key = 'image_context_evidence_' . wp_generate_uuid4();
+			}
+
+			$runtime_payload = array(
+				'ability_name'        => 'npcink-cloud/image-context-evidence',
+				'contract_version'    => 'image_context_evidence_request.v1',
+				'profile_id'          => 'vision.ai',
+				'execution_kind'      => 'image_context_evidence',
+				'execution_pattern'   => 'inline',
+				'input'               => array(
+					'image_context_evidence_request' => $request,
+				),
+				'data_classification' => 'public_site_media_metadata',
+				'storage_mode'        => 'result_only',
+				'retention_ttl'       => 86400,
+				'timeout_seconds'     => 30,
+				'retry_max'           => 0,
+				'policy'              => array(
+					'allow_fallback' => false,
+				),
+			);
+
+			$response = $this->request( 'POST', '/v1/runtime/execute', $runtime_payload, $idempotency_key, $trace_id );
+			if ( is_wp_error( $response ) ) {
+				return $response;
+			}
+
+			return $this->normalize_image_context_evidence_response( is_array( $response ) ? $response : array(), $request );
+		}
+
+		/**
 		 * Creates one media derivative run through the named runtime service endpoint.
 		 *
 		 * @param array<string,mixed> $payload Media derivative request payload.
@@ -909,6 +958,231 @@ if ( ! class_exists( 'Npcink_Cloud_Runtime_Client' ) ) {
 				'body'         => $body,
 				'content_type' => 'multipart/form-data; boundary=' . $boundary,
 			);
+		}
+
+		/**
+		 * Normalizes a Toolbox image context evidence request.
+		 *
+		 * @param array<string,mixed> $request Raw request.
+		 * @return array<string,mixed>|WP_Error
+		 */
+		private function normalize_image_context_evidence_request( array $request ) {
+			if (
+				'image_context_evidence_request.v1' !== (string) ( $request['contract_version'] ?? '' )
+				|| 'suggestion_only' !== (string) ( $request['write_posture'] ?? '' )
+				|| false !== (bool) ( $request['direct_wordpress_write'] ?? true )
+				|| false === (bool) ( $request['no_local_model'] ?? false )
+				|| false === (bool) ( $request['no_media_write'] ?? false )
+			) {
+				return new WP_Error(
+					'cloud_image_context_evidence_request_invalid',
+					__( 'Image context evidence requires a suggestion-only no-write request contract.', 'npcink-cloud-addon' ),
+					array( 'status' => 400 )
+				);
+			}
+
+			$items = is_array( $request['items'] ?? null ) ? $request['items'] : array();
+			$normalized_items = array();
+			foreach ( $items as $item ) {
+				if ( ! is_array( $item ) ) {
+					continue;
+				}
+				$attachment_id = absint( $item['attachment_id'] ?? 0 );
+				$url           = esc_url_raw( (string) ( $item['url'] ?? '' ) );
+				$thumbnail_url = esc_url_raw( (string) ( $item['thumbnail_url'] ?? '' ) );
+				if ( 0 >= $attachment_id || ( '' === $url && '' === $thumbnail_url ) ) {
+					continue;
+				}
+				$normalized_items[] = array(
+					'attachment_id'            => $attachment_id,
+					'title'                    => $this->bounded_text( (string) ( $item['title'] ?? '' ), 160 ),
+					'filename'                 => sanitize_file_name( (string) ( $item['filename'] ?? '' ) ),
+					'thumbnail_url'            => $thumbnail_url,
+					'url'                      => $url,
+					'mime_type'                => sanitize_text_field( (string) ( $item['mime_type'] ?? '' ) ),
+					'current_alt_status'       => sanitize_key( (string) ( $item['current_alt_status'] ?? '' ) ),
+					'current_caption_status'   => sanitize_key( (string) ( $item['current_caption_status'] ?? '' ) ),
+					'candidate_quality_flags'  => array_slice( $this->sanitize_string_list( $item['candidate_quality_flags'] ?? array() ), 0, 12 ),
+					'filtered_candidate_notes' => array_slice( $this->sanitize_string_list( $item['filtered_candidate_notes'] ?? array() ), 0, 12 ),
+				);
+				if ( count( $normalized_items ) >= 10 ) {
+					break;
+				}
+			}
+
+			if ( empty( $normalized_items ) ) {
+				return new WP_Error(
+					'cloud_image_context_evidence_request_empty',
+					__( 'Image context evidence requires at least one bounded media URL.', 'npcink-cloud-addon' ),
+					array( 'status' => 400 )
+				);
+			}
+
+			return array(
+				'contract_version'           => 'image_context_evidence_request.v1',
+				'artifact_type'              => 'image_context_evidence_request',
+				'runtime_owner'              => 'cloud_or_host_runtime',
+				'write_posture'              => 'suggestion_only',
+				'direct_wordpress_write'     => false,
+				'proposal_created'           => false,
+				'execution_created'          => false,
+				'no_local_model'             => true,
+				'no_media_write'             => true,
+				'source_policy'              => 'bounded_media_urls_for_visual_context_only',
+				'expected_response_contract' => 'image_context_evidence.v1',
+				'requested_count'            => count( $normalized_items ),
+				'max_items'                  => count( $normalized_items ),
+				'items'                      => $normalized_items,
+				'operator_next_action'       => 'request_cloud_image_context_evidence',
+			);
+		}
+
+		/**
+		 * Normalizes a Cloud response into image_context_evidence.v1.
+		 *
+		 * @param array<string,mixed> $response Cloud response.
+		 * @param array<string,mixed> $request Normalized request.
+		 * @return array<string,mixed>|WP_Error
+		 */
+		private function normalize_image_context_evidence_response( array $response, array $request ) {
+			$payload = $this->extract_image_context_evidence_payload( $response );
+			$requested_ids = array();
+			foreach ( (array) ( $request['items'] ?? array() ) as $request_item ) {
+				if ( is_array( $request_item ) ) {
+					$requested_ids[ absint( $request_item['attachment_id'] ?? 0 ) ] = true;
+				}
+			}
+
+			$items = array();
+			foreach ( (array) ( $payload['items'] ?? array() ) as $item ) {
+				if ( ! is_array( $item ) ) {
+					continue;
+				}
+				$attachment_id = absint( $item['attachment_id'] ?? 0 );
+				if ( 0 >= $attachment_id || empty( $requested_ids[ $attachment_id ] ) ) {
+					continue;
+				}
+				$items[] = array(
+					'attachment_id'              => $attachment_id,
+					'contract_version'           => 'image_context_evidence.v1',
+					'source'                     => sanitize_key( (string) ( $item['source'] ?? 'cloud_or_host_runtime' ) ),
+					'visual_summary'             => $this->bounded_text( (string) ( $item['visual_summary'] ?? '' ), 240 ),
+					'scene'                      => $this->bounded_text( (string) ( $item['scene'] ?? '' ), 160 ),
+					'objects'                    => array_slice( $this->sanitize_string_list( $item['objects'] ?? array() ), 0, 12 ),
+					'text_seen'                  => array_slice( $this->sanitize_string_list( $item['text_seen'] ?? array() ), 0, 8 ),
+					'confidence'                 => sanitize_text_field( (string) ( $item['confidence'] ?? '' ) ),
+					'write_posture'              => 'suggestion_only',
+					'direct_wordpress_write'     => false,
+					'needs_human_visual_check'   => true,
+				);
+				if ( count( $items ) >= 10 ) {
+					break;
+				}
+			}
+
+			if ( empty( $items ) ) {
+				return new WP_Error(
+					'cloud_image_context_evidence_empty',
+					__( 'Cloud did not return usable image context evidence.', 'npcink-cloud-addon' ),
+					array( 'status' => 502 )
+				);
+			}
+
+			return array(
+				'contract_version'         => 'image_context_evidence.v1',
+				'artifact_type'            => 'image_context_evidence',
+				'runtime_owner'            => 'cloud_service',
+				'source'                   => sanitize_key( (string) ( $payload['source'] ?? 'cloud_or_host_runtime' ) ),
+				'write_posture'            => 'suggestion_only',
+				'direct_wordpress_write'   => false,
+				'proposal_created'         => false,
+				'execution_created'        => false,
+				'requested_count'          => (int) ( $request['requested_count'] ?? count( $items ) ),
+				'evidence_count'           => count( $items ),
+				'run_id'                   => sanitize_text_field( (string) ( $response['run_id'] ?? ( $payload['run_id'] ?? '' ) ) ),
+				'model_id'                 => sanitize_text_field( (string) ( $payload['model_id'] ?? '' ) ),
+				'items'                    => $items,
+				'safety'                   => array(
+					'local_model_used'             => false,
+					'core_proposal_created'        => false,
+					'direct_wordpress_write'       => false,
+					'requires_human_visual_check'  => true,
+				),
+			);
+		}
+
+		/**
+		 * Extracts image context evidence from common runtime envelopes.
+		 *
+		 * @param array<string,mixed> $response Cloud response.
+		 * @return array<string,mixed>
+		 */
+		private function extract_image_context_evidence_payload( array $response ): array {
+			$candidates = array(
+				$response['image_context_evidence'] ?? null,
+				$response['data']['image_context_evidence'] ?? null,
+				$response['result']['image_context_evidence'] ?? null,
+				$response['data']['result']['image_context_evidence'] ?? null,
+				$response['result'] ?? null,
+				$response['data']['result'] ?? null,
+				$response['data'] ?? null,
+				$response,
+			);
+
+			foreach ( $candidates as $candidate ) {
+				if ( ! is_array( $candidate ) ) {
+					continue;
+				}
+				if ( 'image_context_evidence.v1' === (string) ( $candidate['contract_version'] ?? '' ) || is_array( $candidate['items'] ?? null ) ) {
+					return $candidate;
+				}
+			}
+
+			return array();
+		}
+
+		/**
+		 * Sanitizes a scalar-or-array string list.
+		 *
+		 * @param mixed $value Raw list.
+		 * @return array<int,string>
+		 */
+		private function sanitize_string_list( $value ): array {
+			$items = is_array( $value ) ? $value : preg_split( '/[\r\n,]+/', (string) $value );
+			$items = is_array( $items ) ? $items : array();
+
+			return array_values(
+				array_filter(
+					array_map(
+						function ( $item ): string {
+							return $this->bounded_text( (string) $item, 120 );
+						},
+						$items
+					),
+					static function ( string $item ): bool {
+						return '' !== $item;
+					}
+				)
+			);
+		}
+
+		/**
+		 * Sanitizes and bounds text.
+		 *
+		 * @param string $value Raw value.
+		 * @param int    $max_chars Maximum characters.
+		 * @return string
+		 */
+		private function bounded_text( string $value, int $max_chars ): string {
+			$value = trim( sanitize_text_field( wp_strip_all_tags( $value ) ) );
+			$value = preg_replace( '/\s+/u', ' ', $value );
+			$value = is_string( $value ) ? trim( $value ) : '';
+			$max_chars = max( 1, $max_chars );
+			if ( function_exists( 'mb_strlen' ) && function_exists( 'mb_substr' ) && mb_strlen( $value, 'UTF-8' ) > $max_chars ) {
+				return mb_substr( $value, 0, $max_chars, 'UTF-8' );
+			}
+
+			return strlen( $value ) > $max_chars ? substr( $value, 0, $max_chars ) : $value;
 		}
 
 		/**

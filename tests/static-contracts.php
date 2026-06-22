@@ -71,6 +71,7 @@ maca_assert(
 	false !== strpos( $bootstrap, 'class-cloud-media-derivative-transport.php' )
 	&& false !== strpos( $bootstrap, 'npcink_cloud_addon_verified_runtime_client' )
 	&& false !== strpos( $bootstrap, 'npcink_cloud_addon_dispatch_media_derivative_cloud_request' )
+	&& false !== strpos( $bootstrap, 'npcink_cloud_addon_request_image_context_evidence' )
 	&& false !== strpos( $bootstrap, 'array $watermark_artifact = array()' )
 	&& false !== strpos( $bootstrap, 'npcink_cloud_addon_build_media_derivative_proposal_payload' )
 	&& false !== strpos( $bootstrap, 'npcink_cloud_addon_get_media_derivative_run' )
@@ -96,6 +97,32 @@ maca_assert(
 	&& false !== strpos( $runtime_client, "'cloud_runtime_media_derivative_file_field_not_allowed'" )
 	&& false !== strpos( $runtime_client, 'Only source_file and watermark_file uploads are allowed' ),
 	'Runtime client exposes a named media derivative endpoint with bounded multipart files.'
+);
+
+maca_assert(
+	false !== strpos( $runtime_client, 'function request_image_context_evidence' )
+	&& false !== strpos( $runtime_client, 'normalize_image_context_evidence_request' )
+	&& false !== strpos( $runtime_client, 'normalize_image_context_evidence_response' )
+	&& false !== strpos( $runtime_client, "'ability_name'        => 'npcink-cloud/image-context-evidence'" )
+	&& false !== strpos( $runtime_client, "'profile_id'          => 'vision.ai'" )
+	&& false !== strpos( $runtime_client, "'execution_kind'      => 'image_context_evidence'" )
+	&& false !== strpos( $runtime_client, "'expected_response_contract' => 'image_context_evidence.v1'" )
+	&& false !== strpos( $runtime_client, "'no_local_model'             => true" )
+	&& false !== strpos( $runtime_client, "'no_media_write'             => true" ),
+	'Runtime client exposes bounded image context evidence transport through the hosted runtime contract.'
+);
+
+maca_assert(
+	false !== strpos( $readme, 'Image Context Evidence Transport' )
+	&& false !== strpos( $readme, 'image_context_evidence_request.v1' )
+	&& false !== strpos( $readme, 'image_context_evidence.v1' )
+	&& false !== strpos( $readme, 'does not run a local vision model' )
+	&& false !== strpos( $runtime_contract, 'request_image_context_evidence(array $image_context_evidence_request' )
+	&& false !== strpos( $runtime_contract, 'bounded_media_urls_for_visual_context_only' )
+	&& false !== strpos( $runtime_contract, 'not a local image recognition model' )
+	&& false !== strpos( $boundary_doc, 'Image context evidence transport must use the existing' )
+	&& false !== strpos( $boundary_doc, 'not add a local image recognition model' ),
+	'Docs describe image context evidence as bounded runtime transport, not local vision or write ownership.'
 );
 
 maca_assert(

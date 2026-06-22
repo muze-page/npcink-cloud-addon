@@ -1,0 +1,178 @@
+<?php
+/**
+ * Behavior tests for image context evidence transport.
+ *
+ * @package NpcinkCloudAddon
+ */
+
+declare(strict_types=1);
+
+require_once __DIR__ . '/helpers.php';
+
+maca_load_addon_classes();
+
+maca_seed_settings( true );
+
+$client = new Npcink_Cloud_Runtime_Client( Npcink_Cloud_Addon_Settings::get_settings() );
+
+$invalid_result = $client->request_image_context_evidence(
+	array(
+		'contract_version'       => 'image_context_evidence_request.v1',
+		'write_posture'          => 'suggestion_only',
+		'direct_wordpress_write' => true,
+		'no_local_model'         => true,
+		'no_media_write'         => true,
+		'items'                  => array(),
+	)
+);
+maca_assert(
+	is_wp_error( $invalid_result ) && 'cloud_image_context_evidence_request_invalid' === $invalid_result->get_error_code(),
+	'Behavior: image context evidence rejects request contracts that allow direct writes.'
+);
+
+$empty_result = $client->request_image_context_evidence(
+	array(
+		'contract_version'       => 'image_context_evidence_request.v1',
+		'write_posture'          => 'suggestion_only',
+		'direct_wordpress_write' => false,
+		'no_local_model'         => true,
+		'no_media_write'         => true,
+		'items'                  => array(
+			array(
+				'attachment_id' => 101,
+				'title'         => 'No URL',
+			),
+		),
+	)
+);
+maca_assert(
+	is_wp_error( $empty_result ) && 'cloud_image_context_evidence_request_empty' === $empty_result->get_error_code(),
+	'Behavior: image context evidence requires a bounded media URL or thumbnail URL.'
+);
+
+maca_reset_test_state();
+maca_seed_settings( true );
+$GLOBALS['maca_http_response_queue'][] = array(
+	'response' => array( 'code' => 200 ),
+	'body'     => wp_json_encode(
+		array(
+			'status' => 'ok',
+			'run_id' => 'run_image_context_1',
+			'data'   => array(
+				'image_context_evidence' => array(
+					'contract_version' => 'image_context_evidence.v1',
+					'source'           => 'cloud_or_host_runtime',
+					'model_id'         => 'vision-model-test',
+					'items'            => array(
+						array(
+							'attachment_id'    => 101,
+							'source'           => 'cloud_or_host_runtime',
+							'visual_summary'   => 'A person standing beside a blue bicycle near a city storefront.',
+							'scene'            => 'street storefront',
+							'objects'          => array( 'person', 'blue bicycle', 'storefront' ),
+							'text_seen'        => array( 'OPEN' ),
+							'confidence'       => 'medium',
+							'direct_wordpress_write' => true,
+						),
+						array(
+							'attachment_id'  => 999,
+							'visual_summary' => 'Out-of-request image must be ignored.',
+						),
+					),
+				),
+			),
+		)
+	),
+);
+
+$evidence_result = $client->request_image_context_evidence(
+	array(
+		'contract_version'       => 'image_context_evidence_request.v1',
+		'artifact_type'          => 'image_context_evidence_request',
+		'runtime_owner'          => 'cloud_or_host_runtime',
+		'write_posture'          => 'suggestion_only',
+		'direct_wordpress_write' => false,
+		'proposal_created'       => false,
+		'execution_created'      => false,
+		'no_local_model'         => true,
+		'no_media_write'         => true,
+		'items'                  => array(
+			array(
+				'attachment_id'            => 101,
+				'title'                    => 'Street photo',
+				'filename'                 => 'street-photo.jpg',
+				'thumbnail_url'            => 'https://example.test/uploads/street-thumb.jpg',
+				'url'                      => 'https://example.test/uploads/street.jpg',
+				'mime_type'                => 'image/jpeg',
+				'current_alt_status'       => 'missing',
+				'current_caption_status'   => 'missing',
+				'candidate_quality_flags'  => array( 'metadata_insufficient' ),
+				'filtered_candidate_notes' => array( 'filtered_alt_title:too_generic' ),
+			),
+		),
+	),
+	'trace-image-context',
+	'image-context-idempotency'
+);
+$evidence_request      = end( $GLOBALS['maca_http_requests'] );
+$evidence_request_body = json_decode( (string) ( $evidence_request['args']['body'] ?? '' ), true );
+
+maca_assert(
+	is_array( $evidence_result )
+	&& 'image_context_evidence.v1' === (string) ( $evidence_result['contract_version'] ?? '' )
+	&& 1 === (int) ( $evidence_result['evidence_count'] ?? 0 )
+	&& false === (bool) ( $evidence_result['direct_wordpress_write'] ?? true )
+	&& false === (bool) ( $evidence_result['items'][0]['direct_wordpress_write'] ?? true )
+	&& true === (bool) ( $evidence_result['items'][0]['needs_human_visual_check'] ?? false )
+	&& 'vision-model-test' === (string) ( $evidence_result['model_id'] ?? '' ),
+	'Behavior: image context evidence normalizes Cloud results as suggestion-only no-write evidence.'
+);
+
+maca_assert(
+	is_array( $evidence_request_body )
+	&& 'npcink-cloud/image-context-evidence' === (string) ( $evidence_request_body['ability_name'] ?? '' )
+	&& 'image_context_evidence_request.v1' === (string) ( $evidence_request_body['contract_version'] ?? '' )
+	&& 'vision.ai' === (string) ( $evidence_request_body['profile_id'] ?? '' )
+	&& 'image_context_evidence' === (string) ( $evidence_request_body['execution_kind'] ?? '' )
+	&& false === (bool) ( $evidence_request_body['policy']['allow_fallback'] ?? true )
+	&& 'bounded_media_urls_for_visual_context_only' === (string) ( $evidence_request_body['input']['image_context_evidence_request']['source_policy'] ?? '' )
+	&& false === (bool) ( $evidence_request_body['input']['image_context_evidence_request']['direct_wordpress_write'] ?? true )
+	&& true === (bool) ( $evidence_request_body['input']['image_context_evidence_request']['no_local_model'] ?? false ),
+	'Behavior: image context evidence dispatches through bounded runtime execute payload only.'
+);
+
+maca_reset_test_state();
+maca_seed_settings( true );
+$GLOBALS['maca_http_response_queue'][] = array(
+	'response' => array( 'code' => 200 ),
+	'body'     => wp_json_encode(
+		array(
+			'status' => 'ok',
+			'data'   => array(
+				'image_context_evidence' => array(
+					'contract_version' => 'image_context_evidence.v1',
+					'items'            => array(),
+				),
+			),
+		)
+	),
+);
+$empty_cloud_result = $client->request_image_context_evidence(
+	array(
+		'contract_version'       => 'image_context_evidence_request.v1',
+		'write_posture'          => 'suggestion_only',
+		'direct_wordpress_write' => false,
+		'no_local_model'         => true,
+		'no_media_write'         => true,
+		'items'                  => array(
+			array(
+				'attachment_id' => 102,
+				'url'           => 'https://example.test/uploads/empty.jpg',
+			),
+		),
+	)
+);
+maca_assert(
+	is_wp_error( $empty_cloud_result ) && 'cloud_image_context_evidence_empty' === $empty_cloud_result->get_error_code(),
+	'Behavior: image context evidence fails closed when Cloud returns no usable evidence.'
+);

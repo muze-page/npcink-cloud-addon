@@ -32,6 +32,7 @@ Required config:
 ```php
 probe_connectivity(): array
 execute_runtime(array $payload, string $trace_id = '', string $idempotency_key = '')
+request_image_context_evidence(array $image_context_evidence_request, string $trace_id = '', string $idempotency_key = '')
 create_media_derivative(array $payload, array $files = array(), string $trace_id = '', string $idempotency_key = '')
 get_run(string $run_id, string $trace_id = '')
 get_run_result(string $run_id, string $trace_id = '')
@@ -61,6 +62,7 @@ It returns `null` until the addon settings have passed Save and Verify.
 | --- | --- |
 | `probe_connectivity()` | `GET /health/live`, then signed `GET /v1/entitlements/current` |
 | `execute_runtime()` | `POST /v1/runtime/execute` |
+| `request_image_context_evidence()` | `POST /v1/runtime/execute` |
 | `create_media_derivative()` | `POST /v1/runtime/media-derivatives` |
 | `get_run()` | `GET /v1/runs/{run_id}` |
 | `get_run_result()` | `GET /v1/runs/{run_id}/result` |
@@ -152,6 +154,33 @@ headers, database names, table names, or filesystem paths.
 The Addon-owned observability buffer is a temporary transport buffer only. It
 must not be treated as Core audit truth, proposal truth, execution truth, AI
 request logs, billing truth, or workflow/task queue truth.
+
+## Image Context Evidence Transport
+
+`request_image_context_evidence()` accepts only the Toolbox
+`image_context_evidence_request.v1` artifact. It must keep:
+
+- `write_posture=suggestion_only`
+- `direct_wordpress_write=false`
+- `no_local_model=true`
+- `no_media_write=true`
+- `source_policy=bounded_media_urls_for_visual_context_only`
+
+The method dispatches a bounded `npcink-cloud/image-context-evidence` runtime
+execute payload with `profile_id=vision.ai` and
+`execution_kind=image_context_evidence`. It may send only the request's bounded
+media URL or thumbnail URL, attachment id, MIME type, title/filename context,
+and local candidate-quality flags. It must not send provider credentials,
+Cloud signing data, raw WordPress database fields, local filesystem paths, or
+media bytes.
+
+The method returns `image_context_evidence.v1` only as suggestion-only evidence
+for local review. It must filter Cloud evidence to the requested attachment ids,
+force `direct_wordpress_write=false`, require human visual confirmation, and
+fail closed when Cloud returns no usable evidence.
+
+This helper is not a local image recognition model, a product workflow, a
+queue, a proposal creator, a media metadata writer, or a second control plane.
 
 ## Boundary
 

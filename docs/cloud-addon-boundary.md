@@ -158,6 +158,13 @@ Site Knowledge change bridge transport must use the existing
 endpoints, generic indexing routes, or direct Cloud control-plane mutation paths
 to the addon.
 
+Image context evidence transport must use the existing
+`POST /v1/runtime/execute` endpoint only. It may forward a bounded
+`image_context_evidence_request.v1` artifact for Cloud-owned visual recognition
+and normalize `image_context_evidence.v1` as suggestion-only evidence. It must
+not add a local image recognition model, local queue, proposal creation,
+approval, media metadata write path, or generic image upload/download endpoint.
+
 Agent feedback transport must use only `POST /v1/agent-feedback/events` for
 `cloud_agent_feedback.v1` local operator feedback and
 `GET /v1/agent-feedback/summary` for read-only eval rollups. It is eval/quality

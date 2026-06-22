@@ -25,6 +25,7 @@ The addon owns:
 - Read-only Agent feedback quality projection:
   - `GET /v1/agent-feedback/summary`
 - Site Knowledge public content change bridge through `POST /v1/runtime/execute`.
+- Bounded image context evidence transport through `POST /v1/runtime/execute`.
 - `Npcink > Cloud Addon`.
 
 The addon does not own approval truth, proposal truth, WordPress writes,
@@ -49,6 +50,7 @@ npcink_cloud_addon_get_settings(): array
 npcink_cloud_addon_runtime_client(): ?Npcink_Cloud_Runtime_Client
 npcink_cloud_addon_verified_runtime_client(): ?Npcink_Cloud_Runtime_Client
 npcink_cloud_addon_dispatch_media_derivative_cloud_request(array $ability_response, array $source_artifact, string $trace_id = '', string $idempotency_key = '')
+npcink_cloud_addon_request_image_context_evidence(array $image_context_evidence_request, string $trace_id = '', string $idempotency_key = '')
 npcink_cloud_addon_build_media_derivative_proposal_payload(array $ability_response, array $cloud_result, array $derivative_artifact)
 npcink_cloud_addon_download_media_derivative_artifact(array $derivative_artifact, string $trace_id = '')
 npcink_cloud_addon_site_knowledge_change_bridge_health(): array
@@ -59,6 +61,7 @@ npcink_cloud_addon_site_knowledge_change_bridge_health(): array
 ```php
 probe_connectivity(): array
 execute_runtime(array $payload, string $trace_id = '', string $idempotency_key = '')
+request_image_context_evidence(array $image_context_evidence_request, string $trace_id = '', string $idempotency_key = '')
 create_media_derivative(array $payload, array $files = array(), string $trace_id = '', string $idempotency_key = '')
 get_run(string $run_id, string $trace_id = '')
 get_run_result(string $run_id, string $trace_id = '')
@@ -73,6 +76,20 @@ get_observability_summary(int $window_hours = 24, string $trace_id = '')
 The low-level signed request method is private and endpoint-allowlisted. New
 callers should use the named methods above instead of sending arbitrary Cloud
 paths through the addon.
+
+## Image Context Evidence Transport
+
+The addon can consume a Toolbox-generated
+`image_context_evidence_request.v1` artifact for weak media ALT/caption
+metadata. It validates the request as suggestion-only, strips it to bounded
+media URLs and metadata, sends it through `POST /v1/runtime/execute`, and
+normalizes a Cloud response into `image_context_evidence.v1`.
+
+Cloud owns the visual recognition runtime, provider routing, model execution,
+and result generation. The addon does not run a local vision model, create a
+queue, create a Core proposal, approve anything, or write media metadata.
+Returned evidence is candidate basis only and must still be visually confirmed
+by the local operator before any future governed apply path.
 
 `npcink_cloud_addon_get_settings()` returns server-side settings, including the stored secret. Do not print it into HTML or logs.
 

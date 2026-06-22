@@ -100,6 +100,36 @@ if ( ! function_exists( 'npcink_cloud_addon_dispatch_media_derivative_cloud_requ
 	}
 }
 
+if ( ! function_exists( 'npcink_cloud_addon_request_image_context_evidence' ) ) {
+	/**
+	 * Requests Cloud-owned image context evidence for weak media metadata.
+	 *
+	 * This only signs and transports a bounded request artifact. It does not
+	 * run a local vision model, create a proposal, or write media metadata.
+	 *
+	 * @param array<string,mixed> $image_context_evidence_request Toolbox image_context_evidence_request.v1 artifact.
+	 * @param string              $trace_id Optional trace id.
+	 * @param string              $idempotency_key Optional idempotency key.
+	 * @return array<string,mixed>|WP_Error
+	 */
+	function npcink_cloud_addon_request_image_context_evidence( array $image_context_evidence_request, string $trace_id = '', string $idempotency_key = '' ) {
+		$client = npcink_cloud_addon_runtime_client();
+		if ( ! $client ) {
+			return new WP_Error(
+				'cloud_runtime_unconfigured',
+				__( 'Npcink Cloud is not configured.', 'npcink-cloud-addon' ),
+				array( 'status' => 400 )
+			);
+		}
+
+		return $client->request_image_context_evidence(
+			$image_context_evidence_request,
+			$trace_id,
+			$idempotency_key
+		);
+	}
+}
+
 if ( ! function_exists( 'npcink_cloud_addon_build_media_derivative_proposal_payload' ) ) {
 	/**
 	 * Builds a Core-ready local proposal payload for a Cloud derivative artifact.

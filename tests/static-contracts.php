@@ -242,6 +242,18 @@ maca_assert(
 );
 
 maca_assert(
+	false !== strpos( $entitlement_summary, 'normalize_credit_usage_detail' )
+	&& false !== strpos( $entitlement_summary, "'local_addon_policy' => sanitize_key" )
+	&& false !== strpos( $entitlement_summary, "'summary_and_link_only'" )
+	&& false !== strpos( $entitlement_summary, "'credit_ledger_url'" )
+	&& false !== strpos( $settings_page, 'render_credit_usage_summary' )
+	&& false !== strpos( $settings_page, 'Summary-only Cloud credit projection' )
+	&& false !== strpos( $settings_page, 'View credit details in Cloud' )
+	&& false === strpos( $settings_page, "'recent_items'" ),
+	'Cloud Addon displays only a summary-only AI credit projection and links detailed credit usage back to Cloud.'
+);
+
+maca_assert(
 	false !== strpos( $cloud_bulk_article_doc, 'Rejected Product Language' )
 	&& false !== strpos( $cloud_bulk_article_doc, 'Cloud writing assistant' )
 	&& false !== strpos( $cloud_bulk_article_doc, 'Cloud article generator' )

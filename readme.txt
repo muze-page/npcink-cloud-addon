@@ -46,7 +46,13 @@ short TTL source artifact descriptor and derivative request parameters from the
 local read-only ability output. Cloud credentials and signed headers are added
 by the addon transport and are not copied into the ability payload.
 
-The configured Cloud service is responsible for its own privacy policy, terms of service, data retention, and account/key issuance. Because the Cloud Base URL is administrator-configured, this plugin does not hard-code one service policy URL. Site administrators should only connect this plugin to a Cloud service whose terms of service, privacy policy, data retention policy, and account/key issuance process they have reviewed.
+The configured Cloud service is responsible for its own privacy policy, terms of service, data retention, and account/key issuance. Because the Cloud Base URL is administrator-configured, site administrators should only connect this plugin to a Cloud service whose terms of service, privacy policy, data retention policy, and account/key issuance process they have reviewed.
+
+Npcink Cloud service information:
+
+* Terms of Service: https://cloud.npc.ink/terms/en/terms.html
+* Privacy Policy: https://cloud.npc.ink/terms/en/privacy.html
+* Data Retention: https://cloud.npc.ink/terms/en/data-retention.html
 
 == Installation ==
 
@@ -62,13 +68,52 @@ The configured Cloud service is responsible for its own privacy policy, terms of
 
 No. Keys are issued by Npcink Cloud.
 
+= Do I need a Npcink Cloud account? =
+
+Yes. A site administrator needs a Cloud Base URL and a Cloud API Key issued by the configured Npcink Cloud service before the connector can verify successfully.
+
 = Does this plugin display the Cloud secret? =
 
 No. The secret is stored for server-side signing only and is never printed on the settings page.
 
+= When does the plugin contact Npcink Cloud? =
+
+The plugin contacts the configured Cloud service when an administrator saves and verifies Cloud settings, when a local Npcink component explicitly uses the Cloud runtime client, when entitlement or status summaries are refreshed, or when optional monitoring is enabled and flushed.
+
+= Is monitoring enabled by default? =
+
+No. Monitoring requires explicit administrator opt-in and verified Cloud settings.
+
+= What data can monitoring send? =
+
+Monitoring sends operational metadata only, such as plugin slug/version, event kind, status, timing, error code, route, proposal id, ability id, correlation id, counters, and latency.
+
+= Does monitoring upload prompts, content, or raw payloads? =
+
+No. Metadata-only monitoring is designed not to upload prompts, generated content, article body content, media bytes, raw request or response payloads, provider credentials, Cloud API secrets, passwords, cookies, nonces, Authorization headers, database names, table names, or filesystem paths.
+
+= Can media derivative jobs send media data to Cloud? =
+
+Only when local host code explicitly invokes the media derivative transport. In that case, the request may include a short TTL source artifact descriptor and bounded derivative parameters from a local read-only ability output. Cloud credentials and signed headers are added by the addon transport and are not copied into the ability payload.
+
 = Does this plugin write Cloud recommendations into WordPress? =
 
 No. Final WordPress writes must go through local Core proposal, preflight, approval, and apply paths.
+
+= Where can I review the Cloud service terms and privacy information? =
+
+Terms of Service: https://cloud.npc.ink/terms/en/terms.html
+
+Privacy Policy: https://cloud.npc.ink/terms/en/privacy.html
+
+Data Retention: https://cloud.npc.ink/terms/en/data-retention.html
+
+== Screenshots ==
+
+1. Entitlement summary and read-only Pro Cloud Runtime detail.
+2. Cloud settings screen with Cloud Base URL, API key replacement, timeout, and monitoring opt-in.
+3. Monitoring and quality summaries showing metadata-only collection and read-only Cloud projections.
+4. Advanced information for connection code, verification failure, timeout, and entitlement state.
 
 == Changelog ==
 

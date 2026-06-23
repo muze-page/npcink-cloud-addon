@@ -941,7 +941,63 @@ if ( ! class_exists( 'Npcink_Cloud_Settings_Page' ) ) {
 					</tr>
 				</tbody>
 			</table>
+			<?php self::render_credit_usage_summary( $summary ); ?>
 			<?php self::render_pro_cloud_runtime_summary( $summary ); ?>
+			<?php
+		}
+
+		/**
+		 * Renders the summary-only Cloud AI credit usage projection.
+		 *
+		 * @param array<string,mixed> $summary Entitlement summary.
+		 * @return void
+		 */
+		private static function render_credit_usage_summary( array $summary ): void {
+			$detail = is_array( $summary['credit_usage_detail'] ?? null ) ? $summary['credit_usage_detail'] : array();
+			$usage = is_array( $detail['summary'] ?? null ) ? $detail['summary'] : array();
+			$links = is_array( $summary['links'] ?? null ) ? $summary['links'] : array();
+			$usage_url = esc_url( (string) ( $links['credit_ledger_url'] ?? ( $links['usage_url'] ?? '' ) ) );
+			if ( empty( $detail['available'] ) && '' === $usage_url ) {
+				return;
+			}
+			?>
+			<h3><?php esc_html_e( 'AI Credit Usage', 'npcink-cloud-addon' ); ?></h3>
+			<p class="description"><?php esc_html_e( 'Summary-only Cloud credit projection. The Cloud portal owns the detailed ledger, billing explanation, and historical usage.', 'npcink-cloud-addon' ); ?></p>
+			<?php if ( empty( $detail['available'] ) ) : ?>
+				<p class="npcink-cloud-empty"><?php esc_html_e( 'Cloud did not return a local credit summary yet. Open the Cloud portal for the current usage detail.', 'npcink-cloud-addon' ); ?></p>
+			<?php else : ?>
+				<table class="widefat striped" style="max-width: 860px;">
+					<tbody>
+						<tr>
+							<th scope="row"><?php esc_html_e( 'Used credits', 'npcink-cloud-addon' ); ?></th>
+							<td><?php echo esc_html( self::format_credit_amount( $usage['used'] ?? 0, (string) ( $usage['unit'] ?? 'credit' ) ) ); ?></td>
+						</tr>
+						<tr>
+							<th scope="row"><?php esc_html_e( 'Limit', 'npcink-cloud-addon' ); ?></th>
+							<td><?php echo esc_html( self::format_credit_amount( $usage['limit'] ?? 0, (string) ( $usage['unit'] ?? 'credit' ) ) ); ?></td>
+						</tr>
+						<tr>
+							<th scope="row"><?php esc_html_e( 'Remaining', 'npcink-cloud-addon' ); ?></th>
+							<td><?php echo esc_html( self::format_credit_amount( $usage['remaining'] ?? null, (string) ( $usage['unit'] ?? 'credit' ) ) ); ?></td>
+						</tr>
+						<tr>
+							<th scope="row"><?php esc_html_e( 'Status', 'npcink-cloud-addon' ); ?></th>
+							<td><code><?php echo esc_html( self::format_empty( (string) ( $usage['status'] ?? '' ) ) ); ?></code></td>
+						</tr>
+						<tr>
+							<th scope="row"><?php esc_html_e( 'Generated at', 'npcink-cloud-addon' ); ?></th>
+							<td><?php echo esc_html( self::format_datetime_value( (string) ( $detail['generated_at'] ?? '' ) ) ); ?></td>
+						</tr>
+					</tbody>
+				</table>
+			<?php endif; ?>
+			<?php if ( '' !== $usage_url ) : ?>
+				<p class="npcink-cloud-section-action">
+					<a class="button button-secondary" href="<?php echo esc_url( $usage_url ); ?>" target="_blank" rel="noopener noreferrer">
+						<?php esc_html_e( 'View credit details in Cloud', 'npcink-cloud-addon' ); ?>
+					</a>
+				</p>
+			<?php endif; ?>
 			<?php
 		}
 
@@ -1181,6 +1237,26 @@ if ( ! class_exists( 'Npcink_Cloud_Settings_Page' ) ) {
 		 */
 		private static function format_empty( string $value ): string {
 			return '' !== $value ? $value : __( 'unavailable', 'npcink-cloud-addon' );
+		}
+
+		/**
+		 * Formats a Cloud credit amount for summary display.
+		 *
+		 * @param mixed  $value Credit amount.
+		 * @param string $unit Unit label.
+		 * @return string
+		 */
+		private static function format_credit_amount( $value, string $unit ): string {
+			if ( null === $value || '' === $value ) {
+				return __( 'unavailable', 'npcink-cloud-addon' );
+			}
+
+			$amount = is_numeric( $value ) ? (float) $value : 0.0;
+			$formatted = function_exists( 'number_format_i18n' )
+				? number_format_i18n( $amount, 2 )
+				: number_format( $amount, 2, '.', ',' );
+
+			return trim( $formatted . ' ' . sanitize_text_field( $unit ) );
 		}
 
 		/**

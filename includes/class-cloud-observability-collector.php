@@ -31,7 +31,7 @@ if ( ! class_exists( 'Npcink_Cloud_Observability_Collector' ) ) {
 		 * @return void
 		 */
 		public static function register(): void {
-			add_action( 'magick_ai_observability_event', array( __CLASS__, 'capture_event' ), 10, 1 );
+			add_action( 'npcink_observability_event', array( __CLASS__, 'capture_event' ), 10, 1 );
 			add_action( self::CRON_HOOK, array( __CLASS__, 'flush_buffer' ) );
 
 			self::sync_schedule();

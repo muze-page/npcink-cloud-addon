@@ -1183,7 +1183,7 @@ if ( ! class_exists( 'Npcink_Cloud_Settings_Page' ) ) {
 		 * @return string
 		 */
 		private static function notice_transient_key(): string {
-			return 'magick_ai_cloud_notice_' . absint( get_current_user_id() );
+			return 'npcink_cloud_notice_' . absint( get_current_user_id() );
 		}
 
 		/**

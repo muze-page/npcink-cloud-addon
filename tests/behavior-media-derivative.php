@@ -11,6 +11,27 @@ require_once __DIR__ . '/helpers.php';
 
 maca_load_addon_classes();
 
+$GLOBALS['maca_options']['magick_ai_cloud_addon_settings'] = array(
+	'base_url' => 'https://legacy-cloud.example.test',
+	'site_id' => 'legacy_site',
+	'key_id' => 'legacy_key',
+	'secret' => 'legacy_secret',
+	'timeout' => 12,
+	'verified' => true,
+	'verified_at' => '2026-06-20 00:00:00 UTC',
+	'last_verification_error' => '',
+	'monitoring_enabled' => true,
+);
+$legacy_settings = Npcink_Cloud_Addon_Settings::get_settings();
+maca_assert(
+	'https://legacy-cloud.example.test' === $legacy_settings['base_url']
+	&& 'legacy_site' === $legacy_settings['site_id']
+	&& ! isset( $GLOBALS['maca_options']['magick_ai_cloud_addon_settings'] )
+	&& isset( $GLOBALS['maca_options'][ Npcink_Cloud_Addon_Settings::option_name() ] ),
+	'Behavior: legacy Magick AI Cloud Addon settings import once into the Npcink option.'
+);
+maca_reset_test_state();
+
 maca_seed_settings( false );
 $unverified = Npcink_Cloud_Media_Derivative_Transport::dispatch_from_ability_response(
 	maca_ability_fixture(),
@@ -206,7 +227,7 @@ maca_seed_settings( true );
 $client = new Npcink_Cloud_Runtime_Client( Npcink_Cloud_Addon_Settings::get_settings() );
 $runtime_timeout_result = $client->execute_runtime(
 	array(
-		'ability_name'    => 'magick-ai-cloud/generate-image',
+		'ability_name'    => 'npcink-cloud/generate-image',
 		'timeout_seconds' => 60,
 	)
 );

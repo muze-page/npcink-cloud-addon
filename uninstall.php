@@ -12,6 +12,7 @@ if ( ! defined( 'WP_UNINSTALL_PLUGIN' ) ) {
 }
 
 delete_option( 'npcink_cloud_addon_settings' );
+delete_option( 'magick_ai_cloud_addon_settings' );
 delete_option( 'npcink_cloud_addon_observability_buffer' );
 delete_option( 'npcink_cloud_addon_observability_status' );
 delete_option( 'npcink_cloud_addon_observability_summary' );

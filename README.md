@@ -130,7 +130,7 @@ persist the artifact, create an artifact registry, or write WordPress media.
 ## Observability Transport
 
 Administrators may enable Cloud monitoring after Cloud settings verify. When
-enabled, the addon listens for local `magick_ai_observability_event` metadata,
+enabled, the addon listens for local `npcink_observability_event` metadata,
 stores a bounded local observability buffer, flushes buffered metadata to
 Cloud, and reads aggregate Cloud summaries for the local monitoring view.
 The local monitoring status distinguishes sent events, Cloud-stored events, and

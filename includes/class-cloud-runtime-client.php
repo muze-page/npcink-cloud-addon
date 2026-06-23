@@ -899,16 +899,16 @@ if ( ! class_exists( 'Npcink_Cloud_Runtime_Client' ) ) {
 			$headers = array(
 				'Accept' => 'application/json',
 				'Content-Type' => sanitize_text_field( $content_type ),
-				'X-Magick-Site-Id' => (string) ( $this->config['site_id'] ?? '' ),
-				'X-Magick-Key-Id' => (string) ( $this->config['key_id'] ?? '' ),
-				'X-Magick-Timestamp' => $timestamp,
-				'X-Magick-Signature' => strtolower( $signature ),
-				'X-Magick-Trace-Id' => $trace_id,
+				'X-Npcink-Site-Id' => (string) ( $this->config['site_id'] ?? '' ),
+				'X-Npcink-Key-Id' => (string) ( $this->config['key_id'] ?? '' ),
+				'X-Npcink-Timestamp' => $timestamp,
+				'X-Npcink-Signature' => strtolower( $signature ),
+				'X-Npcink-Trace-Id' => $trace_id,
 				'traceparent' => $traceparent,
 			);
 
 			if ( '' !== $nonce ) {
-				$headers['X-Magick-Nonce'] = $nonce;
+				$headers['X-Npcink-Nonce'] = $nonce;
 			}
 			if ( '' !== $idempotency_key ) {
 				$headers['Idempotency-Key'] = $idempotency_key;

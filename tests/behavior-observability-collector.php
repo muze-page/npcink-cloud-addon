@@ -93,7 +93,7 @@ $GLOBALS['maca_http_response_queue'][] = array(
 		array(
 			'status'     => 'error',
 			'error_code' => 'signature.timestamp_stale',
-			'message'    => 'X-Magick-Timestamp header is outside the accepted time window.',
+			'message'    => 'X-Npcink-Timestamp header is outside the accepted time window.',
 		)
 	),
 );
@@ -103,7 +103,7 @@ maca_assert(
 	empty( $failed['last_upload_ok'] )
 	&& 3 === count( $buffer )
 	&& 3 === absint( $failed['buffer_count'] ?? 0 )
-	&& false !== strpos( (string) ( $failed['last_upload_error'] ?? '' ), 'X-Magick-Timestamp' ),
+	&& false !== strpos( (string) ( $failed['last_upload_error'] ?? '' ), 'X-Npcink-Timestamp' ),
 	'Behavior: failed observability upload keeps buffered events and records the upload error.'
 );
 

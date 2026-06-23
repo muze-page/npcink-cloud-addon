@@ -92,13 +92,13 @@ authority.
 
 Signed requests include:
 
-- `X-Magick-Site-Id`
-- `X-Magick-Key-Id`
-- `X-Magick-Timestamp`
-- `X-Magick-Signature`
-- `X-Magick-Trace-Id`
+- `X-Npcink-Site-Id`
+- `X-Npcink-Key-Id`
+- `X-Npcink-Timestamp`
+- `X-Npcink-Signature`
+- `X-Npcink-Trace-Id`
 - `traceparent`
-- `X-Magick-Nonce` for POST requests
+- `X-Npcink-Nonce` for POST requests
 - `Idempotency-Key` when provided
 
 The signature is HMAC SHA-256 over:

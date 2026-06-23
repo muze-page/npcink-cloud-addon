@@ -370,7 +370,7 @@ if ( ! class_exists( 'Npcink_Cloud_Site_Knowledge_Change_Bridge' ) ) {
 		private static function request_site_knowledge_refresh( array $post_ids ) {
 			$client = new Npcink_Cloud_Runtime_Client();
 			$payload = array(
-				'ability_name' => 'magick-ai-cloud/site-knowledge-sync',
+				'ability_name' => 'npcink-cloud/site-knowledge-sync',
 				'contract_version' => 'site_knowledge_sync.v1',
 				'execution_pattern' => 'whole_run_offload',
 				'input' => array(

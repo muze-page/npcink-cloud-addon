@@ -19,6 +19,9 @@ if ( ! class_exists( 'Npcink_Cloud_Addon_Settings' ) ) {
 		private const DEFAULT_TIMEOUT = 8;
 		private const MIN_TIMEOUT = 5;
 		private const MAX_TIMEOUT = 60;
+		private const LEGACY_OPTION_NAMES = array(
+			'magick_ai_cloud_addon_settings',
+		);
 
 		/**
 		 * Registers WordPress settings metadata hook.
@@ -66,7 +69,10 @@ if ( ! class_exists( 'Npcink_Cloud_Addon_Settings' ) ) {
 		 * @return array<string,mixed>
 		 */
 		public static function get_settings(): array {
-			$stored = get_option( self::option_name(), array() );
+			$stored = get_option( self::option_name(), false );
+			if ( false === $stored ) {
+				$stored = self::import_legacy_settings();
+			}
 			$stored = is_array( $stored ) ? $stored : array();
 
 			return self::normalize_settings( $stored );
@@ -274,6 +280,31 @@ if ( ! class_exists( 'Npcink_Cloud_Addon_Settings' ) ) {
 		 */
 		public static function delete_settings(): void {
 			delete_option( self::option_name() );
+			foreach ( self::LEGACY_OPTION_NAMES as $legacy_option_name ) {
+				delete_option( $legacy_option_name );
+			}
+		}
+
+		/**
+		 * Imports one legacy addon settings option into the current option name.
+		 *
+		 * @return array<string,mixed>
+		 */
+		private static function import_legacy_settings(): array {
+			foreach ( self::LEGACY_OPTION_NAMES as $legacy_option_name ) {
+				$legacy = get_option( $legacy_option_name, false );
+				if ( ! is_array( $legacy ) ) {
+					continue;
+				}
+
+				$normalized = self::normalize_settings( $legacy );
+				update_option( self::option_name(), $normalized, false );
+				delete_option( $legacy_option_name );
+
+				return $normalized;
+			}
+
+			return array();
 		}
 
 		/**

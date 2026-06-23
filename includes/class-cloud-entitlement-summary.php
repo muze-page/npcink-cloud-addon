@@ -104,7 +104,7 @@ if ( ! class_exists( 'Npcink_Cloud_Entitlement_Summary' ) ) {
 				)
 			);
 
-			return 'magick_ai_cloud_entitlement_' . md5( $seed );
+			return 'npcink_cloud_entitlement_' . md5( $seed );
 		}
 
 		/**

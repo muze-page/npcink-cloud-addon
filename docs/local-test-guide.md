@@ -51,7 +51,7 @@ Media derivative contract checks:
 
 Site:
 
-`https://magick-ai.local/`
+`https://npcink.local/`
 
 Steps:
 

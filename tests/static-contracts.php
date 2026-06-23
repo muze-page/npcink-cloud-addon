@@ -31,7 +31,7 @@ $eval_lab_proxy = maca_read( $root . '/scripts/eval-lab.sh' );
 
 maca_assert(
 	false !== strpos( $composer, '"eval:project:quality": "sh scripts/eval-lab.sh task=project_quality_gate' )
-	&& false !== strpos( $eval_lab_proxy, 'MAGICK_AI_EVAL_LAB_PATH' )
+	&& false !== strpos( $eval_lab_proxy, 'NPCINK_EVAL_LAB_PATH' )
 	&& false !== strpos( $eval_lab_proxy, 'composer eval:task -- "$@"' ),
 	'Cloud Addon exposes optional eval-lab project quality gate through the task registry.'
 );

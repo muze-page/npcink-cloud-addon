@@ -9,7 +9,7 @@ msgstr ""
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"POT-Creation-Date: 2026-06-21T09:17:36+00:00\n"
+"POT-Creation-Date: 2026-06-23T01:56:38+00:00\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "X-Generator: WP-CLI 2.12.0\n"
 "X-Domain: npcink-cloud-addon\n"
@@ -34,7 +34,13 @@ msgstr ""
 msgid "Npcink"
 msgstr ""
 
-#: includes/bootstrap.php:266
+#: includes/bootstrap.php:120
+#: includes/class-cloud-runtime-client.php:466
+#: includes/class-cloud-runtime-client.php:542
+msgid "Npcink Cloud is not configured."
+msgstr ""
+
+#: includes/bootstrap.php:296
 #: includes/class-cloud-settings-page.php:382
 #: includes/class-cloud-settings-page.php:388
 msgid "Settings"
@@ -100,7 +106,7 @@ msgstr ""
 msgid "Entitlement is unavailable until Cloud settings verify successfully."
 msgstr ""
 
-#: includes/class-cloud-entitlement-summary.php:128
+#: includes/class-cloud-entitlement-summary.php:130
 msgid "Entitlement summary synced."
 msgstr ""
 
@@ -291,88 +297,95 @@ msgstr ""
 msgid "Signed Cloud request verified."
 msgstr ""
 
-#: includes/class-cloud-runtime-client.php:121
+#: includes/class-cloud-runtime-client.php:170
 msgid "Only source_file and watermark_file uploads are allowed for media derivative transport."
 msgstr ""
 
-#: includes/class-cloud-runtime-client.php:159
-#: includes/class-cloud-runtime-client.php:178
-#: includes/class-cloud-runtime-client.php:212
+#: includes/class-cloud-runtime-client.php:208
+#: includes/class-cloud-runtime-client.php:227
+#: includes/class-cloud-runtime-client.php:261
 msgid "Cloud run_id is required."
 msgstr ""
 
-#: includes/class-cloud-runtime-client.php:242
+#: includes/class-cloud-runtime-client.php:291
 msgid "Cloud artifact_id is required."
 msgstr ""
 
-#: includes/class-cloud-runtime-client.php:267
+#: includes/class-cloud-runtime-client.php:316
 msgid "Cloud site_id is required."
 msgstr ""
 
-#: includes/class-cloud-runtime-client.php:288
+#: includes/class-cloud-runtime-client.php:337
 msgid "Cloud profile_id is required."
 msgstr ""
 
-#: includes/class-cloud-runtime-client.php:307
+#: includes/class-cloud-runtime-client.php:356
 msgid "Cloud instance_id is required."
 msgstr ""
 
-#: includes/class-cloud-runtime-client.php:326
+#: includes/class-cloud-runtime-client.php:375
 msgid "No observability events are ready to upload."
 msgstr ""
 
-#: includes/class-cloud-runtime-client.php:359
+#: includes/class-cloud-runtime-client.php:408
 msgid "Agent feedback requires the cloud_agent_feedback.v1 contract."
 msgstr ""
 
-#: includes/class-cloud-runtime-client.php:417
-#: includes/class-cloud-runtime-client.php:493
-msgid "Npcink Cloud is not configured."
-msgstr ""
-
-#: includes/class-cloud-runtime-client.php:427
-#: includes/class-cloud-runtime-client.php:503
+#: includes/class-cloud-runtime-client.php:476
+#: includes/class-cloud-runtime-client.php:552
 msgid "This Cloud endpoint is not allowed by the Cloud Addon runtime contract."
 msgstr ""
 
-#: includes/class-cloud-runtime-client.php:443
+#: includes/class-cloud-runtime-client.php:492
 msgid "Cloud runtime request payload could not be encoded."
 msgstr ""
 
-#: includes/class-cloud-runtime-client.php:543
+#: includes/class-cloud-runtime-client.php:592
 msgid "Cloud Base URL is required."
 msgstr ""
 
-#: includes/class-cloud-runtime-client.php:573
+#: includes/class-cloud-runtime-client.php:622
 msgid "Cloud liveness check failed."
 msgstr ""
 
-#: includes/class-cloud-runtime-client.php:579
+#: includes/class-cloud-runtime-client.php:628
 msgid "Cloud service is live."
 msgstr ""
 
-#: includes/class-cloud-runtime-client.php:600
+#: includes/class-cloud-runtime-client.php:649
 msgid "Cloud runtime request failed."
 msgstr ""
 
-#: includes/class-cloud-runtime-client.php:636
+#: includes/class-cloud-runtime-client.php:685
 msgid "Cloud runtime artifact download failed."
 msgstr ""
 
-#: includes/class-cloud-runtime-client.php:653
+#: includes/class-cloud-runtime-client.php:702
 msgid "Cloud artifact download exceeds the local preview size limit."
 msgstr ""
 
-#: includes/class-cloud-runtime-client.php:883
+#: includes/class-cloud-runtime-client.php:932
 msgid "Cloud media derivative request payload could not be encoded."
 msgstr ""
 
-#: includes/class-cloud-runtime-client.php:1011
+#: includes/class-cloud-runtime-client.php:979
+msgid "Image context evidence requires a suggestion-only no-write request contract."
+msgstr ""
+
+#: includes/class-cloud-runtime-client.php:1016
+msgid "Image context evidence requires at least one bounded media URL."
+msgstr ""
+
+#: includes/class-cloud-runtime-client.php:1086
+msgid "Cloud did not return usable image context evidence."
+msgstr ""
+
+#: includes/class-cloud-runtime-client.php:1285
 msgid "Cannot connect to Npcink Cloud. Check the Cloud Base URL."
 msgstr ""
 
 #. translators: 1: Cloud base URL, 2: transport error.
-#: includes/class-cloud-runtime-client.php:1016
+#: includes/class-cloud-runtime-client.php:1290
 #, php-format
 msgid "Cannot connect to %1$s. Original error: %2$s"
 msgstr ""
@@ -522,7 +535,7 @@ msgid "Package"
 msgstr ""
 
 #: includes/class-cloud-settings-page.php:467
-#: includes/class-cloud-settings-page.php:1157
+#: includes/class-cloud-settings-page.php:1213
 msgid "Not checked"
 msgstr ""
 
@@ -543,7 +556,7 @@ msgid "Leave blank to keep the stored Cloud API Key. The secret is never printed
 msgstr ""
 
 #: includes/class-cloud-settings-page.php:542
-#: includes/class-cloud-settings-page.php:1026
+#: includes/class-cloud-settings-page.php:1082
 msgid "Timeout"
 msgstr ""
 
@@ -751,13 +764,13 @@ msgstr ""
 
 #: includes/class-cloud-settings-page.php:834
 #: includes/class-cloud-settings-page.php:835
-#: includes/class-cloud-settings-page.php:1001
+#: includes/class-cloud-settings-page.php:1057
 msgid "yes"
 msgstr ""
 
 #: includes/class-cloud-settings-page.php:834
 #: includes/class-cloud-settings-page.php:835
-#: includes/class-cloud-settings-page.php:1001
+#: includes/class-cloud-settings-page.php:1057
 msgid "no"
 msgstr ""
 
@@ -794,14 +807,15 @@ msgid "Availability"
 msgstr ""
 
 #: includes/class-cloud-settings-page.php:928
-#: includes/class-cloud-settings-page.php:1161
+#: includes/class-cloud-settings-page.php:1217
 msgid "available"
 msgstr ""
 
 #: includes/class-cloud-settings-page.php:928
-#: includes/class-cloud-settings-page.php:1162
-#: includes/class-cloud-settings-page.php:1183
-#: includes/class-cloud-settings-page.php:1196
+#: includes/class-cloud-settings-page.php:1218
+#: includes/class-cloud-settings-page.php:1239
+#: includes/class-cloud-settings-page.php:1251
+#: includes/class-cloud-settings-page.php:1272
 msgid "unavailable"
 msgstr ""
 
@@ -813,88 +827,124 @@ msgstr ""
 msgid "Synced at"
 msgstr ""
 
-#: includes/class-cloud-settings-page.php:961
+#: includes/class-cloud-settings-page.php:964
+msgid "AI Credit Usage"
+msgstr ""
+
+#: includes/class-cloud-settings-page.php:965
+msgid "Summary-only Cloud credit projection. The Cloud portal owns the detailed ledger, billing explanation, and historical usage."
+msgstr ""
+
+#: includes/class-cloud-settings-page.php:967
+msgid "Cloud did not return a local credit summary yet. Open the Cloud portal for the current usage detail."
+msgstr ""
+
+#: includes/class-cloud-settings-page.php:972
+msgid "Used credits"
+msgstr ""
+
+#: includes/class-cloud-settings-page.php:976
+msgid "Limit"
+msgstr ""
+
+#: includes/class-cloud-settings-page.php:980
+msgid "Remaining"
+msgstr ""
+
+#: includes/class-cloud-settings-page.php:984
+msgid "Status"
+msgstr ""
+
+#: includes/class-cloud-settings-page.php:988
+msgid "Generated at"
+msgstr ""
+
+#: includes/class-cloud-settings-page.php:997
+msgid "View credit details in Cloud"
+msgstr ""
+
+#: includes/class-cloud-settings-page.php:1017
 msgid "Pro Cloud Runtime"
 msgstr ""
 
-#: includes/class-cloud-settings-page.php:962
+#: includes/class-cloud-settings-page.php:1018
 msgid "Read-only Cloud entitlement detail for local plugin displays. This addon does not own billing truth, scheduling, queues, or WordPress writes."
 msgstr ""
 
-#: includes/class-cloud-settings-page.php:966
+#: includes/class-cloud-settings-page.php:1022
 msgid "Feature"
 msgstr ""
 
-#: includes/class-cloud-settings-page.php:970
+#: includes/class-cloud-settings-page.php:1026
 msgid "Nightly runs"
 msgstr ""
 
 #. translators: 1: used runs, 2: max runs, 3: remaining runs.
-#: includes/class-cloud-settings-page.php:975
+#: includes/class-cloud-settings-page.php:1031
 #, php-format
 msgid "%1$d used / %2$d limit / %3$d remaining"
 msgstr ""
 
-#: includes/class-cloud-settings-page.php:984
+#: includes/class-cloud-settings-page.php:1040
 msgid "Batch limit"
 msgstr ""
 
-#: includes/class-cloud-settings-page.php:988
+#: includes/class-cloud-settings-page.php:1044
 msgid "Retention"
 msgstr ""
 
 #. translators: %d: retention days.
-#: includes/class-cloud-settings-page.php:993
+#: includes/class-cloud-settings-page.php:1049
 #, php-format
 msgid "%d days"
 msgstr ""
 
-#: includes/class-cloud-settings-page.php:1000
+#: includes/class-cloud-settings-page.php:1056
 msgid "Quota exhausted"
 msgstr ""
 
-#: includes/class-cloud-settings-page.php:1004
+#: includes/class-cloud-settings-page.php:1060
 msgid "Local truth"
 msgstr ""
 
-#: includes/class-cloud-settings-page.php:1022
+#: includes/class-cloud-settings-page.php:1078
 msgid "Timeout, verification failure, and entitlement message."
 msgstr ""
 
 #. translators: %d: timeout in seconds.
-#: includes/class-cloud-settings-page.php:1031
+#: includes/class-cloud-settings-page.php:1087
 #, php-format
 msgid "%d seconds"
 msgstr ""
 
-#: includes/class-cloud-settings-page.php:1038
+#: includes/class-cloud-settings-page.php:1094
 msgid "Connection code"
 msgstr ""
 
-#: includes/class-cloud-settings-page.php:1042
+#: includes/class-cloud-settings-page.php:1098
 msgid "Last failure"
 msgstr ""
 
-#: includes/class-cloud-settings-page.php:1046
+#: includes/class-cloud-settings-page.php:1102
 msgid "Entitlement message"
 msgstr ""
 
-#: includes/class-cloud-settings-page.php:1050
+#: includes/class-cloud-settings-page.php:1106
 msgid "Entitlement state"
 msgstr ""
 
 #. translators: %s: liveness error.
-#: includes/class-cloud-settings-page.php:1069
+#: includes/class-cloud-settings-page.php:1125
 #, php-format
 msgid "Live check failed: %s"
 msgstr ""
 
 #. translators: %s: signed verification error.
-#: includes/class-cloud-settings-page.php:1076
+#: includes/class-cloud-settings-page.php:1132
 #, php-format
 msgid "Signed verification failed: %s"
 msgstr ""
 
-#: includes/class-cloud-settings-page.php:1083
+#: includes/class-cloud-settings-page.php:1139
 msgid "Cloud verification failed."
 msgstr ""

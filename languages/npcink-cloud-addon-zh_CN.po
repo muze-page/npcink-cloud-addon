@@ -93,7 +93,7 @@ msgstr "读取权益信息前请先配置 Cloud 设置。"
 msgid "Entitlement is unavailable until Cloud settings verify successfully."
 msgstr "Cloud 设置验证成功前，权益信息不可用。"
 
-#: includes/class-cloud-entitlement-summary.php:128
+#: includes/class-cloud-entitlement-summary.php:130
 msgid "Entitlement summary synced."
 msgstr "权益摘要已同步。"
 
@@ -278,84 +278,85 @@ msgstr "Cloud 凭据不完整。"
 msgid "Signed Cloud request verified."
 msgstr "签名 Cloud 请求已验证。"
 
-#: includes/class-cloud-runtime-client.php:121
+#: includes/class-cloud-runtime-client.php:170
 msgid "Only source_file and watermark_file uploads are allowed for media derivative transport."
 msgstr "媒体衍生传输只允许 source_file 和 watermark_file 上传。"
 
-#: includes/class-cloud-runtime-client.php:159
-#: includes/class-cloud-runtime-client.php:178
-#: includes/class-cloud-runtime-client.php:212
+#: includes/class-cloud-runtime-client.php:208
+#: includes/class-cloud-runtime-client.php:227
+#: includes/class-cloud-runtime-client.php:261
 msgid "Cloud run_id is required."
 msgstr "Cloud run_id 为必填项。"
 
-#: includes/class-cloud-runtime-client.php:242
+#: includes/class-cloud-runtime-client.php:291
 msgid "Cloud artifact_id is required."
 msgstr "Cloud artifact_id 为必填项。"
 
-#: includes/class-cloud-runtime-client.php:267
+#: includes/class-cloud-runtime-client.php:316
 msgid "Cloud site_id is required."
 msgstr "Cloud site_id 为必填项。"
 
-#: includes/class-cloud-runtime-client.php:288
+#: includes/class-cloud-runtime-client.php:337
 msgid "Cloud profile_id is required."
 msgstr "Cloud profile_id 为必填项。"
 
-#: includes/class-cloud-runtime-client.php:307
+#: includes/class-cloud-runtime-client.php:356
 msgid "Cloud instance_id is required."
 msgstr "Cloud instance_id 为必填项。"
 
-#: includes/class-cloud-runtime-client.php:326
+#: includes/class-cloud-runtime-client.php:375
 msgid "No observability events are ready to upload."
 msgstr "没有可上传的 observability 事件。"
 
-#: includes/class-cloud-runtime-client.php:417
-#: includes/class-cloud-runtime-client.php:493
+#: includes/bootstrap.php:120
+#: includes/class-cloud-runtime-client.php:466
+#: includes/class-cloud-runtime-client.php:542
 msgid "Npcink Cloud is not configured."
 msgstr "Npcink Cloud 尚未配置。"
 
-#: includes/class-cloud-runtime-client.php:427
-#: includes/class-cloud-runtime-client.php:503
+#: includes/class-cloud-runtime-client.php:476
+#: includes/class-cloud-runtime-client.php:552
 msgid "This Cloud endpoint is not allowed by the Cloud Addon runtime contract."
 msgstr "Cloud Addon 运行时合同不允许此 Cloud 端点。"
 
-#: includes/class-cloud-runtime-client.php:443
+#: includes/class-cloud-runtime-client.php:492
 msgid "Cloud runtime request payload could not be encoded."
 msgstr "无法编码 Cloud runtime 请求 payload。"
 
-#: includes/class-cloud-runtime-client.php:543
+#: includes/class-cloud-runtime-client.php:592
 msgid "Cloud Base URL is required."
 msgstr "Cloud Base URL 为必填项。"
 
-#: includes/class-cloud-runtime-client.php:573
+#: includes/class-cloud-runtime-client.php:622
 msgid "Cloud liveness check failed."
 msgstr "Cloud 存活检查失败。"
 
-#: includes/class-cloud-runtime-client.php:579
+#: includes/class-cloud-runtime-client.php:628
 msgid "Cloud service is live."
 msgstr "Cloud 服务在线。"
 
-#: includes/class-cloud-runtime-client.php:600
+#: includes/class-cloud-runtime-client.php:649
 msgid "Cloud runtime request failed."
 msgstr "Cloud runtime 请求失败。"
 
-#: includes/class-cloud-runtime-client.php:636
+#: includes/class-cloud-runtime-client.php:685
 msgid "Cloud runtime artifact download failed."
 msgstr "Cloud runtime artifact 下载失败。"
 
-#: includes/class-cloud-runtime-client.php:653
+#: includes/class-cloud-runtime-client.php:702
 msgid "Cloud artifact download exceeds the local preview size limit."
 msgstr "Cloud artifact 下载超过本地预览大小限制。"
 
-#: includes/class-cloud-runtime-client.php:883
+#: includes/class-cloud-runtime-client.php:932
 msgid "Cloud media derivative request payload could not be encoded."
 msgstr "无法编码 Cloud 媒体衍生请求 payload。"
 
-#: includes/class-cloud-runtime-client.php:1011
+#: includes/class-cloud-runtime-client.php:1285
 msgid "Cannot connect to Npcink Cloud. Check the Cloud Base URL."
 msgstr "无法连接到 Npcink Cloud。请检查 Cloud Base URL。"
 
 #. translators: 1: Cloud base URL, 2: transport error.
-#: includes/class-cloud-runtime-client.php:1016
+#: includes/class-cloud-runtime-client.php:1290
 #, php-format
 msgid "Cannot connect to %1$s. Original error: %2$s"
 msgstr "无法连接到 %1$s。原始错误：%2$s"
@@ -455,7 +456,7 @@ msgstr "保存 Cloud Base URL 和 Cloud API Key 以验证此连接器。"
 msgid "Entitlement"
 msgstr "权益"
 
-#: includes/bootstrap.php:266
+#: includes/bootstrap.php:296
 #: includes/class-cloud-settings-page.php:382
 #: includes/class-cloud-settings-page.php:388
 msgid "Settings"
@@ -493,7 +494,7 @@ msgid "Package"
 msgstr "套餐"
 
 #: includes/class-cloud-settings-page.php:467
-#: includes/class-cloud-settings-page.php:1157
+#: includes/class-cloud-settings-page.php:1213
 msgid "Not checked"
 msgstr "未检查"
 
@@ -514,7 +515,7 @@ msgid "Leave blank to keep the stored Cloud API Key. The secret is never printed
 msgstr "留空可保留已存储的 Cloud API Key。secret 永远不会显示在此页面中。"
 
 #: includes/class-cloud-settings-page.php:542
-#: includes/class-cloud-settings-page.php:1026
+#: includes/class-cloud-settings-page.php:1082
 msgid "Timeout"
 msgstr "超时"
 
@@ -694,13 +695,13 @@ msgstr "版本"
 
 #: includes/class-cloud-settings-page.php:834
 #: includes/class-cloud-settings-page.php:835
-#: includes/class-cloud-settings-page.php:1001
+#: includes/class-cloud-settings-page.php:1057
 msgid "yes"
 msgstr "是"
 
 #: includes/class-cloud-settings-page.php:834
 #: includes/class-cloud-settings-page.php:835
-#: includes/class-cloud-settings-page.php:1001
+#: includes/class-cloud-settings-page.php:1057
 msgid "no"
 msgstr "否"
 
@@ -713,14 +714,15 @@ msgid "Availability"
 msgstr "可用性"
 
 #: includes/class-cloud-settings-page.php:928
-#: includes/class-cloud-settings-page.php:1161
+#: includes/class-cloud-settings-page.php:1217
 msgid "available"
 msgstr "可用"
 
 #: includes/class-cloud-settings-page.php:928
-#: includes/class-cloud-settings-page.php:1162
-#: includes/class-cloud-settings-page.php:1183
-#: includes/class-cloud-settings-page.php:1196
+#: includes/class-cloud-settings-page.php:1218
+#: includes/class-cloud-settings-page.php:1239
+#: includes/class-cloud-settings-page.php:1251
+#: includes/class-cloud-settings-page.php:1272
 msgid "unavailable"
 msgstr "不可用"
 
@@ -732,93 +734,93 @@ msgstr "权益状态"
 msgid "Synced at"
 msgstr "同步时间"
 
-#: includes/class-cloud-settings-page.php:1022
+#: includes/class-cloud-settings-page.php:1078
 msgid "Timeout, verification failure, and entitlement message."
 msgstr "超时、验证失败和权益消息。"
 
 #. translators: %d: timeout in seconds.
-#: includes/class-cloud-settings-page.php:1031
+#: includes/class-cloud-settings-page.php:1087
 #, php-format
 msgid "%d seconds"
 msgstr "%d 秒"
 
-#: includes/class-cloud-settings-page.php:1038
+#: includes/class-cloud-settings-page.php:1094
 msgid "Connection code"
 msgstr "连接代码"
 
-#: includes/class-cloud-settings-page.php:1042
+#: includes/class-cloud-settings-page.php:1098
 msgid "Last failure"
 msgstr "上次失败"
 
-#: includes/class-cloud-settings-page.php:1046
+#: includes/class-cloud-settings-page.php:1102
 msgid "Entitlement message"
 msgstr "权益消息"
 
-#: includes/class-cloud-settings-page.php:1050
+#: includes/class-cloud-settings-page.php:1106
 msgid "Entitlement state"
 msgstr "权益状态"
 
 #. translators: %s: liveness error.
-#: includes/class-cloud-settings-page.php:1069
+#: includes/class-cloud-settings-page.php:1125
 #, php-format
 msgid "Live check failed: %s"
 msgstr "存活检查失败：%s"
 
 #. translators: %s: signed verification error.
-#: includes/class-cloud-settings-page.php:1076
+#: includes/class-cloud-settings-page.php:1132
 #, php-format
 msgid "Signed verification failed: %s"
 msgstr "签名验证失败：%s"
 
-#: includes/class-cloud-settings-page.php:1083
+#: includes/class-cloud-settings-page.php:1139
 msgid "Cloud verification failed."
 msgstr "Cloud 验证失败。"
 
-#: includes/class-cloud-runtime-client.php:359
+#: includes/class-cloud-runtime-client.php:408
 msgid "Agent feedback requires the cloud_agent_feedback.v1 contract."
 msgstr "Agent feedback 需要 cloud_agent_feedback.v1 合同。"
 
-#: includes/class-cloud-settings-page.php:961
+#: includes/class-cloud-settings-page.php:1017
 msgid "Pro Cloud Runtime"
 msgstr "Pro Cloud Runtime"
 
-#: includes/class-cloud-settings-page.php:962
+#: includes/class-cloud-settings-page.php:1018
 msgid "Read-only Cloud entitlement detail for local plugin displays. This addon does not own billing truth, scheduling, queues, or WordPress writes."
 msgstr "面向本地插件展示的只读 Cloud entitlement 详情。本 addon 不拥有计费事实、调度、队列或 WordPress 写入。"
 
-#: includes/class-cloud-settings-page.php:966
+#: includes/class-cloud-settings-page.php:1022
 msgid "Feature"
 msgstr "功能"
 
-#: includes/class-cloud-settings-page.php:970
+#: includes/class-cloud-settings-page.php:1026
 msgid "Nightly runs"
 msgstr "夜间运行"
 
 #. translators: 1: used runs, 2: max runs, 3: remaining runs.
-#: includes/class-cloud-settings-page.php:975
+#: includes/class-cloud-settings-page.php:1031
 #, php-format
 msgid "%1$d used / %2$d limit / %3$d remaining"
 msgstr "已用 %1$d / 上限 %2$d / 剩余 %3$d"
 
-#: includes/class-cloud-settings-page.php:984
+#: includes/class-cloud-settings-page.php:1040
 msgid "Batch limit"
 msgstr "批量上限"
 
-#: includes/class-cloud-settings-page.php:988
+#: includes/class-cloud-settings-page.php:1044
 msgid "Retention"
 msgstr "保留期"
 
 #. translators: %d: retention days.
-#: includes/class-cloud-settings-page.php:993
+#: includes/class-cloud-settings-page.php:1049
 #, php-format
 msgid "%d days"
 msgstr "%d 天"
 
-#: includes/class-cloud-settings-page.php:1000
+#: includes/class-cloud-settings-page.php:1056
 msgid "Quota exhausted"
 msgstr "配额已用尽"
 
-#: includes/class-cloud-settings-page.php:1004
+#: includes/class-cloud-settings-page.php:1060
 msgid "Local truth"
 msgstr "本地事实"
 
@@ -897,3 +899,51 @@ msgstr "低质量标签"
 #: includes/class-cloud-settings-page.php:878
 msgid "Rejected reason"
 msgstr "拒绝原因"
+
+#: includes/class-cloud-runtime-client.php:979
+msgid "Image context evidence requires a suggestion-only no-write request contract."
+msgstr "图片上下文证据需要仅建议、不写入的请求合同。"
+
+#: includes/class-cloud-runtime-client.php:1016
+msgid "Image context evidence requires at least one bounded media URL."
+msgstr "图片上下文证据至少需要一个受限的媒体 URL。"
+
+#: includes/class-cloud-runtime-client.php:1086
+msgid "Cloud did not return usable image context evidence."
+msgstr "Cloud 未返回可用的图片上下文证据。"
+
+#: includes/class-cloud-settings-page.php:964
+msgid "AI Credit Usage"
+msgstr "AI 点数用量"
+
+#: includes/class-cloud-settings-page.php:965
+msgid "Summary-only Cloud credit projection. The Cloud portal owns the detailed ledger, billing explanation, and historical usage."
+msgstr "仅摘要展示的 Cloud 点数预估。详细账本、计费说明和历史用量由 Cloud 门户负责。"
+
+#: includes/class-cloud-settings-page.php:967
+msgid "Cloud did not return a local credit summary yet. Open the Cloud portal for the current usage detail."
+msgstr "Cloud 尚未返回本地点数摘要。请打开 Cloud 门户查看当前用量详情。"
+
+#: includes/class-cloud-settings-page.php:972
+msgid "Used credits"
+msgstr "已用点数"
+
+#: includes/class-cloud-settings-page.php:976
+msgid "Limit"
+msgstr "限额"
+
+#: includes/class-cloud-settings-page.php:980
+msgid "Remaining"
+msgstr "剩余"
+
+#: includes/class-cloud-settings-page.php:984
+msgid "Status"
+msgstr "状态"
+
+#: includes/class-cloud-settings-page.php:988
+msgid "Generated at"
+msgstr "生成时间"
+
+#: includes/class-cloud-settings-page.php:997
+msgid "View credit details in Cloud"
+msgstr "在 Cloud 中查看点数详情"

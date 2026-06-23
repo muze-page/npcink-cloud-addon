@@ -11,24 +11,23 @@ require_once __DIR__ . '/helpers.php';
 
 maca_load_addon_classes();
 
-$GLOBALS['maca_options']['magick_ai_cloud_addon_settings'] = array(
-	'base_url' => 'https://legacy-cloud.example.test',
-	'site_id' => 'legacy_site',
-	'key_id' => 'legacy_key',
-	'secret' => 'legacy_secret',
+$GLOBALS['maca_options'][ Npcink_Cloud_Addon_Settings::option_name() ] = array(
+	'base_url' => 'https://cloud.example.test',
+	'site_id' => 'npcink_site',
+	'key_id' => 'npcink_key',
+	'secret' => 'npcink_secret',
 	'timeout' => 12,
 	'verified' => true,
 	'verified_at' => '2026-06-20 00:00:00 UTC',
 	'last_verification_error' => '',
 	'monitoring_enabled' => true,
 );
-$legacy_settings = Npcink_Cloud_Addon_Settings::get_settings();
+$stored_settings = Npcink_Cloud_Addon_Settings::get_settings();
 maca_assert(
-	'https://legacy-cloud.example.test' === $legacy_settings['base_url']
-	&& 'legacy_site' === $legacy_settings['site_id']
-	&& ! isset( $GLOBALS['maca_options']['magick_ai_cloud_addon_settings'] )
+	'https://cloud.example.test' === $stored_settings['base_url']
+	&& 'npcink_site' === $stored_settings['site_id']
 	&& isset( $GLOBALS['maca_options'][ Npcink_Cloud_Addon_Settings::option_name() ] ),
-	'Behavior: legacy Magick AI Cloud Addon settings import once into the Npcink option.'
+	'Behavior: Npcink Cloud Addon settings read from the current option.'
 );
 maca_reset_test_state();
 

@@ -266,97 +266,98 @@ msgstr "渠道适配器"
 msgid "Cloud Addon"
 msgstr "云端扩展"
 
-#: includes/class-cloud-runtime-client.php:66
+#: includes/class-cloud-runtime-client.php:103
 msgid "Signed verification was not attempted because the Cloud service is not reachable."
 msgstr "Cloud 服务不可达，因此未尝试签名验证。"
 
-#: includes/class-cloud-runtime-client.php:68
+#: includes/class-cloud-runtime-client.php:105
 msgid "Cloud credentials are incomplete."
 msgstr "Cloud 凭据不完整。"
 
-#: includes/class-cloud-runtime-client.php:75
+#: includes/class-cloud-runtime-client.php:112
 msgid "Signed Cloud request verified."
 msgstr "签名 Cloud 请求已验证。"
 
-#: includes/class-cloud-runtime-client.php:170
+#: includes/class-cloud-runtime-client.php:232
 msgid "Only source_file and watermark_file uploads are allowed for media derivative transport."
 msgstr "媒体衍生传输只允许 source_file 和 watermark_file 上传。"
 
-#: includes/class-cloud-runtime-client.php:208
-#: includes/class-cloud-runtime-client.php:227
-#: includes/class-cloud-runtime-client.php:261
+#: includes/class-cloud-runtime-client.php:270
+#: includes/class-cloud-runtime-client.php:289
+#: includes/class-cloud-runtime-client.php:323
 msgid "Cloud run_id is required."
 msgstr "Cloud run_id 为必填项。"
 
-#: includes/class-cloud-runtime-client.php:291
+#: includes/class-cloud-runtime-client.php:353
 msgid "Cloud artifact_id is required."
 msgstr "Cloud artifact_id 为必填项。"
 
-#: includes/class-cloud-runtime-client.php:316
+#: includes/class-cloud-runtime-client.php:378
 msgid "Cloud site_id is required."
 msgstr "Cloud site_id 为必填项。"
 
-#: includes/class-cloud-runtime-client.php:337
+#: includes/class-cloud-runtime-client.php:399
 msgid "Cloud profile_id is required."
 msgstr "Cloud profile_id 为必填项。"
 
-#: includes/class-cloud-runtime-client.php:356
+#: includes/class-cloud-runtime-client.php:418
 msgid "Cloud instance_id is required."
 msgstr "Cloud instance_id 为必填项。"
 
-#: includes/class-cloud-runtime-client.php:375
+#: includes/class-cloud-runtime-client.php:437
 msgid "No observability events are ready to upload."
 msgstr "没有可上传的 observability 事件。"
 
-#: includes/bootstrap.php:120
-#: includes/class-cloud-runtime-client.php:466
-#: includes/class-cloud-runtime-client.php:542
+#: includes/bootstrap.php:121
+#: includes/bootstrap.php:151
+#: includes/class-cloud-runtime-client.php:528
+#: includes/class-cloud-runtime-client.php:604
 msgid "Npcink Cloud is not configured."
 msgstr "Npcink Cloud 尚未配置。"
 
-#: includes/class-cloud-runtime-client.php:476
-#: includes/class-cloud-runtime-client.php:552
+#: includes/class-cloud-runtime-client.php:538
+#: includes/class-cloud-runtime-client.php:614
 msgid "This Cloud endpoint is not allowed by the Cloud Addon runtime contract."
 msgstr "Cloud Addon 运行时合同不允许此 Cloud 端点。"
 
-#: includes/class-cloud-runtime-client.php:492
+#: includes/class-cloud-runtime-client.php:554
 msgid "Cloud runtime request payload could not be encoded."
 msgstr "无法编码 Cloud runtime 请求 payload。"
 
-#: includes/class-cloud-runtime-client.php:592
+#: includes/class-cloud-runtime-client.php:654
 msgid "Cloud Base URL is required."
 msgstr "Cloud Base URL 为必填项。"
 
-#: includes/class-cloud-runtime-client.php:622
+#: includes/class-cloud-runtime-client.php:684
 msgid "Cloud liveness check failed."
 msgstr "Cloud 存活检查失败。"
 
-#: includes/class-cloud-runtime-client.php:628
+#: includes/class-cloud-runtime-client.php:690
 msgid "Cloud service is live."
 msgstr "Cloud 服务在线。"
 
-#: includes/class-cloud-runtime-client.php:649
+#: includes/class-cloud-runtime-client.php:711
 msgid "Cloud runtime request failed."
 msgstr "Cloud runtime 请求失败。"
 
-#: includes/class-cloud-runtime-client.php:685
+#: includes/class-cloud-runtime-client.php:747
 msgid "Cloud runtime artifact download failed."
 msgstr "Cloud runtime artifact 下载失败。"
 
-#: includes/class-cloud-runtime-client.php:702
+#: includes/class-cloud-runtime-client.php:764
 msgid "Cloud artifact download exceeds the local preview size limit."
 msgstr "Cloud artifact 下载超过本地预览大小限制。"
 
-#: includes/class-cloud-runtime-client.php:932
+#: includes/class-cloud-runtime-client.php:994
 msgid "Cloud media derivative request payload could not be encoded."
 msgstr "无法编码 Cloud 媒体衍生请求 payload。"
 
-#: includes/class-cloud-runtime-client.php:1285
+#: includes/class-cloud-runtime-client.php:1488
 msgid "Cannot connect to Npcink Cloud. Check the Cloud Base URL."
 msgstr "无法连接到 Npcink Cloud。请检查 Cloud Base URL。"
 
 #. translators: 1: Cloud base URL, 2: transport error.
-#: includes/class-cloud-runtime-client.php:1290
+#: includes/class-cloud-runtime-client.php:1493
 #, php-format
 msgid "Cannot connect to %1$s. Original error: %2$s"
 msgstr "无法连接到 %1$s。原始错误：%2$s"
@@ -456,7 +457,7 @@ msgstr "保存 Cloud Base URL 和 Cloud API Key 以验证此连接器。"
 msgid "Entitlement"
 msgstr "权益"
 
-#: includes/bootstrap.php:296
+#: includes/bootstrap.php:328
 #: includes/class-cloud-settings-page.php:382
 #: includes/class-cloud-settings-page.php:388
 msgid "Settings"
@@ -776,7 +777,7 @@ msgstr "签名验证失败：%s"
 msgid "Cloud verification failed."
 msgstr "Cloud 验证失败。"
 
-#: includes/class-cloud-runtime-client.php:408
+#: includes/class-cloud-runtime-client.php:470
 msgid "Agent feedback requires the cloud_agent_feedback.v1 contract."
 msgstr "Agent feedback 需要 cloud_agent_feedback.v1 合同。"
 
@@ -900,15 +901,15 @@ msgstr "低质量标签"
 msgid "Rejected reason"
 msgstr "拒绝原因"
 
-#: includes/class-cloud-runtime-client.php:979
+#: includes/class-cloud-runtime-client.php:1168
 msgid "Image context evidence requires a suggestion-only no-write request contract."
 msgstr "图片上下文证据需要仅建议、不写入的请求合同。"
 
-#: includes/class-cloud-runtime-client.php:1016
+#: includes/class-cloud-runtime-client.php:1205
 msgid "Image context evidence requires at least one bounded media URL."
 msgstr "图片上下文证据至少需要一个受限的媒体 URL。"
 
-#: includes/class-cloud-runtime-client.php:1086
+#: includes/class-cloud-runtime-client.php:1275
 msgid "Cloud did not return usable image context evidence."
 msgstr "Cloud 未返回可用的图片上下文证据。"
 
@@ -947,3 +948,35 @@ msgstr "生成时间"
 #: includes/class-cloud-settings-page.php:997
 msgid "View credit details in Cloud"
 msgstr "在 Cloud 中查看点数详情"
+
+#: includes/class-cloud-runtime-client.php:1036
+msgid "WordPress AI connector requests require the wp_ai_connector_runtime.v1 contract."
+msgstr "WordPress AI 连接器请求需要 wp_ai_connector_runtime.v1 合同。"
+
+#: includes/class-cloud-runtime-client.php:1045
+msgid "WordPress AI connector requests require a supported site-task surface."
+msgstr "WordPress AI 连接器请求需要受支持的站点任务场景。"
+
+#: includes/class-cloud-runtime-client.php:1054
+msgid "WordPress AI connector requests do not support generic chat sessions, tool calls, streams, or credential fields."
+msgstr "WordPress AI 连接器请求不支持通用聊天会话、工具调用、流式输出或凭据字段。"
+
+#: includes/class-cloud-runtime-client.php:1066
+msgid "WordPress AI connector request could not be encoded."
+msgstr "无法编码 WordPress AI 连接器请求。"
+
+#: includes/class-cloud-runtime-client.php:1073
+msgid "WordPress AI connector request exceeds the scene runtime size limit."
+msgstr "WordPress AI 连接器请求超过场景运行时大小限制。"
+
+#: includes/class-cloud-runtime-client.php:1082
+msgid "WordPress AI connector prompt exceeds the scene runtime size limit."
+msgstr "WordPress AI 连接器 prompt 超过场景运行时大小限制。"
+
+#: includes/class-cloud-wordpress-ai-connector.php:81
+msgid "Use verified Npcink Cloud settings for bounded WordPress AI scene tasks."
+msgstr "使用已验证的 Npcink Cloud 设置，为 WordPress AI 的固定编辑场景提供云端建议能力。"
+
+#: includes/class-cloud-wordpress-ai-connector.php:203
+msgid "Bounded WordPress AI scene tasks through verified Npcink Cloud settings."
+msgstr "通过已验证的 Npcink Cloud 设置处理受限的 WordPress AI 场景任务。"

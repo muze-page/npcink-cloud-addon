@@ -30,6 +30,7 @@ if ( ! class_exists( 'Npcink_Cloud_WordPress_AI_Connector' ) ) {
 			add_action( 'init', array( __CLASS__, 'register_ai_provider' ), 5 );
 			add_action( 'wp_connectors_init', array( __CLASS__, 'register_connector' ) );
 			add_action( 'admin_init', array( __CLASS__, 'sync_connected_marker' ) );
+			add_action( 'admin_head-options-connectors', array( __CLASS__, 'render_connectors_page_styles' ) );
 			add_filter( 'wpai_has_ai_credentials', array( __CLASS__, 'filter_has_ai_credentials' ), 100, 2 );
 			add_filter( 'wpai_preferred_text_models', array( __CLASS__, 'filter_preferred_text_models' ) );
 		}
@@ -90,6 +91,21 @@ if ( ! class_exists( 'Npcink_Cloud_WordPress_AI_Connector' ) ) {
 					),
 				)
 			);
+		}
+
+		/**
+		 * Keeps the WordPress Connectors card status-only for this fixed Cloud connector.
+		 *
+		 * @return void
+		 */
+		public static function render_connectors_page_styles(): void {
+			?>
+			<style id="npcink-cloud-addon-connectors-page-styles">
+				.connector-item--npcink-cloud-addon button.components-button {
+					display: none;
+				}
+			</style>
+			<?php
 		}
 
 		/**

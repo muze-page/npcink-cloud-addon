@@ -113,9 +113,11 @@ maca_assert(
 	&& false !== strpos( $wordpress_ai_connector, "method'       => 'api_key'" )
 	&& false !== strpos( $wordpress_ai_connector, "SETTING_NAME = 'npcink_cloud_addon_wp_ai_connector_connected'" )
 	&& false !== strpos( $wordpress_ai_connector, "show_in_rest' => false" )
+	&& false !== strpos( $wordpress_ai_connector, 'render_connectors_page_styles' )
+	&& false !== strpos( $wordpress_ai_connector, 'connector-item--npcink-cloud-addon button.components-button' )
 	&& false !== strpos( $wordpress_ai_connector, 'Npcink_Cloud_Addon_Settings::is_verified()' )
 	&& false === strpos( $wordpress_ai_connector, "get_option( 'secret'" ),
-	'WordPress connector registration projects verified Cloud settings into one fixed Npcink Cloud card without exposing stored secrets.'
+	'WordPress connector registration projects verified Cloud settings into one fixed status-only Npcink Cloud card without exposing stored secrets.'
 );
 
 maca_assert(

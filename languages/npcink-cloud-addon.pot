@@ -9,7 +9,7 @@ msgstr ""
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"POT-Creation-Date: 2026-06-23T01:56:38+00:00\n"
+"POT-Creation-Date: 2026-06-24T15:56:14+00:00\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "X-Generator: WP-CLI 2.12.0\n"
 "X-Domain: npcink-cloud-addon\n"
@@ -34,13 +34,14 @@ msgstr ""
 msgid "Npcink"
 msgstr ""
 
-#: includes/bootstrap.php:120
-#: includes/class-cloud-runtime-client.php:466
-#: includes/class-cloud-runtime-client.php:542
+#: includes/bootstrap.php:121
+#: includes/bootstrap.php:151
+#: includes/class-cloud-runtime-client.php:528
+#: includes/class-cloud-runtime-client.php:604
 msgid "Npcink Cloud is not configured."
 msgstr ""
 
-#: includes/bootstrap.php:296
+#: includes/bootstrap.php:328
 #: includes/class-cloud-settings-page.php:382
 #: includes/class-cloud-settings-page.php:388
 msgid "Settings"
@@ -285,107 +286,131 @@ msgstr ""
 msgid "Cloud Addon"
 msgstr ""
 
-#: includes/class-cloud-runtime-client.php:66
+#: includes/class-cloud-runtime-client.php:103
 msgid "Signed verification was not attempted because the Cloud service is not reachable."
 msgstr ""
 
-#: includes/class-cloud-runtime-client.php:68
+#: includes/class-cloud-runtime-client.php:105
 msgid "Cloud credentials are incomplete."
 msgstr ""
 
-#: includes/class-cloud-runtime-client.php:75
+#: includes/class-cloud-runtime-client.php:112
 msgid "Signed Cloud request verified."
 msgstr ""
 
-#: includes/class-cloud-runtime-client.php:170
+#: includes/class-cloud-runtime-client.php:232
 msgid "Only source_file and watermark_file uploads are allowed for media derivative transport."
 msgstr ""
 
-#: includes/class-cloud-runtime-client.php:208
-#: includes/class-cloud-runtime-client.php:227
-#: includes/class-cloud-runtime-client.php:261
+#: includes/class-cloud-runtime-client.php:270
+#: includes/class-cloud-runtime-client.php:289
+#: includes/class-cloud-runtime-client.php:323
 msgid "Cloud run_id is required."
 msgstr ""
 
-#: includes/class-cloud-runtime-client.php:291
+#: includes/class-cloud-runtime-client.php:353
 msgid "Cloud artifact_id is required."
 msgstr ""
 
-#: includes/class-cloud-runtime-client.php:316
+#: includes/class-cloud-runtime-client.php:378
 msgid "Cloud site_id is required."
 msgstr ""
 
-#: includes/class-cloud-runtime-client.php:337
+#: includes/class-cloud-runtime-client.php:399
 msgid "Cloud profile_id is required."
 msgstr ""
 
-#: includes/class-cloud-runtime-client.php:356
+#: includes/class-cloud-runtime-client.php:418
 msgid "Cloud instance_id is required."
 msgstr ""
 
-#: includes/class-cloud-runtime-client.php:375
+#: includes/class-cloud-runtime-client.php:437
 msgid "No observability events are ready to upload."
 msgstr ""
 
-#: includes/class-cloud-runtime-client.php:408
+#: includes/class-cloud-runtime-client.php:470
 msgid "Agent feedback requires the cloud_agent_feedback.v1 contract."
 msgstr ""
 
-#: includes/class-cloud-runtime-client.php:476
-#: includes/class-cloud-runtime-client.php:552
+#: includes/class-cloud-runtime-client.php:538
+#: includes/class-cloud-runtime-client.php:614
 msgid "This Cloud endpoint is not allowed by the Cloud Addon runtime contract."
 msgstr ""
 
-#: includes/class-cloud-runtime-client.php:492
+#: includes/class-cloud-runtime-client.php:554
 msgid "Cloud runtime request payload could not be encoded."
 msgstr ""
 
-#: includes/class-cloud-runtime-client.php:592
+#: includes/class-cloud-runtime-client.php:654
 msgid "Cloud Base URL is required."
 msgstr ""
 
-#: includes/class-cloud-runtime-client.php:622
+#: includes/class-cloud-runtime-client.php:684
 msgid "Cloud liveness check failed."
 msgstr ""
 
-#: includes/class-cloud-runtime-client.php:628
+#: includes/class-cloud-runtime-client.php:690
 msgid "Cloud service is live."
 msgstr ""
 
-#: includes/class-cloud-runtime-client.php:649
+#: includes/class-cloud-runtime-client.php:711
 msgid "Cloud runtime request failed."
 msgstr ""
 
-#: includes/class-cloud-runtime-client.php:685
+#: includes/class-cloud-runtime-client.php:747
 msgid "Cloud runtime artifact download failed."
 msgstr ""
 
-#: includes/class-cloud-runtime-client.php:702
+#: includes/class-cloud-runtime-client.php:764
 msgid "Cloud artifact download exceeds the local preview size limit."
 msgstr ""
 
-#: includes/class-cloud-runtime-client.php:932
+#: includes/class-cloud-runtime-client.php:994
 msgid "Cloud media derivative request payload could not be encoded."
 msgstr ""
 
-#: includes/class-cloud-runtime-client.php:979
+#: includes/class-cloud-runtime-client.php:1036
+msgid "WordPress AI connector requests require the wp_ai_connector_runtime.v1 contract."
+msgstr ""
+
+#: includes/class-cloud-runtime-client.php:1045
+msgid "WordPress AI connector requests require a supported site-task surface."
+msgstr ""
+
+#: includes/class-cloud-runtime-client.php:1054
+msgid "WordPress AI connector requests do not support generic chat sessions, tool calls, streams, or credential fields."
+msgstr ""
+
+#: includes/class-cloud-runtime-client.php:1066
+msgid "WordPress AI connector request could not be encoded."
+msgstr ""
+
+#: includes/class-cloud-runtime-client.php:1073
+msgid "WordPress AI connector request exceeds the scene runtime size limit."
+msgstr ""
+
+#: includes/class-cloud-runtime-client.php:1082
+msgid "WordPress AI connector prompt exceeds the scene runtime size limit."
+msgstr ""
+
+#: includes/class-cloud-runtime-client.php:1168
 msgid "Image context evidence requires a suggestion-only no-write request contract."
 msgstr ""
 
-#: includes/class-cloud-runtime-client.php:1016
+#: includes/class-cloud-runtime-client.php:1205
 msgid "Image context evidence requires at least one bounded media URL."
 msgstr ""
 
-#: includes/class-cloud-runtime-client.php:1086
+#: includes/class-cloud-runtime-client.php:1275
 msgid "Cloud did not return usable image context evidence."
 msgstr ""
 
-#: includes/class-cloud-runtime-client.php:1285
+#: includes/class-cloud-runtime-client.php:1488
 msgid "Cannot connect to Npcink Cloud. Check the Cloud Base URL."
 msgstr ""
 
 #. translators: 1: Cloud base URL, 2: transport error.
-#: includes/class-cloud-runtime-client.php:1290
+#: includes/class-cloud-runtime-client.php:1493
 #, php-format
 msgid "Cannot connect to %1$s. Original error: %2$s"
 msgstr ""
@@ -947,4 +972,12 @@ msgstr ""
 
 #: includes/class-cloud-settings-page.php:1139
 msgid "Cloud verification failed."
+msgstr ""
+
+#: includes/class-cloud-wordpress-ai-connector.php:81
+msgid "Use verified Npcink Cloud settings for bounded WordPress AI scene tasks."
+msgstr ""
+
+#: includes/class-cloud-wordpress-ai-connector.php:203
+msgid "Bounded WordPress AI scene tasks through verified Npcink Cloud settings."
 msgstr ""

@@ -188,9 +188,11 @@ queue, a proposal creator, a media metadata writer, or a second control plane.
 
 The addon registers one fixed `Npcink Cloud` connector on the WordPress
 Connectors surface when Cloud settings have passed Save and Verify. The
-connector uses a synthetic marker option to satisfy the WordPress AI plugin's
-`ai_provider` + `api_key` credential shape, but the marker is not a Cloud secret
-and is not exposed through REST.
+connector uses a synthetic marker option to satisfy the WordPress Connectors
+page's `ai_provider` + `api_key` render contract and local AI plugin
+availability checks. The marker is not a Cloud secret and is not exposed through
+REST. Cloud credentials remain owned by the addon settings page, and the
+Connectors card stays status-only for this fixed Cloud connector.
 
 `execute_wordpress_ai_connector_runtime()` is the bounded transport seam for
 that connector/provider path. It must be treated as a scene runtime, not as a

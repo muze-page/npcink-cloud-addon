@@ -26,6 +26,7 @@ The addon owns:
   - `GET /v1/agent-feedback/summary`
 - Site Knowledge public content change bridge through `POST /v1/runtime/execute`.
 - Bounded image context evidence transport through `POST /v1/runtime/execute`.
+- Bounded WordPress AI connector scene runtime through `POST /v1/runtime/execute`.
 - `Npcink > Cloud Addon`.
 
 The addon does not own approval truth, proposal truth, WordPress writes,
@@ -51,6 +52,7 @@ npcink_cloud_addon_runtime_client(): ?Npcink_Cloud_Runtime_Client
 npcink_cloud_addon_verified_runtime_client(): ?Npcink_Cloud_Runtime_Client
 npcink_cloud_addon_dispatch_media_derivative_cloud_request(array $ability_response, array $source_artifact, string $trace_id = '', string $idempotency_key = '')
 npcink_cloud_addon_request_image_context_evidence(array $image_context_evidence_request, string $trace_id = '', string $idempotency_key = '')
+npcink_cloud_addon_execute_wordpress_ai_connector_runtime(array $request, string $trace_id = '', string $idempotency_key = '')
 npcink_cloud_addon_build_media_derivative_proposal_payload(array $ability_response, array $cloud_result, array $derivative_artifact)
 npcink_cloud_addon_download_media_derivative_artifact(array $derivative_artifact, string $trace_id = '')
 npcink_cloud_addon_site_knowledge_change_bridge_health(): array
@@ -61,6 +63,7 @@ npcink_cloud_addon_site_knowledge_change_bridge_health(): array
 ```php
 probe_connectivity(): array
 execute_runtime(array $payload, string $trace_id = '', string $idempotency_key = '')
+execute_wordpress_ai_connector_runtime(array $request, string $trace_id = '', string $idempotency_key = '')
 request_image_context_evidence(array $image_context_evidence_request, string $trace_id = '', string $idempotency_key = '')
 create_media_derivative(array $payload, array $files = array(), string $trace_id = '', string $idempotency_key = '')
 get_run(string $run_id, string $trace_id = '')
@@ -92,6 +95,41 @@ Returned evidence is candidate basis only and must still be visually confirmed
 by the local operator before any future governed apply path.
 
 `npcink_cloud_addon_get_settings()` returns server-side settings, including the stored secret. Do not print it into HTML or logs.
+
+## WordPress AI Connector Runtime
+
+After Cloud settings pass Save and Verify, the addon registers one fixed
+`Npcink Cloud` connector on the WordPress Connectors surface. The connector uses
+a synthetic local marker setting so the WordPress AI plugin can recognize the
+verified Cloud configuration without exposing the stored Cloud secret or adding
+split credential fields.
+
+The addon also exposes
+`npcink_cloud_addon_execute_wordpress_ai_connector_runtime()` as a narrow seam
+for the connector/provider path. It is a WordPress scene runtime, not a generic
+chat API or OpenAI-compatible provider proxy.
+
+When the PHP AI Client is available, the addon registers a scene-gated text
+provider. The provider only forwards calls that originate from known WordPress
+AI plugin Ability classes, such as title, excerpt, metadata, summary,
+classification, moderation, rewrite, or alt-text generation. Direct
+`wp_ai_client_prompt()` usage outside those ability scenes is rejected before a
+Cloud request is made.
+
+The request must use `wp_ai_connector_runtime.v1` and one supported task
+surface, such as `title_generation`, `excerpt_generation`, `meta_description`,
+`content_summary`, `content_rewrite`, `content_classification`,
+`comment_moderation`, `comment_reply_suggest`, or `alt_text_suggest`. The addon
+projects the request into `ability_name=npcink-cloud/wp-ai-connector`,
+`channel=wordpress_ai_connector`, `execution_kind=wordpress_ai_connector`,
+`write_posture=suggestion_only`, `direct_wordpress_write=false`, and
+`no_conversation=true`.
+
+This helper rejects generic chat or provider-control shapes such as `messages`,
+`conversation_id`, `session_id`, `thread_id`, `tools`, `tool_calls`, `functions`,
+`function_call`, `stream`, credentials, cookies, nonces, and signed headers. It
+also clamps timeout to 60 seconds, retention, and retry values to the
+lightweight scene runtime limits.
 
 ## Media Derivative Transport
 

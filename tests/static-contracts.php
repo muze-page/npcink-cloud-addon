@@ -13,6 +13,7 @@ $root = MACA_TEST_ROOT;
 $bootstrap = maca_read( $root . '/includes/bootstrap.php' );
 $transport = maca_read( $root . '/includes/class-cloud-media-derivative-transport.php' );
 $runtime_client = maca_read( $root . '/includes/class-cloud-runtime-client.php' );
+$wordpress_ai_connector = maca_read( $root . '/includes/class-cloud-wordpress-ai-connector.php' );
 $entitlement_summary = maca_read( $root . '/includes/class-cloud-entitlement-summary.php' );
 $observability = maca_read( $root . '/includes/class-cloud-observability-collector.php' );
 $site_knowledge_bridge = maca_read( $root . '/includes/class-cloud-site-knowledge-change-bridge.php' );
@@ -72,6 +73,7 @@ maca_assert(
 	&& false !== strpos( $bootstrap, 'npcink_cloud_addon_verified_runtime_client' )
 	&& false !== strpos( $bootstrap, 'npcink_cloud_addon_dispatch_media_derivative_cloud_request' )
 	&& false !== strpos( $bootstrap, 'npcink_cloud_addon_request_image_context_evidence' )
+	&& false !== strpos( $bootstrap, 'npcink_cloud_addon_execute_wordpress_ai_connector_runtime' )
 	&& false !== strpos( $bootstrap, 'array $watermark_artifact = array()' )
 	&& false !== strpos( $bootstrap, 'npcink_cloud_addon_build_media_derivative_proposal_payload' )
 	&& false !== strpos( $bootstrap, 'npcink_cloud_addon_get_media_derivative_run' )
@@ -80,6 +82,67 @@ maca_assert(
 	&& false !== strpos( $bootstrap, 'npcink_cloud_addon_build_media_derivative_optimization_payload' )
 	&& false !== strpos( $bootstrap, 'npcink_cloud_addon_download_media_derivative_artifact' ),
 	'Bootstrap exposes verified runtime and media derivative transport helpers with optional watermark transport, projections, optimization payloads, and signed preview download.'
+);
+
+maca_assert(
+	false !== strpos( $runtime_client, 'function execute_wordpress_ai_connector_runtime' )
+	&& false !== strpos( $runtime_client, 'normalize_wordpress_ai_connector_request' )
+	&& false !== strpos( $runtime_client, "WP_AI_CONNECTOR_CONTRACT = 'wp_ai_connector_runtime.v1'" )
+	&& false !== strpos( $runtime_client, "'ability_name'        => 'npcink-cloud/wp-ai-connector'" )
+	&& false !== strpos( $runtime_client, "'channel'             => 'wordpress_ai_connector'" )
+	&& false !== strpos( $runtime_client, "'execution_kind'      => 'wordpress_ai_connector'" )
+	&& false !== strpos( $runtime_client, "'write_posture'               => 'suggestion_only'" )
+	&& false !== strpos( $runtime_client, "'direct_wordpress_write'      => false" )
+	&& false !== strpos( $runtime_client, "'no_conversation'             => true" )
+	&& false !== strpos( $runtime_client, 'WP_AI_CONNECTOR_FORBIDDEN_KEYS' )
+	&& false !== strpos( $runtime_client, "'credentials'" )
+	&& false !== strpos( $runtime_client, "'api_key'" )
+	&& false !== strpos( $runtime_client, "'messages'" )
+	&& false !== strpos( $runtime_client, "'conversation_id'" )
+	&& false !== strpos( $runtime_client, "'tool_calls'" )
+	&& false !== strpos( $runtime_client, "'stream'" ),
+	'Runtime client exposes a bounded WordPress AI connector scene runtime, not a generic chat shape.'
+);
+
+maca_assert(
+	false !== strpos( $bootstrap, 'class-cloud-wordpress-ai-connector.php' )
+	&& false !== strpos( $bootstrap, 'Npcink_Cloud_WordPress_AI_Connector::register()' )
+	&& false !== strpos( $wordpress_ai_connector, "CONNECTOR_ID = 'npcink-cloud'" )
+	&& false !== strpos( $wordpress_ai_connector, "CONNECTOR_NAME = 'Npcink Cloud'" )
+	&& false !== strpos( $wordpress_ai_connector, "type'           => 'ai_provider'" )
+	&& false !== strpos( $wordpress_ai_connector, "method'       => 'api_key'" )
+	&& false !== strpos( $wordpress_ai_connector, "SETTING_NAME = 'npcink_cloud_addon_wp_ai_connector_connected'" )
+	&& false !== strpos( $wordpress_ai_connector, "show_in_rest' => false" )
+	&& false !== strpos( $wordpress_ai_connector, 'Npcink_Cloud_Addon_Settings::is_verified()' )
+	&& false === strpos( $wordpress_ai_connector, "get_option( 'secret'" ),
+	'WordPress connector registration projects verified Cloud settings into one fixed Npcink Cloud card without exposing stored secrets.'
+);
+
+maca_assert(
+	false !== strpos( $wordpress_ai_connector, 'class Npcink_Cloud_WordPress_AI_Provider' )
+	&& false !== strpos( $wordpress_ai_connector, 'class Npcink_Cloud_WordPress_AI_Text_Model' )
+	&& false !== strpos( $wordpress_ai_connector, 'detect_scene_task' )
+	&& false !== strpos( $wordpress_ai_connector, 'WordPress\\\\AI\\\\Abilities\\\\Title_Generation\\\\Title_Generation' )
+	&& false !== strpos( $wordpress_ai_connector, 'Npcink Cloud AI connector only accepts known WordPress AI ability scene calls' )
+	&& false !== strpos( $wordpress_ai_connector, 'does not support chat history' )
+	&& false !== strpos( $wordpress_ai_connector, 'does not support tools or web search' )
+	&& false !== strpos( $wordpress_ai_connector, 'npcink_cloud_addon_execute_wordpress_ai_connector_runtime' )
+	&& false === strpos( $wordpress_ai_connector, 'chat/completions' )
+	&& false === strpos( $wordpress_ai_connector, 'OpenAiCompatible' ),
+	'AI Client provider is scene-gated to known WordPress AI abilities and does not expose an OpenAI-compatible chat proxy.'
+);
+
+maca_assert(
+	false !== strpos( $readme, 'WordPress AI Connector Runtime' )
+	&& false !== strpos( $readme, 'OpenAI-compatible provider proxy' )
+	&& false !== strpos( $readme, 'scene-gated text' )
+	&& false !== strpos( $runtime_contract, 'WordPress AI Connector Runtime' )
+	&& false !== strpos( $runtime_contract, 'generic chat provider' )
+	&& false !== strpos( $runtime_contract, 'Direct free-form `wp_ai_client_prompt()`' )
+	&& false !== strpos( $adapter_doc, 'WordPress AI Connector Flow' )
+	&& false !== strpos( $adapter_doc, 'must not expose an OpenAI-compatible endpoint' )
+	&& false !== strpos( $adapter_doc, 'human chat' ),
+	'Docs describe the WordPress AI connector seam as scene-bound runtime only.'
 );
 
 maca_assert(

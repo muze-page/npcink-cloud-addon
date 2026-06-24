@@ -17,6 +17,7 @@ require_once __DIR__ . '/class-cloud-media-derivative-transport.php';
 require_once __DIR__ . '/class-cloud-entitlement-summary.php';
 require_once __DIR__ . '/class-cloud-observability-collector.php';
 require_once __DIR__ . '/class-cloud-site-knowledge-change-bridge.php';
+require_once __DIR__ . '/class-cloud-wordpress-ai-connector.php';
 require_once __DIR__ . '/class-cloud-settings-page.php';
 
 if ( ! function_exists( 'npcink_cloud_addon_is_configured' ) ) {
@@ -124,6 +125,36 @@ if ( ! function_exists( 'npcink_cloud_addon_request_image_context_evidence' ) ) 
 
 		return $client->request_image_context_evidence(
 			$image_context_evidence_request,
+			$trace_id,
+			$idempotency_key
+		);
+	}
+}
+
+if ( ! function_exists( 'npcink_cloud_addon_execute_wordpress_ai_connector_runtime' ) ) {
+	/**
+	 * Executes a bounded WordPress AI connector scene request.
+	 *
+	 * This helper is for a future Npcink Cloud connector/provider seam. It is
+	 * intentionally scenario-bound and does not expose generic chat sessions.
+	 *
+	 * @param array<string,mixed> $request WordPress AI connector request.
+	 * @param string              $trace_id Optional trace id.
+	 * @param string              $idempotency_key Optional idempotency key.
+	 * @return array<string,mixed>|WP_Error
+	 */
+	function npcink_cloud_addon_execute_wordpress_ai_connector_runtime( array $request, string $trace_id = '', string $idempotency_key = '' ) {
+		$client = npcink_cloud_addon_runtime_client();
+		if ( ! $client ) {
+			return new WP_Error(
+				'cloud_runtime_unconfigured',
+				__( 'Npcink Cloud is not configured.', 'npcink-cloud-addon' ),
+				array( 'status' => 400 )
+			);
+		}
+
+		return $client->execute_wordpress_ai_connector_runtime(
+			$request,
 			$trace_id,
 			$idempotency_key
 		);
@@ -276,6 +307,7 @@ if ( ! function_exists( 'npcink_cloud_addon_bootstrap' ) ) {
 		Npcink_Cloud_Addon_Settings::register();
 		Npcink_Cloud_Observability_Collector::register();
 		Npcink_Cloud_Site_Knowledge_Change_Bridge::register();
+		Npcink_Cloud_WordPress_AI_Connector::register();
 		Npcink_Cloud_Settings_Page::register();
 	}
 }

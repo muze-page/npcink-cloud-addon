@@ -17,6 +17,43 @@ if ( ! class_exists( 'Npcink_Cloud_Runtime_Client' ) ) {
 	 */
 	final class Npcink_Cloud_Runtime_Client {
 		private const MAX_DOWNLOAD_BYTES = 26214400;
+		private const WP_AI_CONNECTOR_CONTRACT = 'wp_ai_connector_runtime.v1';
+		private const WP_AI_CONNECTOR_MAX_REQUEST_BYTES = 24000;
+		private const WP_AI_CONNECTOR_MAX_PROMPT_CHARS = 12000;
+		private const WP_AI_CONNECTOR_MAX_TIMEOUT_SECONDS = 60;
+		private const WP_AI_CONNECTOR_MAX_RETENTION_TTL = 86400;
+		private const WP_AI_CONNECTOR_ALLOWED_TASKS = array(
+			'alt_text_suggest',
+			'comment_moderation',
+			'comment_reply_suggest',
+			'content_classification',
+			'content_rewrite',
+			'content_summary',
+			'excerpt_generation',
+			'meta_description',
+			'title_generation',
+		);
+		private const WP_AI_CONNECTOR_FORBIDDEN_KEYS = array(
+			'api_key',
+			'authorization',
+			'chat_id',
+			'conversation_id',
+			'cookie',
+			'credentials',
+			'function_call',
+			'functions',
+			'messages',
+			'nonce',
+			'password',
+			'secret',
+			'session_id',
+			'stream',
+			'thread_id',
+			'tool_calls',
+			'tools',
+			'x_npcink_signature',
+			'x_magick_signature',
+		);
 
 		/**
 		 * Normalized client configuration.
@@ -96,6 +133,31 @@ if ( ! class_exists( 'Npcink_Cloud_Runtime_Client' ) ) {
 		public function execute_runtime( array $payload, string $trace_id = '', string $idempotency_key = '' ) {
 			if ( '' === $idempotency_key ) {
 				$idempotency_key = 'runtime_' . wp_generate_uuid4();
+			}
+
+			return $this->request( 'POST', '/v1/runtime/execute', $payload, $idempotency_key, $trace_id );
+		}
+
+		/**
+		 * Executes one bounded WordPress AI connector scene request.
+		 *
+		 * This method is intentionally not a generic chat transport. Callers
+		 * must provide a known WordPress task surface, and the addon projects it
+		 * into a suggestion-only runtime contract for Cloud execution.
+		 *
+		 * @param array<string,mixed> $request WordPress AI connector request.
+		 * @param string              $trace_id Optional trace id.
+		 * @param string              $idempotency_key Optional idempotency key.
+		 * @return array<string,mixed>|WP_Error
+		 */
+		public function execute_wordpress_ai_connector_runtime( array $request, string $trace_id = '', string $idempotency_key = '' ) {
+			$payload = $this->normalize_wordpress_ai_connector_request( $request );
+			if ( is_wp_error( $payload ) ) {
+				return $payload;
+			}
+
+			if ( '' === $idempotency_key ) {
+				$idempotency_key = 'wp_ai_connector_' . wp_generate_uuid4();
 			}
 
 			return $this->request( 'POST', '/v1/runtime/execute', $payload, $idempotency_key, $trace_id );
@@ -961,6 +1023,133 @@ if ( ! class_exists( 'Npcink_Cloud_Runtime_Client' ) ) {
 		}
 
 		/**
+		 * Normalizes a WordPress AI connector request into a bounded runtime payload.
+		 *
+		 * @param array<string,mixed> $request Raw connector request.
+		 * @return array<string,mixed>|WP_Error
+		 */
+		private function normalize_wordpress_ai_connector_request( array $request ) {
+			$contract_version = (string) ( $request['contract_version'] ?? self::WP_AI_CONNECTOR_CONTRACT );
+			if ( self::WP_AI_CONNECTOR_CONTRACT !== $contract_version ) {
+				return new WP_Error(
+					'cloud_wp_ai_connector_contract_invalid',
+					__( 'WordPress AI connector requests require the wp_ai_connector_runtime.v1 contract.', 'npcink-cloud-addon' ),
+					array( 'status' => 400 )
+				);
+			}
+
+			$task = sanitize_key( (string) ( $request['task'] ?? ( $request['feature_id'] ?? '' ) ) );
+			if ( ! in_array( $task, self::WP_AI_CONNECTOR_ALLOWED_TASKS, true ) ) {
+				return new WP_Error(
+					'cloud_wp_ai_connector_task_not_allowed',
+					__( 'WordPress AI connector requests require a supported site-task surface.', 'npcink-cloud-addon' ),
+					array( 'status' => 400 )
+				);
+			}
+
+			$forbidden_key = $this->find_forbidden_wordpress_ai_connector_key( $request );
+			if ( '' !== $forbidden_key ) {
+				return new WP_Error(
+					'cloud_wp_ai_connector_chat_shape_not_allowed',
+					__( 'WordPress AI connector requests do not support generic chat sessions, tool calls, streams, or credential fields.', 'npcink-cloud-addon' ),
+					array(
+						'status' => 400,
+						'key'    => $forbidden_key,
+					)
+				);
+			}
+
+			$encoded_request = wp_json_encode( $request );
+			if ( ! is_string( $encoded_request ) || '' === $encoded_request ) {
+				return new WP_Error(
+					'cloud_wp_ai_connector_encode_failed',
+					__( 'WordPress AI connector request could not be encoded.', 'npcink-cloud-addon' ),
+					array( 'status' => 400 )
+				);
+			}
+			if ( strlen( $encoded_request ) > self::WP_AI_CONNECTOR_MAX_REQUEST_BYTES ) {
+				return new WP_Error(
+					'cloud_wp_ai_connector_request_too_large',
+					__( 'WordPress AI connector request exceeds the scene runtime size limit.', 'npcink-cloud-addon' ),
+					array( 'status' => 413 )
+				);
+			}
+
+			$prompt = (string) ( $request['prompt'] ?? '' );
+			if ( '' !== $prompt && $this->text_length( $prompt ) > self::WP_AI_CONNECTOR_MAX_PROMPT_CHARS ) {
+				return new WP_Error(
+					'cloud_wp_ai_connector_prompt_too_large',
+					__( 'WordPress AI connector prompt exceeds the scene runtime size limit.', 'npcink-cloud-addon' ),
+					array( 'status' => 413 )
+				);
+			}
+
+			$timeout_seconds = absint( $request['timeout_seconds'] ?? 20 );
+			$retention_ttl   = absint( $request['retention_ttl'] ?? self::WP_AI_CONNECTOR_MAX_RETENTION_TTL );
+			$retry_max       = absint( $request['retry_max'] ?? 0 );
+			$profile_id      = $this->normalize_identifier( (string) ( $request['profile_id'] ?? 'text.balanced' ) );
+			$input           = is_array( $request['input'] ?? null ) ? $request['input'] : array();
+
+			if ( '' !== $prompt ) {
+				$input['prompt'] = $prompt;
+			}
+
+			return array(
+				'ability_name'        => 'npcink-cloud/wp-ai-connector',
+				'ability_family'      => 'text',
+				'contract_version'    => self::WP_AI_CONNECTOR_CONTRACT,
+				'channel'             => 'wordpress_ai_connector',
+				'execution_kind'      => 'wordpress_ai_connector',
+				'execution_pattern'   => 'inline',
+				'profile_id'          => '' !== $profile_id ? $profile_id : 'text.balanced',
+				'input'               => array(
+					'contract_version'           => self::WP_AI_CONNECTOR_CONTRACT,
+					'source_surface'             => 'wordpress_ai_connector',
+					'connector_id'                => 'npcink-cloud',
+					'task'                        => $task,
+					'write_posture'               => 'suggestion_only',
+					'direct_wordpress_write'      => false,
+					'no_conversation'             => true,
+					'expected_response_contract'  => 'wp_ai_connector_result.v1',
+					'request'                     => $input,
+				),
+				'data_classification' => 'public_site_content',
+				'storage_mode'        => 'result_only',
+				'retention_ttl'       => min( self::WP_AI_CONNECTOR_MAX_RETENTION_TTL, max( 0, $retention_ttl ) ),
+				'timeout_seconds'     => min( self::WP_AI_CONNECTOR_MAX_TIMEOUT_SECONDS, max( 1, $timeout_seconds ) ),
+				'retry_max'           => min( 1, $retry_max ),
+				'policy'              => array(
+					'allow_fallback' => false,
+				),
+			);
+		}
+
+		/**
+		 * Finds a forbidden chat/provider-control key in a connector request.
+		 *
+		 * @param mixed $value Raw request value.
+		 * @return string
+		 */
+		private function find_forbidden_wordpress_ai_connector_key( $value ): string {
+			if ( ! is_array( $value ) ) {
+				return '';
+			}
+
+			foreach ( $value as $key => $item ) {
+				$normalized_key = sanitize_key( str_replace( '-', '_', (string) $key ) );
+				if ( in_array( $normalized_key, self::WP_AI_CONNECTOR_FORBIDDEN_KEYS, true ) ) {
+					return $normalized_key;
+				}
+				$nested = $this->find_forbidden_wordpress_ai_connector_key( $item );
+				if ( '' !== $nested ) {
+					return $nested;
+				}
+			}
+
+			return '';
+		}
+
+		/**
 		 * Normalizes a Toolbox image context evidence request.
 		 *
 		 * @param array<string,mixed> $request Raw request.
@@ -1183,6 +1372,20 @@ if ( ! class_exists( 'Npcink_Cloud_Runtime_Client' ) ) {
 			}
 
 			return strlen( $value ) > $max_chars ? substr( $value, 0, $max_chars ) : $value;
+		}
+
+		/**
+		 * Returns the character length of a UTF-8 string when available.
+		 *
+		 * @param string $value Raw text.
+		 * @return int
+		 */
+		private function text_length( string $value ): int {
+			if ( function_exists( 'mb_strlen' ) ) {
+				return mb_strlen( $value, 'UTF-8' );
+			}
+
+			return strlen( $value );
 		}
 
 		/**

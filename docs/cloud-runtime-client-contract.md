@@ -32,6 +32,7 @@ Required config:
 ```php
 probe_connectivity(): array
 execute_runtime(array $payload, string $trace_id = '', string $idempotency_key = '')
+execute_wordpress_ai_connector_runtime(array $request, string $trace_id = '', string $idempotency_key = '')
 request_image_context_evidence(array $image_context_evidence_request, string $trace_id = '', string $idempotency_key = '')
 create_media_derivative(array $payload, array $files = array(), string $trace_id = '', string $idempotency_key = '')
 get_run(string $run_id, string $trace_id = '')
@@ -62,6 +63,7 @@ It returns `null` until the addon settings have passed Save and Verify.
 | --- | --- |
 | `probe_connectivity()` | `GET /health/live`, then signed `GET /v1/entitlements/current` |
 | `execute_runtime()` | `POST /v1/runtime/execute` |
+| `execute_wordpress_ai_connector_runtime()` | `POST /v1/runtime/execute` |
 | `request_image_context_evidence()` | `POST /v1/runtime/execute` |
 | `create_media_derivative()` | `POST /v1/runtime/media-derivatives` |
 | `get_run()` | `GET /v1/runs/{run_id}` |
@@ -181,6 +183,55 @@ fail closed when Cloud returns no usable evidence.
 
 This helper is not a local image recognition model, a product workflow, a
 queue, a proposal creator, a media metadata writer, or a second control plane.
+
+## WordPress AI Connector Runtime
+
+The addon registers one fixed `Npcink Cloud` connector on the WordPress
+Connectors surface when Cloud settings have passed Save and Verify. The
+connector uses a synthetic marker option to satisfy the WordPress AI plugin's
+`ai_provider` + `api_key` credential shape, but the marker is not a Cloud secret
+and is not exposed through REST.
+
+`execute_wordpress_ai_connector_runtime()` is the bounded transport seam for
+that connector/provider path. It must be treated as a scene runtime, not as a
+generic chat provider, model proxy, or OpenAI-compatible endpoint.
+
+Input must use `contract_version=wp_ai_connector_runtime.v1` and one of the
+supported task surfaces:
+
+- `title_generation`
+- `excerpt_generation`
+- `meta_description`
+- `content_summary`
+- `content_rewrite`
+- `content_classification`
+- `comment_moderation`
+- `comment_reply_suggest`
+- `alt_text_suggest`
+
+The method projects accepted requests into a fixed runtime payload:
+
+- `ability_name=npcink-cloud/wp-ai-connector`
+- `channel=wordpress_ai_connector`
+- `execution_kind=wordpress_ai_connector`
+- `execution_pattern=inline`
+- `storage_mode=result_only`
+- `write_posture=suggestion_only`
+- `direct_wordpress_write=false`
+- `no_conversation=true`
+- `policy.allow_fallback=false`
+
+The method rejects generic chat or provider-control fields such as `messages`,
+`conversation_id`, `session_id`, `thread_id`, `tools`, `tool_calls`,
+`functions`, `function_call`, `stream`, credentials, cookies, nonces, and signed
+headers. It also bounds prompt/body size and clamps timeout to 60 seconds,
+retention, and retry values.
+
+The optional PHP AI Client provider may call this helper only when the current
+call stack originates from a known WordPress AI plugin Ability class and maps to
+one of the supported task surfaces. Direct free-form `wp_ai_client_prompt()`
+calls, chat history, tools, and web search are rejected before a Cloud request is
+made.
 
 ## Boundary
 

@@ -13,6 +13,7 @@ npcink_cloud_addon_is_configured(): bool
 npcink_cloud_addon_get_settings(): array
 npcink_cloud_addon_runtime_client(): ?Npcink_Cloud_Runtime_Client
 npcink_cloud_addon_verified_runtime_client(): ?Npcink_Cloud_Runtime_Client
+npcink_cloud_addon_execute_wordpress_ai_connector_runtime(array $request, string $trace_id = '', string $idempotency_key = '')
 npcink_cloud_addon_dispatch_media_derivative_cloud_request(array $ability_response, array $source_artifact, string $trace_id = '', string $idempotency_key = '', array $watermark_artifact = array())
 npcink_cloud_addon_build_media_derivative_proposal_payload(array $ability_response, array $cloud_result, array $derivative_artifact)
 npcink_cloud_addon_download_media_derivative_artifact(array $derivative_artifact, string $trace_id = '')
@@ -27,6 +28,33 @@ npcink_cloud_addon_download_media_derivative_artifact(array $derivative_artifact
 5. Call `execute_runtime()`.
 6. Poll with `get_run()` and read final output with `get_run_result()`.
 7. If the Cloud result contains write intent, pass it to Core proposal/preflight.
+
+## WordPress AI Connector Flow
+
+The addon already registers a fixed `Npcink Cloud` connector on the WordPress
+Connectors surface after Cloud settings verify. Adapter or host code should not
+create another Cloud credential UI, connector registry, prompt registry, or
+OpenAI-compatible endpoint for this path.
+
+For the WordPress AI connector/provider flow:
+
+1. Host/provider code maps a WordPress AI feature into a supported site task
+   such as `title_generation`, `excerpt_generation`, `meta_description`,
+   `content_summary`, `content_rewrite`, `content_classification`,
+   `comment_moderation`, `comment_reply_suggest`, or `alt_text_suggest`.
+2. Host/provider code calls
+   `npcink_cloud_addon_execute_wordpress_ai_connector_runtime()`.
+3. The addon rejects generic chat message/session/tool/stream shapes and
+   projects the request into `wp_ai_connector_runtime.v1`.
+4. Cloud returns suggestion-only runtime output.
+5. Host/provider code maps the output back into the WordPress AI feature
+   response shape.
+
+This connector flow must not expose an OpenAI-compatible endpoint, a human chat
+UI, conversation sessions, model-key passthrough, prompt/router/preset editing,
+or WordPress writes. The addon provider also rejects direct free-form
+`wp_ai_client_prompt()` calls unless the current call originates from a known
+WordPress AI plugin Ability scene.
 
 ## Media Derivative Flow
 

@@ -127,9 +127,12 @@ maca_assert(
 	&& false !== strpos( $wordpress_ai_connector, 'does not support chat history' )
 	&& false !== strpos( $wordpress_ai_connector, 'does not support tools or web search' )
 	&& false !== strpos( $wordpress_ai_connector, 'npcink_cloud_addon_execute_wordpress_ai_connector_runtime' )
+	&& false !== strpos( $wordpress_ai_connector, "'response_format'    => \$this->response_format_hint( \$task )" )
+	&& false !== strpos( $wordpress_ai_connector, 'function response_format_hint' )
+	&& false === strpos( $wordpress_ai_connector, "'output_schema'      =>" )
 	&& false === strpos( $wordpress_ai_connector, 'chat/completions' )
 	&& false === strpos( $wordpress_ai_connector, 'OpenAiCompatible' ),
-	'AI Client provider is scene-gated to known WordPress AI abilities and does not expose an OpenAI-compatible chat proxy.'
+	'AI Client provider is scene-gated to known WordPress AI abilities and does not expose an OpenAI-compatible chat proxy or deep schema payload.'
 );
 
 maca_assert(

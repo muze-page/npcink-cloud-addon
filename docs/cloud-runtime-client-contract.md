@@ -233,6 +233,11 @@ one of the supported task surfaces. Direct free-form `wp_ai_client_prompt()`
 calls, chat history, tools, and web search are rejected before a Cloud request is
 made.
 
+For structured WordPress AI scenes, the addon sends only a shallow
+`response_format` hint such as `json` or `text`. It must not forward the AI
+Client's full `output_schema` into Cloud public runtime input; schema ownership
+and response parsing remain with the WordPress AI ability surface.
+
 ## Boundary
 
 The client must not add workflow repair, workflow/task queue operations,

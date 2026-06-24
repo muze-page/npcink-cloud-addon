@@ -421,7 +421,7 @@ if (
 				'input'            => array(
 					'prompt'             => $text,
 					'system_instruction' => (string) ( $this->config->getSystemInstruction() ?? '' ),
-					'output_schema'      => $this->config->getOutputSchema(),
+					'response_format'    => $this->response_format_hint( $task ),
 					'candidate_count'    => $this->config->getCandidateCount(),
 					'max_tokens'         => $this->config->getMaxTokens(),
 					'temperature'        => $this->config->getTemperature(),
@@ -492,6 +492,16 @@ if (
 			}
 
 			return trim( implode( "\n\n", $parts ) );
+		}
+
+		/**
+		 * Returns a shallow response-format hint for Cloud-side scene projection.
+		 *
+		 * @param string $task WordPress AI ability task.
+		 * @return string
+		 */
+		private function response_format_hint( string $task ): string {
+			return in_array( $task, array( 'content_classification', 'comment_moderation' ), true ) ? 'json' : 'text';
 		}
 
 		/**

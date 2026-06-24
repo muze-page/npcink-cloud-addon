@@ -19,6 +19,26 @@ This repository is the standalone `npcink-cloud-addon` WordPress plugin.
 - Read `docs/cloud-addon-complexity-budget.md` before expanding addon scope;
   keep security/boundary checks, but do not add product-control complexity.
 
+## AI Development Rules
+
+- Start AI-assisted work with `git status --short --branch` and a compact
+  change envelope: target repositories, focused module, intended change,
+  explicit non-goals, public contracts touched, expected files, files or areas
+  that must not change, required gates, cross-repo matrix requirement, and
+  rollback plan.
+- Before staging, inspect `git status --short --branch` and `git diff --stat`.
+  Stage only files changed for the current task. Do not use `git add -A` in a
+  mixed worktree.
+- Do not run `git reset --hard`, `git checkout -- .`, or equivalent destructive
+  cleanup unless the user explicitly asks for that exact operation.
+- Before committing, verify `git diff --cached --stat` and
+  `git diff --cached --name-only`; after committing, verify
+  `git show --name-status --stat HEAD`.
+- For multi-repo milestones, run the central matrix from
+  `/Users/muze/gitee/npcink-toolbox` instead of copying the script into this
+  addon: `composer quality:matrix` for status and `composer quality:matrix:run`
+  before cross-repo closeout.
+
 ## Current Cloud Runtime Contract
 
 Allowed runtime/read endpoints:

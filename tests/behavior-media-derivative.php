@@ -238,6 +238,38 @@ maca_assert(
 );
 
 maca_reset_test_state();
+maca_seed_settings( true, 'https://cloud.example.test' );
+$client = new Npcink_Cloud_Runtime_Client( Npcink_Cloud_Addon_Settings::get_settings() );
+$GLOBALS['maca_http_response_queue'][] = array(
+	'response' => array( 'code' => 200 ),
+	'body'     => wp_json_encode(
+		array(
+			'status' => 'ok',
+			'data'   => array(
+				'result' => array(
+					'artifact_type' => 'audio_generation_candidates',
+					'audios'        => array(
+						array(
+							'url'      => '/v1/runtime/artifacts/audio_artifact/public-download?token=audio_token',
+							'artifact' => array(
+								'download_url' => '/v1/runtime/artifacts/audio_artifact/public-download?token=audio_token',
+							),
+						),
+					),
+				),
+			),
+		)
+	),
+);
+$audio_artifact_result = $client->execute_runtime( array( 'ability_name' => 'npcink-cloud/generate-audio' ) );
+maca_assert(
+	is_array( $audio_artifact_result )
+	&& 'https://cloud.example.test/v1/runtime/artifacts/audio_artifact/public-download?token=audio_token' === (string) ( $audio_artifact_result['data']['result']['audios'][0]['url'] ?? '' )
+	&& 'https://cloud.example.test/v1/runtime/artifacts/audio_artifact/public-download?token=audio_token' === (string) ( $audio_artifact_result['data']['result']['audios'][0]['artifact']['download_url'] ?? '' ),
+	'Behavior: runtime execute normalizes Cloud artifact paths to absolute URLs for media previews.'
+);
+
+maca_reset_test_state();
 maca_seed_settings( true );
 $preview_bytes = 'derivative-preview-bytes';
 $GLOBALS['maca_http_response_queue'][] = array(

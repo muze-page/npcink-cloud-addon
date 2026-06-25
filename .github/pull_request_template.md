@@ -19,6 +19,11 @@
 - [ ] `composer check:wporg`
 - [ ] Boundary search for `/v1/runtime/workflows/runs|wp_insert_post|wp_update_post` if PHP runtime or bridge files changed.
 
+## Risk
+
+- Residual risk:
+- Rollback plan:
+
 ## Release Impact
 
 - [ ] No release impact.

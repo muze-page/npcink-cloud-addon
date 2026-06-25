@@ -31,7 +31,7 @@ if ( ! class_exists( 'Npcink_Cloud_WordPress_AI_Connector' ) ) {
 			add_action( 'init', array( __CLASS__, 'register_ai_provider' ), 5 );
 			add_action( 'wp_connectors_init', array( __CLASS__, 'register_connector' ) );
 			add_action( 'admin_init', array( __CLASS__, 'sync_connected_marker' ) );
-			add_action( 'admin_head-options-connectors', array( __CLASS__, 'render_connectors_page_styles' ) );
+			add_action( 'admin_enqueue_scripts', array( __CLASS__, 'enqueue_connectors_page_assets' ) );
 			add_filter( 'wpai_has_ai_credentials', array( __CLASS__, 'filter_has_ai_credentials' ), 100, 2 );
 			add_filter( 'wpai_preferred_text_models', array( __CLASS__, 'filter_preferred_text_models' ) );
 			add_filter( 'wpai_preferred_image_models', array( __CLASS__, 'filter_preferred_image_models' ) );
@@ -98,16 +98,20 @@ if ( ! class_exists( 'Npcink_Cloud_WordPress_AI_Connector' ) ) {
 		/**
 		 * Keeps the WordPress Connectors card status-only for this fixed Cloud connector.
 		 *
+		 * @param string $hook_suffix Admin hook suffix.
 		 * @return void
 		 */
-		public static function render_connectors_page_styles(): void {
-			?>
-			<style id="npcink-cloud-addon-connectors-page-styles">
-				.connector-item--npcink-cloud-addon button.components-button {
-					display: none;
-				}
-			</style>
-			<?php
+		public static function enqueue_connectors_page_assets( string $hook_suffix ): void {
+			if ( 'options-connectors' !== $hook_suffix ) {
+				return;
+			}
+
+			wp_enqueue_style(
+				'npcink-cloud-addon-admin',
+				plugins_url( 'assets/admin.css', NPCINK_CLOUD_ADDON_FILE ),
+				array(),
+				NPCINK_CLOUD_ADDON_VERSION
+			);
 		}
 
 		/**

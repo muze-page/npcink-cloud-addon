@@ -41,6 +41,9 @@ jobs:
       - name: Contract tests
         run: composer run test:contracts
 
+      - name: Run WordPress.org review guard
+        run: composer run check:wporg
+
       - name: Boundary search
         run: |
           ! grep -RInE '/v1/runtime/workflows/runs|wp_insert_post|wp_update_post' \

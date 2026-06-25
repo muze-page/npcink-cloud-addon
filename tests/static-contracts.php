@@ -14,6 +14,7 @@ $bootstrap = maca_read( $root . '/includes/bootstrap.php' );
 $transport = maca_read( $root . '/includes/class-cloud-media-derivative-transport.php' );
 $runtime_client = maca_read( $root . '/includes/class-cloud-runtime-client.php' );
 $wordpress_ai_connector = maca_read( $root . '/includes/class-cloud-wordpress-ai-connector.php' );
+$admin_css = maca_read( $root . '/assets/admin.css' );
 $entitlement_summary = maca_read( $root . '/includes/class-cloud-entitlement-summary.php' );
 $observability = maca_read( $root . '/includes/class-cloud-observability-collector.php' );
 $site_knowledge_bridge = maca_read( $root . '/includes/class-cloud-site-knowledge-change-bridge.php' );
@@ -115,8 +116,10 @@ maca_assert(
 	&& false !== strpos( $wordpress_ai_connector, "method'       => 'api_key'" )
 	&& false !== strpos( $wordpress_ai_connector, "SETTING_NAME = 'npcink_cloud_addon_wp_ai_connector_connected'" )
 	&& false !== strpos( $wordpress_ai_connector, "show_in_rest' => false" )
-	&& false !== strpos( $wordpress_ai_connector, 'render_connectors_page_styles' )
-	&& false !== strpos( $wordpress_ai_connector, 'connector-item--npcink-cloud-addon button.components-button' )
+	&& false !== strpos( $wordpress_ai_connector, 'enqueue_connectors_page_assets' )
+	&& false !== strpos( $wordpress_ai_connector, "if ( 'options-connectors' !== \$hook_suffix )" )
+	&& false !== strpos( $wordpress_ai_connector, 'wp_enqueue_style' )
+	&& false !== strpos( $admin_css, 'connector-item--npcink-cloud-addon button.components-button' )
 	&& false !== strpos( $wordpress_ai_connector, 'Npcink_Cloud_Addon_Settings::is_verified()' )
 	&& false === strpos( $wordpress_ai_connector, "get_option( 'secret'" ),
 	'WordPress connector registration projects verified Cloud settings into one fixed status-only Npcink Cloud card without exposing stored secrets.'

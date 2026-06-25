@@ -149,6 +149,10 @@
 	padding: 10px 12px;
 }
 
+.connector-item--npcink-cloud-addon button.components-button {
+	display: none;
+}
+
 @media (max-width: 782px) {
 	.npcink-cloud-summary__header,
 	.npcink-cloud-disclosure > summary {

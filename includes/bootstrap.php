@@ -161,6 +161,36 @@ if ( ! function_exists( 'npcink_cloud_addon_execute_wordpress_ai_connector_runti
 	}
 }
 
+if ( ! function_exists( 'npcink_cloud_addon_execute_wordpress_ai_image_generation_runtime' ) ) {
+	/**
+	 * Executes a bounded WordPress AI image generation scene request.
+	 *
+	 * This helper is scenario-bound and does not expose a generic image
+	 * provider proxy or model-control surface in the addon.
+	 *
+	 * @param array<string,mixed> $request WordPress AI image generation request.
+	 * @param string              $trace_id Optional trace id.
+	 * @param string              $idempotency_key Optional idempotency key.
+	 * @return array<string,mixed>|WP_Error
+	 */
+	function npcink_cloud_addon_execute_wordpress_ai_image_generation_runtime( array $request, string $trace_id = '', string $idempotency_key = '' ) {
+		$client = npcink_cloud_addon_runtime_client();
+		if ( ! $client ) {
+			return new WP_Error(
+				'cloud_runtime_unconfigured',
+				__( 'Npcink Cloud is not configured.', 'npcink-cloud-addon' ),
+				array( 'status' => 400 )
+			);
+		}
+
+		return $client->execute_wordpress_ai_image_generation_runtime(
+			$request,
+			$trace_id,
+			$idempotency_key
+		);
+	}
+}
+
 if ( ! function_exists( 'npcink_cloud_addon_build_media_derivative_proposal_payload' ) ) {
 	/**
 	 * Builds a Core-ready local proposal payload for a Cloud derivative artifact.

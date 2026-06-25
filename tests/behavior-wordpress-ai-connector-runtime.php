@@ -113,3 +113,69 @@ maca_assert(
 	is_wp_error( $large_prompt ) && 'cloud_wp_ai_connector_prompt_too_large' === $large_prompt->get_error_code(),
 	'Behavior: WordPress AI connector runtime rejects oversized prompts.'
 );
+
+$GLOBALS['maca_http_response_queue'][] = array(
+	'response' => array( 'code' => 200 ),
+	'body'     => wp_json_encode(
+		array(
+			'status' => 'ok',
+			'run_id' => 'run_wp_ai_image_1',
+			'data'   => array(
+				'result' => array(
+					'artifact_type'             => 'image_generation_candidates',
+					'contract_version'          => 'image_generation_result.v1',
+					'provider_response_format'  => 'b64_json',
+					'direct_wordpress_write'    => false,
+					'images'                    => array(
+						array(
+							'b64_json'  => base64_encode( 'image-bytes' ),
+							'mime_type' => 'image/png',
+						),
+					),
+				),
+			),
+		)
+	),
+);
+
+$image_result = $client->execute_wordpress_ai_image_generation_runtime(
+	array(
+		'contract_version' => 'image_generation_request.v1',
+		'task'             => 'image_generation',
+		'prompt'           => 'A clean product image of a blue ceramic mug.',
+		'n'                => 2,
+		'response_format'  => 'b64_json',
+		'aspect_ratio'     => '16:9',
+		'resolution'       => 'medium',
+		'timeout_seconds'  => 120,
+	),
+	'trace-wp-ai-image',
+	'wp-ai-image-idempotency'
+);
+$image_request      = end( $GLOBALS['maca_http_requests'] );
+$image_request_body = json_decode( (string) ( $image_request['args']['body'] ?? '' ), true );
+
+maca_assert(
+	is_array( $image_result ) && 'run_wp_ai_image_1' === (string) ( $image_result['run_id'] ?? '' ),
+	'Behavior: WordPress AI image generation runtime returns the Cloud response for a supported image scene task.'
+);
+
+maca_assert(
+	is_array( $image_request_body )
+	&& 'npcink-cloud/generate-image' === (string) ( $image_request_body['ability_name'] ?? '' )
+	&& 'image_generation_request.v1' === (string) ( $image_request_body['contract_version'] ?? '' )
+	&& 'wordpress_ai_connector' === (string) ( $image_request_body['channel'] ?? '' )
+	&& 'image_generation' === (string) ( $image_request_body['execution_kind'] ?? '' )
+	&& 'inline' === (string) ( $image_request_body['execution_pattern'] ?? '' )
+	&& 'result_only' === (string) ( $image_request_body['storage_mode'] ?? '' )
+	&& 90 === (int) ( $image_request_body['timeout_seconds'] ?? 0 )
+	&& 90 === (int) ( $image_request['args']['timeout'] ?? 0 )
+	&& false === (bool) ( $image_request_body['policy']['allow_fallback'] ?? true )
+	&& 'wordpress_ai_connector' === (string) ( $image_request_body['input']['source_surface'] ?? '' )
+	&& 'npcink-cloud' === (string) ( $image_request_body['input']['connector_id'] ?? '' )
+	&& 'image_generation' === (string) ( $image_request_body['input']['task'] ?? '' )
+	&& 'b64_json' === (string) ( $image_request_body['input']['response_format'] ?? '' )
+	&& '16:9' === (string) ( $image_request_body['input']['aspect_ratio'] ?? '' )
+	&& 2 === (int) ( $image_request_body['input']['n'] ?? 0 ),
+	'Behavior: WordPress AI image generation runtime projects a bounded Cloud image-generation payload.'
+);

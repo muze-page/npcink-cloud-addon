@@ -19,6 +19,7 @@ if ( ! class_exists( 'Npcink_Cloud_WordPress_AI_Connector' ) ) {
 		public const CONNECTOR_ID = 'npcink-cloud';
 		public const CONNECTOR_NAME = 'Npcink Cloud';
 		public const MODEL_ID = 'npcink-cloud-scene-text';
+		public const IMAGE_MODEL_ID = 'npcink-cloud-scene-image';
 		public const SETTING_NAME = 'npcink_cloud_addon_wp_ai_connector_connected';
 
 		/**
@@ -33,6 +34,7 @@ if ( ! class_exists( 'Npcink_Cloud_WordPress_AI_Connector' ) ) {
 			add_action( 'admin_head-options-connectors', array( __CLASS__, 'render_connectors_page_styles' ) );
 			add_filter( 'wpai_has_ai_credentials', array( __CLASS__, 'filter_has_ai_credentials' ), 100, 2 );
 			add_filter( 'wpai_preferred_text_models', array( __CLASS__, 'filter_preferred_text_models' ) );
+			add_filter( 'wpai_preferred_image_models', array( __CLASS__, 'filter_preferred_image_models' ) );
 		}
 
 		/**
@@ -152,6 +154,18 @@ if ( ! class_exists( 'Npcink_Cloud_WordPress_AI_Connector' ) ) {
 		}
 
 		/**
+		 * Makes the scene-bound Cloud image model the first preference when available.
+		 *
+		 * @param array<int,mixed> $preferred_models Existing preferred model list.
+		 * @return array<int,mixed>
+		 */
+		public static function filter_preferred_image_models( array $preferred_models ): array {
+			array_unshift( $preferred_models, array( self::CONNECTOR_ID, self::IMAGE_MODEL_ID ) );
+
+			return $preferred_models;
+		}
+
+		/**
 		 * Registers the synthetic marker setting without exposing it through REST.
 		 *
 		 * @return void
@@ -202,6 +216,10 @@ if (
 			\WordPress\AiClient\Providers\Models\DTO\ModelMetadata $model_metadata,
 			\WordPress\AiClient\Providers\DTO\ProviderMetadata $provider_metadata
 		): \WordPress\AiClient\Providers\Models\Contracts\ModelInterface {
+			if ( Npcink_Cloud_WordPress_AI_Connector::IMAGE_MODEL_ID === $model_metadata->getId() ) {
+				return new Npcink_Cloud_WordPress_AI_Image_Model( $model_metadata, $provider_metadata );
+			}
+
 			return new Npcink_Cloud_WordPress_AI_Text_Model( $model_metadata, $provider_metadata );
 		}
 
@@ -264,7 +282,7 @@ if (
 		 * @return list<\WordPress\AiClient\Providers\Models\DTO\ModelMetadata>
 		 */
 		public function listModelMetadata(): array {
-			return array( $this->model_metadata() );
+			return array( $this->text_model_metadata(), $this->image_model_metadata() );
 		}
 
 		/**
@@ -274,7 +292,14 @@ if (
 		 * @return bool
 		 */
 		public function hasModelMetadata( string $model_id ): bool {
-			return Npcink_Cloud_WordPress_AI_Connector::MODEL_ID === $model_id;
+			return in_array(
+				$model_id,
+				array(
+					Npcink_Cloud_WordPress_AI_Connector::MODEL_ID,
+					Npcink_Cloud_WordPress_AI_Connector::IMAGE_MODEL_ID,
+				),
+				true
+			);
 		}
 
 		/**
@@ -288,7 +313,11 @@ if (
 				throw new \WordPress\AiClient\Common\Exception\InvalidArgumentException( 'Npcink Cloud model metadata not found.' );
 			}
 
-			return $this->model_metadata();
+			if ( Npcink_Cloud_WordPress_AI_Connector::IMAGE_MODEL_ID === $model_id ) {
+				return $this->image_model_metadata();
+			}
+
+			return $this->text_model_metadata();
 		}
 
 		/**
@@ -296,7 +325,7 @@ if (
 		 *
 		 * @return \WordPress\AiClient\Providers\Models\DTO\ModelMetadata
 		 */
-		private function model_metadata(): \WordPress\AiClient\Providers\Models\DTO\ModelMetadata {
+		private function text_model_metadata(): \WordPress\AiClient\Providers\Models\DTO\ModelMetadata {
 			return new \WordPress\AiClient\Providers\Models\DTO\ModelMetadata(
 				Npcink_Cloud_WordPress_AI_Connector::MODEL_ID,
 				'Npcink Cloud Scene Text',
@@ -321,6 +350,45 @@ if (
 					new \WordPress\AiClient\Providers\Models\DTO\SupportedOption( \WordPress\AiClient\Providers\Models\Enums\OptionEnum::candidateCount() ),
 					new \WordPress\AiClient\Providers\Models\DTO\SupportedOption( \WordPress\AiClient\Providers\Models\Enums\OptionEnum::maxTokens() ),
 					new \WordPress\AiClient\Providers\Models\DTO\SupportedOption( \WordPress\AiClient\Providers\Models\Enums\OptionEnum::temperature() ),
+				)
+			);
+		}
+
+		/**
+		 * Builds the fixed image generation model metadata.
+		 *
+		 * @return \WordPress\AiClient\Providers\Models\DTO\ModelMetadata
+		 */
+		private function image_model_metadata(): \WordPress\AiClient\Providers\Models\DTO\ModelMetadata {
+			return new \WordPress\AiClient\Providers\Models\DTO\ModelMetadata(
+				Npcink_Cloud_WordPress_AI_Connector::IMAGE_MODEL_ID,
+				'Npcink Cloud Scene Image',
+				array(
+					\WordPress\AiClient\Providers\Models\Enums\CapabilityEnum::imageGeneration(),
+				),
+				array(
+					new \WordPress\AiClient\Providers\Models\DTO\SupportedOption(
+						\WordPress\AiClient\Providers\Models\Enums\OptionEnum::inputModalities(),
+						array( array( \WordPress\AiClient\Messages\Enums\ModalityEnum::text() ) )
+					),
+					new \WordPress\AiClient\Providers\Models\DTO\SupportedOption(
+						\WordPress\AiClient\Providers\Models\Enums\OptionEnum::outputModalities(),
+						array( array( \WordPress\AiClient\Messages\Enums\ModalityEnum::image() ) )
+					),
+					new \WordPress\AiClient\Providers\Models\DTO\SupportedOption(
+						\WordPress\AiClient\Providers\Models\Enums\OptionEnum::outputFileType(),
+						array(
+							\WordPress\AiClient\Files\Enums\FileTypeEnum::inline(),
+							\WordPress\AiClient\Files\Enums\FileTypeEnum::remote(),
+						)
+					),
+					new \WordPress\AiClient\Providers\Models\DTO\SupportedOption(
+						\WordPress\AiClient\Providers\Models\Enums\OptionEnum::outputMimeType(),
+						array( 'image/png', 'image/jpeg', 'image/webp' )
+					),
+					new \WordPress\AiClient\Providers\Models\DTO\SupportedOption( \WordPress\AiClient\Providers\Models\Enums\OptionEnum::candidateCount() ),
+					new \WordPress\AiClient\Providers\Models\DTO\SupportedOption( \WordPress\AiClient\Providers\Models\Enums\OptionEnum::outputMediaAspectRatio() ),
+					new \WordPress\AiClient\Providers\Models\DTO\SupportedOption( \WordPress\AiClient\Providers\Models\Enums\OptionEnum::outputMediaOrientation() ),
 				)
 			);
 		}
@@ -585,6 +653,289 @@ if (
 			}
 
 			return '';
+		}
+	}
+
+	/**
+	 * Scene-gated image model that forwards text-to-image WordPress AI calls to Cloud.
+	 */
+	final class Npcink_Cloud_WordPress_AI_Image_Model implements
+		\WordPress\AiClient\Providers\Models\Contracts\ModelInterface,
+		\WordPress\AiClient\Providers\Models\ImageGeneration\Contracts\ImageGenerationModelInterface {
+		/**
+		 * Model metadata.
+		 *
+		 * @var \WordPress\AiClient\Providers\Models\DTO\ModelMetadata
+		 */
+		private $metadata;
+
+		/**
+		 * Provider metadata.
+		 *
+		 * @var \WordPress\AiClient\Providers\DTO\ProviderMetadata
+		 */
+		private $provider_metadata;
+
+		/**
+		 * Model config.
+		 *
+		 * @var \WordPress\AiClient\Providers\Models\DTO\ModelConfig
+		 */
+		private $config;
+
+		/**
+		 * Constructor.
+		 *
+		 * @param \WordPress\AiClient\Providers\Models\DTO\ModelMetadata $metadata Model metadata.
+		 * @param \WordPress\AiClient\Providers\DTO\ProviderMetadata     $provider_metadata Provider metadata.
+		 */
+		public function __construct(
+			\WordPress\AiClient\Providers\Models\DTO\ModelMetadata $metadata,
+			\WordPress\AiClient\Providers\DTO\ProviderMetadata $provider_metadata
+		) {
+			$this->metadata          = $metadata;
+			$this->provider_metadata = $provider_metadata;
+			$this->config            = new \WordPress\AiClient\Providers\Models\DTO\ModelConfig();
+		}
+
+		/**
+		 * Gets model metadata.
+		 *
+		 * @return \WordPress\AiClient\Providers\Models\DTO\ModelMetadata
+		 */
+		public function metadata(): \WordPress\AiClient\Providers\Models\DTO\ModelMetadata {
+			return $this->metadata;
+		}
+
+		/**
+		 * Gets provider metadata.
+		 *
+		 * @return \WordPress\AiClient\Providers\DTO\ProviderMetadata
+		 */
+		public function providerMetadata(): \WordPress\AiClient\Providers\DTO\ProviderMetadata {
+			return $this->provider_metadata;
+		}
+
+		/**
+		 * Sets model config.
+		 *
+		 * @param \WordPress\AiClient\Providers\Models\DTO\ModelConfig $config Model config.
+		 * @return void
+		 */
+		public function setConfig( \WordPress\AiClient\Providers\Models\DTO\ModelConfig $config ): void {
+			$this->config = $config;
+		}
+
+		/**
+		 * Gets model config.
+		 *
+		 * @return \WordPress\AiClient\Providers\Models\DTO\ModelConfig
+		 */
+		public function getConfig(): \WordPress\AiClient\Providers\Models\DTO\ModelConfig {
+			return $this->config;
+		}
+
+		/**
+		 * Generates an image result through the bounded Cloud runtime seam.
+		 *
+		 * @param list<\WordPress\AiClient\Messages\DTO\Message> $prompt Prompt messages.
+		 * @return \WordPress\AiClient\Results\DTO\GenerativeAiResult
+		 */
+		public function generateImageResult( array $prompt ): \WordPress\AiClient\Results\DTO\GenerativeAiResult {
+			if ( 1 !== count( $prompt ) ) {
+				throw new \WordPress\AiClient\Common\Exception\RuntimeException( 'Npcink Cloud AI image connector does not support chat history.' );
+			}
+
+			if ( null !== $this->config->getFunctionDeclarations() || null !== $this->config->getWebSearch() ) {
+				throw new \WordPress\AiClient\Common\Exception\RuntimeException( 'Npcink Cloud AI image connector does not support tools or web search.' );
+			}
+
+			$text = $this->prompt_text( $prompt );
+			if ( '' === $text ) {
+				throw new \WordPress\AiClient\Common\Exception\RuntimeException( 'Npcink Cloud AI image connector requires text scene input.' );
+			}
+
+			$request = array(
+				'contract_version' => 'image_generation_request.v1',
+				'task'             => 'image_generation',
+				'prompt'           => $text,
+				'n'                => $this->image_count(),
+				'response_format'  => $this->response_format(),
+				'aspect_ratio'     => $this->aspect_ratio(),
+				'resolution'       => 'medium',
+				'timeout_seconds'  => 90,
+				'retention_ttl'    => 86400,
+			);
+
+			$response = npcink_cloud_addon_execute_wordpress_ai_image_generation_runtime(
+				$request,
+				'trace_wp_ai_image_' . wp_generate_uuid4(),
+				'wp_ai_image_' . wp_generate_uuid4()
+			);
+
+			if ( is_wp_error( $response ) ) {
+				throw new \WordPress\AiClient\Common\Exception\RuntimeException( $response->get_error_message() );
+			}
+
+			$result     = $this->extract_result( is_array( $response ) ? $response : array() );
+			$candidates = $this->extract_image_candidates( $result );
+			if ( empty( $candidates ) ) {
+				throw new \WordPress\AiClient\Common\Exception\RuntimeException( 'Npcink Cloud AI image connector response did not include image output.' );
+			}
+
+			return new \WordPress\AiClient\Results\DTO\GenerativeAiResult(
+				(string) ( $response['run_id'] ?? ( $response['data']['run_id'] ?? wp_generate_uuid4() ) ),
+				$candidates,
+				new \WordPress\AiClient\Results\DTO\TokenUsage( 0, 0, 0 ),
+				$this->provider_metadata,
+				$this->metadata,
+				array(
+					'contract_version'          => 'image_generation_result.v1',
+					'task'                      => 'image_generation',
+					'suggestion_only'           => true,
+					'direct_wordpress_write'    => false,
+					'model_id'                  => (string) ( $result['model_id'] ?? '' ),
+					'provider_response_format'  => (string) ( $result['provider_response_format'] ?? '' ),
+				)
+			);
+		}
+
+		/**
+		 * Extracts text from a single user prompt and rejects reference-image refinement.
+		 *
+		 * @param list<\WordPress\AiClient\Messages\DTO\Message> $prompt Prompt messages.
+		 * @return string
+		 */
+		private function prompt_text( array $prompt ): string {
+			$message = $prompt[0];
+			if ( ! $message->getRole()->isUser() ) {
+				return '';
+			}
+
+			$parts = array();
+			foreach ( $message->getParts() as $part ) {
+				if ( null !== $part->getFile() ) {
+					throw new \WordPress\AiClient\Common\Exception\RuntimeException( 'Npcink Cloud AI image connector does not support reference image refinement yet.' );
+				}
+
+				$text = $part->getText();
+				if ( null !== $text && '' !== trim( $text ) ) {
+					$parts[] = trim( $text );
+				}
+			}
+
+			return trim( implode( "\n\n", $parts ) );
+		}
+
+		/**
+		 * Returns the requested image candidate count.
+		 *
+		 * @return int
+		 */
+		private function image_count(): int {
+			$count = $this->config->getCandidateCount();
+
+			return min( 4, max( 1, null === $count ? 1 : (int) $count ) );
+		}
+
+		/**
+		 * Returns the Cloud image response format.
+		 *
+		 * @return string
+		 */
+		private function response_format(): string {
+			$file_type = $this->config->getOutputFileType();
+
+			return ( null !== $file_type && $file_type->isRemote() ) ? 'url' : 'b64_json';
+		}
+
+		/**
+		 * Returns a Cloud-supported aspect ratio.
+		 *
+		 * @return string
+		 */
+		private function aspect_ratio(): string {
+			$aspect_ratio = $this->config->getOutputMediaAspectRatio();
+			if ( is_string( $aspect_ratio ) && '' !== $aspect_ratio ) {
+				return $aspect_ratio;
+			}
+
+			$orientation = $this->config->getOutputMediaOrientation();
+			if ( null !== $orientation ) {
+				if ( $orientation->isLandscape() ) {
+					return '16:9';
+				}
+				if ( $orientation->isPortrait() ) {
+					return '9:16';
+				}
+			}
+
+			return '1:1';
+		}
+
+		/**
+		 * Extracts the Cloud image result payload.
+		 *
+		 * @param array<string,mixed> $response Cloud response.
+		 * @return array<string,mixed>
+		 */
+		private function extract_result( array $response ): array {
+			if ( isset( $response['data']['result'] ) && is_array( $response['data']['result'] ) ) {
+				return $response['data']['result'];
+			}
+			if ( isset( $response['result'] ) && is_array( $response['result'] ) ) {
+				return $response['result'];
+			}
+			if ( isset( $response['data'] ) && is_array( $response['data'] ) ) {
+				return $response['data'];
+			}
+
+			return $response;
+		}
+
+		/**
+		 * Extracts image candidates from a Cloud image generation response.
+		 *
+		 * @param array<string,mixed> $result Cloud result payload.
+		 * @return list<\WordPress\AiClient\Results\DTO\Candidate>
+		 */
+		private function extract_image_candidates( array $result ): array {
+			$images = isset( $result['images'] ) && is_array( $result['images'] ) ? $result['images'] : array();
+			if ( empty( $images ) && isset( $result['data'] ) && is_array( $result['data'] ) ) {
+				$images = $result['data'];
+			}
+
+			$candidates = array();
+			foreach ( $images as $image ) {
+				if ( ! is_array( $image ) ) {
+					continue;
+				}
+
+				$mime_type = isset( $image['mime_type'] ) && is_string( $image['mime_type'] ) && '' !== $image['mime_type']
+					? $image['mime_type']
+					: 'image/png';
+				$file_data = '';
+				if ( isset( $image['b64_json'] ) && is_string( $image['b64_json'] ) && '' !== $image['b64_json'] ) {
+					$file_data = $image['b64_json'];
+				} elseif ( isset( $image['url'] ) && is_string( $image['url'] ) && '' !== $image['url'] ) {
+					$file_data = $image['url'];
+				}
+
+				if ( '' === $file_data ) {
+					continue;
+				}
+
+				$file = new \WordPress\AiClient\Files\DTO\File( $file_data, $mime_type );
+				$candidates[] = new \WordPress\AiClient\Results\DTO\Candidate(
+					new \WordPress\AiClient\Messages\DTO\Message(
+						\WordPress\AiClient\Messages\Enums\MessageRoleEnum::model(),
+						array( new \WordPress\AiClient\Messages\DTO\MessagePart( $file ) )
+					),
+					\WordPress\AiClient\Results\Enums\FinishReasonEnum::stop()
+				);
+			}
+
+			return $candidates;
 		}
 	}
 }

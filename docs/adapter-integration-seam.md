@@ -43,18 +43,21 @@ For the WordPress AI connector/provider flow:
    `content_summary`, `content_rewrite`, `content_classification`,
    `comment_moderation`, `comment_reply_suggest`, or `alt_text_suggest`.
 2. Host/provider code calls
-   `npcink_cloud_addon_execute_wordpress_ai_connector_runtime()`.
+   `npcink_cloud_addon_execute_wordpress_ai_connector_runtime()` for text
+   scenes or `npcink_cloud_addon_execute_wordpress_ai_image_generation_runtime()`
+   for the WordPress AI image generation feature.
 3. The addon rejects generic chat message/session/tool/stream shapes and
-   projects the request into `wp_ai_connector_runtime.v1`.
+   projects the request into `wp_ai_connector_runtime.v1` or Cloud's existing
+   `image_generation_request.v1` runtime contract.
 4. Cloud returns suggestion-only runtime output.
 5. Host/provider code maps the output back into the WordPress AI feature
    response shape.
 
 This connector flow must not expose an OpenAI-compatible endpoint, a human chat
-UI, conversation sessions, model-key passthrough, prompt/router/preset editing,
-or WordPress writes. The addon provider also rejects direct free-form
-`wp_ai_client_prompt()` calls unless the current call originates from a known
-WordPress AI plugin Ability scene.
+UI, conversation sessions, image provider proxy, model-key passthrough,
+prompt/router/preset editing, or WordPress writes. The addon provider also
+rejects direct free-form `wp_ai_client_prompt()` calls unless the current call
+originates from a supported WordPress AI plugin scene.
 
 ## Media Derivative Flow
 

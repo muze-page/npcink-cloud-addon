@@ -22,6 +22,13 @@ if ( ! class_exists( 'Npcink_Cloud_Runtime_Client' ) ) {
 		private const WP_AI_CONNECTOR_MAX_PROMPT_CHARS = 12000;
 		private const WP_AI_CONNECTOR_MAX_TIMEOUT_SECONDS = 60;
 		private const WP_AI_CONNECTOR_MAX_RETENTION_TTL = 86400;
+		private const WP_AI_IMAGE_GENERATION_CONTRACT = 'image_generation_request.v1';
+		private const WP_AI_IMAGE_GENERATION_MAX_REQUEST_BYTES = 12000;
+		private const WP_AI_IMAGE_GENERATION_MAX_PROMPT_CHARS = 4000;
+		private const WP_AI_IMAGE_GENERATION_MAX_TIMEOUT_SECONDS = 90;
+		private const WP_AI_IMAGE_GENERATION_MAX_RETENTION_TTL = 86400;
+		private const WP_AI_IMAGE_GENERATION_ALLOWED_RESPONSE_FORMATS = array( 'url', 'b64_json' );
+		private const WP_AI_IMAGE_GENERATION_ALLOWED_ASPECT_RATIOS = array( '1:1', '2:3', '3:2', '3:4', '4:3', '4:5', '5:4', '9:16', '16:9', '21:9' );
 		private const WP_AI_CONNECTOR_ALLOWED_TASKS = array(
 			'alt_text_suggest',
 			'comment_moderation',
@@ -158,6 +165,31 @@ if ( ! class_exists( 'Npcink_Cloud_Runtime_Client' ) ) {
 
 			if ( '' === $idempotency_key ) {
 				$idempotency_key = 'wp_ai_connector_' . wp_generate_uuid4();
+			}
+
+			return $this->request( 'POST', '/v1/runtime/execute', $payload, $idempotency_key, $trace_id );
+		}
+
+		/**
+		 * Executes one bounded WordPress AI image generation scene request.
+		 *
+		 * This method is not a generic image provider proxy. It only transports
+		 * text-to-image requests coming from the WordPress AI image generation
+		 * feature and lets Cloud own provider routing and model choice.
+		 *
+		 * @param array<string,mixed> $request WordPress AI image generation request.
+		 * @param string              $trace_id Optional trace id.
+		 * @param string              $idempotency_key Optional idempotency key.
+		 * @return array<string,mixed>|WP_Error
+		 */
+		public function execute_wordpress_ai_image_generation_runtime( array $request, string $trace_id = '', string $idempotency_key = '' ) {
+			$payload = $this->normalize_wordpress_ai_image_generation_request( $request );
+			if ( is_wp_error( $payload ) ) {
+				return $payload;
+			}
+
+			if ( '' === $idempotency_key ) {
+				$idempotency_key = 'wp_ai_image_generation_' . wp_generate_uuid4();
 			}
 
 			return $this->request( 'POST', '/v1/runtime/execute', $payload, $idempotency_key, $trace_id );
@@ -561,7 +593,10 @@ if ( ! class_exists( 'Npcink_Cloud_Runtime_Client' ) ) {
 			if ( 'POST' === $method && '/v1/runtime/execute' === $path && is_array( $payload ) ) {
 				$requested_timeout = absint( $payload['timeout_seconds'] ?? 0 );
 				if ( $requested_timeout > 0 ) {
-					$timeout = max( $timeout, min( 60, $requested_timeout ) );
+					$timeout_cap = 'npcink-cloud/generate-image' === (string) ( $payload['ability_name'] ?? '' )
+						? self::WP_AI_IMAGE_GENERATION_MAX_TIMEOUT_SECONDS
+						: self::WP_AI_CONNECTOR_MAX_TIMEOUT_SECONDS;
+					$timeout = max( $timeout, min( $timeout_cap, $requested_timeout ) );
 				}
 			}
 
@@ -1163,6 +1198,124 @@ if ( ! class_exists( 'Npcink_Cloud_Runtime_Client' ) ) {
 				'retention_ttl'       => min( self::WP_AI_CONNECTOR_MAX_RETENTION_TTL, max( 0, $retention_ttl ) ),
 				'timeout_seconds'     => min( self::WP_AI_CONNECTOR_MAX_TIMEOUT_SECONDS, max( 1, $timeout_seconds ) ),
 				'retry_max'           => min( 1, $retry_max ),
+				'policy'              => array(
+					'allow_fallback' => false,
+				),
+			);
+		}
+
+		/**
+		 * Normalizes a WordPress AI image generation request into a bounded runtime payload.
+		 *
+		 * @param array<string,mixed> $request Raw image generation request.
+		 * @return array<string,mixed>|WP_Error
+		 */
+		private function normalize_wordpress_ai_image_generation_request( array $request ) {
+			$contract_version = (string) ( $request['contract_version'] ?? self::WP_AI_IMAGE_GENERATION_CONTRACT );
+			if ( self::WP_AI_IMAGE_GENERATION_CONTRACT !== $contract_version ) {
+				return new WP_Error(
+					'cloud_wp_ai_image_generation_contract_invalid',
+					__( 'WordPress AI image generation requests require the image_generation_request.v1 contract.', 'npcink-cloud-addon' ),
+					array( 'status' => 400 )
+				);
+			}
+
+			$task = sanitize_key( (string) ( $request['task'] ?? 'image_generation' ) );
+			if ( 'image_generation' !== $task ) {
+				return new WP_Error(
+					'cloud_wp_ai_image_generation_task_not_allowed',
+					__( 'WordPress AI image generation requests require the supported image_generation task surface.', 'npcink-cloud-addon' ),
+					array( 'status' => 400 )
+				);
+			}
+
+			$forbidden_key = $this->find_forbidden_wordpress_ai_connector_key( $request );
+			if ( '' !== $forbidden_key ) {
+				return new WP_Error(
+					'cloud_wp_ai_image_generation_shape_not_allowed',
+					__( 'WordPress AI image generation requests do not support generic chat sessions, tool calls, streams, or credential fields.', 'npcink-cloud-addon' ),
+					array(
+						'status' => 400,
+						'key'    => $forbidden_key,
+					)
+				);
+			}
+
+			$encoded_request = wp_json_encode( $request );
+			if ( ! is_string( $encoded_request ) || '' === $encoded_request ) {
+				return new WP_Error(
+					'cloud_wp_ai_image_generation_encode_failed',
+					__( 'WordPress AI image generation request could not be encoded.', 'npcink-cloud-addon' ),
+					array( 'status' => 400 )
+				);
+			}
+			if ( strlen( $encoded_request ) > self::WP_AI_IMAGE_GENERATION_MAX_REQUEST_BYTES ) {
+				return new WP_Error(
+					'cloud_wp_ai_image_generation_request_too_large',
+					__( 'WordPress AI image generation request exceeds the scene runtime size limit.', 'npcink-cloud-addon' ),
+					array( 'status' => 413 )
+				);
+			}
+
+			$prompt = trim( (string) ( $request['prompt'] ?? '' ) );
+			if ( '' === $prompt ) {
+				return new WP_Error(
+					'cloud_wp_ai_image_generation_prompt_required',
+					__( 'WordPress AI image generation requires text scene input.', 'npcink-cloud-addon' ),
+					array( 'status' => 400 )
+				);
+			}
+			if ( $this->text_length( $prompt ) > self::WP_AI_IMAGE_GENERATION_MAX_PROMPT_CHARS ) {
+				return new WP_Error(
+					'cloud_wp_ai_image_generation_prompt_too_large',
+					__( 'WordPress AI image generation prompt exceeds the scene runtime size limit.', 'npcink-cloud-addon' ),
+					array( 'status' => 413 )
+				);
+			}
+
+			$response_format = (string) ( $request['response_format'] ?? 'b64_json' );
+			if ( ! in_array( $response_format, self::WP_AI_IMAGE_GENERATION_ALLOWED_RESPONSE_FORMATS, true ) ) {
+				return new WP_Error(
+					'cloud_wp_ai_image_generation_response_format_invalid',
+					__( 'WordPress AI image generation response format must be url or b64_json.', 'npcink-cloud-addon' ),
+					array( 'status' => 400 )
+				);
+			}
+
+			$aspect_ratio = (string) ( $request['aspect_ratio'] ?? '1:1' );
+			if ( ! in_array( $aspect_ratio, self::WP_AI_IMAGE_GENERATION_ALLOWED_ASPECT_RATIOS, true ) ) {
+				$aspect_ratio = '1:1';
+			}
+
+			$image_count = absint( $request['n'] ?? 1 );
+			$image_count = min( 4, max( 1, $image_count ) );
+
+			$timeout_seconds = absint( $request['timeout_seconds'] ?? self::WP_AI_IMAGE_GENERATION_MAX_TIMEOUT_SECONDS );
+			$retention_ttl   = absint( $request['retention_ttl'] ?? self::WP_AI_IMAGE_GENERATION_MAX_RETENTION_TTL );
+
+			return array(
+				'ability_name'        => 'npcink-cloud/generate-image',
+				'ability_family'      => 'vision',
+				'contract_version'    => self::WP_AI_IMAGE_GENERATION_CONTRACT,
+				'channel'             => 'wordpress_ai_connector',
+				'execution_kind'      => 'image_generation',
+				'execution_pattern'   => 'inline',
+				'input'               => array(
+					'contract_version' => self::WP_AI_IMAGE_GENERATION_CONTRACT,
+					'source_surface'   => 'wordpress_ai_connector',
+					'connector_id'      => 'npcink-cloud',
+					'task'              => 'image_generation',
+					'prompt'            => $prompt,
+					'n'                 => $image_count,
+					'response_format'   => $response_format,
+					'aspect_ratio'      => $aspect_ratio,
+					'resolution'        => sanitize_key( (string) ( $request['resolution'] ?? 'medium' ) ),
+				),
+				'data_classification' => 'internal',
+				'storage_mode'        => 'result_only',
+				'retention_ttl'       => min( self::WP_AI_IMAGE_GENERATION_MAX_RETENTION_TTL, max( 0, $retention_ttl ) ),
+				'timeout_seconds'     => min( self::WP_AI_IMAGE_GENERATION_MAX_TIMEOUT_SECONDS, max( 1, $timeout_seconds ) ),
+				'retry_max'           => 0,
 				'policy'              => array(
 					'allow_fallback' => false,
 				),

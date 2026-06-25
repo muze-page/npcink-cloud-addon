@@ -95,6 +95,16 @@ maca_assert(
 	'Npcink Cloud scene text model is added as the first preferred AI text model.'
 );
 
+$preferred_images = Npcink_Cloud_WordPress_AI_Connector::filter_preferred_image_models(
+	array(
+		array( 'openai', 'gpt-image-2' ),
+	)
+);
+maca_assert(
+	array( Npcink_Cloud_WordPress_AI_Connector::CONNECTOR_ID, Npcink_Cloud_WordPress_AI_Connector::IMAGE_MODEL_ID ) === $preferred_images[0],
+	'Npcink Cloud scene image model is added as the first preferred AI image model.'
+);
+
 maca_reset_test_state();
 maca_seed_settings( false );
 Npcink_Cloud_WordPress_AI_Connector::sync_connected_marker();

@@ -107,8 +107,10 @@ maca_assert(
 maca_assert(
 	false !== strpos( $bootstrap, 'class-cloud-wordpress-ai-connector.php' )
 	&& false !== strpos( $bootstrap, 'Npcink_Cloud_WordPress_AI_Connector::register()' )
+	&& false !== strpos( $bootstrap, 'npcink_cloud_addon_execute_wordpress_ai_image_generation_runtime' )
 	&& false !== strpos( $wordpress_ai_connector, "CONNECTOR_ID = 'npcink-cloud'" )
 	&& false !== strpos( $wordpress_ai_connector, "CONNECTOR_NAME = 'Npcink Cloud'" )
+	&& false !== strpos( $wordpress_ai_connector, "IMAGE_MODEL_ID = 'npcink-cloud-scene-image'" )
 	&& false !== strpos( $wordpress_ai_connector, "type'           => 'ai_provider'" )
 	&& false !== strpos( $wordpress_ai_connector, "method'       => 'api_key'" )
 	&& false !== strpos( $wordpress_ai_connector, "SETTING_NAME = 'npcink_cloud_addon_wp_ai_connector_connected'" )
@@ -123,6 +125,12 @@ maca_assert(
 maca_assert(
 	false !== strpos( $wordpress_ai_connector, 'class Npcink_Cloud_WordPress_AI_Provider' )
 	&& false !== strpos( $wordpress_ai_connector, 'class Npcink_Cloud_WordPress_AI_Text_Model' )
+	&& false !== strpos( $wordpress_ai_connector, 'class Npcink_Cloud_WordPress_AI_Image_Model' )
+	&& false !== strpos( $wordpress_ai_connector, 'ImageGenerationModelInterface' )
+	&& false !== strpos( $wordpress_ai_connector, 'CapabilityEnum::imageGeneration()' )
+	&& false !== strpos( $wordpress_ai_connector, 'wpai_preferred_image_models' )
+	&& false !== strpos( $wordpress_ai_connector, 'npcink_cloud_addon_execute_wordpress_ai_image_generation_runtime' )
+	&& false !== strpos( $wordpress_ai_connector, 'does not support reference image refinement yet' )
 	&& false !== strpos( $wordpress_ai_connector, 'detect_scene_task' )
 	&& false !== strpos( $wordpress_ai_connector, 'WordPress\\\\AI\\\\Abilities\\\\Title_Generation\\\\Title_Generation' )
 	&& false !== strpos( $wordpress_ai_connector, 'Npcink Cloud AI connector only accepts known WordPress AI ability scene calls' )
@@ -139,13 +147,17 @@ maca_assert(
 
 maca_assert(
 	false !== strpos( $readme, 'WordPress AI Connector Runtime' )
-	&& false !== strpos( $readme, 'OpenAI-compatible provider proxy' )
-	&& false !== strpos( $readme, 'scene-gated text' )
+	&& false !== strpos( $readme, 'OpenAI-compatible provider' )
+	&& false !== strpos( $readme, 'scene-gated text and' )
+	&& false !== strpos( $readme, 'rejects reference-image refinement' )
 	&& false !== strpos( $runtime_contract, 'WordPress AI Connector Runtime' )
 	&& false !== strpos( $runtime_contract, 'generic chat provider' )
+	&& false !== strpos( $runtime_contract, 'image_generation_request.v1' )
+	&& false !== strpos( $runtime_contract, 'does not support reference-image refinement' )
 	&& false !== strpos( $runtime_contract, 'Direct free-form `wp_ai_client_prompt()`' )
 	&& false !== strpos( $adapter_doc, 'WordPress AI Connector Flow' )
 	&& false !== strpos( $adapter_doc, 'must not expose an OpenAI-compatible endpoint' )
+	&& false !== strpos( $adapter_doc, 'image provider proxy' )
 	&& false !== strpos( $adapter_doc, 'human chat' ),
 	'Docs describe the WordPress AI connector seam as scene-bound runtime only.'
 );

@@ -106,15 +106,19 @@ split credential fields.
 
 The addon also exposes
 `npcink_cloud_addon_execute_wordpress_ai_connector_runtime()` as a narrow seam
-for the connector/provider path. It is a WordPress scene runtime, not a generic
-chat API or OpenAI-compatible provider proxy.
+for text connector/provider calls, plus
+`npcink_cloud_addon_execute_wordpress_ai_image_generation_runtime()` for the
+WordPress AI image generation feature. Both are WordPress scene runtimes, not
+generic chat APIs, image provider proxies, or OpenAI-compatible provider
+proxies.
 
-When the PHP AI Client is available, the addon registers a scene-gated text
-provider. The provider only forwards calls that originate from known WordPress
-AI plugin Ability classes, such as title, excerpt, metadata, summary,
-classification, moderation, rewrite, or alt-text generation. Direct
-`wp_ai_client_prompt()` usage outside those ability scenes is rejected before a
-Cloud request is made.
+When the PHP AI Client is available, the addon registers scene-gated text and
+image models. The text model only forwards calls that originate from known
+WordPress AI plugin Ability classes, such as title, excerpt, metadata, summary,
+classification, moderation, rewrite, or alt-text generation. The image model
+only forwards text-to-image calls from the WordPress AI image generation
+feature and rejects reference-image refinement. Direct `wp_ai_client_prompt()`
+usage outside supported scenes is rejected before a Cloud request is made.
 
 The request must use `wp_ai_connector_runtime.v1` and one supported task
 surface, such as `title_generation`, `excerpt_generation`, `meta_description`,

@@ -195,8 +195,10 @@ REST. Cloud credentials remain owned by the addon settings page, and the
 Connectors card stays status-only for this fixed Cloud connector.
 
 `execute_wordpress_ai_connector_runtime()` is the bounded transport seam for
-that connector/provider path. It must be treated as a scene runtime, not as a
-generic chat provider, model proxy, or OpenAI-compatible endpoint.
+text connector/provider calls. `execute_wordpress_ai_image_generation_runtime()`
+is the bounded transport seam for the WordPress AI image generation feature.
+Both must be treated as scene runtimes, not as generic chat providers, image
+provider proxies, model proxies, or OpenAI-compatible endpoints.
 
 Input must use `contract_version=wp_ai_connector_runtime.v1` and one of the
 supported task surfaces:
@@ -228,6 +230,17 @@ The method rejects generic chat or provider-control fields such as `messages`,
 `functions`, `function_call`, `stream`, credentials, cookies, nonces, and signed
 headers. It also bounds prompt/body size and clamps timeout to 60 seconds,
 retention, and retry values.
+
+Image generation input must use
+`contract_version=image_generation_request.v1`, `task=image_generation`, and a
+single text prompt. The addon projects accepted requests into Cloud's existing
+`npcink-cloud/generate-image` runtime ability with
+`execution_kind=image_generation`, `channel=wordpress_ai_connector`,
+`storage_mode=result_only`, and `policy.allow_fallback=false`. The addon does
+not choose provider keys or expose model routing; Cloud owns image-generation
+provider/profile selection. The image generation seam rejects generic chat,
+tool, stream, and credential fields, clamps image count to 1-4, clamps timeout
+to 90 seconds, and does not support reference-image refinement.
 
 The optional PHP AI Client provider may call this helper only when the current
 call stack originates from a known WordPress AI plugin Ability class and maps to

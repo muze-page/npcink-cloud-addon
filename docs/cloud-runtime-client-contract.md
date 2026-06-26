@@ -200,6 +200,19 @@ is the bounded transport seam for the WordPress AI image generation feature.
 Both must be treated as scene runtimes, not as generic chat providers, image
 provider proxies, model proxies, or OpenAI-compatible endpoints.
 
+The optional PHP AI Client provider registers `npcink-cloud-scene-text` and
+`npcink-cloud-scene-image` as scene wrapper models. These ids represent bounded
+WordPress AI surfaces, not bottom-level Cloud provider model ids. The addon may
+make those wrappers first-choice text/image preferences only after Cloud
+settings pass Save and Verify; otherwise it must preserve the WordPress AI
+plugin's original preferred model order. Bottom-level provider/model routing
+stays with Cloud hosted runtime profiles.
+
+The addon does not register a `wpai_preferred_vision_models` override. Vision
+or Alt Text defaults must stay with the WordPress AI plugin until a separate
+bounded vision scene contract is defined; image context evidence transport does
+not make this addon a generic vision provider or router.
+
 Input must use `contract_version=wp_ai_connector_runtime.v1` and one of the
 supported task surfaces:
 

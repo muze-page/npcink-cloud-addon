@@ -120,6 +120,15 @@ only forwards text-to-image calls from the WordPress AI image generation
 feature and rejects reference-image refinement. Direct `wp_ai_client_prompt()`
 usage outside supported scenes is rejected before a Cloud request is made.
 
+The registered `npcink-cloud-scene-text` and `npcink-cloud-scene-image` entries
+are WordPress AI scene wrapper models, not direct provider model ids. They are
+added to the WordPress AI preferred model lists only after Cloud settings pass
+Save and Verify. The addon does not expose bottom-level provider model
+selection; Cloud hosted runtime profiles choose the underlying provider/model.
+The addon does not register a preferred vision model override. Alt text and
+other vision defaults should remain with the WordPress AI plugin unless a
+separate bounded vision scene contract is introduced.
+
 The request must use `wp_ai_connector_runtime.v1` and one supported task
 surface, such as `title_generation`, `excerpt_generation`, `meta_description`,
 `content_summary`, `content_rewrite`, `content_classification`,

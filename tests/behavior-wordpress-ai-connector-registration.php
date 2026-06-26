@@ -112,3 +112,18 @@ maca_assert(
 	'' === get_option( Npcink_Cloud_WordPress_AI_Connector::SETTING_NAME, '' ),
 	'Unverified Cloud settings do not publish the synthetic connector marker.'
 );
+
+$fallback_text_models = array(
+	array( 'openai', 'gpt-4.1-mini' ),
+);
+$fallback_image_models = array(
+	array( 'openai', 'gpt-image-2' ),
+);
+maca_assert(
+	$fallback_text_models === Npcink_Cloud_WordPress_AI_Connector::filter_preferred_text_models( $fallback_text_models ),
+	'Unverified Cloud settings do not change the preferred AI text model list.'
+);
+maca_assert(
+	$fallback_image_models === Npcink_Cloud_WordPress_AI_Connector::filter_preferred_image_models( $fallback_image_models ),
+	'Unverified Cloud settings do not change the preferred AI image model list.'
+);

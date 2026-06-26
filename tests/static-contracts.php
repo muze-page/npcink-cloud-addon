@@ -32,6 +32,7 @@ $agents = maca_read( $root . '/AGENTS.md' );
 $readme = maca_read( $root . '/README.md' );
 $composer = maca_read( $root . '/composer.json' );
 $eval_lab_proxy = maca_read( $root . '/scripts/eval-lab.sh' );
+$ai_i18n_audit = maca_read( $root . '/scripts/audit-ai-plugin-localization.php' );
 
 maca_assert(
 	false !== strpos( $composer, '"eval:project:quality": "sh scripts/eval-lab.sh task=project_quality_gate' )
@@ -48,6 +49,16 @@ maca_assert(
 maca_assert(
 	false === strpos( $composer . "\n" . $eval_lab_proxy, 'sk-' ),
 	'Cloud Addon eval-lab integration does not contain committed provider keys.'
+);
+
+maca_assert(
+	false !== strpos( $composer, '"ai:i18n:audit": "@php scripts/audit-ai-plugin-localization.php"' )
+	&& false !== strpos( $ai_i18n_audit, 'AI_PLUGIN_PATH' )
+	&& false !== strpos( $ai_i18n_audit, 'Npcink_Cloud_AI_Plugin_Localization::translations()' )
+	&& false !== strpos( $ai_i18n_audit, 'Missing fixed UI candidates' )
+	&& false !== strpos( $ai_i18n_audit, 'Do not add dynamic ability names' )
+	&& false === strpos( $ai_i18n_audit, 'npcink_cloud_addon_runtime_client' ),
+	'AI plugin localization audit compares local ai-domain strings against the bounded shim without Cloud runtime.'
 );
 
 maca_assert(

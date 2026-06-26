@@ -58,15 +58,15 @@ When that happens, existing Chinese mappings may silently stop matching. The
 right workflow is to detect drift quickly and generate a reviewable update
 list, not to auto-translate in production.
 
-## Recommended One-Command Audit
+## One-Command Audit
 
-Future implementation should add:
+Run:
 
 ```sh
 composer run ai:i18n:audit
 ```
 
-The command should scan the locally installed WordPress AI plugin and compare
+The command scans the locally installed WordPress AI plugin and compares
 its `ai` text-domain strings against
 `Npcink_Cloud_AI_Plugin_Localization::translations()`.
 

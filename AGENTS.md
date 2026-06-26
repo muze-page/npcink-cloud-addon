@@ -18,6 +18,9 @@ This repository is the standalone `npcink-cloud-addon` WordPress plugin.
 - Do not make the settings page a second control plane.
 - Read `docs/cloud-addon-complexity-budget.md` before expanding addon scope;
   keep security/boundary checks, but do not add product-control complexity.
+- For WordPress AI plugin zh_CN compatibility strings, follow
+  `docs/ai-plugin-localization-maintenance.md`; do not translate dynamic
+  ability metadata in this addon.
 
 ## AI Development Rules
 

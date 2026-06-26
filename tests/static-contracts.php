@@ -14,6 +14,8 @@ $bootstrap = maca_read( $root . '/includes/bootstrap.php' );
 $transport = maca_read( $root . '/includes/class-cloud-media-derivative-transport.php' );
 $runtime_client = maca_read( $root . '/includes/class-cloud-runtime-client.php' );
 $wordpress_ai_connector = maca_read( $root . '/includes/class-cloud-wordpress-ai-connector.php' );
+$ai_plugin_localization = maca_read( $root . '/includes/class-ai-plugin-localization.php' );
+$ai_plugin_localization_js = maca_read( $root . '/assets/ai-plugin-localization.js' );
 $admin_css = maca_read( $root . '/assets/admin.css' );
 $entitlement_summary = maca_read( $root . '/includes/class-cloud-entitlement-summary.php' );
 $observability = maca_read( $root . '/includes/class-cloud-observability-collector.php' );
@@ -123,6 +125,25 @@ maca_assert(
 	&& false !== strpos( $wordpress_ai_connector, 'Npcink_Cloud_Addon_Settings::is_verified()' )
 	&& false === strpos( $wordpress_ai_connector, "get_option( 'secret'" ),
 	'WordPress connector registration projects verified Cloud settings into one fixed status-only Npcink Cloud card without exposing stored secrets.'
+);
+
+maca_assert(
+	false !== strpos( $bootstrap, 'class-ai-plugin-localization.php' )
+	&& false !== strpos( $bootstrap, 'Npcink_Cloud_AI_Plugin_Localization::register()' )
+	&& false !== strpos( $ai_plugin_localization, "private const AI_TEXT_DOMAIN = 'ai'" )
+	&& false !== strpos( $ai_plugin_localization, "add_filter( 'gettext'" )
+	&& false !== strpos( $ai_plugin_localization, "add_action( 'admin_enqueue_scripts'" )
+	&& false !== strpos( $ai_plugin_localization, 'wp_localize_script' )
+	&& false !== strpos( $ai_plugin_localization_js, 'wp.i18n.setLocaleData' )
+	&& false !== strpos( $ai_plugin_localization, "'Generate Image' => '生成图片'" )
+	&& false !== strpos( $ai_plugin_localization, "'Connector Approval' => '连接器审批'" )
+	&& false !== strpos( $ai_plugin_localization, "'Generate Summary' => '生成摘要'" )
+	&& false !== strpos( $ai_plugin_localization, "'Last 24 Hours' => '最近 24 小时'" )
+	&& false !== strpos( $ai_plugin_localization, "'Total Abilities' => '能力总数'" )
+	&& false !== strpos( $ai_plugin_localization, "'Invoke Ability' => '调用能力'" )
+	&& false !== strpos( $ai_plugin_localization, "'Raw Data' => '原始数据'" )
+	&& false === strpos( $ai_plugin_localization, 'npcink_cloud_addon_runtime_client' ),
+	'AI plugin localization is a bounded admin-only ai-domain compatibility shim and does not call Cloud runtime.'
 );
 
 maca_assert(

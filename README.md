@@ -144,6 +144,12 @@ This helper rejects generic chat or provider-control shapes such as `messages`,
 also clamps timeout to 60 seconds, retention, and retry values to the
 lightweight scene runtime limits.
 
+The addon also carries a bounded zh_CN compatibility shim for high-traffic
+WordPress AI plugin admin/editor UI strings. Maintenance rules and the future
+one-command audit contract are documented in
+`docs/ai-plugin-localization-maintenance.md`. Do not turn that shim into a full
+language pack or translate dynamic ability metadata in this addon.
+
 ## Media Derivative Transport
 
 The addon can consume the read-only

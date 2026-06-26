@@ -1,0 +1,305 @@
+<?php
+/**
+ * Bounded compatibility localization for the WordPress AI plugin admin UI.
+ *
+ * @package NpcinkCloudAddon
+ */
+
+declare(strict_types=1);
+
+if ( ! defined( 'ABSPATH' ) ) {
+	exit;
+}
+
+if ( ! class_exists( 'Npcink_Cloud_AI_Plugin_Localization' ) ) {
+	/**
+	 * Provides a narrow zh_CN compatibility layer for high-traffic AI plugin UI strings.
+	 */
+	final class Npcink_Cloud_AI_Plugin_Localization {
+		private const AI_TEXT_DOMAIN = 'ai';
+
+		/**
+		 * Registers admin-only localization hooks.
+		 *
+		 * @return void
+		 */
+		public static function register(): void {
+			add_filter( 'gettext', array( __CLASS__, 'filter_gettext' ), 20, 3 );
+			add_action( 'admin_enqueue_scripts', array( __CLASS__, 'enqueue_script_locale_data' ), 1 );
+			add_action( 'enqueue_block_editor_assets', array( __CLASS__, 'enqueue_script_locale_data' ), 1 );
+		}
+
+		/**
+		 * Translates selected AI plugin PHP strings when no upstream zh_CN language pack is present.
+		 *
+		 * @param string $translation Existing translation.
+		 * @param string $text Original English string.
+		 * @param string $domain Text domain.
+		 * @return string
+		 */
+		public static function filter_gettext( string $translation, string $text, string $domain ): string {
+			if ( self::AI_TEXT_DOMAIN !== $domain || ! self::should_localize() ) {
+				return $translation;
+			}
+
+			$translations = self::translations();
+
+			return $translations[ $text ] ?? $translation;
+		}
+
+		/**
+		 * Adds JS locale data for AI plugin React/admin screens.
+		 *
+		 * @return void
+		 */
+		public static function enqueue_script_locale_data(): void {
+			if ( ! self::should_localize() || ! function_exists( 'wp_enqueue_script' ) || ! function_exists( 'wp_localize_script' ) ) {
+				return;
+			}
+
+			$locale_data = array(
+				'' => array(
+					'domain' => self::AI_TEXT_DOMAIN,
+					'lang'   => 'zh_CN',
+				),
+			);
+			foreach ( self::translations() as $source => $translation ) {
+				$locale_data[ $source ] = array( $translation );
+			}
+
+			$handle = 'npcink-cloud-addon-ai-plugin-localization';
+			wp_enqueue_script(
+				$handle,
+				plugins_url( 'assets/ai-plugin-localization.js', NPCINK_CLOUD_ADDON_FILE ),
+				array( 'wp-i18n' ),
+				NPCINK_CLOUD_ADDON_VERSION,
+				true
+			);
+			wp_localize_script(
+				$handle,
+				'NpcinkCloudAiPluginLocalization',
+				array( 'localeData' => $locale_data )
+			);
+		}
+
+		/**
+		 * Returns whether the compatibility translations should run.
+		 *
+		 * @return bool
+		 */
+		public static function should_localize(): bool {
+			if ( function_exists( 'is_admin' ) && ! is_admin() ) {
+				return false;
+			}
+
+			$locale = '';
+			if ( function_exists( 'determine_locale' ) ) {
+				$locale = (string) determine_locale();
+			} elseif ( function_exists( 'get_user_locale' ) ) {
+				$locale = (string) get_user_locale();
+			} elseif ( function_exists( 'get_locale' ) ) {
+				$locale = (string) get_locale();
+			}
+
+			if ( '' === $locale ) {
+				return false;
+			}
+
+			return 0 === strpos( str_replace( '-', '_', strtolower( $locale ) ), 'zh_' );
+		}
+
+		/**
+		 * Returns the fixed AI plugin translation map.
+		 *
+		 * @return array<string,string>
+		 */
+		public static function translations(): array {
+			return array(
+				'AI' => 'AI',
+				'Configure AI features and experiments for your WordPress site.' => '配置此 WordPress 站点的 AI 功能和实验功能。',
+				'Enable AI' => '启用 AI',
+				'Docs' => '文档',
+				'Contribute' => '参与贡献',
+				'Developer Tools' => '开发者工具',
+				'Model selection' => '模型选择',
+				'Select a specific provider and model per feature' => '为每个功能选择指定的提供方和模型',
+				'Control whether AI is enabled for your site. When disabled, all features and experiments will be inactive regardless of their individual settings.' => '控制此站点是否启用 AI。关闭后，即使单个功能已启用，所有功能和实验功能也会停用。',
+				'Editor Experiments' => '编辑器实验功能',
+				'AI-powered experiments for the block editor, including content generation and enhancement tools.' => '面向区块编辑器的 AI 实验功能，包括内容生成和增强工具。',
+				'Admin Experiments' => '后台实验功能',
+				'AI-powered experiments for the WordPress admin area, including exploration and testing tools.' => '面向 WordPress 后台的 AI 实验功能，包括探索和测试工具。',
+				'Abilities Explorer' => '能力浏览器',
+				'Discover, inspect, test, and document all abilities registered via the WordPress Abilities API.' => '发现、检查、测试并记录通过 WordPress Abilities API 注册的所有能力。',
+				'Connector Approval' => '连接器审批',
+				'Connector Approvals' => '连接器审批',
+				'Require explicit administrator approval before plugins or themes can use AI connectors configured on this site. Note this is an experimental, proof-of-concept feature and as such, issues may be encountered. Feedback welcome and desired to help shape the feature.' => '插件或主题使用本站配置的 AI 连接器前，需要管理员明确审批。此功能仍是实验性概念验证，可能会遇到问题，欢迎反馈以帮助完善。',
+				'AI Request Logging' => 'AI 请求日志',
+				'AI Request Logs' => 'AI 请求日志',
+				'Logs AI requests for observability and debugging. View detailed logs under Tools.' => '记录 AI 请求，用于观测和调试。可在“工具”下查看详细日志。',
+				'Detailed logs of every AI request made by the WordPress AI plugin.' => '记录 WordPress AI 插件发起的每一次 AI 请求的详细日志。',
+				'Last Minute' => '最近 1 分钟',
+				'Last Hour' => '最近 1 小时',
+				'Last 24 Hours' => '最近 24 小时',
+				'Last 7 Days' => '最近 7 天',
+				'Last 30 Days' => '最近 30 天',
+				'All Time' => '全部时间',
+				'Requests' => '请求',
+				'Tokens' => 'Token',
+				'Avg Time' => '平均耗时',
+				'Success Rate' => '成功率',
+				'Manage Logs' => '管理日志',
+				'Danger Zone' => '危险操作区',
+				'Permanently delete all logged requests. This action cannot be undone.' => '永久删除所有已记录的请求。此操作无法撤销。',
+				'Purge All Logs' => '清空所有日志',
+				'Are you sure?' => '确定吗？',
+				'Yes, Purge All' => '是，全部清空',
+				'All logs have been purged.' => '所有日志已清空。',
+				'Unable to load summary data.' => '无法加载汇总数据。',
+				'Something went wrong. Please try again.' => '出现问题，请重试。',
+				'Comment Moderation' => '评论审核',
+				'Automatically moderate comments based on toxicity detection and sentiment analysis. Requires an AI connector that includes support for text generation models.' => '基于毒性检测和情绪分析自动审核评论。需要支持文本生成模型的 AI 连接器。',
+				'Other Features' => '其他功能',
+				'Additional AI-powered features.' => '其他 AI 功能。',
+				'Enable all' => '全部启用',
+				'Disable all' => '全部停用',
+				'Settings saved.' => '设置已保存。',
+				'AI enabled.' => 'AI 已启用。',
+				'AI disabled.' => 'AI 已停用。',
+				'Failed to save settings.' => '设置保存失败。',
+				'Save' => '保存',
+				'Save %s settings' => '保存 %s 设置',
+				'Saving settings…' => '正在保存设置…',
+				'More information' => '更多信息',
+				'Manage Connectors' => '管理连接器',
+				'The AI plugin requires a valid AI Connector to function properly. Please review the AI Connectors you have configured to ensure they are valid.' => 'AI 插件需要有效的 AI 连接器才能正常工作。请检查已配置的 AI 连接器，确保它们有效。',
+				'The AI plugin requires a valid AI Connector to function properly. Verify you have one or more AI Connectors configured.' => 'AI 插件需要有效的 AI 连接器才能正常工作。请确认已配置一个或多个 AI 连接器。',
+				'Content Classification' => '内容分类',
+				'AI-powered suggestions for post tags and categories based on content analysis. Requires an AI connector that includes support for text generation models.' => '基于内容分析，为文章标签和分类目录提供 AI 建议。需要支持文本生成模型的 AI 连接器。',
+				'Taxonomy Strategy' => '分类策略',
+				'TAXONOMY STRATEGY' => '分类策略',
+				'Suggest new terms based on context' => '根据上下文建议新术语',
+				'Use existing terms only' => '仅使用现有术语',
+				'Maximum Suggestions' => '最大建议数量',
+				'MAXIMUM SUGGESTIONS' => '最大建议数量',
+				'Content Resizing' => '内容改写长度',
+				'Shorten, expand, or rephrase selected block content. Requires an AI connector that includes support for text generation models.' => '缩短、扩展或改写选中的区块内容。需要支持文本生成模型的 AI 连接器。',
+				'Excerpt Generation' => '摘要生成',
+				'Generates excerpt suggestions from content. Requires an AI connector that includes support for text generation models.' => '根据内容生成摘要建议。需要支持文本生成模型的 AI 连接器。',
+				'Alt Text Generation' => '替代文本生成',
+				'Generates accessible alternative (alt) text for images using AI vision models, following common web accessibility guidance. Requires an AI connector that includes support for vision-based image analysis models.' => '使用 AI 视觉模型为图片生成符合常见无障碍规范的替代文本。需要支持视觉图片分析模型的 AI 连接器。',
+				'Meta Description Generation' => 'SEO 描述生成',
+				'Generates meta description suggestions and integrates those with various SEO plugins. Requires an AI connector that includes support for text generation models.' => '生成 SEO 描述建议，并与多种 SEO 插件集成。需要支持文本生成模型的 AI 连接器。',
+				'Editorial Notes' => '编辑建议',
+				'Adds editorial suggestions to posts block-by-block, covering Accessibility, Readability, Grammar, and SEO. Requires an AI connector that includes support for text generation models.' => '按区块为文章添加编辑建议，覆盖无障碍、可读性、语法和 SEO。需要支持文本生成模型的 AI 连接器。',
+				'Editorial Updates' => '编辑更新',
+				'Applies pending editorial Notes to your content automatically. Requires an AI connector that includes support for text generation models.' => '自动将待处理的编辑建议应用到内容中。需要支持文本生成模型的 AI 连接器。',
+				'Content Summarization' => '内容总结',
+				'Summarizes long-form content into digestible overviews. Requires an AI connector that includes support for text generation models.' => '将长内容总结为易读的概览。需要支持文本生成模型的 AI 连接器。',
+				'Generate Summary' => '生成摘要',
+				'This will create a block that is a summary of the content of this post.' => '这将创建一个区块，作为本文内容的摘要。',
+				'Title Generation' => '标题生成',
+				'Generates title suggestions from content. Requires an AI connector that includes support for text generation models.' => '根据内容生成标题建议。需要支持文本生成模型的 AI 连接器。',
+				'Image Generation and Editing' => '图片生成与编辑',
+				'Generate and edit images using AI. Requires an AI connector that includes support for image generation models.' => '使用 AI 生成和编辑图片。需要支持图片生成模型的 AI 连接器。',
+				'Generate Editorial Notes' => '生成编辑建议',
+				'This analyzes the content of this post block-by-block and adds editorial Notes with suggestions on each block.' => '这会逐个区块分析本文内容，并为每个区块添加编辑建议。',
+				'Meta Description' => 'SEO 描述',
+				'Generate Meta Description' => '生成 SEO 描述',
+				'Generate Image' => '生成图片',
+				'Describe the image you want to generate.' => '描述你想生成的图片。',
+				'Prompt' => '提示词',
+				'Generate' => '生成',
+				'Generating…' => '正在生成…',
+				'Invalid response from image generation' => '图片生成返回无效响应',
+				'An error occurred during image generation.' => '图片生成过程中发生错误。',
+				'This feature requires an AI Connector that supports image generation. Review your Connectors to ensure you have a valid AI Connector configured.' => '此功能需要支持图片生成的 AI 连接器。请检查连接器，确保已配置有效的 AI 连接器。',
+				'Save to Media Library' => '保存到媒体库',
+				'Refine Image' => '优化图片',
+				'Generate Another Image' => '再生成一张图片',
+				'Start over' => '重新开始',
+				'Describe the refinements you want to make to the image' => '描述你想对图片进行的优化',
+				'Apply' => '应用',
+				'Cancel' => '取消',
+				'Saving to Media Library…' => '正在保存到媒体库…',
+				'Failed to save image.' => '图片保存失败。',
+				'Previous version' => '上一个版本',
+				'Next version' => '下一个版本',
+				'Use Image' => '使用图片',
+				'Uploading image…' => '正在上传图片…',
+				'Failed to upload image.' => '图片上传失败。',
+				'Edit Prompt' => '编辑提示词',
+				'Total Abilities' => '能力总数',
+				'Core' => '核心',
+				'Plugins' => '插件',
+				'Theme' => '主题',
+				'All Providers' => '所有提供方',
+				'All Categories' => '所有分类',
+				'Filter by provider' => '按提供方筛选',
+				'Filter by category' => '按分类筛选',
+				'Filter' => '筛选',
+				'Search Abilities' => '搜索能力',
+				'Name' => '名称',
+				'Slug' => '标识',
+				'Provider' => '提供方',
+				'Actions' => '操作',
+				'Plugin' => '插件',
+				'View' => '查看',
+				'Test' => '测试',
+				'Test Ability' => '测试能力',
+				'Test Ability:' => '测试能力：',
+				'View Details' => '查看详情',
+				'&larr; Back to List' => '&larr; 返回列表',
+				'No ability specified.' => '未指定能力。',
+				'Ability not found.' => '未找到能力。',
+				'Description' => '描述',
+				'Details' => '详情',
+				'Input Schema' => '输入 Schema',
+				'Output Schema' => '输出 Schema',
+				'Raw Data' => '原始数据',
+				'Input Data' => '输入数据',
+				'No Input Required' => '无需输入',
+				'This ability does not accept any input parameters. Simply click "Invoke Ability" to execute it.' => '此能力不接受任何输入参数。直接点击“调用能力”即可执行。',
+				'Edit the JSON input below to test the ability. The input will be validated against the input schema if available.' => '编辑下面的 JSON 输入来测试此能力。如果存在输入 schema，系统会按 schema 进行验证。',
+				'How to test:' => '如何测试：',
+				'Edit the JSON input below with your test data' => '用你的测试数据编辑下面的 JSON 输入',
+				'Click "Validate Input" to check your JSON is correct' => '点击“验证输入”检查 JSON 是否正确',
+				'Click "Invoke Ability" to execute the ability with your input' => '点击“调用能力”，使用当前输入执行此能力',
+				'View the results below' => '在下方查看结果',
+				'Ability test input (JSON)' => '能力测试输入（JSON）',
+				'Invoke Ability' => '调用能力',
+				'Validate Input' => '验证输入',
+				'Clear Result' => '清除结果',
+				'Result' => '结果',
+				'Input Schema Reference' => '输入 Schema 参考',
+				'Copy' => '复制',
+				'Invoking ability...' => '正在调用能力...',
+				'Success!' => '成功！',
+				'Error' => '错误',
+				'Invalid JSON input' => '无效的 JSON 输入',
+				'Are you sure you want to invoke this ability?' => '确定要调用此能力吗？',
+				'Copied!' => '已复制！',
+				'Failed to copy' => '复制失败',
+				'Valid' => '有效',
+				'Validation Errors' => '验证错误',
+				'JSON syntax is valid' => 'JSON 语法有效',
+				'Failed to parse input schema' => '无法解析输入 schema',
+				'Input is valid according to the schema' => '输入符合 schema 要求',
+				'Input validation failed.' => '输入验证失败。',
+				'Ability invoked successfully.' => '能力调用成功。',
+				'Ability slug is required.' => '必须提供能力标识。',
+				'Insufficient permissions.' => '权限不足。',
+				'Unknown error occurred.' => '发生未知错误。',
+				'Overview' => '概览',
+				'Providers' => '提供方',
+				'Testing' => '测试',
+				'For more information:' => '更多信息：',
+				'Abilities API Documentation' => 'Abilities API 文档',
+				'You can test any ability directly from this screen:' => '你可以直接在此页面测试任意能力：',
+				'Click "Test" next to an ability in the list.' => '点击列表中某个能力旁边的“测试”。',
+				'Edit the pre-filled Input Data if the ability accepts JSON parameters.' => '如果该能力接受 JSON 参数，可以编辑预填的输入数据。',
+				'Use "Validate Input" to check your JSON against the schema.' => '使用“验证输入”按 schema 检查 JSON。',
+				'Click "Invoke Ability" to execute it and see the result.' => '点击“调用能力”执行并查看结果。',
+			);
+		}
+	}
+}

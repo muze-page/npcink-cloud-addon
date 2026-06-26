@@ -183,6 +183,8 @@ fail closed when Cloud returns no usable evidence.
 
 This helper is not a local image recognition model, a product workflow, a
 queue, a proposal creator, a media metadata writer, or a second control plane.
+See `docs/image-context-evidence-integration-summary.md` for the cross-repo
+Toolbox/Add-on rationale and boundary summary.
 
 ## WordPress AI Connector Runtime
 

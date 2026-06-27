@@ -152,6 +152,10 @@ if ( ! class_exists( 'Npcink_Cloud_WordPress_AI_Connector' ) ) {
 		 * @return array<int,mixed>
 		 */
 		public static function filter_preferred_text_models( array $preferred_models ): array {
+			if ( ! self::is_cloud_verified() ) {
+				return $preferred_models;
+			}
+
 			array_unshift( $preferred_models, array( self::CONNECTOR_ID, self::MODEL_ID ) );
 
 			return $preferred_models;
@@ -164,6 +168,10 @@ if ( ! class_exists( 'Npcink_Cloud_WordPress_AI_Connector' ) ) {
 		 * @return array<int,mixed>
 		 */
 		public static function filter_preferred_image_models( array $preferred_models ): array {
+			if ( ! self::is_cloud_verified() ) {
+				return $preferred_models;
+			}
+
 			array_unshift( $preferred_models, array( self::CONNECTOR_ID, self::IMAGE_MODEL_ID ) );
 
 			return $preferred_models;
@@ -186,20 +194,29 @@ if ( ! class_exists( 'Npcink_Cloud_WordPress_AI_Connector' ) ) {
 				}
 			}
 
-			register_setting(
-				'npcink_cloud_addon',
-				self::SETTING_NAME,
-				array(
-					'type'         => 'string',
-					'default'      => '',
-					'show_in_rest' => false,
-				)
-			);
+				register_setting(
+					'npcink_cloud_addon',
+					self::SETTING_NAME,
+					array(
+						'type'         => 'string',
+						'default'      => '',
+						'show_in_rest' => false,
+					)
+				);
+			}
+
+			/**
+			 * Checks whether Cloud settings have passed Save and Verify.
+			 *
+			 * @return bool
+			 */
+			private static function is_cloud_verified(): bool {
+				return class_exists( 'Npcink_Cloud_Addon_Settings' ) && Npcink_Cloud_Addon_Settings::is_verified();
+			}
 		}
 	}
-}
 
-if (
+	if (
 	class_exists( 'WordPress\\AiClient\\Providers\\AbstractProvider' )
 	&& interface_exists( 'WordPress\\AiClient\\Providers\\Contracts\\ProviderAvailabilityInterface' )
 	&& interface_exists( 'WordPress\\AiClient\\Providers\\Contracts\\ModelMetadataDirectoryInterface' )

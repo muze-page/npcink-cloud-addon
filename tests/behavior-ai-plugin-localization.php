@@ -115,8 +115,167 @@ maca_assert(
 		'Maximum Suggestions',
 		'Maximum Suggestions',
 		'ai'
+	)
+	&& '建议%s' === Npcink_Cloud_AI_Plugin_Localization::filter_gettext(
+		'Suggest %s',
+		'Suggest %s',
+		'ai'
+	)
+	&& '请添加更多内容以启用 AI 建议（约 150 个词）。' === Npcink_Cloud_AI_Plugin_Localization::filter_gettext(
+		'Add more content to enable AI suggestions (approximately 150 words).',
+		'Add more content to enable AI suggestions (approximately 150 words).',
+		'ai'
+	)
+	&& '添加“%s”' === Npcink_Cloud_AI_Plugin_Localization::filter_gettext(
+		'Add "%s"',
+		'Add "%s"',
+		'ai'
+	)
+	&& '重新建议' === Npcink_Cloud_AI_Plugin_Localization::filter_gettext(
+		'Suggest again',
+		'Suggest again',
+		'ai'
+	)
+	&& '建议的%s' === Npcink_Cloud_AI_Plugin_Localization::filter_gettext(
+		'Suggested %s',
+		'Suggested %s',
+		'ai'
 	),
-	'AI plugin localization translates editor setting labels before CSS text transforms.'
+	'AI plugin localization translates content classification editor labels and help text.'
+);
+
+maca_assert(
+	'调整内容长度' === Npcink_Cloud_AI_Plugin_Localization::filter_gettext(
+		'Resize Content',
+		'Resize Content',
+		'ai'
+	)
+	&& '缩短' === Npcink_Cloud_AI_Plugin_Localization::filter_gettext(
+		'Shorten',
+		'Shorten',
+		'ai'
+	)
+	&& '重新生成' === Npcink_Cloud_AI_Plugin_Localization::filter_gettext(
+		'Regenerate',
+		'Regenerate',
+		'ai'
+	)
+	&& '+%d 个词' === Npcink_Cloud_AI_Plugin_Localization::filter_gettext(
+		'+%d words',
+		'+%d words',
+		'ai'
+	),
+	'AI plugin localization translates content resizing editor controls.'
+);
+
+maca_assert(
+	'SEO 描述' === Npcink_Cloud_AI_Plugin_Localization::filter_gettext(
+		'Meta description',
+		'Meta description',
+		'ai'
+	)
+	&& '复制到剪贴板' === Npcink_Cloud_AI_Plugin_Localization::filter_gettext(
+		'Copy to clipboard',
+		'Copy to clipboard',
+		'ai'
+	)
+	&& 'SEO 描述已复制到剪贴板。' === Npcink_Cloud_AI_Plugin_Localization::filter_gettext(
+		'Meta description copied to clipboard.',
+		'Meta description copied to clipboard.',
+		'ai'
+	),
+	'AI plugin localization translates meta description editor controls.'
+);
+
+maca_assert(
+	'标题建议' === Npcink_Cloud_AI_Plugin_Localization::filter_gettext(
+		'Title suggestion',
+		'Title suggestion',
+		'ai'
+	)
+	&& '插入' === Npcink_Cloud_AI_Plugin_Localization::filter_gettext(
+		'Insert',
+		'Insert',
+		'ai'
+	)
+	&& '未生成标题建议。' === Npcink_Cloud_AI_Plugin_Localization::filter_gettext(
+		'No title suggestion was generated.',
+		'No title suggestion was generated.',
+		'ai'
+	),
+	'AI plugin localization translates title generation editor controls.'
+);
+
+maca_assert(
+	'内容总结' === Npcink_Cloud_AI_Plugin_Localization::filter_gettext(
+		'Content Summary',
+		'Content Summary',
+		'ai'
+	)
+	&& '重新生成摘要' === Npcink_Cloud_AI_Plugin_Localization::filter_gettext(
+		'Regenerate Summary',
+		'Regenerate Summary',
+		'ai'
+	)
+	&& '生成摘要失败。' === Npcink_Cloud_AI_Plugin_Localization::filter_gettext(
+		'Failed to generate summary.',
+		'Failed to generate summary.',
+		'ai'
+	),
+	'AI plugin localization translates summarization editor controls.'
+);
+
+maca_assert(
+	'生成替代文本' === Npcink_Cloud_AI_Plugin_Localization::filter_gettext(
+		'Generate Alt Text',
+		'Generate Alt Text',
+		'ai'
+	)
+	&& '替代文本' === Npcink_Cloud_AI_Plugin_Localization::filter_gettext(
+		'Alt text',
+		'Alt text',
+		'ai'
+	)
+	&& '正在生成替代文本…' === Npcink_Cloud_AI_Plugin_Localization::filter_gettext(
+		'Generating alt text…',
+		'Generating alt text…',
+		'ai'
+	)
+	&& '替代文本已生成并应用。' === Npcink_Cloud_AI_Plugin_Localization::filter_gettext(
+		'Alt text generated and applied.',
+		'Alt text generated and applied.',
+		'ai'
+	)
+	&& '忽略' === Npcink_Cloud_AI_Plugin_Localization::filter_gettext(
+		'Dismiss',
+		'Dismiss',
+		'ai'
+	),
+	'AI plugin localization translates alt text editor controls and statuses.'
+);
+
+maca_assert(
+	'生成编辑建议' === Npcink_Cloud_AI_Plugin_Localization::filter_gettext(
+		'Generate Editorial Note',
+		'Generate Editorial Note',
+		'ai'
+	)
+	&& '已添加 %d 条建议。' === Npcink_Cloud_AI_Plugin_Localization::filter_gettext(
+		'%d suggestions added.',
+		'%d suggestions added.',
+		'ai'
+	)
+	&& '应用编辑更新' === Npcink_Cloud_AI_Plugin_Localization::filter_gettext(
+		'Apply Editorial Updates',
+		'Apply Editorial Updates',
+		'ai'
+	)
+	&& '正在优化区块（%1$s/%2$s）…' === Npcink_Cloud_AI_Plugin_Localization::filter_gettext(
+		'Refining block (%1$s of %2$s)…',
+		'Refining block (%1$s of %2$s)…',
+		'ai'
+	),
+	'AI plugin localization translates editorial note and update editor controls.'
 );
 
 maca_assert(
@@ -255,6 +414,12 @@ maca_assert(
 	&& '能力浏览器' === ( $locale_data['Abilities Explorer'][0] ?? '' )
 	&& '生成摘要' === ( $locale_data['Generate Summary'][0] ?? '' )
 	&& 'SEO 描述' === ( $locale_data['Meta Description'][0] ?? '' )
+	&& '建议%s' === ( $locale_data['Suggest %s'][0] ?? '' )
+	&& '请添加更多内容以启用 AI 建议（约 150 个词）。' === ( $locale_data['Add more content to enable AI suggestions (approximately 150 words).'][0] ?? '' )
+	&& '添加“%s”' === ( $locale_data['Add "%s"'][0] ?? '' )
+	&& '调整内容长度' === ( $locale_data['Resize Content'][0] ?? '' )
+	&& '替代文本' === ( $locale_data['Alt text'][0] ?? '' )
+	&& '应用编辑更新' === ( $locale_data['Apply Editorial Updates'][0] ?? '' )
 	&& '最近 24 小时' === ( $locale_data['Last 24 Hours'][0] ?? '' )
 	&& '所有提供方' === ( $locale_data['All Providers'][0] ?? '' )
 	&& '调用能力' === ( $locale_data['Invoke Ability'][0] ?? '' )

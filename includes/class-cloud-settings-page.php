@@ -310,7 +310,7 @@ if ( ! class_exists( 'Npcink_Cloud_Settings_Page' ) ) {
 
 			$settings = Npcink_Cloud_Addon_Settings::get_settings();
 			$state = Npcink_Cloud_Addon_Settings::get_credential_state();
-			$entitlement = Npcink_Cloud_Entitlement_Summary::get_summary();
+			$entitlement = Npcink_Cloud_Entitlement_Summary::get_cached_summary();
 			$monitoring = Npcink_Cloud_Observability_Collector::get_status();
 			$is_verified = ! empty( $state['verified'] );
 			$active_tab = self::get_active_tab( $is_verified );

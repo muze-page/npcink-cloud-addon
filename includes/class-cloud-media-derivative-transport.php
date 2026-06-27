@@ -1032,14 +1032,22 @@ if ( ! class_exists( 'Npcink_Cloud_Media_Derivative_Transport' ) ) {
 				if ( '' === $path ) {
 					return array();
 				}
-				if ( ! is_readable( $path ) ) {
+				$real_path = realpath( $path );
+				if ( ! is_string( $real_path ) || ! is_file( $real_path ) || ! is_readable( $real_path ) ) {
 					return new WP_Error(
 						'cloud_media_derivative_upload_file_unreadable',
 						__( 'Media derivative upload file is not readable.', 'npcink-cloud-addon' ),
 						array( 'status' => 400 )
 					);
 				}
-				$size = filesize( $path );
+				if ( ! self::is_allowed_upload_file_path( $real_path ) ) {
+					return new WP_Error(
+						'cloud_media_derivative_upload_file_path_not_allowed',
+						__( 'Media derivative upload files must come from the WordPress uploads directory or a local temporary directory.', 'npcink-cloud-addon' ),
+						array( 'status' => 400 )
+					);
+				}
+				$size = filesize( $real_path );
 				if ( false !== $size && $size > self::MAX_UPLOAD_BYTES ) {
 					return new WP_Error(
 						'cloud_media_derivative_upload_file_too_large',
@@ -1047,7 +1055,7 @@ if ( ! class_exists( 'Npcink_Cloud_Media_Derivative_Transport' ) ) {
 						array( 'status' => 413 )
 					);
 				}
-				$read = file_get_contents( $path );
+				$read = file_get_contents( $real_path );
 				$contents = is_string( $read ) ? $read : '';
 			}
 
@@ -1072,6 +1080,39 @@ if ( ! class_exists( 'Npcink_Cloud_Media_Derivative_Transport' ) ) {
 				'mime_type'  => sanitize_text_field( (string) ( $descriptor['mime_type'] ?? 'application/octet-stream' ) ),
 				'contents'   => $contents,
 			);
+		}
+
+		/**
+		 * Returns whether a local upload path is in an approved local media/temp directory.
+		 *
+		 * @param string $path Real local file path.
+		 * @return bool
+		 */
+		private static function is_allowed_upload_file_path( string $path ): bool {
+			$allowed_dirs = array();
+			if ( function_exists( 'wp_upload_dir' ) ) {
+				$upload_dir = wp_upload_dir();
+				if ( is_array( $upload_dir ) && ! empty( $upload_dir['basedir'] ) ) {
+					$allowed_dirs[] = (string) $upload_dir['basedir'];
+				}
+			}
+			if ( function_exists( 'get_temp_dir' ) ) {
+				$allowed_dirs[] = (string) get_temp_dir();
+			}
+			$allowed_dirs[] = sys_get_temp_dir();
+
+			foreach ( array_unique( array_filter( $allowed_dirs ) ) as $dir ) {
+				$real_dir = realpath( $dir );
+				if ( ! is_string( $real_dir ) || '' === $real_dir ) {
+					continue;
+				}
+				$real_dir = rtrim( $real_dir, DIRECTORY_SEPARATOR );
+				if ( $path === $real_dir || 0 === strpos( $path, $real_dir . DIRECTORY_SEPARATOR ) ) {
+					return true;
+				}
+			}
+
+			return false;
 		}
 
 		/**

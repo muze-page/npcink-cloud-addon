@@ -59,6 +59,37 @@ maca_assert(
 	'Behavior: ability credentials and signed headers are rejected before Cloud dispatch.'
 );
 
+$tmp_source = tempnam( sys_get_temp_dir(), 'maca-source-' );
+file_put_contents( $tmp_source, 'source-image-bytes' );
+$tmp_source_result = Npcink_Cloud_Media_Derivative_Transport::dispatch_from_ability_response(
+	maca_ability_fixture(),
+	array(
+		'path'      => $tmp_source,
+		'filename'  => 'source.jpg',
+		'mime_type' => 'image/jpeg',
+	)
+);
+unlink( $tmp_source );
+$tmp_source_request = end( $GLOBALS['maca_http_requests'] );
+maca_assert(
+	is_array( $tmp_source_result )
+	&& false !== strpos( (string) ( $tmp_source_request['args']['body'] ?? '' ), 'name="source_file"; filename="source.jpg"' ),
+	'Behavior: media derivative upload files may come from a local temporary directory.'
+);
+
+$unsafe_local_source = Npcink_Cloud_Media_Derivative_Transport::dispatch_from_ability_response(
+	maca_ability_fixture(),
+	array(
+		'path'      => __FILE__,
+		'filename'  => 'source.jpg',
+		'mime_type' => 'image/jpeg',
+	)
+);
+maca_assert(
+	is_wp_error( $unsafe_local_source ) && 'cloud_media_derivative_upload_file_path_not_allowed' === $unsafe_local_source->get_error_code(),
+	'Behavior: media derivative upload paths outside uploads or temp directories fail closed.'
+);
+
 $watermark_without_plan = Npcink_Cloud_Media_Derivative_Transport::dispatch_from_ability_response(
 	maca_ability_fixture(),
 	array(
@@ -233,8 +264,35 @@ $runtime_timeout_result = $client->execute_runtime(
 $runtime_timeout_request = end( $GLOBALS['maca_http_requests'] );
 maca_assert(
 	is_array( $runtime_timeout_result )
-	&& 60 === (int) ( $runtime_timeout_request['args']['timeout'] ?? 0 ),
+	&& 60 === (int) ( $runtime_timeout_request['args']['timeout'] ?? 0 )
+	&& 1048576 === (int) ( $runtime_timeout_request['args']['limit_response_size'] ?? 0 ),
 	'Behavior: runtime execute honors bounded payload timeout for longer hosted image generation.'
+);
+
+maca_reset_test_state();
+maca_seed_settings( true );
+$client = new Npcink_Cloud_Runtime_Client( Npcink_Cloud_Addon_Settings::get_settings() );
+$GLOBALS['maca_http_response_queue'][] = array(
+	'response' => array( 'code' => 200 ),
+	'headers'  => array(
+		'Content-Length' => '1048577',
+	),
+	'body'     => str_repeat( 'x', 1048577 ),
+);
+$large_response = $client->execute_runtime( array( 'ability_name' => 'npcink-cloud/generate-audio' ) );
+maca_assert(
+	is_wp_error( $large_response ) && 'cloud_runtime_response_too_large' === $large_response->get_error_code(),
+	'Behavior: runtime JSON responses fail closed when Cloud exceeds the local size limit.'
+);
+
+$GLOBALS['maca_http_response_queue'][] = array(
+	'response' => array( 'code' => 200 ),
+	'body'     => str_repeat( 'x', 1048576 ),
+);
+$truncated_response = $client->execute_runtime( array( 'ability_name' => 'npcink-cloud/generate-audio' ) );
+maca_assert(
+	is_wp_error( $truncated_response ) && 'cloud_runtime_response_too_large' === $truncated_response->get_error_code(),
+	'Behavior: runtime JSON responses fail closed when the local HTTP layer returns a truncated non-JSON body.'
 );
 
 maca_reset_test_state();
@@ -295,6 +353,7 @@ maca_assert(
 	&& 'derivative_artifact' === $artifact_preview['artifact_id']
 	&& $preview_bytes === $artifact_preview['contents']
 	&& false !== strpos( (string) ( $preview_request['url'] ?? '' ), '/v1/runtime/artifacts/derivative_artifact/download' )
+	&& 26214400 === (int) ( $preview_request['args']['limit_response_size'] ?? 0 )
 	&& 'image/*' === (string) ( $preview_request['args']['headers']['Accept'] ?? '' ),
 	'Behavior: derivative artifact preview downloads through the explicit signed runtime artifact endpoint.'
 );

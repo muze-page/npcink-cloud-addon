@@ -141,6 +141,19 @@ maca_assert(
 	'Behavior: approved new comment data buffers the parent post for suggestion-only Site Knowledge refresh.'
 );
 
+$buffer_writes = absint( $GLOBALS['maca_option_update_counts'][ Npcink_Cloud_Site_Knowledge_Change_Bridge::BUFFER_OPTION ] ?? 0 );
+$status_writes = absint( $GLOBALS['maca_option_update_counts'][ Npcink_Cloud_Site_Knowledge_Change_Bridge::STATUS_OPTION ] ?? 0 );
+Npcink_Cloud_Site_Knowledge_Change_Bridge::handle_comment_posted(
+	103,
+	1,
+	array( 'comment_post_ID' => 703 )
+);
+maca_assert(
+	$buffer_writes === absint( $GLOBALS['maca_option_update_counts'][ Npcink_Cloud_Site_Knowledge_Change_Bridge::BUFFER_OPTION ] ?? 0 )
+	&& $status_writes === absint( $GLOBALS['maca_option_update_counts'][ Npcink_Cloud_Site_Knowledge_Change_Bridge::STATUS_OPTION ] ?? 0 ),
+	'Behavior: duplicate Site Knowledge changes do not rewrite buffer or status options.'
+);
+
 maca_reset_site_knowledge_bridge_state();
 maca_seed_settings( true );
 $GLOBALS['maca_comments'][104] = (object) array(

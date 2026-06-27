@@ -344,6 +344,8 @@ maca_assert(
 	&& false !== strpos( $runtime_client, '#^/v1/runs/[A-Za-z0-9._:-]+/retry$#' )
 	&& false !== strpos( $runtime_client, '#^/v1/runtime/artifacts/[A-Za-z0-9._:-]+/download$#' )
 	&& false !== strpos( $runtime_client, '#^/v1/stats/(?:profiles|instances)/[A-Za-z0-9._:-]+$#' )
+	&& false !== strpos( $runtime_client, 'MAX_JSON_RESPONSE_BYTES = 1048576' )
+	&& false !== strpos( $runtime_client, 'limit_response_size' )
 	&& false === strpos( $transport, '/v1/runtime/workflows/' . 'runs' )
 	&& false === strpos( $transport, '/v1/artifacts' ),
 	'Runtime client keeps Cloud calls on named allowlisted contract surfaces.'
@@ -351,9 +353,11 @@ maca_assert(
 
 maca_assert(
 	false !== strpos( $entitlement_summary, 'normalize_pro_cloud_runtime' )
+	&& false !== strpos( $entitlement_summary, 'get_cached_summary' )
 	&& false !== strpos( $entitlement_summary, "'pro_cloud_runtime'" )
 	&& false !== strpos( $entitlement_summary, "'nightly_site_inspection_runs'" )
 	&& false !== strpos( $entitlement_summary, "'local_billing_truth' => false" )
+	&& false !== strpos( $settings_page, 'Npcink_Cloud_Entitlement_Summary::get_cached_summary()' )
 	&& false !== strpos( $settings_page, 'render_pro_cloud_runtime_summary' )
 	&& false !== strpos( $settings_page, 'This addon does not own billing truth, scheduling, queues, or WordPress writes.' ),
 	'Entitlement summary preserves Pro Cloud Runtime detail as a read-only projection without local billing or scheduler truth.'
@@ -390,7 +394,10 @@ maca_assert(
 	&& false !== strpos( $transport, 'cloud_media_derivative_artifact_mime_invalid' )
 	&& false !== strpos( $transport, 'Original media metrics are incomplete.' )
 	&& false !== strpos( $transport, 'Derivative media metrics are incomplete.' )
-	&& false !== strpos( $transport, 'filesize( $path )' )
+	&& false !== strpos( $transport, 'filesize( $real_path )' )
+	&& false !== strpos( $transport, 'is_allowed_upload_file_path' )
+	&& false !== strpos( $transport, 'wp_upload_dir' )
+	&& false !== strpos( $transport, 'sys_get_temp_dir' )
 	&& false !== strpos( $transport, 'MAX_UPLOAD_BYTES = 26214400' ),
 	'Media derivative transport has no legacy execute payload builder, requires ability-provided derivative fields, validates media types, warns on incomplete metrics, and preflights upload size.'
 );
@@ -420,7 +427,9 @@ maca_assert(
 	&& false !== strpos( $adapter_doc, 'Expired Cloud artifacts must not be adopted.' )
 	&& false !== strpos( $adapter_doc, 'final_write_owner=local_wordpress_host' )
 	&& false !== strpos( $adapter_doc, 'watermark_artifact' )
-	&& false !== strpos( $agents, 'POST /v1/runtime/media-derivatives' ),
+	&& false !== strpos( $agents, 'POST /v1/runtime/media-derivatives' )
+	&& false !== strpos( $agents, 'GET /v1/runtime/artifacts/{artifact_id}/download' )
+	&& false !== strpos( $agents, 'POST /v1/agent-feedback/events' ),
 	'Boundary, adapter integration, and AGENTS docs describe derivative transport ownership.'
 );
 
@@ -439,6 +448,9 @@ maca_assert(
 	&& false !== strpos( $runtime_contract, 'send_agent_feedback_event()' )
 	&& false !== strpos( $runtime_contract, 'get_agent_feedback_summary()' )
 	&& false !== strpos( $runtime_contract, 'get_observability_summary()' )
+	&& false !== strpos( $agents, 'POST /v1/observability/plugin-events' )
+	&& false !== strpos( $agents, 'POST /v1/agent-feedback/events' )
+	&& false !== strpos( $agents, 'GET /v1/agent-feedback/summary' )
 	&& false !== strpos( $boundary_doc, 'POST /v1/observability/plugin-events' )
 	&& false !== strpos( $boundary_doc, 'POST /v1/agent-feedback/events' )
 	&& false !== strpos( $boundary_doc, 'GET /v1/agent-feedback/summary' )

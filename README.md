@@ -17,12 +17,16 @@ The addon owns:
   - `POST /v1/runtime/media-derivatives`
   - `GET /v1/runs/{run_id}`
   - `GET /v1/runs/{run_id}/result`
+  - `GET /v1/runs/nightly-inspection/recent`
+  - `POST /v1/runs/{run_id}/retry`
+  - `GET /v1/runtime/artifacts/{artifact_id}/download`
   - `GET /v1/stats/*`
   - `GET /v1/entitlements/current`
 - Opt-in plugin observability transport:
   - `POST /v1/observability/plugin-events`
   - `GET /v1/observability/plugin-summary`
 - Read-only Agent feedback quality projection:
+  - `POST /v1/agent-feedback/events`
   - `GET /v1/agent-feedback/summary`
 - Site Knowledge public content change bridge through `POST /v1/runtime/execute`.
 - Bounded image context evidence transport through `POST /v1/runtime/execute`.

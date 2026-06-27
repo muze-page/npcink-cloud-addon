@@ -50,10 +50,14 @@ Allowed runtime/read endpoints:
 - `POST /v1/runtime/media-derivatives`
 - `GET /v1/runs/{run_id}`
 - `GET /v1/runs/{run_id}/result`
+- `GET /v1/runs/nightly-inspection/recent`
+- `POST /v1/runs/{run_id}/retry` for bounded runtime retry only
+- `GET /v1/runtime/artifacts/{artifact_id}/download` for bounded preview downloads
 - `GET /v1/stats/*`
 - `GET /v1/entitlements/current`
 - `POST /v1/observability/plugin-events`
 - `GET /v1/observability/plugin-summary`
+- `POST /v1/agent-feedback/events`
 - `GET /v1/agent-feedback/summary`
 - `GET /health/live` for unsigned liveness
 

@@ -344,6 +344,10 @@ if ( ! class_exists( 'Npcink_Cloud_Site_Knowledge_Change_Bridge' ) ) {
 			if ( count( $merged ) > self::MAX_BUFFER_ITEMS ) {
 				$merged = array_slice( $merged, -1 * self::MAX_BUFFER_ITEMS );
 			}
+			if ( $merged === array_values( $buffer['post_ids'] ) ) {
+				self::schedule_flush( self::DEBOUNCE_SECONDS );
+				return;
+			}
 
 			self::save_buffer( $merged, absint( $buffer['attempts'] ?? 0 ) );
 			update_option(

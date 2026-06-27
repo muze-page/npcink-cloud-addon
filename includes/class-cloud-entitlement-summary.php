@@ -66,6 +66,42 @@ if ( ! class_exists( 'Npcink_Cloud_Entitlement_Summary' ) ) {
 		}
 
 		/**
+		 * Returns the cached entitlement summary without making a Cloud request.
+		 *
+		 * @return array<string,mixed>
+		 */
+		public static function get_cached_summary(): array {
+			$state = Npcink_Cloud_Addon_Settings::get_credential_state();
+			if ( empty( $state['configured'] ) ) {
+				return self::unavailable_summary(
+					'not_configured',
+					__( 'Configure Cloud settings before reading entitlement.', 'npcink-cloud-addon' )
+				);
+			}
+			if ( empty( $state['verified'] ) ) {
+				return self::unavailable_summary(
+					'unverified',
+					__( 'Entitlement is unavailable until Cloud settings verify successfully.', 'npcink-cloud-addon' )
+				);
+			}
+
+			$settings = Npcink_Cloud_Addon_Settings::get_settings();
+			$cached = get_transient( self::cache_key( $settings ) );
+			if ( is_array( $cached ) ) {
+				$cached['state'] = 'cached';
+				$cached['available'] = true;
+				$cached['stale'] = false;
+
+				return $cached;
+			}
+
+			return self::unavailable_summary(
+				'not_refreshed',
+				__( 'Entitlement summary has not been refreshed yet. Save and Verify to refresh it.', 'npcink-cloud-addon' )
+			);
+		}
+
+		/**
 		 * Forces entitlement refresh.
 		 *
 		 * @return array<string,mixed>

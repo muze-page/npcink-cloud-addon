@@ -191,6 +191,8 @@ if ( ! function_exists( 'wp_strip_all_tags' ) ) {
 }
 
 $GLOBALS['maca_options'] = array();
+$GLOBALS['maca_option_update_counts'] = array();
+$GLOBALS['maca_transients'] = array();
 $GLOBALS['maca_http_requests'] = array();
 $GLOBALS['maca_http_response_queue'] = array();
 
@@ -202,6 +204,7 @@ if ( ! function_exists( 'get_option' ) ) {
 
 if ( ! function_exists( 'update_option' ) ) {
 	function update_option( string $name, $value, bool $autoload = true ): bool {
+		$GLOBALS['maca_option_update_counts'][ $name ] = absint( $GLOBALS['maca_option_update_counts'][ $name ] ?? 0 ) + 1;
 		$GLOBALS['maca_options'][ $name ] = $value;
 		return true;
 	}
@@ -210,6 +213,25 @@ if ( ! function_exists( 'update_option' ) ) {
 if ( ! function_exists( 'delete_option' ) ) {
 	function delete_option( string $name ): void {
 		unset( $GLOBALS['maca_options'][ $name ] );
+	}
+}
+
+if ( ! function_exists( 'get_transient' ) ) {
+	function get_transient( string $name ) {
+		return array_key_exists( $name, $GLOBALS['maca_transients'] ) ? $GLOBALS['maca_transients'][ $name ] : false;
+	}
+}
+
+if ( ! function_exists( 'set_transient' ) ) {
+	function set_transient( string $name, $value, int $expiration = 0 ): bool {
+		$GLOBALS['maca_transients'][ $name ] = $value;
+		return true;
+	}
+}
+
+if ( ! function_exists( 'delete_transient' ) ) {
+	function delete_transient( string $name ): void {
+		unset( $GLOBALS['maca_transients'][ $name ] );
 	}
 }
 
@@ -330,6 +352,8 @@ function maca_set_monitoring_enabled( bool $enabled ): void {
  */
 function maca_reset_test_state(): void {
 	$GLOBALS['maca_options'] = array();
+	$GLOBALS['maca_option_update_counts'] = array();
+	$GLOBALS['maca_transients'] = array();
 	$GLOBALS['maca_http_requests'] = array();
 	$GLOBALS['maca_http_response_queue'] = array();
 }

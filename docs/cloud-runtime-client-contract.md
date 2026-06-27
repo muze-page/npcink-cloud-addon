@@ -68,6 +68,9 @@ It returns `null` until the addon settings have passed Save and Verify.
 | `create_media_derivative()` | `POST /v1/runtime/media-derivatives` |
 | `get_run()` | `GET /v1/runs/{run_id}` |
 | `get_run_result()` | `GET /v1/runs/{run_id}/result` |
+| `get_recent_nightly_inspection_runs()` | `GET /v1/runs/nightly-inspection/recent` |
+| `retry_run()` | `POST /v1/runs/{run_id}/retry` |
+| `download_media_derivative_artifact()` | `GET /v1/runtime/artifacts/{artifact_id}/download` |
 | `get_current_entitlement()` | `GET /v1/entitlements/current` |
 | `get_profile_stats()` | `GET /v1/stats/profiles/{profile_id}` |
 | `get_instance_stats()` | `GET /v1/stats/instances/{instance_id}` |

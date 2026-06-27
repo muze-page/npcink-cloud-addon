@@ -16,6 +16,7 @@ if ( ! class_exists( 'Npcink_Cloud_Runtime_Client' ) ) {
 	 * Signs and dispatches requests to the Npcink Cloud runtime plane.
 	 */
 	final class Npcink_Cloud_Runtime_Client {
+		private const MAX_JSON_RESPONSE_BYTES = 1048576;
 		private const MAX_DOWNLOAD_BYTES = 26214400;
 		private const WP_AI_CONNECTOR_CONTRACT = 'wp_ai_connector_runtime.v1';
 		private const WP_AI_CONNECTOR_MAX_REQUEST_BYTES = 24000;
@@ -603,6 +604,7 @@ if ( ! class_exists( 'Npcink_Cloud_Runtime_Client' ) ) {
 			$args = array(
 				'method' => $method,
 				'timeout' => $timeout,
+				'limit_response_size' => self::MAX_JSON_RESPONSE_BYTES,
 				'headers' => $this->build_signed_headers( $method, $path, $body, $idempotency_key, $trace_id, $content_type ),
 			);
 
@@ -662,6 +664,7 @@ if ( ! class_exists( 'Npcink_Cloud_Runtime_Client' ) ) {
 				array(
 					'method'  => $method,
 					'timeout' => max( 5, absint( $this->config['timeout'] ?? 8 ) ),
+					'limit_response_size' => self::MAX_DOWNLOAD_BYTES,
 					'headers' => $headers,
 				)
 			);
@@ -694,6 +697,7 @@ if ( ! class_exists( 'Npcink_Cloud_Runtime_Client' ) ) {
 				$base_url . '/health/live',
 				array(
 					'timeout' => max( 5, absint( $this->config['timeout'] ?? 8 ) ),
+					'limit_response_size' => self::MAX_JSON_RESPONSE_BYTES,
 					'headers' => array(
 						'Accept' => 'application/json',
 					),
@@ -709,7 +713,14 @@ if ( ! class_exists( 'Npcink_Cloud_Runtime_Client' ) ) {
 
 			$status = absint( wp_remote_retrieve_response_code( $response ) );
 			$raw_body = wp_remote_retrieve_body( $response );
-			$decoded = json_decode( is_string( $raw_body ) ? $raw_body : '', true );
+			$body = is_string( $raw_body ) ? $raw_body : '';
+			if ( strlen( $body ) > self::MAX_JSON_RESPONSE_BYTES ) {
+				return array(
+					'ok' => false,
+					'message' => __( 'Cloud liveness response exceeds the local size limit.', 'npcink-cloud-addon' ),
+				);
+			}
+			$decoded = json_decode( $body, true );
 			$decoded = is_array( $decoded ) ? $decoded : array();
 			$message = sanitize_text_field( (string) ( $decoded['message'] ?? '' ) );
 
@@ -735,7 +746,27 @@ if ( ! class_exists( 'Npcink_Cloud_Runtime_Client' ) ) {
 		private function decode_response( array $response ) {
 			$status = absint( wp_remote_retrieve_response_code( $response ) );
 			$raw_body = wp_remote_retrieve_body( $response );
-			$decoded = json_decode( is_string( $raw_body ) ? $raw_body : '', true );
+			$body = is_string( $raw_body ) ? $raw_body : '';
+			$content_len = absint( $this->response_header( $response, 'content-length' ) );
+			if ( $content_len > self::MAX_JSON_RESPONSE_BYTES || strlen( $body ) > self::MAX_JSON_RESPONSE_BYTES ) {
+				return new WP_Error(
+					'cloud_runtime_response_too_large',
+					__( 'Cloud runtime response exceeds the local size limit.', 'npcink-cloud-addon' ),
+					array( 'status' => 413 )
+				);
+			}
+
+			$decoded = json_decode( $body, true );
+			if ( ! is_array( $decoded ) && '' !== trim( $body ) ) {
+				$is_likely_truncated = strlen( $body ) >= self::MAX_JSON_RESPONSE_BYTES;
+				return new WP_Error(
+					$is_likely_truncated ? 'cloud_runtime_response_too_large' : 'cloud_runtime_response_invalid',
+					$is_likely_truncated
+						? __( 'Cloud runtime response exceeds the local size limit.', 'npcink-cloud-addon' )
+						: __( 'Cloud runtime response was not valid JSON.', 'npcink-cloud-addon' ),
+					array( 'status' => $is_likely_truncated ? 413 : 502 )
+				);
+			}
 			$decoded = is_array( $decoded ) ? $decoded : array();
 			$envelope_status = sanitize_key( (string) ( $decoded['status'] ?? '' ) );
 

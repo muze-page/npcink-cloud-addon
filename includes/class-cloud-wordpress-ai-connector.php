@@ -547,7 +547,7 @@ if ( ! class_exists( 'Npcink_Cloud_WordPress_AI_Connector' ) ) {
 			);
 
 			if ( is_wp_error( $response ) ) {
-				throw new \WordPress\AiClient\Common\Exception\RuntimeException( $response->get_error_message() );
+				throw new \WordPress\AiClient\Common\Exception\RuntimeException( esc_html( $response->get_error_message() ) );
 			}
 
 			$output_text = $this->extract_text( is_array( $response ) ? $response : array() );
@@ -628,6 +628,7 @@ if ( ! class_exists( 'Npcink_Cloud_WordPress_AI_Connector' ) ) {
 				'WordPress\\AI\\Abilities\\Image\\Alt_Text_Generation'                      => 'alt_text_suggest',
 			);
 
+			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_debug_backtrace -- Bounded stack inspection gates calls to known WordPress AI ability classes.
 			foreach ( debug_backtrace( DEBUG_BACKTRACE_IGNORE_ARGS, 24 ) as $frame ) {
 				$class = isset( $frame['class'] ) ? (string) $frame['class'] : '';
 				if ( isset( $map[ $class ] ) ) {
@@ -795,7 +796,7 @@ if ( ! class_exists( 'Npcink_Cloud_WordPress_AI_Connector' ) ) {
 			);
 
 			if ( is_wp_error( $response ) ) {
-				throw new \WordPress\AiClient\Common\Exception\RuntimeException( $response->get_error_message() );
+				throw new \WordPress\AiClient\Common\Exception\RuntimeException( esc_html( $response->get_error_message() ) );
 			}
 
 			$result     = $this->extract_result( is_array( $response ) ? $response : array() );

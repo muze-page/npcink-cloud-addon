@@ -4,21 +4,24 @@ Status: active for `Npcink -> Cloud Addon`.
 
 ## Purpose
 
-The Cloud Addon admin page is a thin connector surface. It stores the Cloud
-Base URL and Cloud API Key, verifies signed connectivity, and shows read-only
-connection, entitlement, opt-in monitoring state, and Agent feedback quality
-summary.
+The Cloud Addon admin page is a thin connector surface. It opens the Cloud
+Portal authorization flow by default, stores the returned Cloud Base URL and
+Cloud API Key, verifies signed connectivity, and shows read-only connection,
+entitlement, opt-in monitoring state, and Agent feedback quality summary.
 
 ## Default View
 
 When not configured or not verified, the default page should prioritize:
 
 - connection state and blocking reason;
-- Cloud Base URL and Cloud API Key entry;
-- `Save and Verify` as the primary action.
+- one primary action to add the current WordPress site in Npcink Cloud;
+- the resolved Cloud base URL and current site URL as context only.
 
 Cloud Base URL must use HTTPS except for local development hosts (`localhost`,
-`127.0.0.1`, or `::1`).
+`127.0.0.1`, or `::1`). The environment default is
+`http://127.0.0.1:8010` for local WordPress environments and
+`https://cloud.npc.ink` otherwise. Manual Base URL and Cloud API Key entry
+belong in Advanced as a fallback for local debugging or authorization outages.
 
 When verified, the default page should prioritize:
 
@@ -33,6 +36,7 @@ When verified, the default page should prioritize:
 
 Low-frequency details may include:
 
+- manual Cloud Base URL and Cloud API Key entry;
 - timeout setting;
 - read-only entitlement fields;
 - metadata-only monitoring upload status;

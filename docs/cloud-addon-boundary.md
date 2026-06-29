@@ -18,7 +18,8 @@ index, freshness, and collection lifecycle owner.
 ## Addon Owns
 
 - Cloud Base URL.
-- Cloud API Key entry.
+- Cloud-side site authorization entry for the current WordPress site.
+- Advanced fallback Cloud API Key entry.
 - `mak1_{base64url(json)}` and JSON key parsing.
 - Internal `site_id`, `key_id`, and `secret` storage for server-side signing.
 - HMAC signatures, trace headers, idempotency headers, and request nonce headers.

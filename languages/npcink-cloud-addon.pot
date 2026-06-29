@@ -469,6 +469,10 @@ msgid "Cloud settings saved and verified."
 msgstr ""
 
 #: includes/class-cloud-settings-page.php:266
+msgid "Cloud connection disconnected locally. Stored credentials and addon-owned buffers were cleared."
+msgstr ""
+
+#: includes/class-cloud-settings-page.php:266
 msgid "Monitoring upload failed."
 msgstr ""
 
@@ -494,21 +498,59 @@ msgstr ""
 msgid "Cloud connector status and access settings for this WordPress site."
 msgstr ""
 
-#: includes/class-cloud-settings-page.php:328
+#: includes/class-cloud-settings-page.php:373
+msgid "Access Settings"
+msgstr ""
+
+msgid "Authorize this site in Npcink Cloud to create the connection."
+msgstr ""
+
+msgid "Cloud authorization expired or is invalid. Start the connection again."
+msgstr ""
+
+msgid "Cloud authorization completed and verified."
+msgstr ""
+
+msgid "Manual Access Settings"
+msgstr ""
+
+msgid "Use this fallback only for local debugging or when Cloud authorization is unavailable."
+msgstr ""
+
+msgid "Cloud authorization exchange failed: %s"
+msgstr ""
+
+msgid "Cloud authorization exchange did not return a valid connection key."
+msgstr ""
+
+msgid "Current site"
+msgstr ""
+
+msgid "Add this site in Npcink Cloud"
+msgstr ""
+
+msgid "Cloud will create or activate this site connection and return here with a one-time authorization code."
+msgstr ""
+
+#: includes/class-cloud-settings-page.php:365
+msgid "Details"
+msgstr ""
+
+#: includes/class-cloud-settings-page.php:366
 msgid "Entitlement Summary"
 msgstr ""
 
-#: includes/class-cloud-settings-page.php:333
-#: includes/class-cloud-settings-page.php:558
+#: includes/class-cloud-settings-page.php:368
+msgid "Monitoring & Quality"
+msgstr ""
+
+#: includes/class-cloud-settings-page.php:650
+#: includes/class-cloud-settings-page.php:698
 msgid "Monitoring"
 msgstr ""
 
-#: includes/class-cloud-settings-page.php:338
+#: includes/class-cloud-settings-page.php:357
 msgid "Advanced Information"
-msgstr ""
-
-#: includes/class-cloud-settings-page.php:343
-msgid "Cloud Settings"
 msgstr ""
 
 #: includes/class-cloud-settings-page.php:345
@@ -522,10 +564,6 @@ msgstr ""
 #: includes/class-cloud-settings-page.php:380
 #: includes/class-cloud-settings-page.php:462
 msgid "Entitlement"
-msgstr ""
-
-#: includes/class-cloud-settings-page.php:381
-msgid "Monitoring & Quality"
 msgstr ""
 
 #: includes/class-cloud-settings-page.php:383
@@ -544,6 +582,18 @@ msgstr ""
 
 #: includes/class-cloud-settings-page.php:455
 msgid "Not set"
+msgstr ""
+
+#: includes/class-cloud-settings-page.php:687
+msgid "Connection"
+msgstr ""
+
+#: includes/class-cloud-settings-page.php:501
+msgid "Site ID"
+msgstr ""
+
+#: includes/class-cloud-settings-page.php:505
+msgid "Key ID"
 msgstr ""
 
 #: includes/class-cloud-settings-page.php:458
@@ -568,6 +618,18 @@ msgstr ""
 msgid "Re-verify"
 msgstr ""
 
+#: includes/class-cloud-settings-page.php:535
+msgid "Change connection"
+msgstr ""
+
+#: includes/class-cloud-settings-page.php:574
+msgid "Disconnect this site from Npcink Cloud? Stored Cloud credentials and addon-owned buffers will be cleared locally."
+msgstr ""
+
+#: includes/class-cloud-settings-page.php:576
+msgid "Disconnect"
+msgstr ""
+
 #: includes/class-cloud-settings-page.php:525
 msgid "Cloud API Key"
 msgstr ""
@@ -578,6 +640,20 @@ msgstr ""
 
 #: includes/class-cloud-settings-page.php:537
 msgid "Leave blank to keep the stored Cloud API Key. The secret is never printed in this page."
+msgstr ""
+
+#: includes/class-cloud-settings-page.php:626
+msgid "To switch accounts, paste a Cloud API Key from the target account, then Save and Verify."
+msgstr ""
+
+#: includes/class-cloud-settings-page.php:704
+msgid "View details"
+msgstr ""
+
+#. translators: 1: monitoring state, 2: buffered event count.
+#: includes/class-cloud-settings-page.php:1365
+#, php-format
+msgid "%1$s, %2$d buffered"
 msgstr ""
 
 #: includes/class-cloud-settings-page.php:542

@@ -19,6 +19,8 @@ if ( ! class_exists( 'Npcink_Cloud_Addon_Settings' ) ) {
 		private const DEFAULT_TIMEOUT = 8;
 		private const MIN_TIMEOUT = 5;
 		private const MAX_TIMEOUT = 60;
+		private const LOCAL_DEFAULT_BASE_URL = 'http://127.0.0.1:8010';
+		private const PRODUCTION_DEFAULT_BASE_URL = 'https://cloud.npc.ink';
 
 		/**
 		 * Registers WordPress settings metadata hook.
@@ -70,6 +72,64 @@ if ( ! class_exists( 'Npcink_Cloud_Addon_Settings' ) ) {
 			$stored = is_array( $stored ) ? $stored : array();
 
 			return self::normalize_settings( $stored );
+		}
+
+		/**
+		 * Returns the default Cloud base URL for the current environment.
+		 *
+		 * @return string
+		 */
+		public static function get_default_base_url(): string {
+			$default = self::PRODUCTION_DEFAULT_BASE_URL;
+			if ( self::is_local_wordpress_environment() ) {
+				$default = self::LOCAL_DEFAULT_BASE_URL;
+			}
+			if ( defined( 'NPCINK_CLOUD_ADDON_DEFAULT_BASE_URL' ) && '' !== trim( (string) NPCINK_CLOUD_ADDON_DEFAULT_BASE_URL ) ) {
+				$default = (string) NPCINK_CLOUD_ADDON_DEFAULT_BASE_URL;
+			}
+
+			/**
+			 * Filters the default Npcink Cloud base URL used by the authorization entry.
+			 *
+			 * @param string $default Default Cloud base URL.
+			 */
+			$filtered = apply_filters( 'npcink_cloud_addon_default_base_url', $default );
+			$normalized = self::normalize_base_url( is_string( $filtered ) ? $filtered : $default );
+
+			return '' !== $normalized ? $normalized : self::PRODUCTION_DEFAULT_BASE_URL;
+		}
+
+		/**
+		 * Returns whether the current WordPress site looks like local development.
+		 *
+		 * @return bool
+		 */
+		private static function is_local_wordpress_environment(): bool {
+			if ( function_exists( 'wp_get_environment_type' ) && 'local' === wp_get_environment_type() ) {
+				return true;
+			}
+
+			$host = function_exists( 'home_url' )
+				? strtolower( (string) wp_parse_url( home_url( '/' ), PHP_URL_HOST ) )
+				: '';
+			if ( in_array( $host, array( 'localhost', '127.0.0.1', '::1' ), true ) ) {
+				return true;
+			}
+
+			return '' !== $host && str_ends_with( $host, '.local' );
+		}
+
+		/**
+		 * Returns the stored base URL or the environment default.
+		 *
+		 * @param array<string,mixed> $settings Stored settings.
+		 * @return string
+		 */
+		public static function get_effective_base_url( array $settings = array() ): string {
+			$settings = empty( $settings ) ? self::get_settings() : self::normalize_settings( $settings );
+			$stored = (string) ( $settings['base_url'] ?? '' );
+
+			return '' !== $stored ? $stored : self::get_default_base_url();
 		}
 
 		/**
@@ -126,7 +186,7 @@ if ( ! class_exists( 'Npcink_Cloud_Addon_Settings' ) ) {
 					'label' => __( 'Not configured', 'npcink-cloud-addon' ),
 					'message' => $has_any_values
 						? __( 'Cloud settings are incomplete. Save a Cloud Base URL and Cloud API Key.', 'npcink-cloud-addon' )
-						: __( 'Add a Cloud Base URL and Cloud API Key to connect this site.', 'npcink-cloud-addon' ),
+						: __( 'Authorize this site in Npcink Cloud to create the connection.', 'npcink-cloud-addon' ),
 					'configured' => false,
 					'verified' => false,
 					'verified_at' => '',

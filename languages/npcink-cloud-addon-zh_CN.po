@@ -416,6 +416,10 @@ msgid "Cloud settings saved and verified."
 msgstr "Cloud 设置已保存并验证。"
 
 #: includes/class-cloud-settings-page.php:266
+msgid "Cloud connection disconnected locally. Stored credentials and addon-owned buffers were cleared."
+msgstr "Cloud 连接已在本地断开。已清除存储的凭据和 addon 自有缓冲。"
+
+#: includes/class-cloud-settings-page.php:266
 msgid "Monitoring upload failed."
 msgstr "监控上传失败。"
 
@@ -427,22 +431,60 @@ msgstr "监控摘要刷新失败。"
 msgid "Cloud connector status and access settings for this WordPress site."
 msgstr "此 WordPress 站点的 Cloud 连接器状态和访问设置。"
 
-#: includes/class-cloud-settings-page.php:328
+#: includes/class-cloud-settings-page.php:373
+msgid "Access Settings"
+msgstr "接入设置"
+
+msgid "Authorize this site in Npcink Cloud to create the connection."
+msgstr "在 Npcink Cloud 授权当前站点以创建连接。"
+
+msgid "Cloud authorization expired or is invalid. Start the connection again."
+msgstr "Cloud 授权已过期或无效。请重新开始连接。"
+
+msgid "Cloud authorization completed and verified."
+msgstr "Cloud 授权已完成并通过验证。"
+
+msgid "Manual Access Settings"
+msgstr "手动接入设置"
+
+msgid "Use this fallback only for local debugging or when Cloud authorization is unavailable."
+msgstr "仅在本地调试或 Cloud 授权不可用时使用这个兜底入口。"
+
+msgid "Cloud authorization exchange failed: %s"
+msgstr "Cloud 授权交换失败：%s"
+
+msgid "Cloud authorization exchange did not return a valid connection key."
+msgstr "Cloud 授权交换没有返回有效的连接密钥。"
+
+msgid "Current site"
+msgstr "当前站点"
+
+msgid "Add this site in Npcink Cloud"
+msgstr "在 Npcink Cloud 添加当前站点"
+
+msgid "Cloud will create or activate this site connection and return here with a one-time authorization code."
+msgstr "Cloud 会创建或激活此站点连接，并通过一次性授权码返回这里。"
+
+#: includes/class-cloud-settings-page.php:365
+msgid "Details"
+msgstr "详情"
+
+#: includes/class-cloud-settings-page.php:366
 msgid "Entitlement Summary"
 msgstr "权益摘要"
 
-#: includes/class-cloud-settings-page.php:333
-#: includes/class-cloud-settings-page.php:558
+#: includes/class-cloud-settings-page.php:368
+msgid "Monitoring & Quality"
+msgstr "Monitoring 与质量"
+
+#: includes/class-cloud-settings-page.php:650
+#: includes/class-cloud-settings-page.php:698
 msgid "Monitoring"
 msgstr "监控"
 
-#: includes/class-cloud-settings-page.php:338
+#: includes/class-cloud-settings-page.php:357
 msgid "Advanced Information"
 msgstr "高级信息"
-
-#: includes/class-cloud-settings-page.php:343
-msgid "Cloud Settings"
-msgstr "Cloud 设置"
 
 #: includes/class-cloud-settings-page.php:345
 msgid "Update the connector or replace the stored key."
@@ -458,8 +500,6 @@ msgid "Entitlement"
 msgstr "权益"
 
 #: includes/bootstrap.php:328
-#: includes/class-cloud-settings-page.php:382
-#: includes/class-cloud-settings-page.php:388
 msgid "Settings"
 msgstr "设置"
 
@@ -480,6 +520,18 @@ msgstr "Cloud Base URL"
 #: includes/class-cloud-settings-page.php:455
 msgid "Not set"
 msgstr "未设置"
+
+#: includes/class-cloud-settings-page.php:687
+msgid "Connection"
+msgstr "连接"
+
+#: includes/class-cloud-settings-page.php:501
+msgid "Site ID"
+msgstr "Site ID"
+
+#: includes/class-cloud-settings-page.php:505
+msgid "Key ID"
+msgstr "Key ID"
 
 #: includes/class-cloud-settings-page.php:458
 msgid "Last verified"
@@ -503,6 +555,18 @@ msgstr "未检查"
 msgid "Re-verify"
 msgstr "重新验证"
 
+#: includes/class-cloud-settings-page.php:535
+msgid "Change connection"
+msgstr "更换连接"
+
+#: includes/class-cloud-settings-page.php:574
+msgid "Disconnect this site from Npcink Cloud? Stored Cloud credentials and addon-owned buffers will be cleared locally."
+msgstr "断开此站点与 Npcink Cloud 的连接？将会在本地清除存储的 Cloud 凭据和 addon 自有缓冲。"
+
+#: includes/class-cloud-settings-page.php:576
+msgid "Disconnect"
+msgstr "断开连接"
+
 #: includes/class-cloud-settings-page.php:525
 msgid "Cloud API Key"
 msgstr "Cloud API Key"
@@ -514,6 +578,20 @@ msgstr "粘贴 mak1_ 密钥或 JSON 密钥以替换已存储的密钥"
 #: includes/class-cloud-settings-page.php:537
 msgid "Leave blank to keep the stored Cloud API Key. The secret is never printed in this page."
 msgstr "留空可保留已存储的 Cloud API Key。secret 永远不会显示在此页面中。"
+
+#: includes/class-cloud-settings-page.php:626
+msgid "To switch accounts, paste a Cloud API Key from the target account, then Save and Verify."
+msgstr "如需切换账户，请粘贴目标账户中的 Cloud API Key，然后保存并验证。"
+
+#: includes/class-cloud-settings-page.php:704
+msgid "View details"
+msgstr "查看详情"
+
+#. translators: 1: monitoring state, 2: buffered event count.
+#: includes/class-cloud-settings-page.php:1365
+#, php-format
+msgid "%1$s, %2$d buffered"
+msgstr "%1$s，%2$d 条待发送"
 
 #: includes/class-cloud-settings-page.php:542
 #: includes/class-cloud-settings-page.php:1082
@@ -844,10 +922,6 @@ msgstr "Monitoring 和质量摘要已刷新。剩余缓冲事件：%d。"
 #: includes/class-cloud-settings-page.php:296
 msgid "Agent quality summary refreshed. Monitoring collection is disabled."
 msgstr "Agent 质量摘要已刷新。Monitoring 采集已禁用。"
-
-#: includes/class-cloud-settings-page.php:381
-msgid "Monitoring & Quality"
-msgstr "Monitoring 与质量"
 
 #: includes/class-cloud-settings-page.php:599
 msgid "Refresh monitoring and quality"

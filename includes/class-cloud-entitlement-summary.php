@@ -111,6 +111,17 @@ if ( ! class_exists( 'Npcink_Cloud_Entitlement_Summary' ) ) {
 		}
 
 		/**
+		 * Deletes the cached entitlement projection for a settings payload.
+		 *
+		 * @param array<string,mixed> $settings Settings used to build the cache key.
+		 * @return void
+		 */
+		public static function delete_cached_summary( array $settings = array() ): void {
+			$settings = empty( $settings ) ? Npcink_Cloud_Addon_Settings::get_settings() : $settings;
+			delete_transient( self::cache_key( $settings ) );
+		}
+
+		/**
 		 * Extracts data from common Cloud envelopes.
 		 *
 		 * @param array<string,mixed> $response Cloud response.

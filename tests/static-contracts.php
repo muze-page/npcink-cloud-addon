@@ -588,6 +588,55 @@ maca_assert(
 );
 
 maca_assert(
+	false !== strpos( $settings_page, "\$default = 'status';" )
+	&& false !== strpos( $settings_page, "'status'   => __( 'Status'" )
+	&& false !== strpos( $settings_page, "'details'  => __( 'Details'" )
+	&& false !== strpos( $settings_page, 'Manual Access Settings' )
+	&& false !== strpos( $settings_page, 'function render_status_overview' )
+	&& false !== strpos( $settings_page, 'format_monitoring_overview' )
+	&& false !== strpos( $settings_page, 'View details' )
+	&& false !== strpos( $settings_page, '<h3><?php esc_html_e( \'Entitlement Summary\'' )
+	&& false !== strpos( $settings_page, '<h3><?php esc_html_e( \'Monitoring & Quality\'' )
+	&& false === strpos( $settings_page, "'monitoring'  =>" ),
+	'Settings page defaults to a compact status view and moves entitlement and monitoring detail behind the details tab.'
+);
+
+maca_assert(
+	false !== strpos( $settings, "LOCAL_DEFAULT_BASE_URL = 'http://127.0.0.1:8010'" )
+	&& false !== strpos( $settings, "PRODUCTION_DEFAULT_BASE_URL = 'https://cloud.npc.ink'" )
+	&& false !== strpos( $settings, 'function get_default_base_url' )
+	&& false !== strpos( $settings_page, "ACTION_COMPLETE_AUTH = 'npcink_cloud_addon_complete_auth'" )
+	&& false !== strpos( $settings_page, "admin_post_' . self::ACTION_COMPLETE_AUTH" )
+	&& false !== strpos( $settings_page, 'function build_authorization_url' )
+	&& false !== strpos( $settings_page, "'connect'    => 'wordpress-addon'" )
+	&& false !== strpos( $settings_page, '/portal/v1/addon-connections/exchange' )
+	&& false !== strpos( $settings_page, 'Add this site in Npcink Cloud' ),
+	'Settings page defaults to Cloud-side site authorization with local and production base URL defaults without exposing the returned key in UI state.'
+);
+
+maca_assert(
+	false !== strpos( $settings_page, "ACTION_DISCONNECT = 'npcink_cloud_addon_disconnect'" )
+	&& false !== strpos( $settings_page, "admin_post_' . self::ACTION_DISCONNECT" )
+	&& false !== strpos( $settings_page, 'function handle_disconnect' )
+	&& false !== strpos( $settings_page, 'Npcink_Cloud_Entitlement_Summary::delete_cached_summary' )
+	&& false !== strpos( $settings_page, 'Npcink_Cloud_Addon_Settings::delete_settings()' )
+	&& false !== strpos( $settings_page, 'Npcink_Cloud_Observability_Collector::delete_data()' )
+	&& false !== strpos( $settings_page, 'Npcink_Cloud_Site_Knowledge_Change_Bridge::delete_data()' )
+	&& false !== strpos( $settings_page, 'Change connection' )
+	&& false !== strpos( $settings_page, 'Disconnect' )
+	&& false !== strpos( $settings_page, 'Site ID' )
+	&& false !== strpos( $settings_page, 'Key ID' )
+	&& false === strpos( $settings_page, 'revoke' ),
+	'Settings page exposes local change/disconnect actions and read-only connection identifiers without taking Cloud account ownership.'
+);
+
+maca_assert(
+	false !== strpos( $entitlement_summary, 'function delete_cached_summary' )
+	&& false !== strpos( $entitlement_summary, 'delete_transient( self::cache_key( $settings ) )' ),
+	'Entitlement summary cache can be cleared when the local Cloud connection is disconnected.'
+);
+
+maca_assert(
 	false !== strpos( $admin_surface_standard, 'Time Display' )
 	&& false !== strpos( $admin_surface_standard, 'WordPress site timezone' )
 	&& false !== strpos( $admin_surface_standard, 'Y-m-d H:i:s' )

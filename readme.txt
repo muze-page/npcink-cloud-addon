@@ -4,7 +4,7 @@ Tags: magick ai, cloud, hosted runtime
 Requires at least: 7.0
 Tested up to: 7.0
 Requires PHP: 8.0
-Stable tag: 0.1.0
+Stable tag: 0.1.1
 License: GPL-2.0-or-later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -116,6 +116,10 @@ Data Retention: https://cloud.npc.ink/terms/en/data-retention.html
 4. Advanced information for connection code, verification failure, timeout, and entitlement state.
 
 == Changelog ==
+
+= 0.1.1 =
+
+Refresh Cloud connection status actions, entitlement summary caching, WordPress AI connector integration, zh_CN strings, and release packaging checks.
 
 = 0.1.0 =
 

@@ -2,7 +2,7 @@
 
 Status: active operational handoff.
 
-Last updated: 2026-06-23.
+Last updated: 2026-06-29.
 
 This document records the WordPress.org release, assets, legal pages, and zh_CN
 translation work completed for `npcink-cloud-addon`.
@@ -14,7 +14,7 @@ translation work completed for `npcink-cloud-addon`.
 - WordPress.org SVN URL: `https://plugins.svn.wordpress.org/npcink-cloud-addon/`
 - Local SVN working copy: `build/wporg-svn`
 - Release package: `build/npcink-cloud-addon.zip`
-- Stable tag: `0.1.0`
+- Stable tag: `0.1.1`
 
 The plugin has passed WordPress.org review and was submitted to SVN. Later asset
 updates were submitted separately.
@@ -23,6 +23,8 @@ Known SVN revisions:
 
 - `r3582010`: initial WordPress.org SVN submission with trunk/tag/assets.
 - `r3582534`: regenerated WordPress.org icon and banner assets.
+- `r3590121`: release `0.1.1` with refreshed Cloud status UI, entitlement
+  cache reuse, WordPress AI connector integration, and zh_CN metadata.
 
 ## Release Verification
 
@@ -265,4 +267,3 @@ timed out on the import page. Manual upload was required.
 Do not assume this was a file-format issue. The PO files validated locally with
 `msgfmt --check --statistics`, and the manual upload confirmed that the files
 were accepted by GlotPress.
-

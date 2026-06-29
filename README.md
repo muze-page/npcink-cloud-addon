@@ -248,7 +248,9 @@ read-only entitlement summary. It never displays split signing credentials and
 does not provide split credential editing.
 
 The admin page scope is documented in
-[`docs/admin-surface-standard.md`](docs/admin-surface-standard.md).
+[`docs/admin-surface-standard.md`](docs/admin-surface-standard.md). The Cloud
+site connection flow history is summarized in
+[`docs/cloud-site-connection-flow-history.md`](docs/cloud-site-connection-flow-history.md).
 
 ## Repository Management
 

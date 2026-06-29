@@ -342,7 +342,7 @@ if ( ! class_exists( 'Npcink_Cloud_Settings_Page' ) ) {
 
 			if ( ! Npcink_Cloud_Addon_Settings::is_verified() ) {
 				self::set_admin_notice( 'error', __( 'Cloud Addon settings are not verified.', 'npcink-cloud-addon' ) );
-				self::redirect_to_page( 'monitoring' );
+				self::redirect_to_page( 'details' );
 			}
 
 			$upload = array( 'buffer_count' => Npcink_Cloud_Observability_Collector::get_status()['buffer_count'] ?? 0 );
@@ -351,14 +351,14 @@ if ( ! class_exists( 'Npcink_Cloud_Settings_Page' ) ) {
 				if ( empty( $upload['last_upload_ok'] ) ) {
 					$message = sanitize_text_field( (string) ( $upload['last_upload_error'] ?? '' ) );
 					self::set_admin_notice( 'error', '' !== $message ? $message : __( 'Monitoring upload failed.', 'npcink-cloud-addon' ) );
-					self::redirect_to_page( 'monitoring' );
+					self::redirect_to_page( 'details' );
 				}
 
 				$summary = Npcink_Cloud_Observability_Collector::refresh_summary();
 				if ( empty( $summary['last_refresh_ok'] ) ) {
 					$message = sanitize_text_field( (string) ( $summary['last_refresh_error'] ?? '' ) );
 					self::set_admin_notice( 'error', '' !== $message ? $message : __( 'Monitoring summary refresh failed.', 'npcink-cloud-addon' ) );
-					self::redirect_to_page( 'monitoring' );
+					self::redirect_to_page( 'details' );
 				}
 			}
 
@@ -366,7 +366,7 @@ if ( ! class_exists( 'Npcink_Cloud_Settings_Page' ) ) {
 			if ( empty( $quality['last_refresh_ok'] ) ) {
 				$message = sanitize_text_field( (string) ( $quality['last_refresh_error'] ?? '' ) );
 				self::set_admin_notice( 'error', '' !== $message ? $message : __( 'Agent quality summary refresh failed.', 'npcink-cloud-addon' ) );
-				self::redirect_to_page( 'monitoring' );
+				self::redirect_to_page( 'details' );
 			}
 
 			$remaining = absint( $upload['buffer_count'] ?? 0 );
@@ -382,7 +382,7 @@ if ( ! class_exists( 'Npcink_Cloud_Settings_Page' ) ) {
 			} else {
 				self::set_admin_notice( 'success', __( 'Agent quality summary refreshed. Monitoring collection is disabled.', 'npcink-cloud-addon' ) );
 			}
-			self::redirect_to_page( 'monitoring' );
+			self::redirect_to_page( 'details' );
 		}
 
 		/**
@@ -410,7 +410,12 @@ if ( ! class_exists( 'Npcink_Cloud_Settings_Page' ) ) {
 				<?php self::render_connection_summary( $settings, $state, $entitlement ); ?>
 				<?php self::render_tab_navigation( $active_tab, $is_verified ); ?>
 
-				<?php if ( 'status' === $active_tab ) : ?>
+				<?php if ( 'connect' === $active_tab ) : ?>
+					<section class="npcink-cloud-section npcink-cloud-tab-panel">
+						<h2><?php esc_html_e( 'Connect this site', 'npcink-cloud-addon' ); ?></h2>
+						<?php self::render_cloud_authorization_panel( $settings, $state ); ?>
+					</section>
+				<?php elseif ( 'status' === $active_tab ) : ?>
 					<section class="npcink-cloud-section npcink-cloud-tab-panel">
 						<h2><?php esc_html_e( 'Status', 'npcink-cloud-addon' ); ?></h2>
 						<?php self::render_status_overview( $settings, $state, $entitlement, $monitoring, $is_verified ); ?>
@@ -419,9 +424,13 @@ if ( ! class_exists( 'Npcink_Cloud_Settings_Page' ) ) {
 					<section class="npcink-cloud-section npcink-cloud-tab-panel">
 						<h2><?php esc_html_e( 'Advanced Information', 'npcink-cloud-addon' ); ?></h2>
 						<?php self::render_advanced_information( $settings, $state, $entitlement ); ?>
-						<h3><?php esc_html_e( 'Manual Access Settings', 'npcink-cloud-addon' ); ?></h3>
-						<p><?php esc_html_e( 'Use this fallback only for local debugging or when Cloud authorization is unavailable.', 'npcink-cloud-addon' ); ?></p>
-						<?php self::render_settings_form( $settings ); ?>
+						<details class="npcink-cloud-disclosure">
+							<summary>
+								<strong><?php esc_html_e( 'Manual connection fallback', 'npcink-cloud-addon' ); ?></strong>
+								<span><?php esc_html_e( 'Use only for local debugging or when Cloud authorization is unavailable.', 'npcink-cloud-addon' ); ?></span>
+							</summary>
+							<?php self::render_settings_form( $settings ); ?>
+						</details>
 					</section>
 				<?php elseif ( 'details' === $active_tab ) : ?>
 					<section class="npcink-cloud-section npcink-cloud-tab-panel">
@@ -444,7 +453,7 @@ if ( ! class_exists( 'Npcink_Cloud_Settings_Page' ) ) {
 		 */
 		private static function get_active_tab( bool $is_verified ): string {
 			$tabs = self::get_tab_labels( $is_verified );
-			$default = 'status';
+			$default = $is_verified ? 'status' : 'connect';
 			$raw_tab = filter_input( INPUT_GET, 'tab', FILTER_UNSAFE_RAW );
 			$requested = is_string( $raw_tab ) ? sanitize_key( wp_unslash( $raw_tab ) ) : '';
 
@@ -467,7 +476,7 @@ if ( ! class_exists( 'Npcink_Cloud_Settings_Page' ) ) {
 			}
 
 			return array(
-				'status'   => __( 'Status', 'npcink-cloud-addon' ),
+				'connect'  => __( 'Connect', 'npcink-cloud-addon' ),
 				'advanced' => __( 'Advanced', 'npcink-cloud-addon' ),
 			);
 		}
@@ -681,32 +690,34 @@ if ( ! class_exists( 'Npcink_Cloud_Settings_Page' ) ) {
 						<?php self::render_connection_actions( $settings ); ?>
 					<?php endif; ?>
 				</div>
-				<div class="npcink-cloud-summary__grid">
-					<div class="npcink-cloud-summary__item">
-						<span class="npcink-cloud-summary__label"><?php esc_html_e( 'Cloud Base URL', 'npcink-cloud-addon' ); ?></span>
-						<span class="npcink-cloud-summary__value"><?php echo esc_html( self::format_setting_value( $display_base_url, __( 'Not set', 'npcink-cloud-addon' ) ) ); ?></span>
+				<?php if ( $is_configured ) : ?>
+					<div class="npcink-cloud-summary__grid">
+						<div class="npcink-cloud-summary__item">
+							<span class="npcink-cloud-summary__label"><?php esc_html_e( 'Cloud Base URL', 'npcink-cloud-addon' ); ?></span>
+							<span class="npcink-cloud-summary__value"><?php echo esc_html( self::format_setting_value( $display_base_url, __( 'Not set', 'npcink-cloud-addon' ) ) ); ?></span>
+						</div>
+						<div class="npcink-cloud-summary__item">
+							<span class="npcink-cloud-summary__label"><?php esc_html_e( 'Site ID', 'npcink-cloud-addon' ); ?></span>
+							<span class="npcink-cloud-summary__value"><?php echo esc_html( self::format_setting_value( (string) $settings['site_id'], __( 'Not set', 'npcink-cloud-addon' ) ) ); ?></span>
+						</div>
+						<div class="npcink-cloud-summary__item">
+							<span class="npcink-cloud-summary__label"><?php esc_html_e( 'Key ID', 'npcink-cloud-addon' ); ?></span>
+							<span class="npcink-cloud-summary__value"><?php echo esc_html( self::format_setting_value( (string) $settings['key_id'], __( 'Not set', 'npcink-cloud-addon' ) ) ); ?></span>
+						</div>
+						<div class="npcink-cloud-summary__item">
+							<span class="npcink-cloud-summary__label"><?php esc_html_e( 'Last verified', 'npcink-cloud-addon' ); ?></span>
+							<span class="npcink-cloud-summary__value"><?php echo esc_html( self::format_datetime_value( (string) $settings['verified_at'], __( 'Never', 'npcink-cloud-addon' ) ) ); ?></span>
+						</div>
+						<div class="npcink-cloud-summary__item">
+							<span class="npcink-cloud-summary__label"><?php esc_html_e( 'Entitlement', 'npcink-cloud-addon' ); ?></span>
+							<span class="npcink-cloud-summary__value"><?php echo esc_html( self::format_entitlement_availability( $entitlement, $is_verified ) ); ?></span>
+						</div>
+						<div class="npcink-cloud-summary__item">
+							<span class="npcink-cloud-summary__label"><?php esc_html_e( 'Package', 'npcink-cloud-addon' ); ?></span>
+							<span class="npcink-cloud-summary__value"><?php echo esc_html( $is_verified ? self::format_empty( (string) ( $entitlement['package_label'] ?? '' ) ) : __( 'Not checked', 'npcink-cloud-addon' ) ); ?></span>
+						</div>
 					</div>
-					<div class="npcink-cloud-summary__item">
-						<span class="npcink-cloud-summary__label"><?php esc_html_e( 'Site ID', 'npcink-cloud-addon' ); ?></span>
-						<span class="npcink-cloud-summary__value"><?php echo esc_html( self::format_setting_value( (string) $settings['site_id'], __( 'Not set', 'npcink-cloud-addon' ) ) ); ?></span>
-					</div>
-					<div class="npcink-cloud-summary__item">
-						<span class="npcink-cloud-summary__label"><?php esc_html_e( 'Key ID', 'npcink-cloud-addon' ); ?></span>
-						<span class="npcink-cloud-summary__value"><?php echo esc_html( self::format_setting_value( (string) $settings['key_id'], __( 'Not set', 'npcink-cloud-addon' ) ) ); ?></span>
-					</div>
-					<div class="npcink-cloud-summary__item">
-						<span class="npcink-cloud-summary__label"><?php esc_html_e( 'Last verified', 'npcink-cloud-addon' ); ?></span>
-						<span class="npcink-cloud-summary__value"><?php echo esc_html( self::format_datetime_value( (string) $settings['verified_at'], __( 'Never', 'npcink-cloud-addon' ) ) ); ?></span>
-					</div>
-					<div class="npcink-cloud-summary__item">
-						<span class="npcink-cloud-summary__label"><?php esc_html_e( 'Entitlement', 'npcink-cloud-addon' ); ?></span>
-						<span class="npcink-cloud-summary__value"><?php echo esc_html( self::format_entitlement_availability( $entitlement, $is_verified ) ); ?></span>
-					</div>
-					<div class="npcink-cloud-summary__item">
-						<span class="npcink-cloud-summary__label"><?php esc_html_e( 'Package', 'npcink-cloud-addon' ); ?></span>
-						<span class="npcink-cloud-summary__value"><?php echo esc_html( $is_verified ? self::format_empty( (string) ( $entitlement['package_label'] ?? '' ) ) : __( 'Not checked', 'npcink-cloud-addon' ) ); ?></span>
-					</div>
-				</div>
+				<?php endif; ?>
 			</section>
 			<?php
 		}
@@ -721,7 +732,8 @@ if ( ! class_exists( 'Npcink_Cloud_Settings_Page' ) ) {
 			?>
 			<div class="npcink-cloud-summary__actions">
 				<?php self::render_reverify_form( $settings ); ?>
-				<a class="button button-secondary" href="<?php echo esc_url( self::tab_url( 'advanced' ) ); ?>"><?php esc_html_e( 'Change connection', 'npcink-cloud-addon' ); ?></a>
+				<a class="button button-secondary" href="<?php echo esc_url( self::build_authorization_url( $settings ) ); ?>"><?php esc_html_e( 'Change connection in Cloud', 'npcink-cloud-addon' ); ?></a>
+				<a class="button button-secondary" href="<?php echo esc_url( untrailingslashit( Npcink_Cloud_Addon_Settings::get_effective_base_url( $settings ) ) . '/portal/sites' ); ?>" target="_blank" rel="noopener noreferrer"><?php esc_html_e( 'Open Cloud sites', 'npcink-cloud-addon' ); ?></a>
 				<?php self::render_disconnect_form(); ?>
 			</div>
 			<?php
@@ -760,9 +772,9 @@ if ( ! class_exists( 'Npcink_Cloud_Settings_Page' ) ) {
 				<button
 					type="submit"
 					class="button button-secondary npcink-cloud-button-danger"
-					onclick="return confirm('<?php echo esc_js( __( 'Disconnect this site from Npcink Cloud? Stored Cloud credentials and addon-owned buffers will be cleared locally.', 'npcink-cloud-addon' ) ); ?>');"
+					onclick="return confirm('<?php echo esc_js( __( 'Disconnect this site locally? Stored Cloud credentials and addon-owned buffers will be cleared from this WordPress site only. Manage or rotate Cloud keys in the Cloud portal.', 'npcink-cloud-addon' ) ); ?>');"
 				>
-					<?php esc_html_e( 'Disconnect', 'npcink-cloud-addon' ); ?>
+					<?php esc_html_e( 'Disconnect locally', 'npcink-cloud-addon' ); ?>
 				</button>
 			</form>
 			<?php
@@ -952,15 +964,66 @@ if ( ! class_exists( 'Npcink_Cloud_Settings_Page' ) ) {
 			$cloud_plugins = is_array( $summary['plugins'] ?? null ) ? $summary['plugins'] : array();
 			$recent_errors = is_array( $summary['recent_errors'] ?? null ) ? $summary['recent_errors'] : array();
 			?>
-			<form class="npcink-cloud-verify-form" method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" style="margin: 0 0 12px;">
-				<?php wp_nonce_field( self::ACTION_REFRESH_MONITORING ); ?>
-				<input type="hidden" name="action" value="<?php echo esc_attr( self::ACTION_REFRESH_MONITORING ); ?>" />
-				<button type="submit" class="button button-secondary"><?php esc_html_e( 'Refresh monitoring and quality', 'npcink-cloud-addon' ); ?></button>
-			</form>
-			<table class="widefat striped" style="max-width: 860px;">
-				<tbody>
-					<tr>
-						<th scope="row"><?php esc_html_e( 'Collection', 'npcink-cloud-addon' ); ?></th>
+				<form class="npcink-cloud-verify-form" method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" style="margin: 0 0 12px;">
+					<?php wp_nonce_field( self::ACTION_REFRESH_MONITORING ); ?>
+					<input type="hidden" name="action" value="<?php echo esc_attr( self::ACTION_REFRESH_MONITORING ); ?>" />
+					<button type="submit" class="button button-secondary"><?php esc_html_e( 'Refresh monitoring and quality', 'npcink-cloud-addon' ); ?></button>
+				</form>
+				<table class="widefat striped" style="max-width: 860px;">
+					<tbody>
+						<tr>
+							<th scope="row"><?php esc_html_e( 'Collection', 'npcink-cloud-addon' ); ?></th>
+							<td><?php echo ! empty( $monitoring['enabled'] ) ? esc_html__( 'enabled', 'npcink-cloud-addon' ) : esc_html__( 'disabled', 'npcink-cloud-addon' ); ?></td>
+						</tr>
+						<tr>
+							<th scope="row"><?php esc_html_e( 'Buffered events', 'npcink-cloud-addon' ); ?></th>
+							<td><?php echo esc_html( (string) absint( $monitoring['buffer_count'] ?? 0 ) ); ?></td>
+						</tr>
+						<tr>
+							<th scope="row"><?php esc_html_e( 'Last upload status', 'npcink-cloud-addon' ); ?></th>
+							<td>
+								<?php
+								$has_upload_state = '' !== (string) ( $monitoring['last_uploaded_at'] ?? '' )
+									|| '' !== (string) ( $monitoring['last_upload_error'] ?? '' );
+								if ( ! $has_upload_state ) {
+									echo esc_html__( 'never', 'npcink-cloud-addon' );
+								} else {
+									echo ! empty( $monitoring['last_upload_ok'] ) ? esc_html__( 'ok', 'npcink-cloud-addon' ) : esc_html__( 'failed', 'npcink-cloud-addon' );
+								}
+								?>
+							</td>
+						</tr>
+						<tr>
+							<th scope="row"><?php esc_html_e( 'Last uploaded', 'npcink-cloud-addon' ); ?></th>
+							<td><?php echo esc_html( self::format_datetime_value( (string) ( $monitoring['last_uploaded_at'] ?? '' ) ) ); ?></td>
+						</tr>
+						<tr>
+							<th scope="row"><?php esc_html_e( 'Last upload error', 'npcink-cloud-addon' ); ?></th>
+							<td><?php echo esc_html( self::format_empty( (string) ( $monitoring['last_upload_error'] ?? '' ) ) ); ?></td>
+						</tr>
+						<tr>
+							<th scope="row"><?php esc_html_e( 'Cloud events', 'npcink-cloud-addon' ); ?></th>
+							<td><?php echo esc_html( (string) absint( $totals['events_total'] ?? 0 ) ); ?></td>
+						</tr>
+						<tr>
+							<th scope="row"><?php esc_html_e( 'Cloud errors', 'npcink-cloud-addon' ); ?></th>
+							<td><?php echo esc_html( (string) absint( $totals['error_total'] ?? 0 ) ); ?></td>
+						</tr>
+						<tr>
+							<th scope="row"><?php esc_html_e( 'Agent quality events', 'npcink-cloud-addon' ); ?></th>
+							<td><?php echo esc_html( (string) absint( $agent_summary['events_total'] ?? 0 ) ); ?></td>
+						</tr>
+					</tbody>
+				</table>
+				<details class="npcink-cloud-disclosure">
+					<summary>
+						<strong><?php esc_html_e( 'Advanced diagnostics', 'npcink-cloud-addon' ); ?></strong>
+						<span><?php esc_html_e( 'Local buffers, Cloud aggregate metrics, plugin signals, and recent error codes.', 'npcink-cloud-addon' ); ?></span>
+					</summary>
+				<table class="widefat striped" style="max-width: 860px;">
+					<tbody>
+						<tr>
+							<th scope="row"><?php esc_html_e( 'Collection', 'npcink-cloud-addon' ); ?></th>
 						<td><?php echo ! empty( $monitoring['enabled'] ) ? esc_html__( 'enabled', 'npcink-cloud-addon' ) : esc_html__( 'disabled', 'npcink-cloud-addon' ); ?></td>
 					</tr>
 					<tr>
@@ -1194,11 +1257,12 @@ if ( ! class_exists( 'Npcink_Cloud_Settings_Page' ) ) {
 							<td><?php echo ! empty( $plugin['active'] ) ? esc_html__( 'yes', 'npcink-cloud-addon' ) : esc_html__( 'no', 'npcink-cloud-addon' ); ?></td>
 							<td><code><?php echo esc_html( self::format_empty( (string) ( $plugin['version'] ?? '' ) ) ); ?></code></td>
 						</tr>
-					<?php endforeach; ?>
-				</tbody>
-			</table>
-			<?php
-		}
+						<?php endforeach; ?>
+					</tbody>
+				</table>
+				</details>
+				<?php
+			}
 
 		/**
 		 * Renders read-only Agent feedback quality detail lists.

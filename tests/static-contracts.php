@@ -588,17 +588,21 @@ maca_assert(
 );
 
 maca_assert(
-	false !== strpos( $settings_page, "\$default = 'status';" )
+	false !== strpos( $settings_page, "\$default = \$is_verified ? 'status' : 'connect';" )
 	&& false !== strpos( $settings_page, "'status'   => __( 'Status'" )
+	&& false !== strpos( $settings_page, "'connect'  => __( 'Connect'" )
 	&& false !== strpos( $settings_page, "'details'  => __( 'Details'" )
-	&& false !== strpos( $settings_page, 'Manual Access Settings' )
+	&& false !== strpos( $settings_page, 'Connect this site' )
+	&& false !== strpos( $settings_page, 'Manual connection fallback' )
+	&& false !== strpos( $settings_page, 'Advanced diagnostics' )
 	&& false !== strpos( $settings_page, 'function render_status_overview' )
 	&& false !== strpos( $settings_page, 'format_monitoring_overview' )
 	&& false !== strpos( $settings_page, 'View details' )
 	&& false !== strpos( $settings_page, '<h3><?php esc_html_e( \'Entitlement Summary\'' )
 	&& false !== strpos( $settings_page, '<h3><?php esc_html_e( \'Monitoring & Quality\'' )
+	&& false !== strpos( $settings_page, "self::redirect_to_page( 'details' );" )
 	&& false === strpos( $settings_page, "'monitoring'  =>" ),
-	'Settings page defaults to a compact status view and moves entitlement and monitoring detail behind the details tab.'
+	'Settings page defaults to a connect view before verification, keeps verified status compact, and moves monitoring diagnostics behind details.'
 );
 
 maca_assert(
@@ -622,12 +626,13 @@ maca_assert(
 	&& false !== strpos( $settings_page, 'Npcink_Cloud_Addon_Settings::delete_settings()' )
 	&& false !== strpos( $settings_page, 'Npcink_Cloud_Observability_Collector::delete_data()' )
 	&& false !== strpos( $settings_page, 'Npcink_Cloud_Site_Knowledge_Change_Bridge::delete_data()' )
-	&& false !== strpos( $settings_page, 'Change connection' )
-	&& false !== strpos( $settings_page, 'Disconnect' )
+	&& false !== strpos( $settings_page, 'Change connection in Cloud' )
+	&& false !== strpos( $settings_page, 'Open Cloud sites' )
+	&& false !== strpos( $settings_page, 'Disconnect locally' )
 	&& false !== strpos( $settings_page, 'Site ID' )
 	&& false !== strpos( $settings_page, 'Key ID' )
 	&& false === strpos( $settings_page, 'revoke' ),
-	'Settings page exposes local change/disconnect actions and read-only connection identifiers without taking Cloud account ownership.'
+	'Settings page exposes Cloud-side change links and local disconnect actions without taking Cloud account ownership.'
 );
 
 maca_assert(

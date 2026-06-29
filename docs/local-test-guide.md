@@ -58,11 +58,12 @@ Steps:
 1. Log in with a local administrator account.
 2. Activate `Npcink Cloud Addon`.
 3. Open `Npcink > Cloud Addon`.
-4. Save Cloud Base URL and Cloud API Key.
-5. Confirm failed verification shows a clear error and does not mark the settings as verified.
-6. Confirm successful verification shows `configured_valid`.
-7. View page source and confirm the Cloud secret is not present.
-8. Confirm entitlement read failures show `unavailable` and are not presented as usable entitlement.
+4. Use the Cloud authorization action to add the current site.
+5. Confirm the callback saves the returned connection key and immediately verifies.
+6. Confirm failed verification shows a clear error and does not mark the settings as verified.
+7. Confirm successful verification shows `configured_valid` without split credential identifiers.
+8. View page source and confirm the stored connection key is not present.
+9. Confirm entitlement read failures show `unavailable` and are not presented as usable entitlement.
 
 ## Cloud Contract Smoke Test
 

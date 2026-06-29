@@ -59,10 +59,7 @@ if ( ! class_exists( 'Npcink_Cloud_Entitlement_Summary' ) ) {
 			}
 
 			$data = self::extract_data( $result );
-			$summary = self::normalize_cloud_entitlement( $data, $settings );
-			set_transient( $cache_key, $summary, self::CACHE_TTL_SECONDS );
-
-			return $summary;
+			return self::cache_cloud_entitlement( $data, $settings );
 		}
 
 		/**
@@ -97,7 +94,7 @@ if ( ! class_exists( 'Npcink_Cloud_Entitlement_Summary' ) ) {
 
 			return self::unavailable_summary(
 				'not_refreshed',
-				__( 'Entitlement summary has not been refreshed yet. Save and Verify to refresh it.', 'npcink-cloud-addon' )
+				__( 'Entitlement summary has not been refreshed yet. Re-verify and refresh to read the latest Cloud summary.', 'npcink-cloud-addon' )
 			);
 		}
 
@@ -108,6 +105,20 @@ if ( ! class_exists( 'Npcink_Cloud_Entitlement_Summary' ) ) {
 		 */
 		public static function refresh(): array {
 			return self::get_summary( true );
+		}
+
+		/**
+		 * Caches a Cloud entitlement response already read by a signed verification request.
+		 *
+		 * @param array<string,mixed> $response Cloud response envelope or data.
+		 * @param array<string,mixed> $settings Settings used to build the cache key.
+		 * @return array<string,mixed>
+		 */
+		public static function cache_summary_from_response( array $response, array $settings = array() ): array {
+			$settings = empty( $settings ) ? Npcink_Cloud_Addon_Settings::get_settings() : $settings;
+			$data = self::extract_data( $response );
+
+			return self::cache_cloud_entitlement( $data, $settings );
 		}
 
 		/**
@@ -192,6 +203,21 @@ if ( ! class_exists( 'Npcink_Cloud_Entitlement_Summary' ) ) {
 				'synced_at' => gmdate( 'Y-m-d H:i:s' ) . ' UTC',
 				'fresh_until' => gmdate( 'Y-m-d H:i:s', time() + self::CACHE_TTL_SECONDS ) . ' UTC',
 			);
+		}
+
+		/**
+		 * Normalizes and caches a Cloud entitlement data payload.
+		 *
+		 * @param array<string,mixed> $data Cloud entitlement data.
+		 * @param array<string,mixed> $settings Addon settings.
+		 * @return array<string,mixed>
+		 */
+		private static function cache_cloud_entitlement( array $data, array $settings ): array {
+			$settings = Npcink_Cloud_Addon_Settings::normalize_settings( $settings );
+			$summary = self::normalize_cloud_entitlement( $data, $settings );
+			set_transient( self::cache_key( $settings ), $summary, self::CACHE_TTL_SECONDS );
+
+			return $summary;
 		}
 
 		/**

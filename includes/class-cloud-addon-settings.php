@@ -185,7 +185,7 @@ if ( ! class_exists( 'Npcink_Cloud_Addon_Settings' ) ) {
 					'code' => 'not_configured',
 					'label' => __( 'Not configured', 'npcink-cloud-addon' ),
 					'message' => $has_any_values
-						? __( 'Cloud settings are incomplete. Save a Cloud Base URL and Cloud API Key.', 'npcink-cloud-addon' )
+						? __( 'Cloud settings are incomplete. Reconnect this site in Npcink Cloud to issue a new connection key.', 'npcink-cloud-addon' )
 						: __( 'Authorize this site in Npcink Cloud to create the connection.', 'npcink-cloud-addon' ),
 					'configured' => false,
 					'verified' => false,
@@ -371,9 +371,8 @@ if ( ! class_exists( 'Npcink_Cloud_Addon_Settings' ) ) {
 		/**
 		 * Parses a customer-facing API key into signing credentials.
 		 *
-		 * Supported formats:
+		 * Supported format:
 		 * - mak1_{base64url(json)}
-		 * - raw JSON object with site_id, key_id, and secret
 		 *
 		 * @param string $api_key Raw Cloud API Key.
 		 * @return array<string,string>|WP_Error
@@ -387,19 +386,22 @@ if ( ! class_exists( 'Npcink_Cloud_Addon_Settings' ) ) {
 				);
 			}
 
-			$json_candidate = $api_key;
-			if ( 0 === strpos( $api_key, 'mak1_' ) ) {
-				$decoded = self::base64url_decode( substr( $api_key, 5 ) );
-				if ( false === $decoded || '' === $decoded ) {
-					return new WP_Error(
-						'invalid_cloud_api_key',
-						__( 'Cloud API Key could not be decoded.', 'npcink-cloud-addon' )
-					);
-				}
-				$json_candidate = $decoded;
+			if ( 0 !== strpos( $api_key, 'mak1_' ) ) {
+				return new WP_Error(
+					'invalid_cloud_api_key',
+					__( 'Manual Cloud API Key recovery must use a Cloud-issued mak1_ wrapper. Reconnect this site in Npcink Cloud to issue a new key.', 'npcink-cloud-addon' )
+				);
 			}
 
-			$decoded_payload = json_decode( $json_candidate, true );
+			$decoded = self::base64url_decode( substr( $api_key, 5 ) );
+			if ( false === $decoded || '' === $decoded ) {
+				return new WP_Error(
+					'invalid_cloud_api_key',
+					__( 'Cloud API Key could not be decoded.', 'npcink-cloud-addon' )
+				);
+			}
+
+			$decoded_payload = json_decode( $decoded, true );
 			if ( ! is_array( $decoded_payload ) ) {
 				return new WP_Error(
 					'invalid_cloud_api_key',
@@ -414,7 +416,7 @@ if ( ! class_exists( 'Npcink_Cloud_Addon_Settings' ) ) {
 			if ( '' === $site_id || '' === $key_id || '' === $secret ) {
 				return new WP_Error(
 					'invalid_cloud_api_key',
-					__( 'Cloud API Key is missing site_id, key_id, or secret.', 'npcink-cloud-addon' )
+					__( 'Cloud API Key wrapper is missing required signing data.', 'npcink-cloud-addon' )
 				);
 			}
 

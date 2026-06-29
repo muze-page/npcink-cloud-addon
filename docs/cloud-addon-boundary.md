@@ -19,8 +19,8 @@ index, freshness, and collection lifecycle owner.
 
 - Cloud Base URL.
 - Cloud-side site authorization entry for the current WordPress site.
-- Advanced fallback Cloud API Key entry.
-- `mak1_{base64url(json)}` and JSON key parsing.
+- Advanced fallback Cloud API Key wrapper entry.
+- `mak1_{base64url(json)}` key parsing.
 - Internal `site_id`, `key_id`, and `secret` storage for server-side signing.
 - HMAC signatures, trace headers, idempotency headers, and request nonce headers.
 - Health and signed connectivity checks.

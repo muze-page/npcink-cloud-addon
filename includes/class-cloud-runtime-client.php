@@ -118,6 +118,7 @@ if ( ! class_exists( 'Npcink_Cloud_Runtime_Client' ) ) {
 				} else {
 					$auth_probe['ok'] = true;
 					$auth_probe['message'] = __( 'Signed Cloud request verified.', 'npcink-cloud-addon' );
+					$auth_probe['entitlement_response'] = $result;
 				}
 			}
 
@@ -127,6 +128,7 @@ if ( ! class_exists( 'Npcink_Cloud_Runtime_Client' ) ) {
 				'auth_ok' => ! empty( $auth_probe['ok'] ),
 				'live_message' => sanitize_text_field( (string) ( $live_probe['message'] ?? '' ) ),
 				'auth_message' => sanitize_text_field( (string) ( $auth_probe['message'] ?? '' ) ),
+				'entitlement_response' => is_array( $auth_probe['entitlement_response'] ?? null ) ? $auth_probe['entitlement_response'] : array(),
 			);
 		}
 

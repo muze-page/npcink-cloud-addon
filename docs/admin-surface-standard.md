@@ -20,13 +20,14 @@ When not configured or not verified, the default page should prioritize:
 Cloud Base URL must use HTTPS except for local development hosts (`localhost`,
 `127.0.0.1`, or `::1`). The environment default is
 `http://127.0.0.1:8010` for local WordPress environments and
-`https://cloud.npc.ink` otherwise. Manual Base URL and Cloud API Key entry
-belong in Advanced as a fallback for local debugging or authorization outages.
+`https://cloud.npc.ink` otherwise. Manual Base URL and Cloud API Key wrapper
+entry belong in Advanced as a recovery fallback for local debugging or
+authorization outages.
 
 When verified, the default page should prioritize:
 
 - compact Cloud status;
-- Site ID, Key ID, last verification time;
+- last verification time;
 - read-only entitlement summary;
 - opt-in monitoring state and read-only Cloud observability / Agent feedback
   quality summaries;
@@ -36,7 +37,7 @@ When verified, the default page should prioritize:
 
 Low-frequency details may include:
 
-- manual Cloud Base URL and Cloud API Key entry;
+- manual Cloud Base URL and Cloud API Key wrapper recovery entry;
 - timeout setting;
 - read-only entitlement fields;
 - metadata-only monitoring upload status;

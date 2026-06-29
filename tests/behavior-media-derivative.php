@@ -639,13 +639,20 @@ maca_assert(
 	'Behavior: generic image source media type is accepted for ability contracts.'
 );
 
+$wrapped_key = 'mak1_eyJzaXRlX2lkIjoic2l0ZV90ZXN0Iiwia2V5X2lkIjoia2V5X3Rlc3QiLCJzZWNyZXQiOiJzZWNyZXRfdGVzdCJ9';
 $unsafe_url = Npcink_Cloud_Addon_Settings::build_settings_from_admin_payload(
 	array(
 		'base_url' => 'http://cloud.example.test',
-		'api_key' => '{"site_id":"site_test","key_id":"key_test","secret":"secret_test"}',
+		'api_key' => $wrapped_key,
 	)
 );
 $local_url = Npcink_Cloud_Addon_Settings::build_settings_from_admin_payload(
+	array(
+		'base_url' => 'http://127.0.0.1:8787',
+		'api_key' => $wrapped_key,
+	)
+);
+$split_payload = Npcink_Cloud_Addon_Settings::build_settings_from_admin_payload(
 	array(
 		'base_url' => 'http://127.0.0.1:8787',
 		'api_key' => '{"site_id":"site_test","key_id":"key_test","secret":"secret_test"}',
@@ -655,6 +662,8 @@ maca_assert(
 	is_wp_error( $unsafe_url )
 	&& 'invalid_cloud_base_url' === $unsafe_url->get_error_code()
 	&& is_array( $local_url )
-	&& 'http://127.0.0.1:8787' === $local_url['base_url'],
-	'Behavior: Cloud Base URL requires HTTPS except localhost development URLs.'
+	&& 'http://127.0.0.1:8787' === $local_url['base_url']
+	&& is_wp_error( $split_payload )
+	&& 'invalid_cloud_api_key' === $split_payload->get_error_code(),
+	'Behavior: Cloud Base URL requires HTTPS except localhost URLs and admin payloads reject split credential JSON.'
 );

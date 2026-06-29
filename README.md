@@ -2,14 +2,14 @@
 
 Standalone WordPress plugin for connecting a local Npcink installation to `npcink-cloud`.
 
-The addon is a thin Cloud connector. It stores the Cloud Base URL and Cloud API Key, parses the key into signing credentials, sends signed runtime requests, reads health and entitlement status, transports opt-in metadata-only plugin observability events, shows read-only Agent feedback quality summaries, bridges public Site Knowledge change hints to Cloud, and exposes a minimal PHP interface for local plugins.
+The addon is a thin Cloud connector. It stores the Cloud Base URL and Cloud API Key returned by Cloud site authorization, parses the key into signing credentials, sends signed runtime requests, reads health and entitlement status, transports opt-in metadata-only plugin observability events, shows read-only Agent feedback quality summaries, bridges public Site Knowledge change hints to Cloud, and exposes a minimal PHP interface for local plugins.
 
 ## Scope
 
 The addon owns:
 
-- Cloud Base URL and Cloud API Key storage.
-- `mak1_{base64url(json)}` and JSON Cloud API Key parsing.
+- Cloud Base URL and Cloud API Key wrapper storage.
+- Cloud site authorization callback exchange and `mak1_{base64url(json)}` parsing.
 - HMAC signing, trace headers, idempotency headers, and Cloud error mapping.
 - Connectivity probing with `/health/live` and a signed Cloud read.
 - Runtime and read projection calls:
@@ -234,23 +234,23 @@ Admin path:
 
 `Npcink > Cloud Addon`
 
-Fields:
-
-- Cloud Base URL
-- Cloud API Key
+The default flow opens Cloud Portal site authorization with a `return_url` and
+state token. After Cloud returns a code, the addon exchanges it at
+`/portal/v1/addon-connections/exchange`, stores the returned Cloud API Key
+wrapper and base URL, and verifies the signed connection immediately.
 
 Cloud Base URL must use `https://` unless it points to local development hosts
-such as `localhost`, `127.0.0.1`, or `::1`.
-- Timeout
+such as `localhost`, `127.0.0.1`, or `::1`. Timeout and manual recovery key entry
+are kept in Advanced for local debugging or authorization outages.
 
-The page saves and verifies in one action. When unverified, it prioritizes the
-settings form and `Save and Verify`. When verified, it prioritizes Cloud status,
-Site ID, Key ID, last verification time, and a read-only entitlement summary,
-with settings collapsed for update/re-verification. It never displays the
-secret and does not provide split credential editing.
+When verified, the page prioritizes Cloud status, last verification time, and a
+read-only entitlement summary. It never displays split signing credentials and
+does not provide split credential editing.
 
 The admin page scope is documented in
-[`docs/admin-surface-standard.md`](docs/admin-surface-standard.md).
+[`docs/admin-surface-standard.md`](docs/admin-surface-standard.md). The Cloud
+site connection flow history is summarized in
+[`docs/cloud-site-connection-flow-history.md`](docs/cloud-site-connection-flow-history.md).
 
 ## Repository Management
 

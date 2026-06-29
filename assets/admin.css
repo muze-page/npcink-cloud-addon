@@ -41,6 +41,11 @@
 	justify-content: flex-end;
 }
 
+.npcink-cloud-summary__actions--start {
+	justify-content: flex-start;
+	margin-bottom: 16px;
+}
+
 .npcink-cloud-summary__actions .npcink-cloud-verify-form {
 	margin-top: 0;
 }

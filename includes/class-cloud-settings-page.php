@@ -290,7 +290,21 @@ if ( ! class_exists( 'Npcink_Cloud_Settings_Page' ) ) {
 			if ( ! empty( $probe['ok'] ) ) {
 				Npcink_Cloud_Addon_Settings::mark_verification_result( true, '' );
 				Npcink_Cloud_Observability_Collector::sync_schedule();
-				Npcink_Cloud_Entitlement_Summary::refresh();
+				$summary = is_array( $probe['entitlement_response'] ?? null ) && ! empty( $probe['entitlement_response'] )
+					? Npcink_Cloud_Entitlement_Summary::cache_summary_from_response( $probe['entitlement_response'], $settings )
+					: Npcink_Cloud_Entitlement_Summary::refresh();
+				if ( empty( $summary['available'] ) ) {
+					self::set_admin_notice(
+						'warning',
+						sprintf(
+							/* translators: %s: entitlement refresh message. */
+							__( 'Cloud settings verified, but entitlement summary could not refresh: %s', 'npcink-cloud-addon' ),
+							(string) ( $summary['message'] ?? __( 'Unknown entitlement refresh result.', 'npcink-cloud-addon' ) )
+						)
+					);
+					return;
+				}
+
 				self::set_admin_notice( 'success', $success_message );
 				return;
 			}
@@ -422,6 +436,7 @@ if ( ! class_exists( 'Npcink_Cloud_Settings_Page' ) ) {
 					<section class="npcink-cloud-section npcink-cloud-tab-panel">
 						<h2><?php esc_html_e( 'Advanced Information', 'npcink-cloud-addon' ); ?></h2>
 						<?php self::render_advanced_information( $settings, $state, $entitlement ); ?>
+						<?php self::render_connection_management( $settings ); ?>
 						<details class="npcink-cloud-disclosure">
 							<summary>
 								<strong><?php esc_html_e( 'Manual connection fallback', 'npcink-cloud-addon' ); ?></strong>
@@ -696,14 +711,6 @@ if ( ! class_exists( 'Npcink_Cloud_Settings_Page' ) ) {
 							<span class="npcink-cloud-summary__label"><?php esc_html_e( 'Last verified', 'npcink-cloud-addon' ); ?></span>
 							<span class="npcink-cloud-summary__value"><?php echo esc_html( self::format_datetime_value( (string) $settings['verified_at'], __( 'Never', 'npcink-cloud-addon' ) ) ); ?></span>
 						</div>
-						<div class="npcink-cloud-summary__item">
-							<span class="npcink-cloud-summary__label"><?php esc_html_e( 'Entitlement', 'npcink-cloud-addon' ); ?></span>
-							<span class="npcink-cloud-summary__value"><?php echo esc_html( self::format_entitlement_availability( $entitlement, $is_verified ) ); ?></span>
-						</div>
-						<div class="npcink-cloud-summary__item">
-							<span class="npcink-cloud-summary__label"><?php esc_html_e( 'Package', 'npcink-cloud-addon' ); ?></span>
-							<span class="npcink-cloud-summary__value"><?php echo esc_html( $is_verified ? self::format_empty( (string) ( $entitlement['package_label'] ?? '' ) ) : __( 'Not checked', 'npcink-cloud-addon' ) ); ?></span>
-						</div>
 					</div>
 				<?php endif; ?>
 			</section>
@@ -720,8 +727,26 @@ if ( ! class_exists( 'Npcink_Cloud_Settings_Page' ) ) {
 			?>
 			<div class="npcink-cloud-summary__actions">
 				<?php self::render_reverify_form( $settings ); ?>
-				<a class="button button-secondary" href="<?php echo esc_url( self::build_authorization_url( $settings ) ); ?>"><?php esc_html_e( 'Change connection in Cloud', 'npcink-cloud-addon' ); ?></a>
 				<a class="button button-secondary" href="<?php echo esc_url( untrailingslashit( Npcink_Cloud_Addon_Settings::get_effective_base_url( $settings ) ) . '/portal/sites' ); ?>" target="_blank" rel="noopener noreferrer"><?php esc_html_e( 'Open Cloud sites', 'npcink-cloud-addon' ); ?></a>
+			</div>
+			<?php
+		}
+
+		/**
+		 * Renders low-frequency connection management actions.
+		 *
+		 * @param array<string,mixed> $settings Stored settings.
+		 * @return void
+		 */
+		private static function render_connection_management( array $settings ): void {
+			if ( empty( $settings['base_url'] ) ) {
+				return;
+			}
+			?>
+			<h3><?php esc_html_e( 'Connection management', 'npcink-cloud-addon' ); ?></h3>
+			<p class="description"><?php esc_html_e( 'Use Cloud for account-level connection changes. Local disconnect only clears this WordPress site.', 'npcink-cloud-addon' ); ?></p>
+			<div class="npcink-cloud-summary__actions npcink-cloud-summary__actions--start">
+				<a class="button button-secondary" href="<?php echo esc_url( self::build_authorization_url( $settings ) ); ?>"><?php esc_html_e( 'Change connection in Cloud', 'npcink-cloud-addon' ); ?></a>
 				<?php self::render_disconnect_form(); ?>
 			</div>
 			<?php
@@ -742,7 +767,7 @@ if ( ! class_exists( 'Npcink_Cloud_Settings_Page' ) ) {
 				<input type="hidden" name="api_key" value="" />
 				<input type="hidden" name="timeout" value="<?php echo esc_attr( (string) $settings['timeout'] ); ?>" />
 				<input type="hidden" name="monitoring_enabled" value="<?php echo esc_attr( ! empty( $settings['monitoring_enabled'] ) ? '1' : '0' ); ?>" />
-				<button type="submit" class="button button-secondary"><?php esc_html_e( 'Re-verify', 'npcink-cloud-addon' ); ?></button>
+				<button type="submit" class="button button-secondary"><?php esc_html_e( 'Re-verify and refresh', 'npcink-cloud-addon' ); ?></button>
 			</form>
 			<?php
 		}
@@ -884,7 +909,7 @@ if ( ! class_exists( 'Npcink_Cloud_Settings_Page' ) ) {
 					</tr>
 					<tr>
 						<th scope="row"><?php esc_html_e( 'Package', 'npcink-cloud-addon' ); ?></th>
-						<td><?php echo esc_html( $is_verified ? self::format_empty( (string) ( $entitlement['package_label'] ?? '' ) ) : __( 'Not checked', 'npcink-cloud-addon' ) ); ?></td>
+						<td><?php echo esc_html( self::format_package_label( $entitlement, $is_verified ) ); ?></td>
 					</tr>
 					<tr>
 						<th scope="row"><?php esc_html_e( 'Monitoring', 'npcink-cloud-addon' ); ?></th>
@@ -892,9 +917,7 @@ if ( ! class_exists( 'Npcink_Cloud_Settings_Page' ) ) {
 					</tr>
 				</tbody>
 			</table>
-			<p class="npcink-cloud-section-action">
-				<a class="button button-secondary" href="<?php echo esc_url( self::tab_url( 'details' ) ); ?>"><?php esc_html_e( 'View details', 'npcink-cloud-addon' ); ?></a>
-			</p>
+			<p class="description"><?php esc_html_e( 'Entitlement and package are read from Cloud into a short local summary cache. Re-verifying refreshes the latest Cloud summary.', 'npcink-cloud-addon' ); ?></p>
 			<?php
 		}
 
@@ -1336,11 +1359,11 @@ if ( ! class_exists( 'Npcink_Cloud_Settings_Page' ) ) {
 				<tbody>
 					<tr>
 						<th scope="row"><?php esc_html_e( 'Availability', 'npcink-cloud-addon' ); ?></th>
-						<td><?php echo ! empty( $summary['available'] ) ? esc_html__( 'available', 'npcink-cloud-addon' ) : esc_html__( 'unavailable', 'npcink-cloud-addon' ); ?></td>
+						<td><?php echo esc_html( self::format_entitlement_availability( $summary, $is_verified ) ); ?></td>
 					</tr>
 					<tr>
 						<th scope="row"><?php esc_html_e( 'Package', 'npcink-cloud-addon' ); ?></th>
-						<td><?php echo esc_html( self::format_empty( (string) ( $summary['package_label'] ?? '' ) ) ); ?></td>
+						<td><?php echo esc_html( self::format_package_label( $summary, $is_verified ) ); ?></td>
 					</tr>
 					<tr>
 						<th scope="row"><?php esc_html_e( 'Entitlement status', 'npcink-cloud-addon' ); ?></th>
@@ -1593,7 +1616,10 @@ if ( ! class_exists( 'Npcink_Cloud_Settings_Page' ) ) {
 				return;
 			}
 
-			$type = 'success' === (string) ( $notice['type'] ?? '' ) ? 'success' : 'error';
+			$type = sanitize_key( (string) ( $notice['type'] ?? '' ) );
+			if ( ! in_array( $type, array( 'success', 'warning', 'error' ), true ) ) {
+				$type = 'error';
+			}
 			?>
 			<div class="notice notice-<?php echo esc_attr( $type ); ?> is-dismissible">
 				<p><?php echo esc_html( (string) $notice['message'] ); ?></p>
@@ -1637,9 +1663,53 @@ if ( ! class_exists( 'Npcink_Cloud_Settings_Page' ) ) {
 				return __( 'Not checked', 'npcink-cloud-addon' );
 			}
 
-			return ! empty( $summary['available'] )
-				? __( 'available', 'npcink-cloud-addon' )
-				: __( 'unavailable', 'npcink-cloud-addon' );
+			if ( ! empty( $summary['available'] ) ) {
+				return __( 'available', 'npcink-cloud-addon' );
+			}
+
+			$state = sanitize_key( (string) ( $summary['state'] ?? '' ) );
+			if ( 'not_refreshed' === $state ) {
+				return __( 'not refreshed', 'npcink-cloud-addon' );
+			}
+
+			if ( 'not_configured' === $state ) {
+				return __( 'not configured', 'npcink-cloud-addon' );
+			}
+
+			if ( 'unavailable' === $state ) {
+				return __( 'read failed', 'npcink-cloud-addon' );
+			}
+
+			return __( 'unavailable', 'npcink-cloud-addon' );
+		}
+
+		/**
+		 * Formats the Cloud package label without implying local billing truth.
+		 *
+		 * @param array<string,mixed> $summary Entitlement summary.
+		 * @param bool                $is_verified Whether the connector has verified credentials.
+		 * @return string
+		 */
+		private static function format_package_label( array $summary, bool $is_verified ): string {
+			if ( ! $is_verified ) {
+				return __( 'Not checked', 'npcink-cloud-addon' );
+			}
+
+			$package_label = trim( (string) ( $summary['package_label'] ?? '' ) );
+			if ( '' !== $package_label ) {
+				return $package_label;
+			}
+
+			$state = sanitize_key( (string) ( $summary['state'] ?? '' ) );
+			if ( 'not_refreshed' === $state ) {
+				return __( 'not refreshed', 'npcink-cloud-addon' );
+			}
+
+			if ( empty( $summary['available'] ) ) {
+				return __( 'unavailable', 'npcink-cloud-addon' );
+			}
+
+			return __( 'not returned by Cloud', 'npcink-cloud-addon' );
 		}
 
 		/**

@@ -239,6 +239,12 @@ if ( ! function_exists( 'add_action' ) ) {
 	function add_action(): void {}
 }
 
+if ( ! function_exists( 'get_current_user_id' ) ) {
+	function get_current_user_id(): int {
+		return 1;
+	}
+}
+
 if ( ! function_exists( 'register_setting' ) ) {
 	function register_setting(): void {}
 }
@@ -308,6 +314,7 @@ if ( ! function_exists( 'wp_remote_retrieve_body' ) ) {
 function maca_load_addon_classes(): void {
 	require_once MACA_TEST_ROOT . '/includes/class-cloud-addon-settings.php';
 	require_once MACA_TEST_ROOT . '/includes/class-cloud-runtime-client.php';
+	require_once MACA_TEST_ROOT . '/includes/class-cloud-entitlement-summary.php';
 	require_once MACA_TEST_ROOT . '/includes/class-cloud-media-derivative-transport.php';
 	require_once MACA_TEST_ROOT . '/includes/class-cloud-observability-collector.php';
 }

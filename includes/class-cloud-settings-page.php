@@ -224,27 +224,12 @@ if ( ! class_exists( 'Npcink_Cloud_Settings_Page' ) ) {
 			$settings = Npcink_Cloud_Addon_Settings::build_settings_from_admin_payload( $payload );
 			if ( is_wp_error( $settings ) ) {
 				self::set_admin_notice( 'error', $settings->get_error_message() );
-			self::redirect_to_page();
-		}
-
-			Npcink_Cloud_Addon_Settings::write_settings( $settings );
-
-			$client = new Npcink_Cloud_Runtime_Client( $settings );
-			$probe = $client->probe_connectivity();
-			if ( ! empty( $probe['ok'] ) ) {
-				Npcink_Cloud_Addon_Settings::mark_verification_result( true, '' );
-				Npcink_Cloud_Observability_Collector::sync_schedule();
-				Npcink_Cloud_Entitlement_Summary::refresh();
-				self::set_admin_notice( 'success', __( 'Cloud settings saved and verified.', 'npcink-cloud-addon' ) );
-			} else {
-				$message = self::format_probe_failure_message( $probe );
-				Npcink_Cloud_Addon_Settings::mark_verification_result( false, $message );
-				Npcink_Cloud_Observability_Collector::sync_schedule();
-				self::set_admin_notice( 'error', $message );
-			}
-
 				self::redirect_to_page();
 			}
+
+			self::persist_and_verify_settings( $settings, __( 'Cloud settings saved and verified.', 'npcink-cloud-addon' ) );
+			self::redirect_to_page();
+		}
 
 		/**
 		 * Handles the Cloud Portal authorization callback.
@@ -285,22 +270,35 @@ if ( ! class_exists( 'Npcink_Cloud_Settings_Page' ) ) {
 				self::redirect_to_page( 'status' );
 			}
 
+			self::persist_and_verify_settings( $settings, __( 'Cloud connection completed and verified.', 'npcink-cloud-addon' ) );
+
+			self::redirect_to_page( 'status' );
+		}
+
+		/**
+		 * Persists settings and immediately updates the verified state.
+		 *
+		 * @param array<string,mixed> $settings Settings payload.
+		 * @param string              $success_message Success notice.
+		 * @return void
+		 */
+		private static function persist_and_verify_settings( array $settings, string $success_message ): void {
 			Npcink_Cloud_Addon_Settings::write_settings( $settings );
+
 			$client = new Npcink_Cloud_Runtime_Client( $settings );
 			$probe = $client->probe_connectivity();
 			if ( ! empty( $probe['ok'] ) ) {
 				Npcink_Cloud_Addon_Settings::mark_verification_result( true, '' );
 				Npcink_Cloud_Observability_Collector::sync_schedule();
 				Npcink_Cloud_Entitlement_Summary::refresh();
-				self::set_admin_notice( 'success', __( 'Cloud authorization completed and verified.', 'npcink-cloud-addon' ) );
-			} else {
-				$message = self::format_probe_failure_message( $probe );
-				Npcink_Cloud_Addon_Settings::mark_verification_result( false, $message );
-				Npcink_Cloud_Observability_Collector::sync_schedule();
-				self::set_admin_notice( 'error', $message );
+				self::set_admin_notice( 'success', $success_message );
+				return;
 			}
 
-			self::redirect_to_page( 'status' );
+			$message = self::format_probe_failure_message( $probe );
+			Npcink_Cloud_Addon_Settings::mark_verification_result( false, $message );
+			Npcink_Cloud_Observability_Collector::sync_schedule();
+			self::set_admin_notice( 'error', $message );
 		}
 
 		/**
@@ -657,8 +655,6 @@ if ( ! class_exists( 'Npcink_Cloud_Settings_Page' ) ) {
 
 			return array(
 				'cloud_api_key' => $cloud_api_key,
-				'site_id'       => sanitize_text_field( (string) ( $data['site_id'] ?? '' ) ),
-				'key_id'        => sanitize_text_field( (string) ( $data['key_id'] ?? '' ) ),
 			);
 		}
 
@@ -695,14 +691,6 @@ if ( ! class_exists( 'Npcink_Cloud_Settings_Page' ) ) {
 						<div class="npcink-cloud-summary__item">
 							<span class="npcink-cloud-summary__label"><?php esc_html_e( 'Cloud Base URL', 'npcink-cloud-addon' ); ?></span>
 							<span class="npcink-cloud-summary__value"><?php echo esc_html( self::format_setting_value( $display_base_url, __( 'Not set', 'npcink-cloud-addon' ) ) ); ?></span>
-						</div>
-						<div class="npcink-cloud-summary__item">
-							<span class="npcink-cloud-summary__label"><?php esc_html_e( 'Site ID', 'npcink-cloud-addon' ); ?></span>
-							<span class="npcink-cloud-summary__value"><?php echo esc_html( self::format_setting_value( (string) $settings['site_id'], __( 'Not set', 'npcink-cloud-addon' ) ) ); ?></span>
-						</div>
-						<div class="npcink-cloud-summary__item">
-							<span class="npcink-cloud-summary__label"><?php esc_html_e( 'Key ID', 'npcink-cloud-addon' ); ?></span>
-							<span class="npcink-cloud-summary__value"><?php echo esc_html( self::format_setting_value( (string) $settings['key_id'], __( 'Not set', 'npcink-cloud-addon' ) ) ); ?></span>
 						</div>
 						<div class="npcink-cloud-summary__item">
 							<span class="npcink-cloud-summary__label"><?php esc_html_e( 'Last verified', 'npcink-cloud-addon' ); ?></span>
@@ -772,7 +760,7 @@ if ( ! class_exists( 'Npcink_Cloud_Settings_Page' ) ) {
 				<button
 					type="submit"
 					class="button button-secondary npcink-cloud-button-danger"
-					onclick="return confirm('<?php echo esc_js( __( 'Disconnect this site locally? Stored Cloud credentials and addon-owned buffers will be cleared from this WordPress site only. Manage or rotate Cloud keys in the Cloud portal.', 'npcink-cloud-addon' ) ); ?>');"
+					onclick="return confirm('<?php echo esc_js( __( 'Disconnect this site locally? Stored Cloud credentials and addon-owned buffers will be cleared from this WordPress site only. Manage the site connection in the Cloud portal.', 'npcink-cloud-addon' ) ); ?>');"
 				>
 					<?php esc_html_e( 'Disconnect locally', 'npcink-cloud-addon' ); ?>
 				</button>
@@ -812,7 +800,7 @@ if ( ! class_exists( 'Npcink_Cloud_Settings_Page' ) ) {
 						</tr>
 						<tr>
 							<th scope="row">
-								<label for="npcink-cloud-api-key"><?php esc_html_e( 'Cloud API Key', 'npcink-cloud-addon' ); ?></label>
+								<label for="npcink-cloud-api-key"><?php esc_html_e( 'Recovery Cloud API Key', 'npcink-cloud-addon' ); ?></label>
 							</th>
 							<td>
 								<input
@@ -822,10 +810,10 @@ if ( ! class_exists( 'Npcink_Cloud_Settings_Page' ) ) {
 									name="api_key"
 									value=""
 									autocomplete="new-password"
-									placeholder="<?php echo esc_attr__( 'Paste a mak1_ key or JSON key to replace the stored key', 'npcink-cloud-addon' ); ?>"
+									placeholder="<?php echo esc_attr__( 'Paste a Cloud-issued mak1_ recovery key', 'npcink-cloud-addon' ); ?>"
 								/>
-								<p class="description"><?php esc_html_e( 'Leave blank to keep the stored Cloud API Key. The secret is never printed in this page.', 'npcink-cloud-addon' ); ?></p>
-								<p class="description"><?php esc_html_e( 'To switch accounts, paste a Cloud API Key from the target account, then Save and Verify.', 'npcink-cloud-addon' ); ?></p>
+								<p class="description"><?php esc_html_e( 'Leave blank to keep the stored connection key. Use Change connection in Cloud for normal account changes.', 'npcink-cloud-addon' ); ?></p>
+								<p class="description"><?php esc_html_e( 'This fallback accepts only a Cloud-issued mak1_ wrapper and never displays the stored value.', 'npcink-cloud-addon' ); ?></p>
 							</td>
 						</tr>
 						<tr>
@@ -1546,20 +1534,33 @@ if ( ! class_exists( 'Npcink_Cloud_Settings_Page' ) ) {
 				$messages[] = sprintf(
 					/* translators: %s: liveness error. */
 					__( 'Live check failed: %s', 'npcink-cloud-addon' ),
-					(string) $probe['live_message']
+					self::redact_sensitive_message( (string) $probe['live_message'] )
 				);
 			}
 			if ( empty( $probe['auth_ok'] ) && ! empty( $probe['auth_message'] ) ) {
 				$messages[] = sprintf(
 					/* translators: %s: signed verification error. */
 					__( 'Signed verification failed: %s', 'npcink-cloud-addon' ),
-					(string) $probe['auth_message']
+					self::redact_sensitive_message( (string) $probe['auth_message'] )
 				);
 			}
 
 			return '' !== implode( ' ', $messages )
 				? sanitize_text_field( implode( ' ', $messages ) )
 				: __( 'Cloud verification failed.', 'npcink-cloud-addon' );
+		}
+
+		/**
+		 * Redacts connection credentials from operator-facing failure text.
+		 *
+		 * @param string $message Raw message.
+		 * @return string
+		 */
+		private static function redact_sensitive_message( string $message ): string {
+			$message = preg_replace( '/mak1_[A-Za-z0-9_-]+/', '[redacted]', $message );
+			$message = preg_replace( '/Bearer\s+[A-Za-z0-9._~+\/=-]+/i', 'Bearer [redacted]', (string) $message );
+
+			return sanitize_text_field( (string) $message );
 		}
 
 		/**
@@ -1574,7 +1575,7 @@ if ( ! class_exists( 'Npcink_Cloud_Settings_Page' ) ) {
 				self::notice_transient_key(),
 				array(
 					'type' => sanitize_key( $type ),
-					'message' => sanitize_text_field( $message ),
+					'message' => self::redact_sensitive_message( $message ),
 				),
 				60
 			);

@@ -614,8 +614,10 @@ maca_assert(
 	&& false !== strpos( $settings_page, 'function build_authorization_url' )
 	&& false !== strpos( $settings_page, "'connect'    => 'wordpress-addon'" )
 	&& false !== strpos( $settings_page, '/portal/v1/addon-connections/exchange' )
-	&& false !== strpos( $settings_page, 'Add this site in Npcink Cloud' ),
-	'Settings page defaults to Cloud-side site authorization with local and production base URL defaults without exposing the returned key in UI state.'
+	&& false !== strpos( $settings_page, 'Add this site in Npcink Cloud' )
+	&& false !== strpos( $settings_page, 'persist_and_verify_settings' )
+	&& false !== strpos( $settings_page, 'Cloud connection completed and verified.' ),
+	'Settings page defaults to Cloud-side site authorization, exchanges the callback key, and verifies the saved connection immediately.'
 );
 
 maca_assert(
@@ -629,10 +631,13 @@ maca_assert(
 	&& false !== strpos( $settings_page, 'Change connection in Cloud' )
 	&& false !== strpos( $settings_page, 'Open Cloud sites' )
 	&& false !== strpos( $settings_page, 'Disconnect locally' )
-	&& false !== strpos( $settings_page, 'Site ID' )
-	&& false !== strpos( $settings_page, 'Key ID' )
+	&& false === strpos( $settings_page, 'Site ID' )
+	&& false === strpos( $settings_page, 'Key ID' )
+	&& false !== strpos( $settings_page, 'Recovery Cloud API Key' )
+	&& false !== strpos( $settings_page, 'Cloud-issued mak1_ wrapper' )
+	&& false === strpos( $settings_page, 'JSON key' )
 	&& false === strpos( $settings_page, 'revoke' ),
-	'Settings page exposes Cloud-side change links and local disconnect actions without taking Cloud account ownership.'
+	'Settings page exposes Cloud-side change links and local disconnect actions without showing split credential identifiers or key-management controls.'
 );
 
 maca_assert(

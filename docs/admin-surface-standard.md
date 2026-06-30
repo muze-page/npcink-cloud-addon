@@ -34,6 +34,8 @@ When verified, the default page should prioritize:
 - a bounded Diagnostics tab for connection, liveness, signed Cloud read,
   entitlement/quota, hosted runtime entitlement detail, capability readiness
   notes, Site Knowledge bridge status, and monitoring status;
+- a dedicated Runtime Runs tab for low-frequency Nightly Inspection Cloud
+  recent runs, one-run status/result reads, and bounded retry requests;
 - opt-in monitoring state and read-only Cloud observability / Agent feedback
   quality summaries;
 - a clear path to update/re-verify settings.
@@ -52,6 +54,7 @@ Low-frequency details may include:
 - manual Cloud Base URL and Cloud API Key wrapper recovery entry;
 - timeout setting;
 - read-only entitlement fields;
+- Cloud-owned runtime recent/status/result detail and retry request entry;
 - sanitized diagnostics rows and Cloud detail links;
 - metadata-only monitoring upload status;
 - aggregate Cloud observability counters;
@@ -77,6 +80,8 @@ Cloud Addon admin must not add:
 - proposal, approval, preflight, audit, or WordPress write controls;
 - router, prompt, preset, workflow/task queue, scheduler truth, or runtime repair
   control planes;
+- Toolbox scheduled-review submission, local snapshot building, or Core handoff
+  workspaces;
 - billing truth, invoices, service operations console, or developer diagnostic
   routes.
 - Tavily, Unsplash, provider-model selection, Cloud search execution, or image

@@ -361,8 +361,16 @@ maca_assert(
 	&& false !== strpos( $entitlement_summary, "'local_billing_truth' => false" )
 	&& false !== strpos( $settings_page, 'Npcink_Cloud_Entitlement_Summary::get_cached_summary()' )
 	&& false !== strpos( $settings_page, 'render_pro_cloud_runtime_summary' )
+	&& false !== strpos( $settings_page, 'render_runtime_runs' )
+	&& false !== strpos( $settings_page, 'Cloud-owned Nightly Inspection run status, result reads, and bounded retry requests.' )
+	&& false !== strpos( $settings_page, 'Cloud owns run state, retry processing, retention, and usage detail.' )
+	&& false !== strpos( $settings_page, 'get_recent_nightly_inspection_runs( 5' )
+	&& false !== strpos( $settings_page, 'get_run_result( $run_id' )
+	&& false !== strpos( $settings_page, 'Request Cloud retry' )
+	&& false !== strpos( $settings_page, 'self::ACTION_RETRY_RUNTIME_RUN' )
+	&& false !== strpos( $settings_page, "local_queue_created'     => false" )
 	&& false !== strpos( $settings_page, 'This addon does not own billing truth, scheduling, queues, or WordPress writes.' ),
-	'Entitlement summary preserves Pro Cloud Runtime detail as a read-only projection without local billing or scheduler truth.'
+	'Entitlement summary and Runtime Runs tab preserve Pro Cloud Runtime detail as read-only/Cloud-owned projection without local billing, scheduler, queue, proposal, or write truth.'
 );
 
 maca_assert(
@@ -639,12 +647,15 @@ maca_assert(
 		&& false !== strpos( $settings_page, "'status'   => __( 'Status'" )
 		&& false !== strpos( $settings_page, "'site_knowledge' => __( 'Site Knowledge'" )
 		&& false !== strpos( $settings_page, "'diagnostics' => __( 'Diagnostics'" )
+		&& false !== strpos( $settings_page, "'runtime_runs' => __( 'Runtime runs'" )
 	&& false !== strpos( $settings_page, "'connect'  => __( 'Connect'" )
 		&& false !== strpos( $settings_page, "'details'  => __( 'Details'" )
 		&& false !== strpos( $settings_page, 'Connect this site' )
 		&& false !== strpos( $settings_page, "'site_knowledge' === \$active_tab" )
 		&& false !== strpos( $settings_page, "'diagnostics' === \$active_tab" )
+	&& false !== strpos( $settings_page, "'runtime_runs' === \$active_tab" )
 	&& false !== strpos( $settings_page, 'function render_diagnostics' )
+	&& false !== strpos( $settings_page, 'function render_runtime_runs' )
 	&& false !== strpos( $settings_page, 'Open Cloud status detail' )
 	&& false !== strpos( $settings_page, 'Cloud Base URL' )
 	&& false !== strpos( $settings_page, 'Cloud API Key' )
@@ -662,6 +673,7 @@ maca_assert(
 	&& false !== strpos( $settings_page, 'format_site_knowledge_overview' )
 	&& false !== strpos( $settings_page, 'Re-verify and refresh' )
 	&& false !== strpos( $settings_page, 'Entitlement, monitoring, and Site Knowledge are local connector summaries.' )
+	&& false !== strpos( $settings_page, 'This tab creates no local queue, scheduler, proposal, approval record, or WordPress write.' )
 		&& false === strpos( $settings_page, 'Refresh Cloud summary' )
 		&& false !== strpos( $settings_page, '<h3><?php esc_html_e( \'Entitlement Summary\'' )
 		&& false === strpos( $settings_page, '<h3><?php esc_html_e( \'Site Knowledge\'' )
@@ -736,8 +748,14 @@ maca_assert(
 	&& false !== strpos( $boundary_doc, 'Missing Cloud service contracts must be shown' )
 	&& false !== strpos( $boundary_doc, 'connected or Cloud-owned rather than simulated locally' )
 	&& false !== strpos( $runtime_contract, 'The Cloud Addon Diagnostics tab reuses the existing connection state' )
+	&& false !== strpos( $runtime_contract, 'The Cloud Addon Runtime Runs tab may use the existing run endpoints' )
+	&& false !== strpos( $runtime_contract, 'must not submit scheduled reviews, rebuild Toolbox local snapshots' )
+	&& false !== strpos( $boundary_doc, 'Bounded Nightly Inspection runtime run detail' )
+	&& false !== strpos( $boundary_doc, 'must not submit scheduled reviews, reconstruct Toolbox snapshots' )
+	&& false !== strpos( $admin_surface_standard, 'a dedicated Runtime Runs tab for low-frequency Nightly Inspection Cloud' )
 	&& false !== strpos( $runtime_contract, 'If no addon read contract exists' )
 	&& false !== strpos( $readme, 'replacement for the old Toolbox Cloud Checks / Troubleshooting Checks entry' )
+	&& false !== strpos( $readme, 'The Runtime Runs tab is the low-frequency home for Nightly Inspection Cloud run' )
 	&& false === strpos( $settings_page, 'register_rest_route' )
 	&& false === strpos( $settings_page, 'developer-readonly' )
 	&& false === strpos( $settings_page, 'Developer diagnostics route' ),

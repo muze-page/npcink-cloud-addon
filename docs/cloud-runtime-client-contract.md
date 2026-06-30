@@ -93,6 +93,18 @@ status backed by an existing addon contract. If no addon read contract exists,
 the row must say that the capability is not connected or Cloud-owned instead of
 fabricating a check.
 
+## Runtime Runs Surface
+
+The Cloud Addon Runtime Runs tab may use the existing run endpoints for
+Nightly Inspection detail: recent runs, one-run status, one-run result, and a
+nonce-protected retry request for a known run. It is a low-frequency
+Cloud-owned recovery/detail surface.
+
+The tab must not submit scheduled reviews, rebuild Toolbox local snapshots,
+create Core proposals, approve changes, create a local retry queue, or write
+WordPress data. If Cloud rejects a retry because the original run input is not
+recoverable, the addon shows the Cloud error and fails closed.
+
 ## Signing
 
 ## Entitlement Projection

@@ -25,6 +25,8 @@ index, freshness, and collection lifecycle owner.
 - HMAC signatures, trace headers, idempotency headers, and request nonce headers.
 - Health and signed connectivity checks.
 - Runtime request dispatch and run/result reads.
+- Bounded Nightly Inspection runtime run detail: recent runs, one-run status,
+  one-run result, and nonce-protected Cloud-owned retry requests.
 - Verified dispatch helpers for host-owned media derivative Cloud jobs.
 - Stats and entitlement read projections.
 - Bounded Cloud Diagnostics rows for connection, liveness, signed Cloud read,
@@ -160,6 +162,8 @@ Allowed Cloud contract endpoints:
 - `POST /v1/runtime/media-derivatives`
 - `GET /v1/runs/{run_id}`
 - `GET /v1/runs/{run_id}/result`
+- `GET /v1/runs/nightly-inspection/recent`
+- `POST /v1/runs/{run_id}/retry`
 - `GET /v1/runtime/artifacts/{artifact_id}/download`
 - `GET /v1/stats/*`
 - `GET /v1/entitlements/current`
@@ -210,6 +214,13 @@ Agent feedback transport must use only `POST /v1/agent-feedback/events` for
 metadata, not approval truth, proposal truth, workflow truth, or WordPress write
 authority.
 
+Nightly Inspection runtime run detail may use `GET /v1/runs/nightly-inspection/recent`,
+`GET /v1/runs/{run_id}`, `GET /v1/runs/{run_id}/result`, and
+`POST /v1/runs/{run_id}/retry` only. It is a Cloud run-state/detail surface.
+It must not submit scheduled reviews, reconstruct Toolbox snapshots, own a
+local retry queue, create Core proposals, approve changes, or write WordPress
+data.
+
 ## UI Rule
 
 The local UI stays shallow:
@@ -221,6 +232,7 @@ The local UI stays shallow:
 - last verification time
 - entitlement summary
 - opt-in monitoring status and read-only Cloud observability / Agent feedback summaries
+- a bounded Runtime Runs tab for Cloud-owned Nightly Inspection recent/status/result and retry request detail
 
 It must not become a second control plane.
 

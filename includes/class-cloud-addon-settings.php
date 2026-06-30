@@ -19,8 +19,8 @@ if ( ! class_exists( 'Npcink_Cloud_Addon_Settings' ) ) {
 		private const DEFAULT_TIMEOUT = 8;
 		private const MIN_TIMEOUT = 5;
 		private const MAX_TIMEOUT = 60;
-		private const LOCAL_DEFAULT_BASE_URL = 'http://127.0.0.1:8010';
-		private const PRODUCTION_DEFAULT_BASE_URL = 'https://cloud.npc.ink';
+		private const LOCAL_DEFAULT_BASE_URL = 'http://localhost:8010/';
+		private const PRODUCTION_DEFAULT_BASE_URL = 'https://cloud.npc.ink/';
 
 		/**
 		 * Registers WordPress settings metadata hook.

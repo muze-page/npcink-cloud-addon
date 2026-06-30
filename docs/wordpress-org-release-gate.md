@@ -8,6 +8,14 @@ Before uploading this plugin to WordPress.org, run:
 composer release:verify
 ```
 
+Before packaging any release build, confirm the Cloud Base URL environment
+contract:
+
+- local development uses `http://localhost:8010/`;
+- the packaged plugin's non-local default uses `https://cloud.npc.ink/`;
+- no release package should be verified against the local Cloud URL unless the
+  work is explicitly a local smoke test and not a distributable upload.
+
 This release gate exists because functional tests and local smoke tests can pass
 while WordPress.org rejects the package for review-policy issues.
 

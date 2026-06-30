@@ -315,3 +315,7 @@ rg "workflow engine|approval truth|proposal truth|billing truth" docs README.md 
 documentation only as forbidden responsibilities. `observability buffer`,
 `Site Knowledge change buffer`, and their WordPress cron flush hooks are allowed
 only as bounded Cloud delivery transport.
+
+For packaged plugin releases, also follow
+[`docs/wordpress-org-release-gate.md`](docs/wordpress-org-release-gate.md),
+including the Cloud Base URL check for local development versus production.

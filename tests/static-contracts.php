@@ -745,8 +745,8 @@ maca_assert(
 );
 
 maca_assert(
-	false !== strpos( $settings, "LOCAL_DEFAULT_BASE_URL = 'http://127.0.0.1:8010'" )
-	&& false !== strpos( $settings, "PRODUCTION_DEFAULT_BASE_URL = 'https://cloud.npc.ink'" )
+	false !== strpos( $settings, "LOCAL_DEFAULT_BASE_URL = 'http://localhost:8010/'" )
+	&& false !== strpos( $settings, "PRODUCTION_DEFAULT_BASE_URL = 'https://cloud.npc.ink/'" )
 	&& false !== strpos( $settings, 'function get_default_base_url' )
 	&& false !== strpos( $settings_page, "ACTION_COMPLETE_AUTH = 'npcink_cloud_addon_complete_auth'" )
 	&& false !== strpos( $settings_page, "admin_post_' . self::ACTION_COMPLETE_AUTH" )

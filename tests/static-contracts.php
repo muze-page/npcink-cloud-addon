@@ -20,6 +20,7 @@ $admin_css = maca_read( $root . '/assets/admin.css' );
 $entitlement_summary = maca_read( $root . '/includes/class-cloud-entitlement-summary.php' );
 $observability = maca_read( $root . '/includes/class-cloud-observability-collector.php' );
 $site_knowledge_bridge = maca_read( $root . '/includes/class-cloud-site-knowledge-change-bridge.php' );
+$site_knowledge_runtime_bridge = maca_read( $root . '/includes/class-cloud-site-knowledge-runtime-bridge.php' );
 $settings = maca_read( $root . '/includes/class-cloud-addon-settings.php' );
 $settings_page = maca_read( $root . '/includes/class-cloud-settings-page.php' );
 $boundary_doc = maca_read( $root . '/docs/cloud-addon-boundary.md' );
@@ -489,10 +490,41 @@ maca_assert(
 
 maca_assert(
 	false !== strpos( $bootstrap, 'class-cloud-site-knowledge-change-bridge.php' )
+	&& false !== strpos( $bootstrap, 'class-cloud-site-knowledge-runtime-bridge.php' )
 	&& false !== strpos( $bootstrap, 'npcink_cloud_addon_site_knowledge_change_bridge_health' )
+	&& false !== strpos( $bootstrap, 'npcink_cloud_addon_dispatch_site_knowledge_runtime' )
 	&& false !== strpos( $bootstrap, 'Npcink_Cloud_Site_Knowledge_Change_Bridge::register()' )
+	&& false !== strpos( $bootstrap, 'Npcink_Cloud_Site_Knowledge_Runtime_Bridge::register()' )
 	&& false !== strpos( $readme, 'npcink_cloud_addon_site_knowledge_change_bridge_health(): array' ),
-	'Bootstrap exposes the Cloud Addon Site Knowledge change bridge health seam.'
+	'Bootstrap exposes Cloud Addon Site Knowledge change bridge health and runtime dispatch seams.'
+);
+
+maca_assert(
+	false !== strpos( $site_knowledge_runtime_bridge, 'npcink_toolbox_site_knowledge_cloud_request' )
+	&& false !== strpos( $site_knowledge_runtime_bridge, 'npcink-cloud/site-knowledge-search' )
+	&& false !== strpos( $site_knowledge_runtime_bridge, 'npcink-cloud/site-knowledge-status' )
+	&& false !== strpos( $site_knowledge_runtime_bridge, 'npcink-cloud/site-knowledge-sync' )
+	&& false !== strpos( $site_knowledge_runtime_bridge, 'site_knowledge_search.v1' )
+	&& false !== strpos( $site_knowledge_runtime_bridge, 'site_knowledge_status.v1' )
+	&& false !== strpos( $site_knowledge_runtime_bridge, 'site_knowledge_sync.v1' )
+	&& false !== strpos( $site_knowledge_runtime_bridge, "\$input['write_posture'] ?? ''" )
+	&& false !== strpos( $site_knowledge_runtime_bridge, "'suggestion_only'" )
+	&& false !== strpos( $site_knowledge_runtime_bridge, 'execute_runtime' )
+	&& false !== strpos( $site_knowledge_runtime_bridge, 'MAX_RUNTIME_PAYLOAD_BYTES = 900000' ),
+	'Site Knowledge runtime bridge accepts only known Toolbox ability contracts and forwards suggestion-only payloads through runtime execute.'
+);
+
+maca_assert(
+	false === strpos( $site_knowledge_runtime_bridge, 'register_rest_route' )
+	&& false === strpos( $site_knowledge_runtime_bridge, 'wp_insert_' . 'post' )
+	&& false === strpos( $site_knowledge_runtime_bridge, 'wp_update_' . 'post' )
+	&& false === strpos( $site_knowledge_runtime_bridge, 'update_post_meta' )
+	&& false === strpos( $site_knowledge_runtime_bridge, 'ActionScheduler' )
+	&& false === strpos( $site_knowledge_runtime_bridge, 'as_enqueue' )
+	&& false !== strpos( $boundary_doc, 'Toolbox Site Knowledge runtime transport must use the existing' )
+	&& false !== strpos( $runtime_contract, 'dispatch_site_knowledge_runtime' )
+	&& false !== strpos( $readme, 'Site Knowledge Runtime Bridge' ),
+	'Site Knowledge runtime bridge stays transport-only without REST routes, queues, WordPress writes, or local index lifecycle ownership.'
 );
 
 maca_assert(
@@ -590,9 +622,22 @@ maca_assert(
 maca_assert(
 	false !== strpos( $settings_page, "\$default = \$is_verified ? 'status' : 'connect';" )
 	&& false !== strpos( $settings_page, "'status'   => __( 'Status'" )
+	&& false !== strpos( $settings_page, "'diagnostics' => __( 'Diagnostics'" )
 	&& false !== strpos( $settings_page, "'connect'  => __( 'Connect'" )
 	&& false !== strpos( $settings_page, "'details'  => __( 'Details'" )
 	&& false !== strpos( $settings_page, 'Connect this site' )
+	&& false !== strpos( $settings_page, "'diagnostics' === \$active_tab" )
+	&& false !== strpos( $settings_page, 'function render_diagnostics' )
+	&& false !== strpos( $settings_page, 'Open Cloud status detail' )
+	&& false !== strpos( $settings_page, 'Cloud Base URL' )
+	&& false !== strpos( $settings_page, 'Cloud API Key' )
+	&& false !== strpos( $settings_page, 'Split signing credentials are not displayed' )
+	&& false !== strpos( $settings_page, 'Platform Models and provider readiness' )
+	&& false !== strpos( $settings_page, 'No addon read contract is currently connected' )
+	&& false !== strpos( $settings_page, 'Cloud web search' )
+	&& false !== strpos( $settings_page, 'No Cloud Addon status API is currently contracted for web search capability.' )
+	&& false !== strpos( $settings_page, 'Tavily, Unsplash, and other product search tools are not Cloud Addon admin actions.' )
+	&& false !== strpos( $settings_page, 'Advanced raw status' )
 	&& false !== strpos( $settings_page, 'Manual connection fallback' )
 	&& false !== strpos( $settings_page, 'Advanced diagnostics' )
 	&& false !== strpos( $settings_page, 'function render_status_overview' )
@@ -604,7 +649,22 @@ maca_assert(
 	&& false !== strpos( $settings_page, '<h3><?php esc_html_e( \'Monitoring & Quality\'' )
 	&& false !== strpos( $settings_page, "self::redirect_to_page( 'details' );" )
 	&& false === strpos( $settings_page, "'monitoring'  =>" ),
-	'Settings page defaults to a connect view before verification, keeps verified status compact, and moves monitoring diagnostics behind details.'
+	'Settings page defaults to a connect view before verification, keeps verified status compact, adds bounded Cloud diagnostics, and moves monitoring diagnostics behind details.'
+);
+
+maca_assert(
+	false !== strpos( $admin_surface_standard, 'Toolbox no longer owns Cloud Checks or Troubleshooting Checks' )
+	&& false !== strpos( $admin_surface_standard, 'entry for those Cloud connection and service-status details' )
+	&& false !== strpos( $boundary_doc, 'Toolbox no longer owns basic Cloud Checks / Troubleshooting Checks' )
+	&& false !== strpos( $boundary_doc, 'Missing Cloud service contracts must be shown' )
+	&& false !== strpos( $boundary_doc, 'connected or Cloud-owned rather than simulated locally' )
+	&& false !== strpos( $runtime_contract, 'The Cloud Addon Diagnostics tab reuses the existing connection state' )
+	&& false !== strpos( $runtime_contract, 'If no addon read contract exists' )
+	&& false !== strpos( $readme, 'replacement for the old Toolbox Cloud Checks / Troubleshooting Checks entry' )
+	&& false === strpos( $settings_page, 'register_rest_route' )
+	&& false === strpos( $settings_page, 'developer-readonly' )
+	&& false === strpos( $settings_page, 'Developer diagnostics route' ),
+	'Diagnostics documentation and UI keep the Toolbox Cloud Checks replacement bounded to addon status/detail without Developer routes.'
 );
 
 maca_assert(

@@ -27,6 +27,9 @@ index, freshness, and collection lifecycle owner.
 - Runtime request dispatch and run/result reads.
 - Verified dispatch helpers for host-owned media derivative Cloud jobs.
 - Stats and entitlement read projections.
+- Bounded Cloud Diagnostics rows for connection, liveness, signed Cloud read,
+  entitlement/quota, hosted runtime entitlement detail, capability readiness
+  notes, Site Knowledge bridge status, and monitoring status.
 - Opt-in, verified, metadata-only plugin observability upload.
 - A bounded local observability buffer used only to survive temporary delivery
   failures before upload.
@@ -49,6 +52,7 @@ index, freshness, and collection lifecycle owner.
 - Cloud service operations console.
 - Developer diagnostics routes.
 - Site Knowledge index lifecycle.
+- Cloud search, image source search, or provider tool product UX.
 
 ## Local Truth Rule
 
@@ -159,6 +163,14 @@ Site Knowledge change bridge transport must use the existing
 endpoints, generic indexing routes, or direct Cloud control-plane mutation paths
 to the addon.
 
+Toolbox Site Knowledge runtime transport must use the existing
+`POST /v1/runtime/execute` endpoint only. It may handle the bounded
+`npcink_toolbox_site_knowledge_cloud_request` filter for the known search,
+status, and sync contracts, but must keep every payload
+`write_posture=suggestion_only`. It must not add local index jobs, stale-index
+policy ownership, workflow queues, approval records, proposal records, or
+WordPress writes.
+
 Image context evidence transport must use the existing
 `POST /v1/runtime/execute` endpoint only. It may forward a bounded
 `image_context_evidence_request.v1` artifact for Cloud-owned visual recognition
@@ -177,11 +189,17 @@ authority.
 The local UI stays shallow:
 
 - status
+- diagnostics
 - access settings
 - validation feedback
-- site/key ids
 - last verification time
 - entitlement summary
 - opt-in monitoring status and read-only Cloud observability / Agent feedback summaries
 
 It must not become a second control plane.
+
+Toolbox no longer owns basic Cloud Checks / Troubleshooting Checks. Cloud
+Addon may show Cloud connection and service-status diagnostics, but it must not
+1:1 recreate the old Toolbox page or move Toolbox product workflows into this
+settings surface. Missing Cloud service contracts must be shown as not
+connected or Cloud-owned rather than simulated locally.

@@ -29,9 +29,19 @@ When verified, the default page should prioritize:
 - compact Cloud status;
 - last verification time;
 - read-only entitlement summary;
+- a bounded Diagnostics tab for connection, liveness, signed Cloud read,
+  entitlement/quota, hosted runtime entitlement detail, capability readiness
+  notes, Site Knowledge bridge status, and monitoring status;
 - opt-in monitoring state and read-only Cloud observability / Agent feedback
   quality summaries;
 - a clear path to update/re-verify settings.
+
+Toolbox no longer owns Cloud Checks or Troubleshooting Checks for basic AI
+connection, Hosted Runtime, Cloud search, Cloud image/source, quota,
+entitlement, or service health. The Cloud Addon Diagnostics tab is the local
+entry for those Cloud connection and service-status details, but it must remain
+a summary/detail surface rather than a Toolbox product workflow or operations
+console.
 
 ## Advanced / Low-Frequency Details
 
@@ -40,6 +50,7 @@ Low-frequency details may include:
 - manual Cloud Base URL and Cloud API Key wrapper recovery entry;
 - timeout setting;
 - read-only entitlement fields;
+- sanitized diagnostics rows and Cloud detail links;
 - metadata-only monitoring upload status;
 - aggregate Cloud observability counters;
 - aggregate Agent feedback quality counters;
@@ -66,6 +77,8 @@ Cloud Addon admin must not add:
   control planes;
 - billing truth, invoices, service operations console, or developer diagnostic
   routes.
+- Tavily, Unsplash, provider-model selection, Cloud search execution, or image
+  source search product tools.
 
 The admin page may expose a monitoring toggle, read-only observability summary,
 and read-only Agent feedback quality summary only when those surfaces remain

@@ -29,6 +29,7 @@ The addon owns:
   - `POST /v1/agent-feedback/events`
   - `GET /v1/agent-feedback/summary`
 - Site Knowledge public content change bridge through `POST /v1/runtime/execute`.
+- Toolbox Site Knowledge runtime bridge through `POST /v1/runtime/execute`.
 - Bounded image context evidence transport through `POST /v1/runtime/execute`.
 - Bounded WordPress AI connector scene runtime through `POST /v1/runtime/execute`.
 - `Npcink > Cloud Addon`.
@@ -57,6 +58,7 @@ npcink_cloud_addon_verified_runtime_client(): ?Npcink_Cloud_Runtime_Client
 npcink_cloud_addon_dispatch_media_derivative_cloud_request(array $ability_response, array $source_artifact, string $trace_id = '', string $idempotency_key = '')
 npcink_cloud_addon_request_image_context_evidence(array $image_context_evidence_request, string $trace_id = '', string $idempotency_key = '')
 npcink_cloud_addon_execute_wordpress_ai_connector_runtime(array $request, string $trace_id = '', string $idempotency_key = '')
+npcink_cloud_addon_dispatch_site_knowledge_runtime(array $runtime_payload, string $ability_name = '', string $contract_version = '')
 npcink_cloud_addon_build_media_derivative_proposal_payload(array $ability_response, array $cloud_result, array $derivative_artifact)
 npcink_cloud_addon_download_media_derivative_artifact(array $derivative_artifact, string $trace_id = '')
 npcink_cloud_addon_site_knowledge_change_bridge_health(): array
@@ -228,6 +230,21 @@ index, freshness, and collection lifecycle owner. The addon does not create a
 local index, decide stale-index policy, register a workflow engine, own scheduler
 truth, or perform WordPress writes.
 
+## Site Knowledge Runtime Bridge
+
+The addon registers the `npcink_toolbox_site_knowledge_cloud_request` filter so
+Toolbox can keep the operator UI and ability buttons while this addon owns the
+signed Cloud transport detail. The bridge accepts only:
+
+- `npcink-cloud/site-knowledge-search` with `site_knowledge_search.v1`
+- `npcink-cloud/site-knowledge-status` with `site_knowledge_status.v1`
+- `npcink-cloud/site-knowledge-sync` with `site_knowledge_sync.v1`
+
+All requests must remain `write_posture=suggestion_only` and use
+`POST /v1/runtime/execute`. The bridge does not create local indexing jobs,
+collection lifecycle state, approval records, proposal records, or WordPress
+writes.
+
 ## Settings Page
 
 Admin path:
@@ -244,8 +261,15 @@ such as `localhost`, `127.0.0.1`, or `::1`. Timeout and manual recovery key entr
 are kept in Advanced for local debugging or authorization outages.
 
 When verified, the page prioritizes Cloud status, last verification time, and a
-read-only entitlement summary. It never displays split signing credentials and
-does not provide split credential editing.
+read-only entitlement summary. The Diagnostics tab is the Cloud Addon-side
+replacement for the old Toolbox Cloud Checks / Troubleshooting Checks entry:
+it shows connection, liveness, signed Cloud read, entitlement/quota, hosted
+runtime entitlement detail, capability readiness notes, Site Knowledge bridge
+status, and monitoring status. It does not recreate Toolbox product tools for
+Cloud search, image source search, provider operations, or task execution.
+
+The settings page never displays split signing credentials and does not provide
+split credential editing.
 
 The admin page scope is documented in
 [`docs/admin-surface-standard.md`](docs/admin-surface-standard.md). The Cloud

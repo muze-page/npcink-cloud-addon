@@ -23,6 +23,7 @@ if ( ! class_exists( 'Npcink_Cloud_Settings_Page' ) ) {
 		private const ACTION_COMPLETE_AUTH = 'npcink_cloud_addon_complete_auth';
 		private const ACTION_DISCONNECT = 'npcink_cloud_addon_disconnect';
 		private const ACTION_REFRESH_MONITORING = 'npcink_cloud_addon_refresh_monitoring';
+		private const ACTION_REFRESH_SITE_KNOWLEDGE = 'npcink_cloud_addon_refresh_site_knowledge';
 		private const DATETIME_DISPLAY_FORMAT = 'Y-m-d H:i:s';
 		private const AUTH_STATE_TTL_SECONDS = 600;
 
@@ -38,6 +39,7 @@ if ( ! class_exists( 'Npcink_Cloud_Settings_Page' ) ) {
 			add_action( 'admin_post_' . self::ACTION_COMPLETE_AUTH, array( __CLASS__, 'handle_complete_auth' ) );
 			add_action( 'admin_post_' . self::ACTION_DISCONNECT, array( __CLASS__, 'handle_disconnect' ) );
 			add_action( 'admin_post_' . self::ACTION_REFRESH_MONITORING, array( __CLASS__, 'handle_refresh_monitoring' ) );
+			add_action( 'admin_post_' . self::ACTION_REFRESH_SITE_KNOWLEDGE, array( __CLASS__, 'handle_refresh_site_knowledge' ) );
 		}
 
 		/**
@@ -398,6 +400,42 @@ if ( ! class_exists( 'Npcink_Cloud_Settings_Page' ) ) {
 		}
 
 		/**
+		 * Handles a manual bounded Site Knowledge public content refresh request.
+		 *
+		 * @return void
+		 */
+		public static function handle_refresh_site_knowledge(): void {
+			if ( ! current_user_can( 'manage_options' ) ) {
+				wp_die( esc_html__( 'You do not have permission to manage Npcink Cloud settings.', 'npcink-cloud-addon' ) );
+			}
+
+			check_admin_referer( self::ACTION_REFRESH_SITE_KNOWLEDGE );
+
+			if ( ! Npcink_Cloud_Addon_Settings::is_verified() ) {
+				self::set_admin_notice( 'error', __( 'Cloud Addon settings are not verified.', 'npcink-cloud-addon' ) );
+				self::redirect_to_page( 'details' );
+			}
+
+			Npcink_Cloud_Site_Knowledge_Change_Bridge::buffer_recent_public_content();
+			$status = Npcink_Cloud_Site_Knowledge_Change_Bridge::flush_buffer();
+			if ( empty( $status['last_delivery_ok'] ) ) {
+				$message = sanitize_text_field( (string) ( $status['last_delivery_error'] ?? '' ) );
+				self::set_admin_notice( 'error', '' !== $message ? $message : __( 'Site Knowledge refresh request failed.', 'npcink-cloud-addon' ) );
+				self::redirect_to_page( 'details' );
+			}
+
+			self::set_admin_notice(
+				'success',
+				sprintf(
+					/* translators: %d: sent public content count. */
+					__( 'Site Knowledge refresh requested. Public content items sent: %d.', 'npcink-cloud-addon' ),
+					absint( $status['last_sent_count'] ?? 0 )
+				)
+			);
+			self::redirect_to_page( 'details' );
+		}
+
+		/**
 		 * Renders the settings page.
 		 *
 		 * @return void
@@ -411,6 +449,7 @@ if ( ! class_exists( 'Npcink_Cloud_Settings_Page' ) ) {
 			$state = Npcink_Cloud_Addon_Settings::get_credential_state();
 			$entitlement = Npcink_Cloud_Entitlement_Summary::get_cached_summary();
 			$monitoring = Npcink_Cloud_Observability_Collector::get_status();
+			$site_knowledge = Npcink_Cloud_Site_Knowledge_Change_Bridge::health_snapshot();
 			$is_verified = ! empty( $state['verified'] );
 			$active_tab = self::get_active_tab( $is_verified );
 			?>
@@ -430,12 +469,12 @@ if ( ! class_exists( 'Npcink_Cloud_Settings_Page' ) ) {
 				<?php elseif ( 'status' === $active_tab ) : ?>
 					<section class="npcink-cloud-section npcink-cloud-tab-panel">
 						<h2><?php esc_html_e( 'Status', 'npcink-cloud-addon' ); ?></h2>
-						<?php self::render_status_overview( $settings, $state, $entitlement, $monitoring, $is_verified ); ?>
+						<?php self::render_status_overview( $settings, $state, $entitlement, $monitoring, $site_knowledge, $is_verified ); ?>
 					</section>
 				<?php elseif ( 'diagnostics' === $active_tab ) : ?>
 					<section class="npcink-cloud-section npcink-cloud-tab-panel">
 						<h2><?php esc_html_e( 'Diagnostics', 'npcink-cloud-addon' ); ?></h2>
-						<?php self::render_diagnostics( $settings, $state, $entitlement, $monitoring, $is_verified ); ?>
+						<?php self::render_diagnostics( $settings, $state, $entitlement, $monitoring, $site_knowledge, $is_verified ); ?>
 					</section>
 				<?php elseif ( 'advanced' === $active_tab ) : ?>
 					<section class="npcink-cloud-section npcink-cloud-tab-panel">
@@ -455,6 +494,8 @@ if ( ! class_exists( 'Npcink_Cloud_Settings_Page' ) ) {
 						<h2><?php esc_html_e( 'Details', 'npcink-cloud-addon' ); ?></h2>
 						<h3><?php esc_html_e( 'Entitlement Summary', 'npcink-cloud-addon' ); ?></h3>
 						<?php self::render_entitlement_summary( $entitlement, $is_verified ); ?>
+						<h3><?php esc_html_e( 'Site Knowledge', 'npcink-cloud-addon' ); ?></h3>
+						<?php self::render_site_knowledge_summary( $site_knowledge, $settings, $is_verified ); ?>
 						<h3><?php esc_html_e( 'Monitoring & Quality', 'npcink-cloud-addon' ); ?></h3>
 						<?php self::render_monitoring_summary( $monitoring ); ?>
 					</section>
@@ -894,10 +935,11 @@ if ( ! class_exists( 'Npcink_Cloud_Settings_Page' ) ) {
 		 * @param array<string,mixed> $state Credential state.
 		 * @param array<string,mixed> $entitlement Entitlement summary.
 		 * @param array<string,mixed> $monitoring Monitoring status.
+		 * @param array<string,mixed> $site_knowledge Site Knowledge bridge status.
 		 * @param bool                $is_verified Whether the connector has verified credentials.
 		 * @return void
 		 */
-		private static function render_status_overview( array $settings, array $state, array $entitlement, array $monitoring, bool $is_verified ): void {
+		private static function render_status_overview( array $settings, array $state, array $entitlement, array $monitoring, array $site_knowledge, bool $is_verified ): void {
 			if ( ! $is_verified ) {
 				self::render_cloud_authorization_panel( $settings, $state );
 				return;
@@ -921,9 +963,13 @@ if ( ! class_exists( 'Npcink_Cloud_Settings_Page' ) ) {
 						<th scope="row"><?php esc_html_e( 'Monitoring', 'npcink-cloud-addon' ); ?></th>
 						<td><?php echo esc_html( self::format_monitoring_overview( $monitoring ) ); ?></td>
 					</tr>
+					<tr>
+						<th scope="row"><?php esc_html_e( 'Site Knowledge', 'npcink-cloud-addon' ); ?></th>
+						<td><?php echo esc_html( self::format_site_knowledge_overview( $site_knowledge ) ); ?></td>
+					</tr>
 				</tbody>
 			</table>
-			<p class="description"><?php esc_html_e( 'Entitlement and package are read from Cloud into a short local summary cache. Re-verifying refreshes the latest Cloud summary.', 'npcink-cloud-addon' ); ?></p>
+			<p class="description"><?php esc_html_e( 'Entitlement, monitoring, and Site Knowledge are local connector summaries. Cloud remains the service owner for indexing, runtime detail, and diagnostics.', 'npcink-cloud-addon' ); ?></p>
 			<?php
 		}
 
@@ -934,10 +980,11 @@ if ( ! class_exists( 'Npcink_Cloud_Settings_Page' ) ) {
 		 * @param array<string,mixed> $state Credential state.
 		 * @param array<string,mixed> $entitlement Entitlement summary.
 		 * @param array<string,mixed> $monitoring Monitoring status.
+		 * @param array<string,mixed> $site_knowledge Site Knowledge bridge status.
 		 * @param bool                $is_verified Whether the connector has verified credentials.
 		 * @return void
 		 */
-		private static function render_diagnostics( array $settings, array $state, array $entitlement, array $monitoring, bool $is_verified ): void {
+		private static function render_diagnostics( array $settings, array $state, array $entitlement, array $monitoring, array $site_knowledge, bool $is_verified ): void {
 			if ( ! $is_verified ) {
 				self::render_cloud_authorization_panel( $settings, $state );
 				return;
@@ -972,7 +1019,7 @@ if ( ! class_exists( 'Npcink_Cloud_Settings_Page' ) ) {
 					<?php self::render_diagnostic_row( __( 'Cloud web search', 'npcink-cloud-addon' ), __( 'Not connected', 'npcink-cloud-addon' ), __( 'No Cloud Addon status API is currently contracted for web search capability.', 'npcink-cloud-addon' ) ); ?>
 					<?php self::render_diagnostic_row( __( 'Cloud image generation', 'npcink-cloud-addon' ), __( 'Scene runtime only', 'npcink-cloud-addon' ), __( 'Available through the WordPress AI image scene after verification; provider and source detail stay Cloud-owned.', 'npcink-cloud-addon' ) ); ?>
 					<?php self::render_diagnostic_row( __( 'Image source search', 'npcink-cloud-addon' ), __( 'Not connected', 'npcink-cloud-addon' ), __( 'Tavily, Unsplash, and other product search tools are not Cloud Addon admin actions.', 'npcink-cloud-addon' ) ); ?>
-					<?php self::render_diagnostic_row( __( 'Site Knowledge bridge', 'npcink-cloud-addon' ), self::diagnostic_status( function_exists( 'npcink_cloud_addon_site_knowledge_change_bridge_health' ), __( 'available', 'npcink-cloud-addon' ), __( 'not available', 'npcink-cloud-addon' ) ), __( 'Public content-change delivery and Toolbox runtime transport use signed Cloud runtime only.', 'npcink-cloud-addon' ) ); ?>
+					<?php self::render_diagnostic_row( __( 'Site Knowledge bridge', 'npcink-cloud-addon' ), self::format_site_knowledge_overview( $site_knowledge ), self::format_site_knowledge_diagnostic_detail( $site_knowledge ) ); ?>
 					<?php self::render_diagnostic_row( __( 'Monitoring detail', 'npcink-cloud-addon' ), self::format_monitoring_overview( $monitoring ), __( 'Metadata-only upload and read-only aggregate summaries; not Core audit or approval truth.', 'npcink-cloud-addon' ) ); ?>
 				</tbody>
 			</table>
@@ -1085,6 +1132,66 @@ if ( ! class_exists( 'Npcink_Cloud_Settings_Page' ) ) {
 			<?php if ( '' !== (string) ( $state['last_verification_error'] ?? '' ) ) : ?>
 				<p class="npcink-cloud-empty"><?php echo esc_html( (string) $state['last_verification_error'] ); ?></p>
 			<?php endif; ?>
+			<?php
+		}
+
+		/**
+		 * Renders Site Knowledge connector status and manual refresh transport.
+		 *
+		 * @param array<string,mixed> $site_knowledge Site Knowledge bridge status.
+		 * @param array<string,mixed> $settings Stored settings.
+		 * @param bool                $is_verified Whether the connector has verified credentials.
+		 * @return void
+		 */
+		private static function render_site_knowledge_summary( array $site_knowledge, array $settings, bool $is_verified ): void {
+			if ( ! $is_verified ) {
+				?>
+				<p class="npcink-cloud-empty"><?php esc_html_e( 'Site Knowledge delivery starts after the connector verifies successfully.', 'npcink-cloud-addon' ); ?></p>
+				<?php
+				return;
+			}
+
+			$base_url = untrailingslashit( Npcink_Cloud_Addon_Settings::get_effective_base_url( $settings ) );
+			?>
+			<form class="npcink-cloud-verify-form" method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" style="margin: 0 0 12px;">
+				<?php wp_nonce_field( self::ACTION_REFRESH_SITE_KNOWLEDGE ); ?>
+				<input type="hidden" name="action" value="<?php echo esc_attr( self::ACTION_REFRESH_SITE_KNOWLEDGE ); ?>" />
+				<button type="submit" class="button button-secondary"><?php esc_html_e( 'Request public content refresh', 'npcink-cloud-addon' ); ?></button>
+				<a class="button button-secondary" href="<?php echo esc_url( $base_url . '/portal/site-knowledge' ); ?>" target="_blank" rel="noopener noreferrer"><?php esc_html_e( 'Open Cloud Site Knowledge', 'npcink-cloud-addon' ); ?></a>
+			</form>
+			<table class="widefat striped" style="max-width: 860px;">
+				<tbody>
+					<tr>
+						<th scope="row"><?php esc_html_e( 'Connector state', 'npcink-cloud-addon' ); ?></th>
+						<td><?php echo esc_html( self::format_site_knowledge_overview( $site_knowledge ) ); ?></td>
+					</tr>
+					<tr>
+						<th scope="row"><?php esc_html_e( 'Buffered public changes', 'npcink-cloud-addon' ); ?></th>
+						<td><?php echo esc_html( (string) absint( $site_knowledge['buffer_count'] ?? 0 ) ); ?></td>
+					</tr>
+					<tr>
+						<th scope="row"><?php esc_html_e( 'Last delivery', 'npcink-cloud-addon' ); ?></th>
+						<td><?php echo esc_html( self::format_datetime_value( (string) ( $site_knowledge['last_delivery_at'] ?? '' ) ) ); ?></td>
+					</tr>
+					<tr>
+						<th scope="row"><?php esc_html_e( 'Last sent', 'npcink-cloud-addon' ); ?></th>
+						<td><?php echo esc_html( (string) absint( $site_knowledge['last_sent_count'] ?? 0 ) ); ?></td>
+					</tr>
+					<tr>
+						<th scope="row"><?php esc_html_e( 'Last error', 'npcink-cloud-addon' ); ?></th>
+						<td><?php echo esc_html( self::format_empty( (string) ( $site_knowledge['last_delivery_error'] ?? '' ) ) ); ?></td>
+					</tr>
+					<tr>
+						<th scope="row"><?php esc_html_e( 'Next flush', 'npcink-cloud-addon' ); ?></th>
+						<td><?php echo esc_html( self::format_datetime_value( (string) ( $site_knowledge['next_flush_at'] ?? '' ) ) ); ?></td>
+					</tr>
+					<tr>
+						<th scope="row"><?php esc_html_e( 'Boundary', 'npcink-cloud-addon' ); ?></th>
+						<td><?php esc_html_e( 'This addon only sends public change hints and signed runtime requests. Cloud owns indexing, freshness policy, collection lifecycle, and diagnostics detail.', 'npcink-cloud-addon' ); ?></td>
+					</tr>
+				</tbody>
+			</table>
+			<p class="description"><?php esc_html_e( 'Toolbox uses Site Knowledge results in best-practice buttons. Index lifecycle controls and deep troubleshooting remain Cloud-owned.', 'npcink-cloud-addon' ); ?></p>
 			<?php
 		}
 
@@ -1859,6 +1966,49 @@ if ( ! class_exists( 'Npcink_Cloud_Settings_Page' ) ) {
 				$state,
 				$buffer_count
 			);
+		}
+
+		/**
+		 * Formats Site Knowledge bridge state for compact status rows.
+		 *
+		 * @param array<string,mixed> $site_knowledge Site Knowledge bridge status.
+		 * @return string
+		 */
+		private static function format_site_knowledge_overview( array $site_knowledge ): string {
+			$status = sanitize_key( (string) ( $site_knowledge['status'] ?? '' ) );
+			if ( '' === $status ) {
+				$status = ! empty( $site_knowledge['verified'] ) ? 'idle' : 'unverified';
+			}
+
+			return sprintf(
+				/* translators: 1: bridge status, 2: buffered public change count. */
+				__( '%1$s, %2$d public changes buffered', 'npcink-cloud-addon' ),
+				$status,
+				absint( $site_knowledge['buffer_count'] ?? 0 )
+			);
+		}
+
+		/**
+		 * Formats Site Knowledge diagnostic detail without adding control-plane state.
+		 *
+		 * @param array<string,mixed> $site_knowledge Site Knowledge bridge status.
+		 * @return string
+		 */
+		private static function format_site_knowledge_diagnostic_detail( array $site_knowledge ): string {
+			if ( empty( $site_knowledge['verified'] ) ) {
+				return __( 'Cloud settings must be verified before public content-change delivery can run.', 'npcink-cloud-addon' );
+			}
+
+			$error_code = sanitize_key( (string) ( $site_knowledge['last_error_code'] ?? '' ) );
+			if ( '' !== $error_code ) {
+				return sprintf(
+					/* translators: %s: Site Knowledge delivery error code. */
+					__( 'Last delivery error: %s', 'npcink-cloud-addon' ),
+					$error_code
+				);
+			}
+
+			return __( 'Public content-change delivery and Toolbox runtime transport use signed Cloud runtime only.', 'npcink-cloud-addon' );
 		}
 
 		/**

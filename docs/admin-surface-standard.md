@@ -51,6 +51,8 @@ Low-frequency details may include:
 - timeout setting;
 - read-only entitlement fields;
 - sanitized diagnostics rows and Cloud detail links;
+- Site Knowledge bridge delivery status and a bounded manual public content
+  refresh transport;
 - metadata-only monitoring upload status;
 - aggregate Cloud observability counters;
 - aggregate Agent feedback quality counters;
@@ -79,6 +81,8 @@ Cloud Addon admin must not add:
   routes.
 - Tavily, Unsplash, provider-model selection, Cloud search execution, or image
   source search product tools.
+- Site Knowledge index lifecycle controls, freshness policy controls, collection
+  management, or deep troubleshooting controls.
 
 The admin page may expose a monitoring toggle, read-only observability summary,
 and read-only Agent feedback quality summary only when those surfaces remain

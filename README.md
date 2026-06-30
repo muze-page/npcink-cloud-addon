@@ -28,7 +28,7 @@ The addon owns:
 - Read-only Agent feedback quality projection:
   - `POST /v1/agent-feedback/events`
   - `GET /v1/agent-feedback/summary`
-- Site Knowledge public content change bridge through `POST /v1/runtime/execute`.
+- Site Knowledge public content change bridge through `POST /v1/runtime/execute`, including a bounded settings-page status and manual public refresh transport.
 - Toolbox Site Knowledge runtime bridge through `POST /v1/runtime/execute`.
 - Bounded image context evidence transport through `POST /v1/runtime/execute`.
 - Bounded WordPress AI connector scene runtime through `POST /v1/runtime/execute`.
@@ -267,6 +267,13 @@ it shows connection, liveness, signed Cloud read, entitlement/quota, hosted
 runtime entitlement detail, capability readiness notes, Site Knowledge bridge
 status, and monitoring status. It does not recreate Toolbox product tools for
 Cloud search, image source search, provider operations, or task execution.
+
+The Details tab includes a shallow Site Knowledge section for connector state,
+buffered public changes, last delivery, and a manual public content refresh
+request. It is a transport/status surface only: Cloud owns indexing, freshness
+policy, collection lifecycle, and deep diagnostics. Toolbox consumes Site
+Knowledge results in fixed best-practice buttons instead of owning index
+management UI.
 
 The settings page never displays split signing credentials and does not provide
 split credential editing.

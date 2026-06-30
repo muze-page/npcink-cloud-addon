@@ -642,14 +642,32 @@ maca_assert(
 	&& false !== strpos( $settings_page, 'Advanced diagnostics' )
 	&& false !== strpos( $settings_page, 'function render_status_overview' )
 	&& false !== strpos( $settings_page, 'format_monitoring_overview' )
+	&& false !== strpos( $settings_page, 'format_site_knowledge_overview' )
 	&& false !== strpos( $settings_page, 'Re-verify and refresh' )
-	&& false !== strpos( $settings_page, 'Re-verifying refreshes the latest Cloud summary.' )
+	&& false !== strpos( $settings_page, 'Entitlement, monitoring, and Site Knowledge are local connector summaries.' )
 	&& false === strpos( $settings_page, 'Refresh Cloud summary' )
 	&& false !== strpos( $settings_page, '<h3><?php esc_html_e( \'Entitlement Summary\'' )
+	&& false !== strpos( $settings_page, '<h3><?php esc_html_e( \'Site Knowledge\'' )
 	&& false !== strpos( $settings_page, '<h3><?php esc_html_e( \'Monitoring & Quality\'' )
 	&& false !== strpos( $settings_page, "self::redirect_to_page( 'details' );" )
 	&& false === strpos( $settings_page, "'monitoring'  =>" ),
-	'Settings page defaults to a connect view before verification, keeps verified status compact, adds bounded Cloud diagnostics, and moves monitoring diagnostics behind details.'
+	'Settings page defaults to a connect view before verification, keeps verified status compact, adds bounded Cloud diagnostics, and moves Site Knowledge plus monitoring details behind details.'
+);
+
+maca_assert(
+	false !== strpos( $settings_page, "ACTION_REFRESH_SITE_KNOWLEDGE = 'npcink_cloud_addon_refresh_site_knowledge'" )
+	&& false !== strpos( $settings_page, "admin_post_' . self::ACTION_REFRESH_SITE_KNOWLEDGE" )
+	&& false !== strpos( $settings_page, 'function handle_refresh_site_knowledge' )
+	&& false !== strpos( $settings_page, 'Npcink_Cloud_Site_Knowledge_Change_Bridge::buffer_recent_public_content()' )
+	&& false !== strpos( $settings_page, 'Npcink_Cloud_Site_Knowledge_Change_Bridge::flush_buffer()' )
+	&& false !== strpos( $settings_page, 'Request public content refresh' )
+	&& false !== strpos( $settings_page, 'Open Cloud Site Knowledge' )
+	&& false !== strpos( $settings_page, 'This addon only sends public change hints and signed runtime requests.' )
+	&& false !== strpos( $settings_page, 'Toolbox uses Site Knowledge results in best-practice buttons.' )
+	&& false !== strpos( $settings_page, 'Cloud owns indexing, freshness policy, collection lifecycle, and diagnostics detail.' )
+	&& false === strpos( $settings_page, 'site_knowledge_index_policy' )
+	&& false === strpos( $settings_page, 'collection_lifecycle_owner' ),
+	'Settings page exposes only bounded Site Knowledge delivery status and manual public refresh transport, not index lifecycle controls.'
 );
 
 maca_assert(

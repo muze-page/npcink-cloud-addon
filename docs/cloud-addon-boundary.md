@@ -30,6 +30,8 @@ index, freshness, and collection lifecycle owner.
 - Bounded Cloud Diagnostics rows for connection, liveness, signed Cloud read,
   entitlement/quota, hosted runtime entitlement detail, capability readiness
   notes, Site Knowledge bridge status, and monitoring status.
+- Bounded Site Knowledge settings details for connector state, buffered public
+  changes, last delivery, and manual public refresh transport.
 - Opt-in, verified, metadata-only plugin observability upload.
 - A bounded local observability buffer used only to survive temporary delivery
   failures before upload.
@@ -52,6 +54,8 @@ index, freshness, and collection lifecycle owner.
 - Cloud service operations console.
 - Developer diagnostics routes.
 - Site Knowledge index lifecycle.
+- Site Knowledge freshness policy, re-index policy, collection lifecycle, or
+  deep troubleshooting ownership.
 - Cloud search, image source search, or provider tool product UX.
 
 ## Local Truth Rule
@@ -127,6 +131,10 @@ The bridge must send only public content manifests, affected post ids, and
 `write_posture=suggestion_only`. It must not create a local vector index,
 perform re-index policy decisions, own stale-index detection, become a workflow
 engine, become scheduler truth, or perform WordPress writes.
+
+The settings page may show shallow bridge health and trigger the same bounded
+public refresh transport. It must not expose collection management, re-index
+jobs, stale-index policy controls, or Cloud operations-console actions.
 
 ## Endpoint Rule
 

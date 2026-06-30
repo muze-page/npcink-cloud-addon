@@ -274,10 +274,12 @@ status, and monitoring status. It does not recreate Toolbox product tools for
 Cloud search, image source search, provider operations, or task execution.
 
 The Runtime Runs tab is the low-frequency home for Nightly Inspection Cloud run
-detail that used to crowd Toolbox advanced surfaces. It can read recent runs,
-inspect one run status, inspect one run result, and request a bounded Cloud
-retry for a known run. It does not submit scheduled reviews, build local
-snapshots, create Core proposals, own retry queues, or write WordPress data.
+detail that used to crowd Toolbox advanced surfaces. It shows the read-only
+runtime entitlement projection, including run quota, batch limit, result
+retention, and quota-exhausted state. It can read recent runs, inspect one run
+status, inspect one run result, and request a bounded Cloud retry for a known
+run. It does not submit scheduled reviews, build local snapshots, create Core
+proposals, own retry queues, or write WordPress data.
 
 The Details tab includes a shallow Site Knowledge section for connector state,
 buffered public changes, last delivery, and a manual public content refresh

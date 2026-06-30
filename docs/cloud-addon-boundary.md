@@ -232,7 +232,7 @@ The local UI stays shallow:
 - last verification time
 - entitlement summary
 - opt-in monitoring status and read-only Cloud observability / Agent feedback summaries
-- a bounded Runtime Runs tab for Cloud-owned Nightly Inspection recent/status/result and retry request detail
+- a bounded Runtime Runs tab for Cloud-owned Nightly Inspection entitlement/quota, batch, retention, recent/status/result, and retry request detail
 
 It must not become a second control plane.
 

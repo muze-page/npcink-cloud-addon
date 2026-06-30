@@ -1472,6 +1472,26 @@ if ( ! class_exists( 'Npcink_Cloud_Settings_Page' ) ) {
 						</td>
 					</tr>
 					<tr>
+						<th scope="row"><?php esc_html_e( 'Batch limit', 'npcink-cloud-addon' ); ?></th>
+						<td><?php echo esc_html( (string) absint( $runtime['max_batch_items'] ?? 0 ) ); ?></td>
+					</tr>
+					<tr>
+						<th scope="row"><?php esc_html_e( 'Retention', 'npcink-cloud-addon' ); ?></th>
+						<td>
+							<?php
+							printf(
+								/* translators: %d: result retention days. */
+								esc_html__( '%d days', 'npcink-cloud-addon' ),
+								absint( $runtime['result_retention_days'] ?? 0 )
+							);
+							?>
+						</td>
+					</tr>
+					<tr>
+						<th scope="row"><?php esc_html_e( 'Quota exhausted', 'npcink-cloud-addon' ); ?></th>
+						<td><?php echo ! empty( $runtime['quota_exhausted'] ) ? esc_html__( 'yes', 'npcink-cloud-addon' ) : esc_html__( 'no', 'npcink-cloud-addon' ); ?></td>
+					</tr>
+					<tr>
 						<th scope="row"><?php esc_html_e( 'Runtime ownership', 'npcink-cloud-addon' ); ?></th>
 						<td><?php esc_html_e( 'Cloud owns run state, retry processing, retention, and usage detail. Local Core owns approval and WordPress writes.', 'npcink-cloud-addon' ); ?></td>
 					</tr>

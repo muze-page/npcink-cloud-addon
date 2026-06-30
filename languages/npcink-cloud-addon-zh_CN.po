@@ -1386,15 +1386,19 @@ msgstr "Site Knowledge runtime 请求需要符合预期的执行模式。"
 msgid "Site Knowledge runtime requests must be suggestion-only and no-write."
 msgstr "Site Knowledge runtime 请求必须是 suggestion-only 且不写入。"
 
-#: includes/class-cloud-site-knowledge-runtime-bridge.php:165
+#: includes/class-cloud-site-knowledge-runtime-bridge.php:167
+msgid "Site Knowledge sync transport only accepts public refresh requests. Rebuild, delete, and collection lifecycle operations belong in Cloud Site Knowledge."
+msgstr "Site Knowledge 同步传输只接受公开刷新请求。重建、删除和 collection 生命周期操作属于 Cloud Site Knowledge。"
+
+#: includes/class-cloud-site-knowledge-runtime-bridge.php:176
 msgid "Site Knowledge runtime requests must not include credentials or signing fields."
 msgstr "Site Knowledge runtime 请求不得包含凭据或签名字段。"
 
-#: includes/class-cloud-site-knowledge-runtime-bridge.php:183
+#: includes/class-cloud-site-knowledge-runtime-bridge.php:194
 msgid "Site Knowledge runtime payload could not be encoded."
 msgstr "无法编码 Site Knowledge runtime payload。"
 
-#: includes/class-cloud-site-knowledge-runtime-bridge.php:190
+#: includes/class-cloud-site-knowledge-runtime-bridge.php:201
 msgid "Site Knowledge runtime payload exceeds the transport size limit."
 msgstr "Site Knowledge runtime payload 超过传输大小限制。"
 

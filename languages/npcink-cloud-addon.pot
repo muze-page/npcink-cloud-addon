@@ -1462,15 +1462,19 @@ msgstr ""
 msgid "Site Knowledge runtime requests must be suggestion-only and no-write."
 msgstr ""
 
-#: includes/class-cloud-site-knowledge-runtime-bridge.php:165
+#: includes/class-cloud-site-knowledge-runtime-bridge.php:167
+msgid "Site Knowledge sync transport only accepts public refresh requests. Rebuild, delete, and collection lifecycle operations belong in Cloud Site Knowledge."
+msgstr ""
+
+#: includes/class-cloud-site-knowledge-runtime-bridge.php:176
 msgid "Site Knowledge runtime requests must not include credentials or signing fields."
 msgstr ""
 
-#: includes/class-cloud-site-knowledge-runtime-bridge.php:183
+#: includes/class-cloud-site-knowledge-runtime-bridge.php:194
 msgid "Site Knowledge runtime payload could not be encoded."
 msgstr ""
 
-#: includes/class-cloud-site-knowledge-runtime-bridge.php:190
+#: includes/class-cloud-site-knowledge-runtime-bridge.php:201
 msgid "Site Knowledge runtime payload exceeds the transport size limit."
 msgstr ""
 

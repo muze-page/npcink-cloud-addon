@@ -169,7 +169,9 @@ payload endpoints to the addon.
 Site Knowledge change bridge transport must use the existing
 `POST /v1/runtime/execute` endpoint only. Do not add local collection lifecycle
 endpoints, generic indexing routes, or direct Cloud control-plane mutation paths
-to the addon.
+to the addon. Local Site Knowledge sync transport accepts only
+`sync_mode=refresh`; rebuild, delete, stale-index policy, and collection
+lifecycle operations stay in Cloud Site Knowledge.
 
 Toolbox Site Knowledge runtime transport must use the existing
 `POST /v1/runtime/execute` endpoint only. It may handle the bounded

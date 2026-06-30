@@ -158,6 +158,17 @@ if ( ! class_exists( 'Npcink_Cloud_Site_Knowledge_Runtime_Bridge' ) ) {
 				);
 			}
 
+			if (
+				'npcink-cloud/site-knowledge-sync' === $ability_name
+				&& 'refresh' !== sanitize_key( (string) ( $input['sync_mode'] ?? '' ) )
+			) {
+				return new WP_Error(
+					'cloud_site_knowledge_sync_mode_not_allowed',
+					__( 'Site Knowledge sync transport only accepts public refresh requests. Rebuild, delete, and collection lifecycle operations belong in Cloud Site Knowledge.', 'npcink-cloud-addon' ),
+					array( 'status' => 400 )
+				);
+			}
+
 			$forbidden_key = self::find_forbidden_key( $payload );
 			if ( '' !== $forbidden_key ) {
 				return new WP_Error(

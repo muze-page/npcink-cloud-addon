@@ -29,6 +29,7 @@ $adapter_doc = maca_read( $root . '/docs/adapter-integration-seam.md' );
 $complexity_doc = maca_read( $root . '/docs/cloud-addon-complexity-budget.md' );
 $cloud_bulk_article_doc = maca_read( $root . '/docs/cloud-bulk-article-run-seam.md' );
 $admin_surface_standard = maca_read( $root . '/docs/admin-surface-standard.md' );
+$site_knowledge_vector_ops_doc = maca_read( $root . '/docs/site-knowledge-vector-operations.md' );
 $agents = maca_read( $root . '/AGENTS.md' );
 $readme = maca_read( $root . '/README.md' );
 $composer = maca_read( $root . '/composer.json' );
@@ -509,9 +510,11 @@ maca_assert(
 	&& false !== strpos( $site_knowledge_runtime_bridge, 'site_knowledge_sync.v1' )
 	&& false !== strpos( $site_knowledge_runtime_bridge, "\$input['write_posture'] ?? ''" )
 	&& false !== strpos( $site_knowledge_runtime_bridge, "'suggestion_only'" )
+	&& false !== strpos( $site_knowledge_runtime_bridge, 'cloud_site_knowledge_sync_mode_not_allowed' )
+	&& false !== strpos( $site_knowledge_runtime_bridge, "'refresh' !== sanitize_key" )
 	&& false !== strpos( $site_knowledge_runtime_bridge, 'execute_runtime' )
 	&& false !== strpos( $site_knowledge_runtime_bridge, 'MAX_RUNTIME_PAYLOAD_BYTES = 900000' ),
-	'Site Knowledge runtime bridge accepts only known Toolbox ability contracts and forwards suggestion-only payloads through runtime execute.'
+	'Site Knowledge runtime bridge accepts only known Toolbox ability contracts and forwards suggestion-only public refresh payloads through runtime execute.'
 );
 
 maca_assert(
@@ -562,6 +565,7 @@ maca_assert(
 	&& false !== strpos( $site_knowledge_bridge, "'site_knowledge_sync.v1'" )
 	&& false !== strpos( $site_knowledge_bridge, "'sync_mode' => 'refresh'" )
 	&& false !== strpos( $site_knowledge_bridge, "'write_posture' => 'suggestion_only'" )
+	&& false !== strpos( $site_knowledge_bridge, "'direct_wordpress_write' => false" )
 	&& false !== strpos( $site_knowledge_bridge, 'execute_runtime' )
 	&& false !== strpos( $boundary_doc, 'Cloud remains the Site Knowledge vector' )
 	&& false !== strpos( $boundary_doc, 'index, freshness, and collection lifecycle owner' ),
@@ -668,6 +672,25 @@ maca_assert(
 	&& false === strpos( $settings_page, 'site_knowledge_index_policy' )
 	&& false === strpos( $settings_page, 'collection_lifecycle_owner' ),
 	'Settings page exposes only bounded Site Knowledge delivery status and manual public refresh transport, not index lifecycle controls.'
+);
+
+maca_assert(
+	false !== strpos( $site_knowledge_vector_ops_doc, 'requires `manage_options`' )
+	&& false !== strpos( $site_knowledge_vector_ops_doc, 'verified Cloud settings' )
+	&& false !== strpos( $site_knowledge_vector_ops_doc, '`site_knowledge_sync.v1` only with `sync_mode=refresh`' )
+	&& false !== strpos( $site_knowledge_vector_ops_doc, '`sync_mode=rebuild`' )
+	&& false !== strpos( $site_knowledge_vector_ops_doc, '`sync_mode=delete`' ),
+	'Site Knowledge vector operations doc records permissions and refresh-only local transport.'
+);
+
+maca_assert(
+	false !== strpos( $site_knowledge_vector_ops_doc, 'published posts and pages' )
+	&& false !== strpos( $site_knowledge_vector_ops_doc, 'approved comments' )
+	&& false !== strpos( $site_knowledge_vector_ops_doc, 'must not contain' )
+	&& false !== strpos( $site_knowledge_vector_ops_doc, 'drafts, private posts, password-protected posts' )
+	&& false !== strpos( $site_knowledge_vector_ops_doc, 'provider credentials, API keys' )
+	&& false !== strpos( $site_knowledge_vector_ops_doc, 'Cloud Site Knowledge remains the owner for embedding, vector storage' ),
+	'Site Knowledge vector operations doc records public content admission and Cloud index lifecycle ownership.'
 );
 
 maca_assert(

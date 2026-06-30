@@ -384,6 +384,7 @@ if ( ! class_exists( 'Npcink_Cloud_Site_Knowledge_Change_Bridge' ) ) {
 					'max_posts' => self::MAX_BATCH_ITEMS,
 					'documents' => self::collect_documents( $post_ids ),
 					'write_posture' => 'suggestion_only',
+					'direct_wordpress_write' => false,
 				),
 				'data_classification' => 'public_site_content',
 				'storage_mode' => 'result_only',

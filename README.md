@@ -244,6 +244,10 @@ All requests must remain `write_posture=suggestion_only` and use
 `POST /v1/runtime/execute`. The bridge does not create local indexing jobs,
 collection lifecycle state, approval records, proposal records, or WordPress
 writes.
+The local sync transport accepts only `sync_mode=refresh`; rebuild, delete,
+stale-index policy, embedding-provider, and collection lifecycle operations
+belong in Cloud Site Knowledge. See
+[`docs/site-knowledge-vector-operations.md`](docs/site-knowledge-vector-operations.md).
 
 ## Settings Page
 

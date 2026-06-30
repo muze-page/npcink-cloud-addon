@@ -17,6 +17,7 @@ require_once __DIR__ . '/class-cloud-media-derivative-transport.php';
 require_once __DIR__ . '/class-cloud-entitlement-summary.php';
 require_once __DIR__ . '/class-cloud-observability-collector.php';
 require_once __DIR__ . '/class-cloud-site-knowledge-change-bridge.php';
+require_once __DIR__ . '/class-cloud-site-knowledge-runtime-bridge.php';
 require_once __DIR__ . '/class-ai-plugin-localization.php';
 require_once __DIR__ . '/class-cloud-wordpress-ai-connector.php';
 require_once __DIR__ . '/class-cloud-settings-page.php';
@@ -192,6 +193,28 @@ if ( ! function_exists( 'npcink_cloud_addon_execute_wordpress_ai_image_generatio
 	}
 }
 
+if ( ! function_exists( 'npcink_cloud_addon_dispatch_site_knowledge_runtime' ) ) {
+	/**
+	 * Dispatches a bounded Toolbox Site Knowledge runtime request.
+	 *
+	 * This helper validates the known Site Knowledge ability contracts and
+	 * sends them through the existing signed runtime execute endpoint. It does
+	 * not own indexing, stale-index policy, approval, or WordPress writes.
+	 *
+	 * @param array<string,mixed> $runtime_payload Runtime execute payload.
+	 * @param string              $ability_name Optional ability name.
+	 * @param string              $contract_version Optional contract version.
+	 * @return array<string,mixed>|WP_Error
+	 */
+	function npcink_cloud_addon_dispatch_site_knowledge_runtime( array $runtime_payload, string $ability_name = '', string $contract_version = '' ) {
+		return Npcink_Cloud_Site_Knowledge_Runtime_Bridge::dispatch_runtime(
+			$runtime_payload,
+			$ability_name,
+			$contract_version
+		);
+	}
+}
+
 if ( ! function_exists( 'npcink_cloud_addon_build_media_derivative_proposal_payload' ) ) {
 	/**
 	 * Builds a Core-ready local proposal payload for a Cloud derivative artifact.
@@ -338,6 +361,7 @@ if ( ! function_exists( 'npcink_cloud_addon_bootstrap' ) ) {
 		Npcink_Cloud_Addon_Settings::register();
 		Npcink_Cloud_Observability_Collector::register();
 		Npcink_Cloud_Site_Knowledge_Change_Bridge::register();
+		Npcink_Cloud_Site_Knowledge_Runtime_Bridge::register();
 		Npcink_Cloud_AI_Plugin_Localization::register();
 		Npcink_Cloud_WordPress_AI_Connector::register();
 		Npcink_Cloud_Settings_Page::register();

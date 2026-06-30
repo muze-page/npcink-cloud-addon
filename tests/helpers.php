@@ -56,6 +56,14 @@ if ( ! defined( 'ABSPATH' ) ) {
 	define( 'ABSPATH', MACA_TEST_ROOT . '/tests/wordpress-stub/' );
 }
 
+if ( ! defined( 'HOUR_IN_SECONDS' ) ) {
+	define( 'HOUR_IN_SECONDS', 3600 );
+}
+
+if ( ! defined( 'DAY_IN_SECONDS' ) ) {
+	define( 'DAY_IN_SECONDS', 86400 );
+}
+
 if ( ! class_exists( 'WP_Error' ) ) {
 	/**
 	 * Minimal WP_Error stub for behavior tests.
@@ -195,6 +203,7 @@ $GLOBALS['maca_option_update_counts'] = array();
 $GLOBALS['maca_transients'] = array();
 $GLOBALS['maca_http_requests'] = array();
 $GLOBALS['maca_http_response_queue'] = array();
+$GLOBALS['maca_filters'] = array();
 
 if ( ! function_exists( 'get_option' ) ) {
 	function get_option( string $name, $default = false ) {
@@ -237,6 +246,35 @@ if ( ! function_exists( 'delete_transient' ) ) {
 
 if ( ! function_exists( 'add_action' ) ) {
 	function add_action(): void {}
+}
+
+if ( ! function_exists( 'add_filter' ) ) {
+	function add_filter( string $hook_name, $callback, int $priority = 10, int $accepted_args = 1 ): bool {
+		$GLOBALS['maca_filters'][ $hook_name ][ $priority ][] = array(
+			'callback'      => $callback,
+			'accepted_args' => $accepted_args,
+		);
+		return true;
+	}
+}
+
+if ( ! function_exists( 'apply_filters' ) ) {
+	function apply_filters( string $hook_name, $value, ...$args ) {
+		if ( empty( $GLOBALS['maca_filters'][ $hook_name ] ) || ! is_array( $GLOBALS['maca_filters'][ $hook_name ] ) ) {
+			return $value;
+		}
+
+		ksort( $GLOBALS['maca_filters'][ $hook_name ] );
+		foreach ( $GLOBALS['maca_filters'][ $hook_name ] as $callbacks ) {
+			foreach ( $callbacks as $entry ) {
+				$callback = $entry['callback'];
+				$accepted_args = max( 1, absint( $entry['accepted_args'] ?? 1 ) );
+				$value = call_user_func_array( $callback, array_slice( array_merge( array( $value ), $args ), 0, $accepted_args ) );
+			}
+		}
+
+		return $value;
+	}
 }
 
 if ( ! function_exists( 'get_current_user_id' ) ) {
@@ -317,6 +355,7 @@ function maca_load_addon_classes(): void {
 	require_once MACA_TEST_ROOT . '/includes/class-cloud-entitlement-summary.php';
 	require_once MACA_TEST_ROOT . '/includes/class-cloud-media-derivative-transport.php';
 	require_once MACA_TEST_ROOT . '/includes/class-cloud-observability-collector.php';
+	require_once MACA_TEST_ROOT . '/includes/class-cloud-site-knowledge-runtime-bridge.php';
 }
 
 /**
@@ -337,6 +376,7 @@ function maca_seed_settings( bool $verified, string $base_url = 'https://cloud.e
 		'verified_at' => $verified ? '2026-06-03 00:00:00 UTC' : '',
 		'last_verification_error' => '',
 		'monitoring_enabled' => false,
+		'site_knowledge_delivery_enabled' => true,
 	);
 }
 
@@ -353,6 +393,18 @@ function maca_set_monitoring_enabled( bool $enabled ): void {
 }
 
 /**
+ * Enables or disables Site Knowledge delivery in test storage.
+ *
+ * @param bool $enabled Whether delivery is enabled.
+ * @return void
+ */
+function maca_set_site_knowledge_delivery_enabled( bool $enabled ): void {
+	$settings = Npcink_Cloud_Addon_Settings::get_settings();
+	$settings['site_knowledge_delivery_enabled'] = $enabled;
+	$GLOBALS['maca_options'][ Npcink_Cloud_Addon_Settings::option_name() ] = $settings;
+}
+
+/**
  * Resets addon behavior test state.
  *
  * @return void
@@ -363,6 +415,7 @@ function maca_reset_test_state(): void {
 	$GLOBALS['maca_transients'] = array();
 	$GLOBALS['maca_http_requests'] = array();
 	$GLOBALS['maca_http_response_queue'] = array();
+	$GLOBALS['maca_filters'] = array();
 }
 
 /**

@@ -64,6 +64,7 @@ It returns `null` until the addon settings have passed Save and Verify.
 | `probe_connectivity()` | `GET /health/live`, then signed `GET /v1/entitlements/current` |
 | `execute_runtime()` | `POST /v1/runtime/execute` |
 | `execute_wordpress_ai_connector_runtime()` | `POST /v1/runtime/execute` |
+| `npcink_cloud_addon_dispatch_site_knowledge_runtime()` | `POST /v1/runtime/execute` |
 | `request_image_context_evidence()` | `POST /v1/runtime/execute` |
 | `create_media_derivative()` | `POST /v1/runtime/media-derivatives` |
 | `get_run()` | `GET /v1/runs/{run_id}` |
@@ -78,6 +79,31 @@ It returns `null` until the addon settings have passed Save and Verify.
 | `send_agent_feedback_event()` | `POST /v1/agent-feedback/events` |
 | `get_agent_feedback_summary()` | `GET /v1/agent-feedback/summary` |
 | `get_observability_summary()` | `GET /v1/observability/plugin-summary` |
+
+## Diagnostics Surface
+
+The Cloud Addon Diagnostics tab reuses the existing connection state,
+`probe_connectivity()` result cache, entitlement summary, monitoring summary,
+and Cloud Portal links. It does not expose the private `request()` helper,
+register a Developer diagnostics route, or add ad hoc Cloud service endpoints.
+
+Capability rows such as Platform Models, provider readiness, Cloud web search,
+image source search, image generation, and Site Knowledge bridge must only show
+status backed by an existing addon contract. If no addon read contract exists,
+the row must say that the capability is not connected or Cloud-owned instead of
+fabricating a check.
+
+## Runtime Runs Surface
+
+The Cloud Addon Runtime Runs tab may use the existing run endpoints for
+Nightly Inspection detail: recent runs, one-run status, one-run result, and a
+nonce-protected retry request for a known run. It is a low-frequency
+Cloud-owned recovery/detail surface.
+
+The tab must not submit scheduled reviews, rebuild Toolbox local snapshots,
+create Core proposals, approve changes, create a local retry queue, or write
+WordPress data. If Cloud rejects a retry because the original run input is not
+recoverable, the addon shows the Cloud error and fails closed.
 
 ## Signing
 

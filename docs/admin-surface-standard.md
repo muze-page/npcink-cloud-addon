@@ -19,8 +19,8 @@ When not configured or not verified, the default page should prioritize:
 
 Cloud Base URL must use HTTPS except for local development hosts (`localhost`,
 `127.0.0.1`, or `::1`). The environment default is
-`http://127.0.0.1:8010` for local WordPress environments and
-`https://cloud.npc.ink` otherwise. Manual Base URL and Cloud API Key wrapper
+`http://localhost:8010/` for local WordPress environments and
+`https://cloud.npc.ink/` otherwise. Manual Base URL and Cloud API Key wrapper
 entry belong in Advanced as a recovery fallback for local debugging or
 authorization outages.
 
@@ -29,9 +29,23 @@ When verified, the default page should prioritize:
 - compact Cloud status;
 - last verification time;
 - read-only entitlement summary;
+- a dedicated Site Knowledge tab for local delivery consent, bounded public
+  content refresh, index start/rebuild/delete intents, and shallow bridge state;
+- a bounded Diagnostics tab for connection, liveness, signed Cloud read,
+  entitlement/quota, hosted runtime entitlement detail, capability readiness
+  notes, Site Knowledge bridge status, and monitoring status;
+- a dedicated Runtime Runs tab for low-frequency Nightly Inspection Cloud
+  recent runs, one-run status/result reads, and bounded retry requests;
 - opt-in monitoring state and read-only Cloud observability / Agent feedback
   quality summaries;
 - a clear path to update/re-verify settings.
+
+Toolbox no longer owns Cloud Checks or Troubleshooting Checks for basic AI
+connection, Hosted Runtime, Cloud search, Cloud image/source, quota,
+entitlement, or service health. The Cloud Addon Diagnostics tab is the local
+entry for those Cloud connection and service-status details, but it must remain
+a summary/detail surface rather than a Toolbox product workflow or operations
+console.
 
 ## Advanced / Low-Frequency Details
 
@@ -40,6 +54,8 @@ Low-frequency details may include:
 - manual Cloud Base URL and Cloud API Key wrapper recovery entry;
 - timeout setting;
 - read-only entitlement fields;
+- Cloud-owned runtime recent/status/result detail and retry request entry;
+- sanitized diagnostics rows and Cloud detail links;
 - metadata-only monitoring upload status;
 - aggregate Cloud observability counters;
 - aggregate Agent feedback quality counters;
@@ -64,13 +80,21 @@ Cloud Addon admin must not add:
 - proposal, approval, preflight, audit, or WordPress write controls;
 - router, prompt, preset, workflow/task queue, scheduler truth, or runtime repair
   control planes;
+- Toolbox scheduled-review submission, local snapshot building, or Core handoff
+  workspaces;
 - billing truth, invoices, service operations console, or developer diagnostic
   routes.
+- Tavily, Unsplash, provider-model selection, Cloud search execution, or image
+  source search product tools.
+- Site Knowledge execution truth, freshness policy controls, collection
+  management, embedding/vector provider settings, or deep troubleshooting
+  controls.
 
-The admin page may expose a monitoring toggle, read-only observability summary,
-and read-only Agent feedback quality summary only when those surfaces remain
-metadata-only and clearly separate from Core audit, proposal, approval,
-execution, billing, and workflow truth.
+The admin page may expose a monitoring toggle, Site Knowledge local delivery
+consent toggle, read-only observability summary, and read-only Agent feedback
+quality summary only when those surfaces remain metadata-only or transport-only
+and clearly separate from Core audit, proposal, approval, execution, billing,
+index lifecycle, and workflow truth.
 
 ## Verification
 

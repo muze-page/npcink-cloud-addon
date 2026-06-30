@@ -31,7 +31,8 @@ index, freshness, and collection lifecycle owner.
   entitlement/quota, hosted runtime entitlement detail, capability readiness
   notes, Site Knowledge bridge status, and monitoring status.
 - Bounded Site Knowledge settings details for connector state, buffered public
-  changes, last delivery, and manual public refresh transport.
+  changes, last delivery, local delivery consent, manual public refresh
+  transport, and explicit administrator index intents.
 - Opt-in, verified, metadata-only plugin observability upload.
 - A bounded local observability buffer used only to survive temporary delivery
   failures before upload.
@@ -53,9 +54,9 @@ index, freshness, and collection lifecycle owner.
 - Preset control plane.
 - Cloud service operations console.
 - Developer diagnostics routes.
-- Site Knowledge index lifecycle.
-- Site Knowledge freshness policy, re-index policy, collection lifecycle, or
-  deep troubleshooting ownership.
+- Site Knowledge index execution or lifecycle truth.
+- Site Knowledge freshness policy, collection lifecycle, or deep
+  troubleshooting ownership.
 - Cloud search, image source search, or provider tool product UX.
 
 ## Local Truth Rule
@@ -127,14 +128,28 @@ Cloud Addon may listen for public `post`/`page` and approved comment changes,
 after Cloud settings are verified, buffer affected post ids locally, and request
 a Cloud Site Knowledge refresh through `POST /v1/runtime/execute`.
 
+Cloud Addon may also let a present administrator enable or disable local Site
+Knowledge delivery consent, start indexing, request a rebuild, or request
+deletion of the Cloud Site Knowledge index for this site. Those actions are
+local operator intent plus bounded public WordPress manifests; Cloud remains the
+executor and index lifecycle owner.
+
+The local delivery consent setting controls future public content delivery and
+administrator start/rebuild requests only. It is not index lifecycle truth.
+Turning it off does not delete existing Cloud index data; the explicit delete
+action remains available as a confirmed cleanup path.
+
 The bridge must send only public content manifests, affected post ids, and
 `write_posture=suggestion_only`. It must not create a local vector index,
 perform re-index policy decisions, own stale-index detection, become a workflow
 engine, become scheduler truth, or perform WordPress writes.
 
-The settings page may show shallow bridge health and trigger the same bounded
-public refresh transport. It must not expose collection management, re-index
-jobs, stale-index policy controls, or Cloud operations-console actions.
+The settings page may expose a dedicated Site Knowledge tab, show shallow bridge
+health, update local delivery consent, and trigger bounded public refresh, start,
+rebuild, and delete transport. Rebuild and delete require a strong confirmation
+word. The addon must not expose collection management, stale-index policy
+controls, embedding/vector provider settings, or Cloud operations-console
+actions.
 
 ## Endpoint Rule
 
@@ -169,9 +184,10 @@ payload endpoints to the addon.
 Site Knowledge change bridge transport must use the existing
 `POST /v1/runtime/execute` endpoint only. Do not add local collection lifecycle
 endpoints, generic indexing routes, or direct Cloud control-plane mutation paths
-to the addon. Local Site Knowledge sync transport accepts only
-`sync_mode=refresh`; rebuild, delete, stale-index policy, and collection
-lifecycle operations stay in Cloud Site Knowledge.
+to the addon. Local Site Knowledge sync transport may carry
+`sync_mode=refresh`, `sync_mode=rebuild`, or `sync_mode=delete` only as a
+verified administrator intent; stale-index policy and collection lifecycle
+operations stay in Cloud Site Knowledge.
 
 Toolbox Site Knowledge runtime transport must use the existing
 `POST /v1/runtime/execute` endpoint only. It may handle the bounded

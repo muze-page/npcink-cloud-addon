@@ -29,6 +29,8 @@ When verified, the default page should prioritize:
 - compact Cloud status;
 - last verification time;
 - read-only entitlement summary;
+- a dedicated Site Knowledge tab for local delivery consent, bounded public
+  content refresh, index start/rebuild/delete intents, and shallow bridge state;
 - a bounded Diagnostics tab for connection, liveness, signed Cloud read,
   entitlement/quota, hosted runtime entitlement detail, capability readiness
   notes, Site Knowledge bridge status, and monitoring status;
@@ -51,8 +53,6 @@ Low-frequency details may include:
 - timeout setting;
 - read-only entitlement fields;
 - sanitized diagnostics rows and Cloud detail links;
-- Site Knowledge bridge delivery status and a bounded manual public content
-  refresh transport;
 - metadata-only monitoring upload status;
 - aggregate Cloud observability counters;
 - aggregate Agent feedback quality counters;
@@ -81,13 +81,15 @@ Cloud Addon admin must not add:
   routes.
 - Tavily, Unsplash, provider-model selection, Cloud search execution, or image
   source search product tools.
-- Site Knowledge index lifecycle controls, freshness policy controls, collection
-  management, or deep troubleshooting controls.
+- Site Knowledge execution truth, freshness policy controls, collection
+  management, embedding/vector provider settings, or deep troubleshooting
+  controls.
 
-The admin page may expose a monitoring toggle, read-only observability summary,
-and read-only Agent feedback quality summary only when those surfaces remain
-metadata-only and clearly separate from Core audit, proposal, approval,
-execution, billing, and workflow truth.
+The admin page may expose a monitoring toggle, Site Knowledge local delivery
+consent toggle, read-only observability summary, and read-only Agent feedback
+quality summary only when those surfaces remain metadata-only or transport-only
+and clearly separate from Core audit, proposal, approval, execution, billing,
+index lifecycle, and workflow truth.
 
 ## Verification
 

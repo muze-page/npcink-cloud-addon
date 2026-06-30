@@ -162,11 +162,22 @@ if ( ! class_exists( 'Npcink_Cloud_Addon_Settings' ) ) {
 		 *
 		 * @return bool
 		 */
-		public static function is_monitoring_enabled(): bool {
-			$settings = self::get_settings();
+			public static function is_monitoring_enabled(): bool {
+				$settings = self::get_settings();
 
-			return self::is_verified() && ! empty( $settings['monitoring_enabled'] );
-		}
+				return self::is_verified() && ! empty( $settings['monitoring_enabled'] );
+			}
+
+			/**
+			 * Returns whether Site Knowledge public content delivery may run.
+			 *
+			 * @return bool
+			 */
+			public static function is_site_knowledge_delivery_enabled(): bool {
+				$settings = self::get_settings();
+
+				return self::is_verified() && ! empty( $settings['site_knowledge_delivery_enabled'] );
+			}
 
 		/**
 		 * Returns a compact credential state for local surfaces.
@@ -254,6 +265,10 @@ if ( ! class_exists( 'Npcink_Cloud_Addon_Settings' ) ) {
 				$next['monitoring_enabled'] = ! empty( $payload['monitoring_enabled'] );
 			}
 
+			if ( array_key_exists( 'site_knowledge_delivery_enabled', $payload ) ) {
+				$next['site_knowledge_delivery_enabled'] = ! empty( $payload['site_knowledge_delivery_enabled'] );
+			}
+
 			$api_key = array_key_exists( 'api_key', $payload ) ? trim( (string) $payload['api_key'] ) : '';
 			if ( '' !== $api_key ) {
 				$parsed = self::parse_api_key( $api_key );
@@ -324,6 +339,9 @@ if ( ! class_exists( 'Npcink_Cloud_Addon_Settings' ) ) {
 				'verified_at' => sanitize_text_field( (string) ( $settings['verified_at'] ?? '' ) ),
 				'last_verification_error' => sanitize_text_field( (string) ( $settings['last_verification_error'] ?? '' ) ),
 				'monitoring_enabled' => ! empty( $settings['monitoring_enabled'] ),
+				'site_knowledge_delivery_enabled' => array_key_exists( 'site_knowledge_delivery_enabled', $settings )
+					? ! empty( $settings['site_knowledge_delivery_enabled'] )
+					: true,
 			);
 		}
 
@@ -352,6 +370,7 @@ if ( ! class_exists( 'Npcink_Cloud_Addon_Settings' ) ) {
 				'verified_at' => '',
 				'last_verification_error' => '',
 				'monitoring_enabled' => false,
+				'site_knowledge_delivery_enabled' => true,
 			);
 		}
 

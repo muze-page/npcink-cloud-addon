@@ -1461,13 +1461,148 @@ msgstr "下次 flush"
 msgid "Boundary"
 msgstr "边界"
 
-#: includes/class-cloud-settings-page.php:1190
-msgid "This addon only sends public change hints and signed runtime requests. Cloud owns indexing, freshness policy, collection lifecycle, and diagnostics detail."
-msgstr "此 addon 只发送公开变更 hint 和签名 runtime 请求。Cloud 拥有索引、新鲜度策略、collection 生命周期和诊断详情。"
+#: includes/class-cloud-settings-page.php:1290
+msgid "This addon sends public change hints and explicit administrator index intents through signed runtime requests. Cloud owns indexing execution, freshness policy, collection lifecycle, and diagnostics detail."
+msgstr "此 addon 通过签名 runtime 请求发送公开变更 hint 和明确的管理员索引意图。Cloud 拥有索引执行、新鲜度策略、collection 生命周期和诊断详情。"
 
-#: includes/class-cloud-settings-page.php:1194
-msgid "Toolbox uses Site Knowledge results in best-practice buttons. Index lifecycle controls and deep troubleshooting remain Cloud-owned."
-msgstr "Toolbox 在最佳实践按钮中使用 Site Knowledge 结果。索引生命周期控制和深度故障排查仍由 Cloud 拥有。"
+#: includes/class-cloud-settings-page.php:1294
+msgid "Toolbox uses Site Knowledge results in best-practice buttons. Provider settings, collection lifecycle, and deep troubleshooting remain Cloud-owned."
+msgstr "Toolbox 在最佳实践按钮中使用 Site Knowledge 结果。Provider 设置、collection 生命周期和深度故障排查仍由 Cloud 拥有。"
+
+#: includes/class-cloud-settings-page.php:440
+msgid "The requested Site Knowledge index action is not supported."
+msgstr "请求的 Site Knowledge 索引操作不受支持。"
+
+#: includes/class-cloud-settings-page.php:446
+msgid "Type the confirmation word before running this Site Knowledge index action."
+msgstr "运行此 Site Knowledge 索引操作前，请输入确认词。"
+
+#. translators: %d: public content item count.
+#: includes/class-cloud-settings-page.php:461
+#, php-format
+msgid "Site Knowledge indexing started. Public content items sent: %d."
+msgstr "Site Knowledge 索引已开始。已发送公开内容项目：%d。"
+
+#. translators: %d: public content item count.
+#: includes/class-cloud-settings-page.php:468
+#, php-format
+msgid "Site Knowledge rebuild requested. Public content items sent: %d."
+msgstr "Site Knowledge 重建索引请求已发送。已发送公开内容项目：%d。"
+
+#: includes/class-cloud-settings-page.php:473
+msgid "Site Knowledge index deletion requested. WordPress content was not changed."
+msgstr "Site Knowledge 索引删除请求已发送。WordPress 内容未被更改。"
+
+#: includes/class-cloud-settings-page.php:476
+msgid "Site Knowledge index action requested."
+msgstr "Site Knowledge 索引操作请求已发送。"
+
+#: includes/class-cloud-settings-page.php:1227
+msgid "Content index actions"
+msgstr "内容索引操作"
+
+#: includes/class-cloud-settings-page.php:1228
+msgid "These buttons send local administrator intent and bounded public WordPress content to Cloud Site Knowledge. Cloud performs indexing, rebuild, deletion, and diagnostics; WordPress content is not changed."
+msgstr "这些按钮会把本地管理员意图和有界的公开 WordPress 内容发送到 Cloud Site Knowledge。Cloud 执行索引、重建、删除和诊断；WordPress 内容不会被更改。"
+
+#: includes/class-cloud-settings-page.php:1234
+#: includes/class-cloud-settings-page.php:1236
+msgid "Start indexing"
+msgstr "开始索引"
+
+#: includes/class-cloud-settings-page.php:1235
+msgid "Send a bounded public post and page manifest to Cloud for initial Site Knowledge indexing."
+msgstr "向 Cloud 发送有界的公开文章和页面清单，用于初始 Site Knowledge 索引。"
+
+#: includes/class-cloud-settings-page.php:1242
+#: includes/class-cloud-settings-page.php:1245
+msgid "Rebuild index"
+msgstr "重建索引"
+
+#: includes/class-cloud-settings-page.php:1243
+msgid "Ask Cloud to clear this site index and rebuild it from public WordPress content sent by this addon."
+msgstr "请求 Cloud 清空此站点索引，并使用此 addon 发送的公开 WordPress 内容重建。"
+
+#: includes/class-cloud-settings-page.php:1244
+msgid "Type REBUILD"
+msgstr "输入 REBUILD"
+
+#: includes/class-cloud-settings-page.php:1251
+#: includes/class-cloud-settings-page.php:1254
+msgid "Delete site index"
+msgstr "删除站点索引"
+
+#: includes/class-cloud-settings-page.php:1252
+msgid "Ask Cloud to delete this site index. This does not delete posts, pages, comments, media, or settings in WordPress."
+msgstr "请求 Cloud 删除此站点索引。这不会删除 WordPress 中的文章、页面、评论、媒体或设置。"
+
+#: includes/class-cloud-settings-page.php:1253
+msgid "Type DELETE"
+msgstr "输入 DELETE"
+
+#: includes/class-cloud-settings-page.php:1261
+msgid "Last index action"
+msgstr "上次索引操作"
+
+#: includes/class-cloud-site-knowledge-change-bridge.php:290
+msgid "Site Knowledge delivery is disabled locally."
+msgstr "Site Knowledge 投递已在本地关闭。"
+
+#: includes/class-cloud-site-knowledge-change-bridge.php:340
+msgid "Site Knowledge delivery is disabled locally. Enable delivery before starting or rebuilding the index."
+msgstr "Site Knowledge 投递已在本地关闭。开始索引或重建索引前，请先启用投递。"
+
+#: includes/class-cloud-settings-page.php:467
+msgid "Site Knowledge delivery enabled for public WordPress content."
+msgstr "已为公开 WordPress 内容启用 Site Knowledge 投递。"
+
+#: includes/class-cloud-settings-page.php:469
+msgid "Site Knowledge delivery disabled locally. Existing Cloud index data was not deleted."
+msgstr "Site Knowledge 投递已在本地关闭。已有 Cloud 索引数据未被删除。"
+
+#: includes/class-cloud-settings-page.php:1028
+msgid "Site Knowledge delivery"
+msgstr "Site Knowledge 投递"
+
+#: includes/class-cloud-settings-page.php:1038
+msgid "Enable Site Knowledge delivery for public WordPress content."
+msgstr "为公开 WordPress 内容启用 Site Knowledge 投递。"
+
+#: includes/class-cloud-settings-page.php:1040
+msgid "This controls local delivery consent only. Cloud still owns indexing execution and collection lifecycle."
+msgstr "这只控制本地投递许可。Cloud 仍拥有索引执行和 collection 生命周期。"
+
+#: includes/class-cloud-settings-page.php:1280
+msgid "Local delivery consent"
+msgstr "本地投递许可"
+
+#: includes/class-cloud-settings-page.php:1289
+msgid "Enable Site Knowledge delivery"
+msgstr "启用 Site Knowledge 投递"
+
+#: includes/class-cloud-settings-page.php:1291
+msgid "Allow this WordPress site to send bounded public content updates and administrator index requests to Cloud Site Knowledge. Cloud performs indexing and stores the site index."
+msgstr "允许此 WordPress 站点向 Cloud Site Knowledge 发送有界的公开内容更新和管理员索引请求。Cloud 执行索引并存储站点索引。"
+
+#: includes/class-cloud-settings-page.php:1293
+msgid "Delivery is disabled locally. Future public content updates and start/rebuild requests are stopped. Existing Cloud index data is not deleted unless you run Delete site index."
+msgstr "投递已在本地关闭。后续公开内容更新以及开始/重建请求会停止。除非运行“删除站点索引”，否则已有 Cloud 索引数据不会被删除。"
+
+#: includes/class-cloud-settings-page.php:1295
+msgid "Save Site Knowledge delivery"
+msgstr "保存 Site Knowledge 投递"
+
+#: includes/class-cloud-settings-page.php:1339
+msgid "Delivery"
+msgstr "投递"
+
+#: includes/class-cloud-settings-page.php:1340
+msgid "disabled locally"
+msgstr "已在本地关闭"
+
+#: includes/class-cloud-settings-page.php:2185
+msgid "Site Knowledge delivery is disabled locally. Existing Cloud index data is unchanged until Delete site index is requested."
+msgstr "Site Knowledge 投递已在本地关闭。除非请求删除站点索引，否则已有 Cloud 索引数据保持不变。"
 
 #: includes/class-cloud-settings-page.php:1999
 msgid "Cloud settings must be verified before public content-change delivery can run."

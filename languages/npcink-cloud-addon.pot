@@ -1020,12 +1020,147 @@ msgstr ""
 msgid "Boundary"
 msgstr ""
 
-#: includes/class-cloud-settings-page.php:1190
-msgid "This addon only sends public change hints and signed runtime requests. Cloud owns indexing, freshness policy, collection lifecycle, and diagnostics detail."
+#: includes/class-cloud-settings-page.php:1290
+msgid "This addon sends public change hints and explicit administrator index intents through signed runtime requests. Cloud owns indexing execution, freshness policy, collection lifecycle, and diagnostics detail."
 msgstr ""
 
-#: includes/class-cloud-settings-page.php:1194
-msgid "Toolbox uses Site Knowledge results in best-practice buttons. Index lifecycle controls and deep troubleshooting remain Cloud-owned."
+#: includes/class-cloud-settings-page.php:1294
+msgid "Toolbox uses Site Knowledge results in best-practice buttons. Provider settings, collection lifecycle, and deep troubleshooting remain Cloud-owned."
+msgstr ""
+
+#: includes/class-cloud-settings-page.php:440
+msgid "The requested Site Knowledge index action is not supported."
+msgstr ""
+
+#: includes/class-cloud-settings-page.php:446
+msgid "Type the confirmation word before running this Site Knowledge index action."
+msgstr ""
+
+#. translators: %d: public content item count.
+#: includes/class-cloud-settings-page.php:461
+#, php-format
+msgid "Site Knowledge indexing started. Public content items sent: %d."
+msgstr ""
+
+#. translators: %d: public content item count.
+#: includes/class-cloud-settings-page.php:468
+#, php-format
+msgid "Site Knowledge rebuild requested. Public content items sent: %d."
+msgstr ""
+
+#: includes/class-cloud-settings-page.php:473
+msgid "Site Knowledge index deletion requested. WordPress content was not changed."
+msgstr ""
+
+#: includes/class-cloud-settings-page.php:476
+msgid "Site Knowledge index action requested."
+msgstr ""
+
+#: includes/class-cloud-settings-page.php:1227
+msgid "Content index actions"
+msgstr ""
+
+#: includes/class-cloud-settings-page.php:1228
+msgid "These buttons send local administrator intent and bounded public WordPress content to Cloud Site Knowledge. Cloud performs indexing, rebuild, deletion, and diagnostics; WordPress content is not changed."
+msgstr ""
+
+#: includes/class-cloud-settings-page.php:1234
+#: includes/class-cloud-settings-page.php:1236
+msgid "Start indexing"
+msgstr ""
+
+#: includes/class-cloud-settings-page.php:1235
+msgid "Send a bounded public post and page manifest to Cloud for initial Site Knowledge indexing."
+msgstr ""
+
+#: includes/class-cloud-settings-page.php:1242
+#: includes/class-cloud-settings-page.php:1245
+msgid "Rebuild index"
+msgstr ""
+
+#: includes/class-cloud-settings-page.php:1243
+msgid "Ask Cloud to clear this site index and rebuild it from public WordPress content sent by this addon."
+msgstr ""
+
+#: includes/class-cloud-settings-page.php:1244
+msgid "Type REBUILD"
+msgstr ""
+
+#: includes/class-cloud-settings-page.php:1251
+#: includes/class-cloud-settings-page.php:1254
+msgid "Delete site index"
+msgstr ""
+
+#: includes/class-cloud-settings-page.php:1252
+msgid "Ask Cloud to delete this site index. This does not delete posts, pages, comments, media, or settings in WordPress."
+msgstr ""
+
+#: includes/class-cloud-settings-page.php:1253
+msgid "Type DELETE"
+msgstr ""
+
+#: includes/class-cloud-settings-page.php:1261
+msgid "Last index action"
+msgstr ""
+
+#: includes/class-cloud-site-knowledge-change-bridge.php:290
+msgid "Site Knowledge delivery is disabled locally."
+msgstr ""
+
+#: includes/class-cloud-site-knowledge-change-bridge.php:340
+msgid "Site Knowledge delivery is disabled locally. Enable delivery before starting or rebuilding the index."
+msgstr ""
+
+#: includes/class-cloud-settings-page.php:467
+msgid "Site Knowledge delivery enabled for public WordPress content."
+msgstr ""
+
+#: includes/class-cloud-settings-page.php:469
+msgid "Site Knowledge delivery disabled locally. Existing Cloud index data was not deleted."
+msgstr ""
+
+#: includes/class-cloud-settings-page.php:1028
+msgid "Site Knowledge delivery"
+msgstr ""
+
+#: includes/class-cloud-settings-page.php:1038
+msgid "Enable Site Knowledge delivery for public WordPress content."
+msgstr ""
+
+#: includes/class-cloud-settings-page.php:1040
+msgid "This controls local delivery consent only. Cloud still owns indexing execution and collection lifecycle."
+msgstr ""
+
+#: includes/class-cloud-settings-page.php:1280
+msgid "Local delivery consent"
+msgstr ""
+
+#: includes/class-cloud-settings-page.php:1289
+msgid "Enable Site Knowledge delivery"
+msgstr ""
+
+#: includes/class-cloud-settings-page.php:1291
+msgid "Allow this WordPress site to send bounded public content updates and administrator index requests to Cloud Site Knowledge. Cloud performs indexing and stores the site index."
+msgstr ""
+
+#: includes/class-cloud-settings-page.php:1293
+msgid "Delivery is disabled locally. Future public content updates and start/rebuild requests are stopped. Existing Cloud index data is not deleted unless you run Delete site index."
+msgstr ""
+
+#: includes/class-cloud-settings-page.php:1295
+msgid "Save Site Knowledge delivery"
+msgstr ""
+
+#: includes/class-cloud-settings-page.php:1339
+msgid "Delivery"
+msgstr ""
+
+#: includes/class-cloud-settings-page.php:1340
+msgid "disabled locally"
+msgstr ""
+
+#: includes/class-cloud-settings-page.php:2185
+msgid "Site Knowledge delivery is disabled locally. Existing Cloud index data is unchanged until Delete site index is requested."
 msgstr ""
 
 #: includes/class-cloud-settings-page.php:1217

@@ -26,9 +26,10 @@ if ( ! class_exists( 'Npcink_Cloud_Site_Knowledge_Change_Bridge' ) ) {
 		private const MAX_BATCH_ITEMS = 25;
 		private const DEBOUNCE_SECONDS = 180;
 		private const RETRY_SECONDS = 300;
-		private const MAX_DELIVERY_ATTEMPTS = 3;
-		private const RECONCILE_POSTS = 50;
-		private const MAX_DOCUMENT_CHARS = 12000;
+			private const MAX_DELIVERY_ATTEMPTS = 3;
+			private const RECONCILE_POSTS = 50;
+			private const MANUAL_INDEX_POSTS = 50;
+			private const MAX_DOCUMENT_CHARS = 12000;
 
 		/**
 		 * Registers content change hooks and delivery cron hooks.
@@ -56,9 +57,9 @@ if ( ! class_exists( 'Npcink_Cloud_Site_Knowledge_Change_Bridge' ) ) {
 		 *
 		 * @return bool
 		 */
-		public static function is_enabled(): bool {
-			return Npcink_Cloud_Addon_Settings::is_verified();
-		}
+			public static function is_enabled(): bool {
+				return Npcink_Cloud_Addon_Settings::is_site_knowledge_delivery_enabled();
+			}
 
 		/**
 		 * Returns local bridge status for other plugins.
@@ -70,16 +71,18 @@ if ( ! class_exists( 'Npcink_Cloud_Site_Knowledge_Change_Bridge' ) ) {
 			$status = self::get_status();
 			$next_flush = function_exists( 'wp_next_scheduled' ) ? wp_next_scheduled( self::FLUSH_HOOK ) : false;
 			$next_reconcile = function_exists( 'wp_next_scheduled' ) ? wp_next_scheduled( self::RECONCILE_HOOK ) : false;
-			$configured = Npcink_Cloud_Addon_Settings::is_configured();
-			$verified = Npcink_Cloud_Addon_Settings::is_verified();
-			$buffer_count = count( $buffer['post_ids'] );
-			$last_success_at = ! empty( $status['last_delivery_ok'] ) ? sanitize_text_field( (string) ( $status['last_delivered_at'] ?? '' ) ) : '';
-			$bridge_status = ! $configured ? 'not_configured' : ( ! $verified ? 'unverified' : ( $buffer_count > 0 ? 'queued' : 'idle' ) );
+				$configured = Npcink_Cloud_Addon_Settings::is_configured();
+				$verified = Npcink_Cloud_Addon_Settings::is_verified();
+				$delivery_enabled = self::is_enabled();
+				$buffer_count = count( $buffer['post_ids'] );
+				$last_success_at = ! empty( $status['last_delivery_ok'] ) ? sanitize_text_field( (string) ( $status['last_delivered_at'] ?? '' ) ) : '';
+				$bridge_status = ! $configured ? 'not_configured' : ( ! $verified ? 'unverified' : ( ! $delivery_enabled ? 'disabled' : ( $buffer_count > 0 ? 'queued' : 'idle' ) ) );
 
 			return array(
 				'owner' => 'cloud_addon',
 				'mode' => 'site_knowledge_change_bridge',
-				'enabled' => self::is_enabled(),
+					'enabled' => $delivery_enabled,
+					'delivery_enabled' => $delivery_enabled,
 				'configured' => $configured,
 				'verified' => $verified,
 				'status' => $bridge_status,
@@ -96,9 +99,12 @@ if ( ! class_exists( 'Npcink_Cloud_Site_Knowledge_Change_Bridge' ) ) {
 				'last_changed_at' => sanitize_text_field( (string) ( $status['last_changed_at'] ?? '' ) ),
 				'last_post_id' => absint( $status['last_post_id'] ?? 0 ),
 				'last_sent_count' => absint( $status['last_sent_count'] ?? 0 ),
-				'total_sent' => absint( $status['total_sent'] ?? 0 ),
-				'next_flush_at' => false === $next_flush ? '' : gmdate( 'c', (int) $next_flush ),
-				'next_reconcile_at' => false === $next_reconcile ? '' : gmdate( 'c', (int) $next_reconcile ),
+					'total_sent' => absint( $status['total_sent'] ?? 0 ),
+					'last_index_action' => sanitize_key( (string) ( $status['last_index_action'] ?? '' ) ),
+					'last_index_action_at' => sanitize_text_field( (string) ( $status['last_index_action_at'] ?? '' ) ),
+					'last_index_action_sent_count' => absint( $status['last_index_action_sent_count'] ?? 0 ),
+					'next_flush_at' => false === $next_flush ? '' : gmdate( 'c', (int) $next_flush ),
+					'next_reconcile_at' => false === $next_reconcile ? '' : gmdate( 'c', (int) $next_reconcile ),
 				'wp_cron_disabled' => defined( 'DISABLE_WP_CRON' ) && DISABLE_WP_CRON,
 				'cron_command' => 'wp cron event run ' . self::FLUSH_HOOK,
 				'wp_cli_command' => 'wp cron event run ' . self::FLUSH_HOOK,
@@ -275,21 +281,25 @@ if ( ! class_exists( 'Npcink_Cloud_Site_Knowledge_Change_Bridge' ) ) {
 		 *
 		 * @return array<string,mixed>
 		 */
-		public static function flush_buffer(): array {
-			if ( ! self::is_enabled() ) {
-				return self::record_delivery_result( false, 0, __( 'Cloud Addon settings are not verified.', 'npcink-cloud-addon' ), 'cloud_addon_unverified' );
-			}
+			public static function flush_buffer(): array {
+				if ( ! Npcink_Cloud_Addon_Settings::is_verified() ) {
+					return self::record_delivery_result( false, 0, __( 'Cloud Addon settings are not verified.', 'npcink-cloud-addon' ), 'cloud_addon_unverified' );
+				}
+
+				if ( ! self::is_enabled() ) {
+					return self::record_delivery_result( false, 0, __( 'Site Knowledge delivery is disabled locally.', 'npcink-cloud-addon' ), 'cloud_site_knowledge_delivery_disabled' );
+				}
 
 			$buffer = self::get_buffer();
 			if ( empty( $buffer ) ) {
 				return self::record_delivery_result( true, 0, '' );
 			}
 
-			$post_ids = array_slice( $buffer['post_ids'], 0, self::MAX_BATCH_ITEMS );
-			$result = self::request_site_knowledge_refresh( $post_ids );
-			if ( is_wp_error( $result ) ) {
-				return self::retry_or_drop_buffer( $buffer, $result->get_error_message() );
-			}
+				$post_ids = array_slice( $buffer['post_ids'], 0, self::MAX_BATCH_ITEMS );
+				$result = self::request_site_knowledge_sync( 'refresh', $post_ids, 'change_bridge' );
+				if ( is_wp_error( $result ) ) {
+					return self::retry_or_drop_buffer( $buffer, $result->get_error_message() );
+				}
 
 			$remaining = array_values( array_diff( $buffer['post_ids'], $post_ids ) );
 			self::save_buffer( $remaining, 0 );
@@ -297,15 +307,66 @@ if ( ! class_exists( 'Npcink_Cloud_Site_Knowledge_Change_Bridge' ) ) {
 				self::schedule_flush( self::RETRY_SECONDS );
 			}
 
-			return self::record_delivery_result( true, count( $post_ids ), '' );
-		}
+				return self::record_delivery_result( true, count( $post_ids ), '' );
+			}
+
+			/**
+			 * Sends one administrator-requested index operation to Cloud.
+			 *
+			 * @param string $operation Operation: start, rebuild, or delete.
+			 * @return array<string,mixed>|WP_Error
+			 */
+			public static function request_manual_index_operation( string $operation ) {
+					if ( ! Npcink_Cloud_Addon_Settings::is_verified() ) {
+						return new WP_Error(
+							'cloud_site_knowledge_unverified',
+							__( 'Cloud Addon settings are not verified.', 'npcink-cloud-addon' ),
+						array( 'status' => 400 )
+					);
+				}
+
+				$operation = sanitize_key( $operation );
+					if ( ! in_array( $operation, array( 'start', 'rebuild', 'delete' ), true ) ) {
+					return new WP_Error(
+						'cloud_site_knowledge_index_action_not_allowed',
+						__( 'The requested Site Knowledge index action is not supported.', 'npcink-cloud-addon' ),
+						array( 'status' => 400 )
+					);
+					}
+
+					if ( 'delete' !== $operation && ! self::is_enabled() ) {
+						return new WP_Error(
+							'cloud_site_knowledge_delivery_disabled',
+							__( 'Site Knowledge delivery is disabled locally. Enable delivery before starting or rebuilding the index.', 'npcink-cloud-addon' ),
+							array( 'status' => 400 )
+						);
+					}
+
+				$sync_mode = 'start' === $operation ? 'refresh' : $operation;
+				$post_ids  = 'delete' === $operation ? array() : self::recent_public_post_ids( self::MANUAL_INDEX_POSTS );
+				if ( 'start' === $operation && empty( $post_ids ) ) {
+					return new WP_Error(
+						'cloud_site_knowledge_no_public_content',
+						__( 'No public posts or pages were found for Site Knowledge indexing.', 'npcink-cloud-addon' ),
+						array( 'status' => 400 )
+					);
+				}
+
+				$result = self::request_site_knowledge_sync( $sync_mode, $post_ids, 'admin_' . $operation );
+				if ( is_wp_error( $result ) ) {
+					self::record_manual_operation_result( $operation, false, 0, $result->get_error_message(), $result->get_error_code() );
+					return $result;
+				}
+
+				return self::record_manual_operation_result( $operation, true, count( $post_ids ), '' );
+			}
 
 		/**
 		 * Keeps reconcile cron aligned with Cloud configuration.
 		 *
 		 * @return void
 		 */
-		private static function sync_schedule(): void {
+			public static function sync_schedule(): void {
 			if ( ! function_exists( 'wp_next_scheduled' ) ) {
 				return;
 			}
@@ -371,37 +432,49 @@ if ( ! class_exists( 'Npcink_Cloud_Site_Knowledge_Change_Bridge' ) ) {
 		 * @param array<int,int> $post_ids Changed post ids.
 		 * @return array<string,mixed>|WP_Error
 		 */
-		private static function request_site_knowledge_refresh( array $post_ids ) {
-			$client = new Npcink_Cloud_Runtime_Client();
-			$payload = array(
-				'ability_name' => 'npcink-cloud/site-knowledge-sync',
-				'contract_version' => 'site_knowledge_sync.v1',
-				'execution_pattern' => 'whole_run_offload',
-				'input' => array(
-					'contract_version' => 'site_knowledge_sync.v1',
-					'sync_mode' => 'refresh',
-					'post_ids' => array_values( array_map( 'absint', $post_ids ) ),
-					'max_posts' => self::MAX_BATCH_ITEMS,
-					'documents' => self::collect_documents( $post_ids ),
-					'write_posture' => 'suggestion_only',
-					'direct_wordpress_write' => false,
-				),
-				'data_classification' => 'public_site_content',
-				'storage_mode' => 'result_only',
-				'retention_ttl' => DAY_IN_SECONDS,
-				'timeout_seconds' => 60,
-				'retry_max' => 1,
-				'policy' => array(
-					'allow_fallback' => true,
-				),
-			);
+			private static function request_site_knowledge_sync( string $sync_mode, array $post_ids, string $operation_source = 'change_bridge' ) {
+				$sync_mode = sanitize_key( $sync_mode );
+				if ( ! in_array( $sync_mode, array( 'refresh', 'rebuild', 'delete' ), true ) ) {
+					return new WP_Error(
+						'cloud_site_knowledge_sync_mode_not_allowed',
+						__( 'Site Knowledge sync mode must be refresh, rebuild, or delete.', 'npcink-cloud-addon' ),
+						array( 'status' => 400 )
+					);
+				}
 
-			return $client->execute_runtime(
-				$payload,
-				'trace_site_knowledge_change_' . wp_generate_uuid4(),
-				'site_knowledge_change_' . wp_generate_uuid4()
-			);
-		}
+				$post_ids = array_values( array_unique( array_filter( array_map( 'absint', $post_ids ) ) ) );
+				$limit    = 'change_bridge' === $operation_source ? self::MAX_BATCH_ITEMS : self::MANUAL_INDEX_POSTS;
+				$client  = new Npcink_Cloud_Runtime_Client();
+				$payload = array(
+					'ability_name' => 'npcink-cloud/site-knowledge-sync',
+					'contract_version' => 'site_knowledge_sync.v1',
+					'execution_pattern' => 'whole_run_offload',
+					'input' => array(
+						'contract_version' => 'site_knowledge_sync.v1',
+						'sync_mode' => $sync_mode,
+						'operation_source' => sanitize_key( $operation_source ),
+						'post_ids' => $post_ids,
+						'max_posts' => $limit,
+						'documents' => 'delete' === $sync_mode ? array() : self::collect_documents( $post_ids, $limit ),
+						'write_posture' => 'suggestion_only',
+						'direct_wordpress_write' => false,
+					),
+					'data_classification' => 'public_site_content',
+					'storage_mode' => 'result_only',
+					'retention_ttl' => DAY_IN_SECONDS,
+					'timeout_seconds' => 60,
+					'retry_max' => 1,
+					'policy' => array(
+						'allow_fallback' => true,
+					),
+				);
+
+				return $client->execute_runtime(
+					$payload,
+					'trace_site_knowledge_' . sanitize_key( $operation_source ) . '_' . wp_generate_uuid4(),
+					'site_knowledge_' . sanitize_key( $operation_source ) . '_' . wp_generate_uuid4()
+				);
+			}
 
 		/**
 		 * Collects bounded public document manifests.
@@ -409,23 +482,49 @@ if ( ! class_exists( 'Npcink_Cloud_Site_Knowledge_Change_Bridge' ) ) {
 		 * @param array<int,int> $post_ids Post ids.
 		 * @return array<int,array<string,mixed>>
 		 */
-		private static function collect_documents( array $post_ids ): array {
-			if ( ! function_exists( 'get_post' ) ) {
-				return array();
-			}
+			private static function collect_documents( array $post_ids, int $limit = self::MAX_BATCH_ITEMS ): array {
+				if ( ! function_exists( 'get_post' ) ) {
+					return array();
+				}
 
-			$documents = array();
-			foreach ( array_slice( array_values( array_unique( array_map( 'absint', $post_ids ) ) ), 0, self::MAX_BATCH_ITEMS ) as $post_id ) {
-				$post = get_post( $post_id );
-				if ( ! self::is_public_post( $post ) ) {
-					continue;
+				$documents = array();
+				foreach ( array_slice( array_values( array_unique( array_map( 'absint', $post_ids ) ) ), 0, max( 1, $limit ) ) as $post_id ) {
+					$post = get_post( $post_id );
+					if ( ! self::is_public_post( $post ) ) {
+						continue;
 				}
 
 				$documents[] = self::post_document( $post );
 			}
 
-			return $documents;
-		}
+				return $documents;
+			}
+
+			/**
+			 * Returns recent public post/page ids for manual index operations.
+			 *
+			 * @param int $limit Max ids.
+			 * @return array<int,int>
+			 */
+			private static function recent_public_post_ids( int $limit ): array {
+				if ( ! function_exists( 'get_posts' ) ) {
+					return array();
+				}
+
+				$posts = get_posts(
+					array(
+						'post_type' => self::post_types(),
+						'post_status' => 'publish',
+						'posts_per_page' => max( 1, min( self::MANUAL_INDEX_POSTS, $limit ) ),
+						'orderby' => 'modified',
+						'order' => 'DESC',
+						'fields' => 'ids',
+						'no_found_rows' => true,
+					)
+				);
+
+				return is_array( $posts ) ? array_values( array_filter( array_map( 'absint', $posts ) ) ) : array();
+			}
 
 		/**
 		 * Builds one public post/page manifest.
@@ -540,7 +639,7 @@ if ( ! class_exists( 'Npcink_Cloud_Site_Knowledge_Change_Bridge' ) ) {
 		 * @param string $error Error message.
 		 * @return array<string,mixed>
 		 */
-		private static function record_delivery_result( bool $ok, int $sent, string $error, string $error_code = '' ): array {
+			private static function record_delivery_result( bool $ok, int $sent, string $error, string $error_code = '' ): array {
 			$buffer = self::get_buffer();
 			$status = array_merge(
 				self::get_status(),
@@ -556,8 +655,33 @@ if ( ! class_exists( 'Npcink_Cloud_Site_Knowledge_Change_Bridge' ) ) {
 			);
 			update_option( self::STATUS_OPTION, $status, false );
 
-			return $status;
-		}
+				return $status;
+			}
+
+			/**
+			 * Records the latest administrator index action.
+			 *
+			 * @param string $operation Operation slug.
+			 * @param bool   $ok Whether Cloud accepted the request.
+			 * @param int    $sent Public post count sent.
+			 * @param string $error Error message.
+			 * @param string $error_code Error code.
+			 * @return array<string,mixed>
+			 */
+			private static function record_manual_operation_result( string $operation, bool $ok, int $sent, string $error, string $error_code = '' ): array {
+				$status = self::record_delivery_result( $ok, $sent, $error, $error_code );
+				$status = array_merge(
+					$status,
+					array(
+						'last_index_action' => sanitize_key( $operation ),
+						'last_index_action_at' => gmdate( 'c' ),
+						'last_index_action_sent_count' => max( 0, $sent ),
+					)
+				);
+				update_option( self::STATUS_OPTION, $status, false );
+
+				return $status;
+			}
 
 		/**
 		 * Returns buffered post ids and attempts.

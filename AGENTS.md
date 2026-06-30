@@ -9,9 +9,10 @@ This repository is the standalone `npcink-cloud-addon` WordPress plugin.
   scheduler truth, workflow engine, billing truth, or WordPress write ownership.
 - Bounded observability buffering and WP-Cron flushing are allowed only for
   opt-in, verified, metadata-only plugin monitoring uploads.
-- Bounded Site Knowledge change buffering and WP-Cron flushing are allowed only
-  for public content-change delivery to Cloud Site Knowledge; Cloud owns index
-  lifecycle and freshness policy.
+- Bounded Site Knowledge change buffering, WP-Cron flushing, local delivery
+  consent, and explicit administrator index intents are allowed only for public
+  content delivery to Cloud Site Knowledge; Cloud owns index execution,
+  lifecycle, and freshness policy.
 - Do not reintroduce `/v1/runtime/workflows/runs`.
 - Do not expose split credential fields in the UI.
 - Do not print or log the stored `secret`.

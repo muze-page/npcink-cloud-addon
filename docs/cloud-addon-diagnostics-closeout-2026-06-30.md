@@ -29,8 +29,9 @@ Cloud Addon may show:
 - hosted runtime entitlement detail already returned by Cloud.
 - capability readiness rows when there is an explicit addon-side contract.
 - Site Knowledge bridge status for signed runtime transport.
-- bounded manual public content refresh transport for Site Knowledge delivery
-  hints.
+- a dedicated Site Knowledge tab with local delivery consent, bounded manual
+  public content refresh transport, and local administrator start/rebuild/delete
+  index intents.
 - metadata-only monitoring status and read-only aggregate summaries.
 
 Cloud Addon must not become:
@@ -50,8 +51,9 @@ data.
 
 ## Implemented Shape
 
-The verified Cloud Addon admin page now has a `Diagnostics` tab. It is visible
-only in the verified flow alongside Status, Details, and Advanced.
+The verified Cloud Addon admin page now has `Diagnostics` and `Site Knowledge`
+tabs. They are visible only in the verified flow alongside Status, Details, and
+Advanced.
 
 The diagnostics table shows:
 
@@ -66,17 +68,21 @@ The diagnostics table shows:
   addon contract;
 - Cloud image generation as a scene runtime only, not a provider/source tool;
 - Site Knowledge bridge status as signed runtime transport only;
-- Site Knowledge manual public content refresh as delivery transport only;
+- Site Knowledge local delivery consent, manual public content refresh, and
+  explicit administrator start/rebuild/delete intents as delivery transport only;
 - monitoring detail as metadata-only and read-only.
 
 Advanced raw status is folded behind a disclosure and contains sanitized local
 status fields only. It omits secrets and split credentials.
 
-The Details tab also shows Site Knowledge bridge delivery status and a manual
-`Request public content refresh` action. That action only buffers recent public
-content changes and flushes the existing signed delivery transport. It does not
-own index lifecycle, freshness policy, collection management, or deep
-troubleshooting.
+The Site Knowledge tab shows bridge delivery status, local delivery consent, a
+manual `Request public content refresh` action, and explicit administrator
+start/rebuild/delete index intents. These actions only send local intent and
+bounded public WordPress manifests through the existing signed delivery
+transport. Turning delivery off stops future refresh/start/rebuild transport but
+does not delete existing Cloud index data; the confirmed delete action remains
+available. The addon does not own index execution truth, freshness policy,
+collection management, or deep troubleshooting.
 
 ## Related Transport Closeout
 

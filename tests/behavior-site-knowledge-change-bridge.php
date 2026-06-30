@@ -13,7 +13,65 @@ maca_load_addon_classes();
 require_once MACA_TEST_ROOT . '/includes/class-cloud-site-knowledge-change-bridge.php';
 
 $GLOBALS['maca_comments'] = array();
+$GLOBALS['maca_posts'] = array();
 $GLOBALS['maca_scheduled_events'] = array();
+
+if ( ! function_exists( 'get_posts' ) ) {
+	/**
+	 * Minimal get_posts stub for bridge behavior tests.
+	 *
+	 * @param array<string,mixed> $args Query args.
+	 * @return array<int,int>
+	 */
+	function get_posts( array $args = array() ): array {
+		$limit = absint( $args['posts_per_page'] ?? 50 );
+		$ids   = array();
+		foreach ( $GLOBALS['maca_posts'] as $post_id => $post ) {
+			if ( 'publish' !== (string) ( $post->post_status ?? '' ) ) {
+				continue;
+			}
+			$ids[] = absint( $post_id );
+		}
+		return array_slice( $ids, 0, max( 1, $limit ) );
+	}
+}
+
+if ( ! function_exists( 'get_post' ) ) {
+	/**
+	 * Minimal get_post stub for bridge behavior tests.
+	 *
+	 * @param int $post_id Post id.
+	 * @return object|null
+	 */
+	function get_post( int $post_id ) {
+		return $GLOBALS['maca_posts'][ $post_id ] ?? null;
+	}
+}
+
+if ( ! function_exists( 'get_the_title' ) ) {
+	/**
+	 * Minimal get_the_title stub for bridge behavior tests.
+	 *
+	 * @param int $post_id Post id.
+	 * @return string
+	 */
+	function get_the_title( int $post_id ): string {
+		$post = get_post( $post_id );
+		return is_object( $post ) ? (string) ( $post->post_title ?? '' ) : '';
+	}
+}
+
+if ( ! function_exists( 'get_permalink' ) ) {
+	/**
+	 * Minimal get_permalink stub for bridge behavior tests.
+	 *
+	 * @param int $post_id Post id.
+	 * @return string
+	 */
+	function get_permalink( int $post_id ): string {
+		return 'https://example.test/?p=' . absint( $post_id );
+	}
+}
 
 if ( ! function_exists( 'get_comment' ) ) {
 	/**
@@ -73,7 +131,27 @@ if ( ! function_exists( 'wp_clear_scheduled_hook' ) ) {
 function maca_reset_site_knowledge_bridge_state(): void {
 	maca_reset_test_state();
 	$GLOBALS['maca_comments'] = array();
+	$GLOBALS['maca_posts'] = array();
 	$GLOBALS['maca_scheduled_events'] = array();
+}
+
+/**
+ * Adds a public post/page fixture.
+ *
+ * @param int    $post_id Post id.
+ * @param string $type Post type.
+ * @return void
+ */
+function maca_add_public_post_fixture( int $post_id, string $type = 'post' ): void {
+	$GLOBALS['maca_posts'][ $post_id ] = (object) array(
+		'ID'                => $post_id,
+		'post_type'         => $type,
+		'post_status'       => 'publish',
+		'post_title'        => 'Public fixture ' . $post_id,
+		'post_excerpt'      => 'Excerpt ' . $post_id,
+		'post_content'      => 'Public content for Site Knowledge ' . $post_id,
+		'post_modified_gmt' => '2026-06-30 00:00:00',
+	);
 }
 
 maca_reset_site_knowledge_bridge_state();
@@ -182,4 +260,111 @@ maca_assert(
 	is_array( $buffer )
 	&& array( 705 ) === array_map( 'absint', (array) ( $buffer['post_ids'] ?? array() ) ),
 	'Behavior: comment approval transition buffers the parent post.'
+);
+
+maca_reset_site_knowledge_bridge_state();
+maca_seed_settings( true );
+maca_set_site_knowledge_delivery_enabled( false );
+Npcink_Cloud_Site_Knowledge_Change_Bridge::handle_comment_posted(
+	106,
+	1,
+	array( 'comment_post_ID' => 706 )
+);
+$health = Npcink_Cloud_Site_Knowledge_Change_Bridge::health_snapshot();
+maca_assert(
+	array() === get_option( Npcink_Cloud_Site_Knowledge_Change_Bridge::BUFFER_OPTION, array() )
+	&& false === (bool) ( $health['enabled'] ?? true )
+	&& false === (bool) ( $health['delivery_enabled'] ?? true )
+	&& 'disabled' === (string) ( $health['status'] ?? '' ),
+	'Behavior: disabled Site Knowledge delivery consent stops automatic public content buffering.'
+);
+
+maca_reset_site_knowledge_bridge_state();
+maca_seed_settings( true );
+maca_set_site_knowledge_delivery_enabled( false );
+maca_add_public_post_fixture( 750 );
+$disabled_start = Npcink_Cloud_Site_Knowledge_Change_Bridge::request_manual_index_operation( 'start' );
+maca_assert(
+	is_wp_error( $disabled_start )
+	&& 'cloud_site_knowledge_delivery_disabled' === $disabled_start->get_error_code()
+	&& array() === $GLOBALS['maca_http_requests'],
+	'Behavior: disabled Site Knowledge delivery consent blocks administrator start indexing transport.'
+);
+
+maca_reset_site_knowledge_bridge_state();
+maca_seed_settings( true );
+maca_set_site_knowledge_delivery_enabled( false );
+maca_add_public_post_fixture( 751 );
+$disabled_rebuild = Npcink_Cloud_Site_Knowledge_Change_Bridge::request_manual_index_operation( 'rebuild' );
+maca_assert(
+	is_wp_error( $disabled_rebuild )
+	&& 'cloud_site_knowledge_delivery_disabled' === $disabled_rebuild->get_error_code()
+	&& array() === $GLOBALS['maca_http_requests'],
+	'Behavior: disabled Site Knowledge delivery consent blocks administrator rebuild transport.'
+);
+
+maca_reset_site_knowledge_bridge_state();
+maca_seed_settings( true );
+maca_set_site_knowledge_delivery_enabled( false );
+$disabled_delete_status = Npcink_Cloud_Site_Knowledge_Change_Bridge::request_manual_index_operation( 'delete' );
+$disabled_delete_request = $GLOBALS['maca_http_requests'][0] ?? array();
+$disabled_delete_body = json_decode( (string) ( $disabled_delete_request['args']['body'] ?? '' ), true );
+$disabled_delete_body = is_array( $disabled_delete_body ) ? $disabled_delete_body : array();
+maca_assert(
+	is_array( $disabled_delete_status )
+	&& 'delete' === (string) ( $disabled_delete_body['input']['sync_mode'] ?? '' )
+	&& 'admin_delete' === (string) ( $disabled_delete_body['input']['operation_source'] ?? '' ),
+	'Behavior: disabled Site Knowledge delivery consent still allows explicit delete index cleanup.'
+);
+
+maca_reset_site_knowledge_bridge_state();
+maca_seed_settings( true );
+maca_add_public_post_fixture( 801 );
+maca_add_public_post_fixture( 802, 'page' );
+$start_status = Npcink_Cloud_Site_Knowledge_Change_Bridge::request_manual_index_operation( 'start' );
+$start_request = $GLOBALS['maca_http_requests'][0] ?? array();
+$start_body = json_decode( (string) ( $start_request['args']['body'] ?? '' ), true );
+$start_body = is_array( $start_body ) ? $start_body : array();
+maca_assert(
+	is_array( $start_status )
+	&& false !== strpos( (string) ( $start_request['url'] ?? '' ), '/v1/runtime/execute' )
+	&& 'refresh' === (string) ( $start_body['input']['sync_mode'] ?? '' )
+	&& 'admin_start' === (string) ( $start_body['input']['operation_source'] ?? '' )
+	&& 2 === count( (array) ( $start_body['input']['documents'] ?? array() ) )
+	&& 'start' === (string) ( $start_status['last_index_action'] ?? '' )
+	&& 2 === absint( $start_status['last_index_action_sent_count'] ?? 0 ),
+	'Behavior: administrator can start Site Knowledge indexing from bounded public WordPress content.'
+);
+
+maca_reset_site_knowledge_bridge_state();
+maca_seed_settings( true );
+maca_add_public_post_fixture( 901 );
+$rebuild_status = Npcink_Cloud_Site_Knowledge_Change_Bridge::request_manual_index_operation( 'rebuild' );
+$rebuild_request = $GLOBALS['maca_http_requests'][0] ?? array();
+$rebuild_body = json_decode( (string) ( $rebuild_request['args']['body'] ?? '' ), true );
+$rebuild_body = is_array( $rebuild_body ) ? $rebuild_body : array();
+maca_assert(
+	is_array( $rebuild_status )
+	&& 'rebuild' === (string) ( $rebuild_body['input']['sync_mode'] ?? '' )
+	&& 'admin_rebuild' === (string) ( $rebuild_body['input']['operation_source'] ?? '' )
+	&& 'suggestion_only' === (string) ( $rebuild_body['input']['write_posture'] ?? '' )
+	&& false === (bool) ( $rebuild_body['input']['direct_wordpress_write'] ?? true )
+	&& 'rebuild' === (string) ( $rebuild_status['last_index_action'] ?? '' ),
+	'Behavior: administrator rebuild request forwards only public manifests and no-write posture to Cloud.'
+);
+
+maca_reset_site_knowledge_bridge_state();
+maca_seed_settings( true );
+$delete_status = Npcink_Cloud_Site_Knowledge_Change_Bridge::request_manual_index_operation( 'delete' );
+$delete_request = $GLOBALS['maca_http_requests'][0] ?? array();
+$delete_body = json_decode( (string) ( $delete_request['args']['body'] ?? '' ), true );
+$delete_body = is_array( $delete_body ) ? $delete_body : array();
+maca_assert(
+	is_array( $delete_status )
+	&& 'delete' === (string) ( $delete_body['input']['sync_mode'] ?? '' )
+	&& 'admin_delete' === (string) ( $delete_body['input']['operation_source'] ?? '' )
+	&& array() === (array) ( $delete_body['input']['documents'] ?? array() )
+	&& false === (bool) ( $delete_body['input']['direct_wordpress_write'] ?? true )
+	&& 'delete' === (string) ( $delete_status['last_index_action'] ?? '' ),
+	'Behavior: administrator delete request asks Cloud to remove the site index without WordPress writes.'
 );

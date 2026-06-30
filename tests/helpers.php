@@ -56,6 +56,14 @@ if ( ! defined( 'ABSPATH' ) ) {
 	define( 'ABSPATH', MACA_TEST_ROOT . '/tests/wordpress-stub/' );
 }
 
+if ( ! defined( 'HOUR_IN_SECONDS' ) ) {
+	define( 'HOUR_IN_SECONDS', 3600 );
+}
+
+if ( ! defined( 'DAY_IN_SECONDS' ) ) {
+	define( 'DAY_IN_SECONDS', 86400 );
+}
+
 if ( ! class_exists( 'WP_Error' ) ) {
 	/**
 	 * Minimal WP_Error stub for behavior tests.
@@ -368,6 +376,7 @@ function maca_seed_settings( bool $verified, string $base_url = 'https://cloud.e
 		'verified_at' => $verified ? '2026-06-03 00:00:00 UTC' : '',
 		'last_verification_error' => '',
 		'monitoring_enabled' => false,
+		'site_knowledge_delivery_enabled' => true,
 	);
 }
 
@@ -380,6 +389,18 @@ function maca_seed_settings( bool $verified, string $base_url = 'https://cloud.e
 function maca_set_monitoring_enabled( bool $enabled ): void {
 	$settings = Npcink_Cloud_Addon_Settings::get_settings();
 	$settings['monitoring_enabled'] = $enabled;
+	$GLOBALS['maca_options'][ Npcink_Cloud_Addon_Settings::option_name() ] = $settings;
+}
+
+/**
+ * Enables or disables Site Knowledge delivery in test storage.
+ *
+ * @param bool $enabled Whether delivery is enabled.
+ * @return void
+ */
+function maca_set_site_knowledge_delivery_enabled( bool $enabled ): void {
+	$settings = Npcink_Cloud_Addon_Settings::get_settings();
+	$settings['site_knowledge_delivery_enabled'] = $enabled;
 	$GLOBALS['maca_options'][ Npcink_Cloud_Addon_Settings::option_name() ] = $settings;
 }
 

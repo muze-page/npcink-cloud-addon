@@ -117,6 +117,15 @@ that read-only detail for local plugins that need Pro Cloud Runtime status, such
 as Nightly Site Inspection run quota, remaining runs, batch limits, result
 retention, payload modes, and quota exhaustion.
 
+Runtime projection field types:
+
+- `max_nightly_inspection_runs_per_period`, `used_nightly_inspection_runs`, and
+  `remaining_nightly_inspection_runs` are numeric quota fields.
+- `max_batch_items` and `result_retention_days` are optional numeric fields; if
+  Cloud omits them, the addon must render them as unavailable rather than `0`.
+- `quota_exhausted` is a boolean projection. False-like strings such as
+  `"false"` must not render as exhausted.
+
 This projection must not be treated as local billing truth, a local quota
 engine, scheduler truth, queue state, retry ownership, or WordPress write
 authority.

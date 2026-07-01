@@ -1477,8 +1477,8 @@ msgid "Boundary"
 msgstr "边界"
 
 #: includes/class-cloud-settings-page.php:1773
-msgid "This addon sends public change hints and explicit administrator index intents through signed runtime requests. Cloud owns indexing execution, freshness policy, collection lifecycle, and diagnostics detail."
-msgstr "此 addon 通过签名 runtime 请求发送公开变更 hint 和明确的管理员索引意图。Cloud 拥有索引执行、新鲜度策略、collection 生命周期和诊断详情。"
+msgid "This addon sends public change hints and explicit administrator delivery intents through signed runtime requests. Cloud owns index execution, rebuild/delete handling, freshness policy, collection lifecycle, and diagnostics detail."
+msgstr "此 addon 通过签名 runtime 请求发送公开变更 hint 和明确的管理员交付意图。Cloud 拥有索引执行、重建/删除处理、新鲜度策略、collection 生命周期和诊断详情。"
 
 #: includes/class-cloud-settings-page.php:1777
 msgid "Toolbox uses Site Knowledge results in best-practice buttons. Provider settings, collection lifecycle, and deep troubleshooting remain Cloud-owned."
@@ -1514,12 +1514,12 @@ msgid "Site Knowledge index action requested."
 msgstr "Site Knowledge 索引操作请求已发送。"
 
 #: includes/class-cloud-settings-page.php:1706
-msgid "Content index actions"
-msgstr "内容索引操作"
+msgid "Cloud index delivery requests"
+msgstr "Cloud 索引投递请求"
 
 #: includes/class-cloud-settings-page.php:1707
-msgid "These buttons send local administrator intent and bounded public WordPress content to Cloud Site Knowledge. Cloud performs indexing, rebuild, deletion, and diagnostics; WordPress content is not changed."
-msgstr "这些按钮会把本地管理员意图和有界的公开 WordPress 内容发送到 Cloud Site Knowledge。Cloud 执行索引、重建、删除和诊断；WordPress 内容不会被更改。"
+msgid "These buttons send local administrator delivery intent and bounded public WordPress content for Cloud-owned Site Knowledge operations. Cloud performs indexing, rebuild, deletion, and diagnostics; WordPress content is not changed."
+msgstr "这些按钮会发送本地管理员投递意图和有界的公开 WordPress 内容，用于 Cloud 拥有的 Site Knowledge 操作。Cloud 执行索引、重建、删除和诊断；WordPress 内容不会被更改。"
 
 #: includes/class-cloud-settings-page.php:1713
 #: includes/class-cloud-settings-page.php:1715
@@ -1597,8 +1597,8 @@ msgid "Enable Site Knowledge delivery"
 msgstr "启用 Site Knowledge 投递"
 
 #: includes/class-cloud-settings-page.php:1692
-msgid "Allow this WordPress site to send bounded public content updates and administrator index requests to Cloud Site Knowledge. Cloud performs indexing and stores the site index."
-msgstr "允许此 WordPress 站点向 Cloud Site Knowledge 发送有界的公开内容更新和管理员索引请求。Cloud 执行索引并存储站点索引。"
+msgid "Allow this WordPress site to send bounded public content updates and administrator delivery requests for Cloud-owned Site Knowledge operations. Cloud performs indexing and stores the site index."
+msgstr "允许此 WordPress 站点发送有界的公开内容更新和管理员投递请求，用于 Cloud 拥有的 Site Knowledge 操作。Cloud 执行索引并存储站点索引。"
 
 #: includes/class-cloud-settings-page.php:1694
 msgid "Delivery is disabled locally. Future public content updates and start/rebuild requests are stopped. Existing Cloud index data is not deleted unless you run Delete site index."

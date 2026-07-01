@@ -20,12 +20,13 @@ The addon owns:
   - `GET /v1/runs/nightly-inspection/recent`
   - `POST /v1/runs/{run_id}/retry`
   - `GET /v1/runtime/artifacts/{artifact_id}/download`
-  - `GET /v1/stats/*`
+  - `GET /v1/stats/profiles/{profile_id}`
+  - `GET /v1/stats/instances/{instance_id}`
   - `GET /v1/entitlements/current`
 - Opt-in plugin observability transport:
   - `POST /v1/observability/plugin-events`
   - `GET /v1/observability/plugin-summary`
-- Read-only Agent feedback quality projection:
+- Bounded Agent feedback event transport and read-only quality projection:
   - `POST /v1/agent-feedback/events`
   - `GET /v1/agent-feedback/summary`
 - Site Knowledge public content change bridge through `POST /v1/runtime/execute`, including a bounded settings-page status and manual public refresh transport.
@@ -59,6 +60,7 @@ npcink_cloud_addon_verified_runtime_client(): ?Npcink_Cloud_Runtime_Client
 npcink_cloud_addon_dispatch_media_derivative_cloud_request(array $ability_response, array $source_artifact, string $trace_id = '', string $idempotency_key = '')
 npcink_cloud_addon_request_image_context_evidence(array $image_context_evidence_request, string $trace_id = '', string $idempotency_key = '')
 npcink_cloud_addon_execute_wordpress_ai_connector_runtime(array $request, string $trace_id = '', string $idempotency_key = '')
+npcink_cloud_addon_execute_wordpress_ai_image_generation_runtime(array $request, string $trace_id = '', string $idempotency_key = '')
 npcink_cloud_addon_dispatch_site_knowledge_runtime(array $runtime_payload, string $ability_name = '', string $contract_version = '')
 npcink_cloud_addon_build_media_derivative_proposal_payload(array $ability_response, array $cloud_result, array $derivative_artifact)
 npcink_cloud_addon_download_media_derivative_artifact(array $derivative_artifact, string $trace_id = '')
@@ -71,15 +73,20 @@ npcink_cloud_addon_site_knowledge_change_bridge_health(): array
 probe_connectivity(): array
 execute_runtime(array $payload, string $trace_id = '', string $idempotency_key = '')
 execute_wordpress_ai_connector_runtime(array $request, string $trace_id = '', string $idempotency_key = '')
+execute_wordpress_ai_image_generation_runtime(array $request, string $trace_id = '', string $idempotency_key = '')
 request_image_context_evidence(array $image_context_evidence_request, string $trace_id = '', string $idempotency_key = '')
 create_media_derivative(array $payload, array $files = array(), string $trace_id = '', string $idempotency_key = '')
 get_run(string $run_id, string $trace_id = '')
 get_run_result(string $run_id, string $trace_id = '')
+get_recent_nightly_inspection_runs(int $limit = 5, string $trace_id = '')
+retry_run(string $run_id, array $payload = array(), string $trace_id = '', string $idempotency_key = '')
 download_media_derivative_artifact(string $artifact_id, string $trace_id = '')
 get_current_entitlement(string $trace_id = '')
 get_profile_stats(string $profile_id, string $trace_id = '')
 get_instance_stats(string $instance_id, string $trace_id = '')
 send_observability_events(array $events, string $trace_id = '', string $idempotency_key = '')
+send_agent_feedback_event(array $payload, string $trace_id = '', string $idempotency_key = '')
+get_agent_feedback_summary(int $window_hours = 24, string $trace_id = '')
 get_observability_summary(int $window_hours = 24, string $trace_id = '')
 ```
 
@@ -281,12 +288,13 @@ status, inspect one run result, and request a bounded Cloud retry for a known
 run. It does not submit scheduled reviews, build local snapshots, create Core
 proposals, own retry queues, or write WordPress data.
 
-The Details tab includes a shallow Site Knowledge section for connector state,
-buffered public changes, last delivery, and a manual public content refresh
-request. It is a transport/status surface only: Cloud owns indexing, freshness
-policy, collection lifecycle, and deep diagnostics. Toolbox consumes Site
-Knowledge results in fixed best-practice buttons instead of owning index
-management UI.
+The Site Knowledge tab includes connector state, buffered public changes, last
+delivery, local delivery consent, manual public content refresh transport, and
+explicit administrator delivery intents for Cloud-owned index operations. It is
+a transport/status surface only: Cloud owns index execution, rebuild/delete
+handling, freshness policy, collection lifecycle, and deep diagnostics. Toolbox
+consumes Site Knowledge results in fixed best-practice buttons instead of owning
+index management UI.
 
 The settings page never displays split signing credentials and does not provide
 split credential editing.
@@ -310,6 +318,7 @@ default branch unless the CI and release process are intentionally migrated.
 
 ```bash
 composer run test:all
+composer run check:boundary
 git diff --check
 ```
 

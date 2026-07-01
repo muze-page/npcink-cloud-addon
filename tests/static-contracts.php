@@ -43,6 +43,13 @@ maca_assert(
 	'Cloud Addon exposes optional eval-lab project quality gate through the task registry.'
 );
 maca_assert(
+	false !== strpos( $composer, '"check:boundary": "sh -c' )
+	&& false !== strpos( $composer, '/v1/runtime/workflows/' . 'runs|wp_insert_' . 'post|wp_update_' . 'post' )
+	&& false !== strpos( $composer, '"@check:boundary"' )
+	&& false !== strpos( $composer, '"@ai:i18n:audit"' ),
+	'Cloud Addon release scripts include deterministic boundary and AI i18n gates.'
+);
+maca_assert(
 	false === strpos( $composer, '@eval:lab' )
 	&& false === strpos( $composer, '@eval:project:quality' )
 	&& false !== strpos( $eval_lab_proxy, 'composer "$SCRIPT" -- "$@"' ),
@@ -365,6 +372,12 @@ maca_assert(
 	&& false !== strpos( $settings_page, 'Batch limit' )
 	&& false !== strpos( $settings_page, 'Retention' )
 	&& false !== strpos( $settings_page, 'Quota exhausted' )
+	&& false !== strpos( $settings_page, 'format_runtime_integer_projection' )
+	&& false !== strpos( $settings_page, 'format_runtime_days_projection' )
+	&& false !== strpos( $settings_page, 'format_runtime_boolean_projection' )
+	&& false !== strpos( $settings_page, 'format_runtime_quota_projection' )
+	&& false !== strpos( $entitlement_summary, 'normalize_optional_absint' )
+	&& false !== strpos( $entitlement_summary, 'normalize_runtime_boolean' )
 	&& false !== strpos( $settings_page, 'Cloud-owned Nightly Inspection run status, result reads, and bounded retry requests.' )
 	&& false !== strpos( $settings_page, 'Cloud owns run state, retry processing, retention, and usage detail.' )
 	&& false !== strpos( $settings_page, 'get_recent_nightly_inspection_runs( 5' )
@@ -576,21 +589,21 @@ maca_assert(
 );
 
 maca_assert(
-		false !== strpos( $site_knowledge_bridge, 'request_site_knowledge_sync' )
-		&& false !== strpos( $site_knowledge_bridge, 'request_manual_index_operation' )
-		&& false !== strpos( $site_knowledge_bridge, "'site_knowledge_sync.v1'" )
-			&& false !== strpos( $site_knowledge_bridge, "\$sync_mode = 'start' === \$operation ? 'refresh' : \$operation;" )
-			&& false !== strpos( $site_knowledge_bridge, "'sync_mode' => \$sync_mode" )
-			&& false !== strpos( $site_knowledge_bridge, "array( 'refresh', 'rebuild', 'delete' )" )
-			&& false !== strpos( $site_knowledge_bridge, "'delete' !== \$operation && ! self::is_enabled()" )
-			&& false !== strpos( $site_knowledge_bridge, 'Site Knowledge delivery is disabled locally. Enable delivery before starting or rebuilding the index.' )
-		&& false !== strpos( $site_knowledge_bridge, "'write_posture' => 'suggestion_only'" )
+	false !== strpos( $site_knowledge_bridge, 'request_site_knowledge_sync' )
+	&& false !== strpos( $site_knowledge_bridge, 'request_manual_index_operation' )
+	&& false !== strpos( $site_knowledge_bridge, "'site_knowledge_sync.v1'" )
+	&& false !== strpos( $site_knowledge_bridge, "\$sync_mode = 'start' === \$operation ? 'refresh' : \$operation;" )
+	&& false !== strpos( $site_knowledge_bridge, "'sync_mode' => \$sync_mode" )
+	&& false !== strpos( $site_knowledge_bridge, "array( 'refresh', 'rebuild', 'delete' )" )
+	&& false !== strpos( $site_knowledge_bridge, "'delete' !== \$operation && ! self::is_enabled()" )
+	&& false !== strpos( $site_knowledge_bridge, 'Site Knowledge delivery is disabled locally. Enable delivery before starting or rebuilding the index.' )
+	&& false !== strpos( $site_knowledge_bridge, "'write_posture' => 'suggestion_only'" )
 	&& false !== strpos( $site_knowledge_bridge, "'direct_wordpress_write' => false" )
 	&& false !== strpos( $site_knowledge_bridge, 'execute_runtime' )
 	&& false !== strpos( $boundary_doc, 'Cloud remains the' )
 	&& false !== strpos( $boundary_doc, 'executor and index lifecycle owner' )
 	&& false !== strpos( $boundary_doc, 'verified administrator intent' ),
-	'Site Knowledge change bridge forwards bounded public refresh and administrator index intents to Cloud runtime only.'
+	'Site Knowledge change bridge forwards bounded public refresh and administrator delivery intents to Cloud runtime only.'
 );
 
 maca_assert(
@@ -598,8 +611,8 @@ maca_assert(
 	&& false !== strpos( $site_knowledge_bridge, 'wp_schedule_event' )
 	&& false !== strpos( $site_knowledge_bridge, 'MAX_DELIVERY_ATTEMPTS' )
 	&& false !== strpos( $site_knowledge_bridge, 'retry_or_drop_buffer' )
-			&& false !== strpos( $agents, 'Bounded Site Knowledge change buffering, WP-Cron flushing, local delivery' )
-			&& false !== strpos( $agents, 'consent, and explicit administrator index intents are allowed only for public' ),
+	&& false !== strpos( $agents, 'Bounded Site Knowledge change buffering, WP-Cron flushing, local delivery' )
+	&& false !== strpos( $agents, 'consent, and explicit administrator delivery intents for Cloud-owned index' ),
 	'Site Knowledge change bridge has bounded delivery attempts and a low-frequency reconciliation safety net.'
 );
 
@@ -703,35 +716,38 @@ maca_assert(
 		&& false !== strpos( $settings_page, 'Npcink_Cloud_Site_Knowledge_Change_Bridge::buffer_recent_public_content()' )
 		&& false !== strpos( $settings_page, 'Npcink_Cloud_Site_Knowledge_Change_Bridge::flush_buffer()' )
 		&& false !== strpos( $settings_page, 'Npcink_Cloud_Site_Knowledge_Change_Bridge::sync_schedule()' )
-	&& false !== strpos( $settings_page, 'Npcink_Cloud_Site_Knowledge_Change_Bridge::request_manual_index_operation' )
+		&& false !== strpos( $settings_page, 'Npcink_Cloud_Site_Knowledge_Change_Bridge::request_manual_index_operation' )
 	&& false !== strpos( $settings_page, 'Request public content refresh' )
 	&& false !== strpos( $settings_page, 'Start indexing' )
 	&& false !== strpos( $settings_page, 'Rebuild index' )
 	&& false !== strpos( $settings_page, 'Delete site index' )
 	&& false !== strpos( $settings_page, 'site_knowledge_confirmation' )
 	&& false !== strpos( $settings_page, 'Open Cloud Site Knowledge' )
-		&& false !== strpos( $settings_page, 'This addon sends public change hints and explicit administrator index intents through signed runtime requests.' )
-		&& false !== strpos( $settings_page, 'Toolbox uses Site Knowledge results in best-practice buttons.' )
-		&& false !== strpos( $settings_page, 'Cloud owns indexing execution, freshness policy, collection lifecycle, and diagnostics detail.' )
-		&& false !== strpos( $settings_page, 'Provider settings, collection lifecycle, and deep troubleshooting remain Cloud-owned.' )
+	&& false !== strpos( $settings_page, 'Allow this WordPress site to send bounded public content updates and administrator delivery requests for Cloud-owned Site Knowledge operations.' )
+	&& false !== strpos( $settings_page, 'Cloud index delivery requests' )
+	&& false !== strpos( $settings_page, 'These buttons send local administrator delivery intent and bounded public WordPress content for Cloud-owned Site Knowledge operations.' )
+	&& false !== strpos( $settings_page, 'This addon sends public change hints and explicit administrator delivery intents through signed runtime requests.' )
+	&& false !== strpos( $settings_page, 'Toolbox uses Site Knowledge results in best-practice buttons.' )
+	&& false !== strpos( $settings_page, 'Cloud owns index execution, rebuild/delete handling, freshness policy, collection lifecycle, and diagnostics detail.' )
+	&& false !== strpos( $settings_page, 'Provider settings, collection lifecycle, and deep troubleshooting remain Cloud-owned.' )
 	&& false === strpos( $settings_page, 'site_knowledge_index_policy' )
 	&& false === strpos( $settings_page, 'collection_lifecycle_owner' ),
-	'Settings page exposes bounded Site Knowledge delivery status and administrator index intents without local lifecycle ownership.'
+	'Settings page exposes bounded Site Knowledge delivery status and administrator delivery intents without local lifecycle ownership.'
 );
 
 maca_assert(
-			false !== strpos( $site_knowledge_vector_ops_doc, 'require' )
-			&& false !== strpos( $site_knowledge_vector_ops_doc, '`manage_options`' )
-		&& false !== strpos( $site_knowledge_vector_ops_doc, 'verified Cloud settings' )
-			&& false !== strpos( $site_knowledge_vector_ops_doc, '`Enable Site Knowledge delivery` setting is local delivery consent only' )
-			&& false !== strpos( $site_knowledge_vector_ops_doc, '`site_knowledge_sync.v1` with `sync_mode=refresh`' )
-			&& false !== strpos( $site_knowledge_vector_ops_doc, '`sync_mode=rebuild`' )
-			&& false !== strpos( $site_knowledge_vector_ops_doc, '`sync_mode=delete`' )
-			&& false !== strpos( $site_knowledge_vector_ops_doc, 'Cloud deletes the site index' )
-			&& false !== strpos( $site_knowledge_vector_ops_doc, 'Delete site' )
-			&& false !== strpos( $site_knowledge_vector_ops_doc, 'index remains available as an explicit cleanup path' )
-			&& false !== strpos( $site_knowledge_vector_ops_doc, 'unchanged.' ),
-	'Site Knowledge vector operations doc records permissions and local administrator index intent transport.'
+	false !== strpos( $site_knowledge_vector_ops_doc, 'require' )
+	&& false !== strpos( $site_knowledge_vector_ops_doc, '`manage_options`' )
+	&& false !== strpos( $site_knowledge_vector_ops_doc, 'verified Cloud settings' )
+	&& false !== strpos( $site_knowledge_vector_ops_doc, '`Enable Site Knowledge delivery` setting is local delivery consent only' )
+	&& false !== strpos( $site_knowledge_vector_ops_doc, '`site_knowledge_sync.v1` with `sync_mode=refresh`' )
+	&& false !== strpos( $site_knowledge_vector_ops_doc, '`sync_mode=rebuild`' )
+	&& false !== strpos( $site_knowledge_vector_ops_doc, '`sync_mode=delete`' )
+	&& false !== strpos( $site_knowledge_vector_ops_doc, 'Cloud deletes the site index' )
+	&& false !== strpos( $site_knowledge_vector_ops_doc, 'Delete site' )
+	&& false !== strpos( $site_knowledge_vector_ops_doc, 'index remains available as an explicit cleanup path' )
+	&& false !== strpos( $site_knowledge_vector_ops_doc, 'unchanged.' ),
+	'Site Knowledge vector operations doc records permissions and local administrator delivery intent transport.'
 );
 
 maca_assert(

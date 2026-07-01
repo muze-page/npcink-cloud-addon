@@ -34,7 +34,8 @@ index, freshness, and collection lifecycle owner.
   notes, Site Knowledge bridge status, and monitoring status.
 - Bounded Site Knowledge settings details for connector state, buffered public
   changes, last delivery, local delivery consent, manual public refresh
-  transport, and explicit administrator index intents.
+  transport, and explicit administrator delivery intents for Cloud-owned index
+  operations.
 - Opt-in, verified, metadata-only plugin observability upload.
 - A bounded local observability buffer used only to survive temporary delivery
   failures before upload.
@@ -147,11 +148,12 @@ perform re-index policy decisions, own stale-index detection, become a workflow
 engine, become scheduler truth, or perform WordPress writes.
 
 The settings page may expose a dedicated Site Knowledge tab, show shallow bridge
-health, update local delivery consent, and trigger bounded public refresh, start,
-rebuild, and delete transport. Rebuild and delete require a strong confirmation
-word. The addon must not expose collection management, stale-index policy
-controls, embedding/vector provider settings, or Cloud operations-console
-actions.
+health, update local delivery consent, and send bounded public refresh plus
+explicit administrator delivery intents for Cloud-owned index operations.
+Cloud remains responsible for index execution, rebuild/delete handling,
+freshness policy, and lifecycle. The addon must not expose collection
+management, stale-index policy controls, embedding/vector provider settings, or
+Cloud operations-console actions.
 
 ## Endpoint Rule
 
@@ -165,7 +167,8 @@ Allowed Cloud contract endpoints:
 - `GET /v1/runs/nightly-inspection/recent`
 - `POST /v1/runs/{run_id}/retry`
 - `GET /v1/runtime/artifacts/{artifact_id}/download`
-- `GET /v1/stats/*`
+- `GET /v1/stats/profiles/{profile_id}`
+- `GET /v1/stats/instances/{instance_id}`
 - `GET /v1/entitlements/current`
 - `POST /v1/observability/plugin-events`
 - `POST /v1/agent-feedback/events`

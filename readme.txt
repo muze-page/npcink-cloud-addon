@@ -39,12 +39,26 @@ This plugin connects to the Npcink Cloud service configured by the site administ
 
 The plugin contacts the configured Cloud service only after an administrator enters a Cloud Base URL and Cloud API Key, saves the settings, verifies the connection, or a local Npcink component explicitly uses the Cloud runtime client.
 
-Requests may include the configured site identifier, key identifier, request timestamp, nonce, trace identifier, idempotency key, HMAC signature headers, runtime request payloads supplied by local Npcink components, metadata-only monitoring events when enabled, and read-only requests for health, run status, run result, usage statistics, entitlement summaries, and observability summaries. The stored Cloud API Key secret is used server-side for request signing and is not printed in wp-admin.
+Requests may include the configured site identifier, key identifier, request timestamp, nonce, trace identifier, idempotency key, HMAC signature headers, runtime request payloads supplied by local Npcink components, metadata-only monitoring events when enabled, and read-only requests for health, run status, run result, usage statistics, entitlement summaries, observability summaries, and Agent feedback quality summaries. The stored Cloud API Key secret is used server-side for request signing and is not printed in wp-admin.
 
 For host-supplied media derivative runtime jobs, requests may also include a
 short TTL source artifact descriptor and derivative request parameters from the
 local read-only ability output. Cloud credentials and signed headers are added
 by the addon transport and are not copied into the ability payload.
+
+For Site Knowledge transport, requests may include public post/page identifiers,
+public content manifest metadata, approved comment change hints, local delivery
+consent state, and explicit administrator delivery intents for Cloud-owned index
+operations. Drafts, private posts, password-protected posts, credentials, and
+raw database fields must not be sent by this transport.
+
+For WordPress AI connector scene runtime, image context evidence, Runtime Runs
+detail, artifact preview download, and Agent feedback event transport, requests
+may include the bounded scene request, media URL or artifact descriptor, run id,
+artifact id, or local operator feedback metadata needed for that specific Cloud
+runtime/read endpoint. The addon does not create Core proposals, approve
+changes, execute WordPress writes, own retry queues, or own Site Knowledge index
+lifecycle.
 
 The configured Cloud service is responsible for its own privacy policy, terms of service, data retention, and account/key issuance. Because the Cloud Base URL is administrator-configured, site administrators should only connect this plugin to a Cloud service whose terms of service, privacy policy, data retention policy, and account/key issuance process they have reviewed.
 

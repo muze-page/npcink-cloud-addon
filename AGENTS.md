@@ -39,9 +39,9 @@ This repository is the standalone `npcink-cloud-addon` WordPress plugin.
   `git diff --cached --name-only`; after committing, verify
   `git show --name-status --stat HEAD`.
 - For multi-repo milestones, run the central matrix from
-  `/Users/muze/gitee/npcink-toolbox` instead of copying the script into this
-  addon: `composer quality:matrix` for status and `composer quality:matrix:run`
-  before cross-repo closeout.
+  `/Users/muze/gitee/npcink-workflow-toolbox` instead of copying the script into
+  this addon: `composer quality:matrix` for status and
+  `composer quality:matrix:run` before cross-repo closeout.
 
 ## Current Cloud Runtime Contract
 

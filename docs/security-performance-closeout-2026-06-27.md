@@ -79,7 +79,7 @@ removed after the check.
 Cross-repo matrix:
 
 ```sh
-cd /Users/muze/gitee/npcink-toolbox
+cd /Users/muze/gitee/npcink-workflow-toolbox
 composer quality:matrix
 composer quality:matrix:run
 ```
@@ -191,7 +191,7 @@ composer run plugin-check:release
 ```
 
 For cross-repo milestones, run the central matrix from
-`/Users/muze/gitee/npcink-toolbox`:
+`/Users/muze/gitee/npcink-workflow-toolbox`:
 
 ```sh
 composer quality:matrix

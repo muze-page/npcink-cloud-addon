@@ -308,6 +308,26 @@ maca_assert(
 		'Copy Log ID',
 		'Copy Log ID',
 		'ai'
+	)
+	&& 'Token 范围' === Npcink_Cloud_AI_Plugin_Localization::filter_gettext(
+		'Token Range',
+		'Token Range',
+		'ai'
+	)
+	&& '少于 500 Token' === Npcink_Cloud_AI_Plugin_Localization::filter_gettext(
+		'< 500 tokens',
+		'< 500 tokens',
+		'ai'
+	)
+	&& '无 Token' === Npcink_Cloud_AI_Plugin_Localization::filter_gettext(
+		'No Tokens',
+		'No Tokens',
+		'ai'
+	)
+	&& '无法加载筛选元数据。' === Npcink_Cloud_AI_Plugin_Localization::filter_gettext(
+		'Unable to load filter metadata.',
+		'Unable to load filter metadata.',
+		'ai'
 	),
 	'AI plugin localization translates request log page labels.'
 );
@@ -331,6 +351,26 @@ maca_assert(
 	&& '提供方 / 模型' === Npcink_Cloud_AI_Plugin_Localization::filter_gettext(
 		'Provider / Model',
 		'Provider / Model',
+		'ai'
+	)
+	&& '待处理请求' === Npcink_Cloud_AI_Plugin_Localization::filter_gettext(
+		'Pending requests',
+		'Pending requests',
+		'ai'
+	)
+	&& '允许 %1$s 使用 %2$s' === Npcink_Cloud_AI_Plugin_Localization::filter_gettext(
+		'Allow %1$s to use %2$s',
+		'Allow %1$s to use %2$s',
+		'ai'
+	)
+	&& '加载审批数据失败。' === Npcink_Cloud_AI_Plugin_Localization::filter_gettext(
+		'Failed to load approval data.',
+		'Failed to load approval data.',
+		'ai'
+	)
+	&& '查看请求' === Npcink_Cloud_AI_Plugin_Localization::filter_gettext(
+		'Review requests',
+		'Review requests',
 		'ai'
 	),
 	'AI plugin localization translates connector approval and status labels.'
@@ -462,6 +502,8 @@ maca_assert(
 	&& '最近 24 小时' === ( $locale_data['Last 24 Hours'][0] ?? '' )
 	&& '请求详情' === ( $locale_data['Request Details'][0] ?? '' )
 	&& 'AI 状态' === ( $locale_data['AI Status'][0] ?? '' )
+	&& 'Token 范围' === ( $locale_data['Token Range'][0] ?? '' )
+	&& '待处理请求' === ( $locale_data['Pending requests'][0] ?? '' )
 	&& '所有提供方' === ( $locale_data['All Providers'][0] ?? '' )
 	&& '调用能力' === ( $locale_data['Invoke Ability'][0] ?? '' )
 	&& '无效的 JSON 输入' === ( $locale_data['Invalid JSON input'][0] ?? '' ),

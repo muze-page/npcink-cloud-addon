@@ -426,14 +426,39 @@ maca_assert(
 		'Request Details',
 		'ai'
 	)
+	&& '输入预览' === Npcink_Cloud_AI_Plugin_Localization::filter_gettext(
+		'Input Preview',
+		'Input Preview',
+		'ai'
+	)
+	&& '输出预览' === Npcink_Cloud_AI_Plugin_Localization::filter_gettext(
+		'Output Preview',
+		'Output Preview',
+		'ai'
+	)
 	&& 'Token 用量' === Npcink_Cloud_AI_Plugin_Localization::filter_gettext(
 		'Token Usage',
 		'Token Usage',
 		'ai'
 	)
+	&& '输入 Token' === Npcink_Cloud_AI_Plugin_Localization::filter_gettext(
+		'Input Tokens',
+		'Input Tokens',
+		'ai'
+	)
+	&& '输出 Token' === Npcink_Cloud_AI_Plugin_Localization::filter_gettext(
+		'Output Tokens',
+		'Output Tokens',
+		'ai'
+	)
 	&& '复制日志 ID' === Npcink_Cloud_AI_Plugin_Localization::filter_gettext(
 		'Copy Log ID',
 		'Copy Log ID',
+		'ai'
+	)
+	&& '日志 ID 已复制到剪贴板。' === Npcink_Cloud_AI_Plugin_Localization::filter_gettext(
+		'Log ID copied to clipboard.',
+		'Log ID copied to clipboard.',
 		'ai'
 	)
 	&& 'Token 范围' === Npcink_Cloud_AI_Plugin_Localization::filter_gettext(
@@ -454,6 +479,21 @@ maca_assert(
 	&& '无法加载筛选元数据。' === Npcink_Cloud_AI_Plugin_Localization::filter_gettext(
 		'Unable to load filter metadata.',
 		'Unable to load filter metadata.',
+		'ai'
+	)
+	&& '来源文件' === Npcink_Cloud_AI_Plugin_Localization::filter_gettext(
+		'Source File',
+		'Source File',
+		'ai'
+	)
+	&& '生成的图片输出' === Npcink_Cloud_AI_Plugin_Localization::filter_gettext(
+		'Generated image output',
+		'Generated image output',
+		'ai'
+	)
+	&& '未找到日志条目。' === Npcink_Cloud_AI_Plugin_Localization::filter_gettext(
+		'Log entry not found.',
+		'Log entry not found.',
 		'ai'
 	),
 	'AI plugin localization translates request log page labels.'
@@ -634,6 +674,8 @@ maca_assert(
 	&& '请求详情' === ( $locale_data['Request Details'][0] ?? '' )
 	&& 'AI 状态' === ( $locale_data['AI Status'][0] ?? '' )
 	&& 'Token 范围' === ( $locale_data['Token Range'][0] ?? '' )
+	&& '输入预览' === ( $locale_data['Input Preview'][0] ?? '' )
+	&& '日志 ID 已复制到剪贴板。' === ( $locale_data['Log ID copied to clipboard.'][0] ?? '' )
 	&& '待处理请求' === ( $locale_data['Pending requests'][0] ?? '' )
 	&& '所有提供方' === ( $locale_data['All Providers'][0] ?? '' )
 	&& '调用能力' === ( $locale_data['Invoke Ability'][0] ?? '' )

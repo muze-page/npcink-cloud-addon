@@ -87,6 +87,35 @@ maca_assert(
 );
 
 maca_assert(
+	'配置 AI 提供方' === Npcink_Cloud_AI_Plugin_Localization::filter_gettext(
+		'Configure an AI provider',
+		'Configure an AI provider',
+		'ai'
+	)
+	&& '全局启用 AI 功能' === Npcink_Cloud_AI_Plugin_Localization::filter_gettext(
+		'Globally enable AI Features',
+		'Globally enable AI Features',
+		'ai'
+	)
+	&& '文本生成' === Npcink_Cloud_AI_Plugin_Localization::filter_gettext(
+		'Text Generation',
+		'Text Generation',
+		'ai'
+	)
+	&& '嵌入生成' === Npcink_Cloud_AI_Plugin_Localization::filter_gettext(
+		'Embedding Generation',
+		'Embedding Generation',
+		'ai'
+	)
+	&& '聊天历史' === Npcink_Cloud_AI_Plugin_Localization::filter_gettext(
+		'Chat History',
+		'Chat History',
+		'ai'
+	),
+	'AI plugin localization translates dashboard status and capability labels.'
+);
+
+maca_assert(
 	'生成摘要' === Npcink_Cloud_AI_Plugin_Localization::filter_gettext(
 		'Generate Summary',
 		'Generate Summary',
@@ -162,6 +191,45 @@ maca_assert(
 		'ai'
 	),
 	'AI plugin localization translates image generation editor and media controls.'
+);
+
+maca_assert(
+	'分析情绪和毒性' === Npcink_Cloud_AI_Plugin_Localization::filter_gettext(
+		'Analyze Sentiment and Toxicity',
+		'Analyze Sentiment and Toxicity',
+		'ai'
+	)
+	&& '正在分析…' === Npcink_Cloud_AI_Plugin_Localization::filter_gettext(
+		'Analyzing…',
+		'Analyzing…',
+		'ai'
+	)
+	&& '情绪' === Npcink_Cloud_AI_Plugin_Localization::filter_gettext(
+		'Sentiment',
+		'Sentiment',
+		'ai'
+	)
+	&& '毒性' === Npcink_Cloud_AI_Plugin_Localization::filter_gettext(
+		'Toxicity',
+		'Toxicity',
+		'ai'
+	)
+	&& '高毒性（>=70%）' === Npcink_Cloud_AI_Plugin_Localization::filter_gettext(
+		'High Toxicity (>=70%)',
+		'High Toxicity (>=70%)',
+		'ai'
+	)
+	&& '%d 条评论已加入分析队列。' === Npcink_Cloud_AI_Plugin_Localization::filter_gettext(
+		'%d comments queued for analysis.',
+		'%d comments queued for analysis.',
+		'ai'
+	)
+	&& '设置 → 连接器' === Npcink_Cloud_AI_Plugin_Localization::filter_gettext(
+		'Settings → Connectors',
+		'Settings → Connectors',
+		'ai'
+	),
+	'AI plugin localization translates comment moderation labels and statuses.'
 );
 
 maca_assert(
@@ -552,7 +620,9 @@ maca_assert(
 	&& '生成特色图片' === ( $locale_data['Generate featured image'][0] ?? '' )
 	&& '画笔大小' === ( $locale_data['Brush size'][0] ?? '' )
 	&& '能力浏览器' === ( $locale_data['Abilities Explorer'][0] ?? '' )
+	&& '配置 AI 提供方' === ( $locale_data['Configure an AI provider'][0] ?? '' )
 	&& '生成摘要' === ( $locale_data['Generate Summary'][0] ?? '' )
+	&& '分析情绪和毒性' === ( $locale_data['Analyze Sentiment and Toxicity'][0] ?? '' )
 	&& 'SEO 描述' === ( $locale_data['Meta Description'][0] ?? '' )
 	&& '建议%s' === ( $locale_data['Suggest %s'][0] ?? '' )
 	&& '请添加更多内容以启用 AI 建议（约 150 个词）。' === ( $locale_data['Add more content to enable AI suggestions (approximately 150 words).'][0] ?? '' )

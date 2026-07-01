@@ -106,6 +106,65 @@ maca_assert(
 );
 
 maca_assert(
+	'生成特色图片' === Npcink_Cloud_AI_Plugin_Localization::filter_gettext(
+		'Generate featured image',
+		'Generate featured image',
+		'ai'
+	)
+	&& 'AI 生成的特色图片' === Npcink_Cloud_AI_Plugin_Localization::filter_gettext(
+		'AI Generated Featured Image',
+		'AI Generated Featured Image',
+		'ai'
+	)
+	&& '正在导入图片…' === Npcink_Cloud_AI_Plugin_Localization::filter_gettext(
+		'Importing image…',
+		'Importing image…',
+		'ai'
+	)
+	&& '正在上传图片到媒体库…' === Npcink_Cloud_AI_Plugin_Localization::filter_gettext(
+		'Uploading image to Media Library…',
+		'Uploading image to Media Library…',
+		'ai'
+	)
+	&& '图片已成功添加到媒体库。' === Npcink_Cloud_AI_Plugin_Localization::filter_gettext(
+		'Image successfully added to the Media Library.',
+		'Image successfully added to the Media Library.',
+		'ai'
+	)
+	&& '在媒体库中查看' === Npcink_Cloud_AI_Plugin_Localization::filter_gettext(
+		'View in Media Library',
+		'View in Media Library',
+		'ai'
+	)
+	&& '扩展背景' === Npcink_Cloud_AI_Plugin_Localization::filter_gettext(
+		'Expand Background',
+		'Expand Background',
+		'ai'
+	)
+	&& '画笔大小' === Npcink_Cloud_AI_Plugin_Localization::filter_gettext(
+		'Brush size',
+		'Brush size',
+		'ai'
+	)
+	&& '替换项目' === Npcink_Cloud_AI_Plugin_Localization::filter_gettext(
+		'Replace Item',
+		'Replace Item',
+		'ai'
+	)
+	&& '撤销' === Npcink_Cloud_AI_Plugin_Localization::filter_gettext(
+		'Undo',
+		'Undo',
+		'ai'
+	)
+	&& '版本 %d' === Npcink_Cloud_AI_Plugin_Localization::filter_gettext(
+		'Version %d',
+		'Version %d',
+		'ai'
+	),
+	'AI plugin localization translates image generation editor and media controls.'
+);
+
+maca_assert(
 	'分类策略' === Npcink_Cloud_AI_Plugin_Localization::filter_gettext(
 		'Taxonomy Strategy',
 		'Taxonomy Strategy',
@@ -490,6 +549,8 @@ maca_assert(
 	&& in_array( 'wp-i18n', $enqueued_script['deps'] ?? array(), true )
 	&& 'NpcinkCloudAiPluginLocalization' === ( $localized_script['object_name'] ?? '' )
 	&& '生成图片' === ( $locale_data['Generate Image'][0] ?? '' )
+	&& '生成特色图片' === ( $locale_data['Generate featured image'][0] ?? '' )
+	&& '画笔大小' === ( $locale_data['Brush size'][0] ?? '' )
 	&& '能力浏览器' === ( $locale_data['Abilities Explorer'][0] ?? '' )
 	&& '生成摘要' === ( $locale_data['Generate Summary'][0] ?? '' )
 	&& 'SEO 描述' === ( $locale_data['Meta Description'][0] ?? '' )

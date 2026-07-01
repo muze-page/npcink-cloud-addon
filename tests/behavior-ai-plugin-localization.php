@@ -293,8 +293,47 @@ maca_assert(
 		'Purge All Logs',
 		'Purge All Logs',
 		'ai'
+	)
+	&& '请求详情' === Npcink_Cloud_AI_Plugin_Localization::filter_gettext(
+		'Request Details',
+		'Request Details',
+		'ai'
+	)
+	&& 'Token 用量' === Npcink_Cloud_AI_Plugin_Localization::filter_gettext(
+		'Token Usage',
+		'Token Usage',
+		'ai'
+	)
+	&& '复制日志 ID' === Npcink_Cloud_AI_Plugin_Localization::filter_gettext(
+		'Copy Log ID',
+		'Copy Log ID',
+		'ai'
 	),
 	'AI plugin localization translates request log page labels.'
+);
+
+maca_assert(
+	'AI 状态' === Npcink_Cloud_AI_Plugin_Localization::filter_gettext(
+		'AI Status',
+		'AI Status',
+		'ai'
+	)
+	&& '审批矩阵' === Npcink_Cloud_AI_Plugin_Localization::filter_gettext(
+		'Approval matrix',
+		'Approval matrix',
+		'ai'
+	)
+	&& '按 AI 提供方筛选。' === Npcink_Cloud_AI_Plugin_Localization::filter_gettext(
+		'Filter by AI provider.',
+		'Filter by AI provider.',
+		'ai'
+	)
+	&& '提供方 / 模型' === Npcink_Cloud_AI_Plugin_Localization::filter_gettext(
+		'Provider / Model',
+		'Provider / Model',
+		'ai'
+	),
+	'AI plugin localization translates connector approval and status labels.'
 );
 
 maca_assert(
@@ -421,6 +460,8 @@ maca_assert(
 	&& '替代文本' === ( $locale_data['Alt text'][0] ?? '' )
 	&& '应用编辑更新' === ( $locale_data['Apply Editorial Updates'][0] ?? '' )
 	&& '最近 24 小时' === ( $locale_data['Last 24 Hours'][0] ?? '' )
+	&& '请求详情' === ( $locale_data['Request Details'][0] ?? '' )
+	&& 'AI 状态' === ( $locale_data['AI Status'][0] ?? '' )
 	&& '所有提供方' === ( $locale_data['All Providers'][0] ?? '' )
 	&& '调用能力' === ( $locale_data['Invoke Ability'][0] ?? '' )
 	&& '无效的 JSON 输入' === ( $locale_data['Invalid JSON input'][0] ?? '' ),

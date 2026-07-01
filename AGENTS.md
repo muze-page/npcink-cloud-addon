@@ -10,9 +10,9 @@ This repository is the standalone `npcink-cloud-addon` WordPress plugin.
 - Bounded observability buffering and WP-Cron flushing are allowed only for
   opt-in, verified, metadata-only plugin monitoring uploads.
 - Bounded Site Knowledge change buffering, WP-Cron flushing, local delivery
-  consent, and explicit administrator index intents are allowed only for public
-  content delivery to Cloud Site Knowledge; Cloud owns index execution,
-  lifecycle, and freshness policy.
+  consent, and explicit administrator delivery intents for Cloud-owned index
+  operations are allowed only for public content delivery to Cloud Site
+  Knowledge; Cloud owns index execution, lifecycle, and freshness policy.
 - Do not reintroduce `/v1/runtime/workflows/runs`.
 - Do not expose split credential fields in the UI.
 - Do not print or log the stored `secret`.
@@ -39,9 +39,9 @@ This repository is the standalone `npcink-cloud-addon` WordPress plugin.
   `git diff --cached --name-only`; after committing, verify
   `git show --name-status --stat HEAD`.
 - For multi-repo milestones, run the central matrix from
-  `/Users/muze/gitee/npcink-toolbox` instead of copying the script into this
-  addon: `composer quality:matrix` for status and `composer quality:matrix:run`
-  before cross-repo closeout.
+  `/Users/muze/gitee/npcink-workflow-toolbox` instead of copying the script into
+  this addon: `composer quality:matrix` for status and
+  `composer quality:matrix:run` before cross-repo closeout.
 
 ## Current Cloud Runtime Contract
 
@@ -54,7 +54,8 @@ Allowed runtime/read endpoints:
 - `GET /v1/runs/nightly-inspection/recent`
 - `POST /v1/runs/{run_id}/retry` for bounded runtime retry only
 - `GET /v1/runtime/artifacts/{artifact_id}/download` for bounded preview downloads
-- `GET /v1/stats/*`
+- `GET /v1/stats/profiles/{profile_id}`
+- `GET /v1/stats/instances/{instance_id}`
 - `GET /v1/entitlements/current`
 - `POST /v1/observability/plugin-events`
 - `GET /v1/observability/plugin-summary`

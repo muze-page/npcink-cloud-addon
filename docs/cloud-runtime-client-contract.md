@@ -98,7 +98,9 @@ fabricating a check.
 The Cloud Addon Runtime Runs tab may use the existing run endpoints for
 Nightly Inspection detail: recent runs, one-run status, one-run result, and a
 nonce-protected retry request for a known run. It is a low-frequency
-Cloud-owned recovery/detail surface.
+Cloud-owned recovery/detail surface. It may also show the read-only
+`pro_cloud_runtime` projection for run quota, batch limit, result retention,
+and quota-exhausted state.
 
 The tab must not submit scheduled reviews, rebuild Toolbox local snapshots,
 create Core proposals, approve changes, create a local retry queue, or write
@@ -114,6 +116,15 @@ When Cloud includes `entitlement.pro_cloud_runtime`, the addon summary preserves
 that read-only detail for local plugins that need Pro Cloud Runtime status, such
 as Nightly Site Inspection run quota, remaining runs, batch limits, result
 retention, payload modes, and quota exhaustion.
+
+Runtime projection field types:
+
+- `max_nightly_inspection_runs_per_period`, `used_nightly_inspection_runs`, and
+  `remaining_nightly_inspection_runs` are numeric quota fields.
+- `max_batch_items` and `result_retention_days` are optional numeric fields; if
+  Cloud omits them, the addon must render them as unavailable rather than `0`.
+- `quota_exhausted` is a boolean projection. False-like strings such as
+  `"false"` must not render as exhausted.
 
 This projection must not be treated as local billing truth, a local quota
 engine, scheduler truth, queue state, retry ownership, or WordPress write

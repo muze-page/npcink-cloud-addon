@@ -1240,7 +1240,7 @@ msgid "Enable Site Knowledge delivery"
 msgstr ""
 
 #: includes/class-cloud-settings-page.php:1692
-msgid "Allow this WordPress site to send bounded public content updates and administrator index requests to Cloud Site Knowledge. Cloud performs indexing and stores the site index."
+msgid "Allow this WordPress site to send bounded public content updates and administrator delivery requests for Cloud-owned Site Knowledge operations. Cloud performs indexing and stores the site index."
 msgstr ""
 
 #: includes/class-cloud-settings-page.php:1694
@@ -1260,11 +1260,11 @@ msgid "Open Cloud Site Knowledge"
 msgstr ""
 
 #: includes/class-cloud-settings-page.php:1706
-msgid "Content index actions"
+msgid "Cloud index delivery requests"
 msgstr ""
 
 #: includes/class-cloud-settings-page.php:1707
-msgid "These buttons send local administrator intent and bounded public WordPress content to Cloud Site Knowledge. Cloud performs indexing, rebuild, deletion, and diagnostics; WordPress content is not changed."
+msgid "These buttons send local administrator delivery intent and bounded public WordPress content for Cloud-owned Site Knowledge operations. Cloud performs indexing, rebuild, deletion, and diagnostics; WordPress content is not changed."
 msgstr ""
 
 #: includes/class-cloud-settings-page.php:1713
@@ -1350,7 +1350,7 @@ msgid "Boundary"
 msgstr ""
 
 #: includes/class-cloud-settings-page.php:1773
-msgid "This addon sends public change hints and explicit administrator index intents through signed runtime requests. Cloud owns indexing execution, freshness policy, collection lifecycle, and diagnostics detail."
+msgid "This addon sends public change hints and explicit administrator delivery intents through signed runtime requests. Cloud owns index execution, rebuild/delete handling, freshness policy, collection lifecycle, and diagnostics detail."
 msgstr ""
 
 #: includes/class-cloud-settings-page.php:1777

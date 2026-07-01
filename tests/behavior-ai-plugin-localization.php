@@ -87,6 +87,50 @@ maca_assert(
 );
 
 maca_assert(
+	'配置 AI 提供方' === Npcink_Cloud_AI_Plugin_Localization::filter_gettext(
+		'Configure an AI provider',
+		'Configure an AI provider',
+		'ai'
+	)
+	&& '全局启用 AI 功能' === Npcink_Cloud_AI_Plugin_Localization::filter_gettext(
+		'Globally enable AI Features',
+		'Globally enable AI Features',
+		'ai'
+	)
+	&& '文本生成' === Npcink_Cloud_AI_Plugin_Localization::filter_gettext(
+		'Text Generation',
+		'Text Generation',
+		'ai'
+	)
+	&& '嵌入生成' === Npcink_Cloud_AI_Plugin_Localization::filter_gettext(
+		'Embedding Generation',
+		'Embedding Generation',
+		'ai'
+	)
+	&& '聊天历史' === Npcink_Cloud_AI_Plugin_Localization::filter_gettext(
+		'Chat History',
+		'Chat History',
+		'ai'
+	)
+	&& '模型' === Npcink_Cloud_AI_Plugin_Localization::filter_gettext(
+		'Model',
+		'Model',
+		'ai'
+	)
+	&& '%s 已启用。' === Npcink_Cloud_AI_Plugin_Localization::filter_gettext(
+		'%s enabled.',
+		'%s enabled.',
+		'ai'
+	)
+	&& '重置为默认值' === Npcink_Cloud_AI_Plugin_Localization::filter_gettext(
+		'Reset to default',
+		'Reset to default',
+		'ai'
+	),
+	'AI plugin localization translates dashboard status and capability labels.'
+);
+
+maca_assert(
 	'生成摘要' === Npcink_Cloud_AI_Plugin_Localization::filter_gettext(
 		'Generate Summary',
 		'Generate Summary',
@@ -106,6 +150,104 @@ maca_assert(
 );
 
 maca_assert(
+	'生成特色图片' === Npcink_Cloud_AI_Plugin_Localization::filter_gettext(
+		'Generate featured image',
+		'Generate featured image',
+		'ai'
+	)
+	&& 'AI 生成的特色图片' === Npcink_Cloud_AI_Plugin_Localization::filter_gettext(
+		'AI Generated Featured Image',
+		'AI Generated Featured Image',
+		'ai'
+	)
+	&& '正在导入图片…' === Npcink_Cloud_AI_Plugin_Localization::filter_gettext(
+		'Importing image…',
+		'Importing image…',
+		'ai'
+	)
+	&& '正在上传图片到媒体库…' === Npcink_Cloud_AI_Plugin_Localization::filter_gettext(
+		'Uploading image to Media Library…',
+		'Uploading image to Media Library…',
+		'ai'
+	)
+	&& '图片已成功添加到媒体库。' === Npcink_Cloud_AI_Plugin_Localization::filter_gettext(
+		'Image successfully added to the Media Library.',
+		'Image successfully added to the Media Library.',
+		'ai'
+	)
+	&& '在媒体库中查看' === Npcink_Cloud_AI_Plugin_Localization::filter_gettext(
+		'View in Media Library',
+		'View in Media Library',
+		'ai'
+	)
+	&& '扩展背景' === Npcink_Cloud_AI_Plugin_Localization::filter_gettext(
+		'Expand Background',
+		'Expand Background',
+		'ai'
+	)
+	&& '画笔大小' === Npcink_Cloud_AI_Plugin_Localization::filter_gettext(
+		'Brush size',
+		'Brush size',
+		'ai'
+	)
+	&& '替换项目' === Npcink_Cloud_AI_Plugin_Localization::filter_gettext(
+		'Replace Item',
+		'Replace Item',
+		'ai'
+	)
+	&& '撤销' === Npcink_Cloud_AI_Plugin_Localization::filter_gettext(
+		'Undo',
+		'Undo',
+		'ai'
+	)
+	&& '版本 %d' === Npcink_Cloud_AI_Plugin_Localization::filter_gettext(
+		'Version %d',
+		'Version %d',
+		'ai'
+	),
+	'AI plugin localization translates image generation editor and media controls.'
+);
+
+maca_assert(
+	'分析情绪和毒性' === Npcink_Cloud_AI_Plugin_Localization::filter_gettext(
+		'Analyze Sentiment and Toxicity',
+		'Analyze Sentiment and Toxicity',
+		'ai'
+	)
+	&& '正在分析…' === Npcink_Cloud_AI_Plugin_Localization::filter_gettext(
+		'Analyzing…',
+		'Analyzing…',
+		'ai'
+	)
+	&& '情绪' === Npcink_Cloud_AI_Plugin_Localization::filter_gettext(
+		'Sentiment',
+		'Sentiment',
+		'ai'
+	)
+	&& '毒性' === Npcink_Cloud_AI_Plugin_Localization::filter_gettext(
+		'Toxicity',
+		'Toxicity',
+		'ai'
+	)
+	&& '高毒性（>=70%）' === Npcink_Cloud_AI_Plugin_Localization::filter_gettext(
+		'High Toxicity (>=70%)',
+		'High Toxicity (>=70%)',
+		'ai'
+	)
+	&& '%d 条评论已加入分析队列。' === Npcink_Cloud_AI_Plugin_Localization::filter_gettext(
+		'%d comments queued for analysis.',
+		'%d comments queued for analysis.',
+		'ai'
+	)
+	&& '设置 → 连接器' === Npcink_Cloud_AI_Plugin_Localization::filter_gettext(
+		'Settings → Connectors',
+		'Settings → Connectors',
+		'ai'
+	),
+	'AI plugin localization translates comment moderation labels and statuses.'
+);
+
+maca_assert(
 	'分类策略' === Npcink_Cloud_AI_Plugin_Localization::filter_gettext(
 		'Taxonomy Strategy',
 		'Taxonomy Strategy',
@@ -114,6 +256,16 @@ maca_assert(
 	&& '最大建议数量' === Npcink_Cloud_AI_Plugin_Localization::filter_gettext(
 		'Maximum Suggestions',
 		'Maximum Suggestions',
+		'ai'
+	)
+	&& '分类策略' === Npcink_Cloud_AI_Plugin_Localization::filter_gettext(
+		'Taxonomy strategy',
+		'Taxonomy strategy',
+		'ai'
+	)
+	&& '仅建议现有术语' === Npcink_Cloud_AI_Plugin_Localization::filter_gettext(
+		'Only suggest existing terms',
+		'Only suggest existing terms',
 		'ai'
 	)
 	&& '建议%s' === Npcink_Cloud_AI_Plugin_Localization::filter_gettext(
@@ -236,6 +388,11 @@ maca_assert(
 		'Alt text',
 		'ai'
 	)
+	&& '替代文本' === Npcink_Cloud_AI_Plugin_Localization::filter_gettext(
+		'Alt Text',
+		'Alt Text',
+		'ai'
+	)
 	&& '正在生成替代文本…' === Npcink_Cloud_AI_Plugin_Localization::filter_gettext(
 		'Generating alt text…',
 		'Generating alt text…',
@@ -293,8 +450,152 @@ maca_assert(
 		'Purge All Logs',
 		'Purge All Logs',
 		'ai'
+	)
+	&& '请求详情' === Npcink_Cloud_AI_Plugin_Localization::filter_gettext(
+		'Request Details',
+		'Request Details',
+		'ai'
+	)
+	&& '输入预览' === Npcink_Cloud_AI_Plugin_Localization::filter_gettext(
+		'Input Preview',
+		'Input Preview',
+		'ai'
+	)
+	&& '输出预览' === Npcink_Cloud_AI_Plugin_Localization::filter_gettext(
+		'Output Preview',
+		'Output Preview',
+		'ai'
+	)
+	&& 'Token 用量' === Npcink_Cloud_AI_Plugin_Localization::filter_gettext(
+		'Token Usage',
+		'Token Usage',
+		'ai'
+	)
+	&& '输入 Token' === Npcink_Cloud_AI_Plugin_Localization::filter_gettext(
+		'Input Tokens',
+		'Input Tokens',
+		'ai'
+	)
+	&& '输出 Token' === Npcink_Cloud_AI_Plugin_Localization::filter_gettext(
+		'Output Tokens',
+		'Output Tokens',
+		'ai'
+	)
+	&& '复制日志 ID' === Npcink_Cloud_AI_Plugin_Localization::filter_gettext(
+		'Copy Log ID',
+		'Copy Log ID',
+		'ai'
+	)
+	&& '日志 ID 已复制到剪贴板。' === Npcink_Cloud_AI_Plugin_Localization::filter_gettext(
+		'Log ID copied to clipboard.',
+		'Log ID copied to clipboard.',
+		'ai'
+	)
+	&& 'Token 范围' === Npcink_Cloud_AI_Plugin_Localization::filter_gettext(
+		'Token Range',
+		'Token Range',
+		'ai'
+	)
+	&& '少于 500 Token' === Npcink_Cloud_AI_Plugin_Localization::filter_gettext(
+		'< 500 tokens',
+		'< 500 tokens',
+		'ai'
+	)
+	&& '无 Token' === Npcink_Cloud_AI_Plugin_Localization::filter_gettext(
+		'No Tokens',
+		'No Tokens',
+		'ai'
+	)
+	&& '无法加载筛选元数据。' === Npcink_Cloud_AI_Plugin_Localization::filter_gettext(
+		'Unable to load filter metadata.',
+		'Unable to load filter metadata.',
+		'ai'
+	)
+	&& '来源文件' === Npcink_Cloud_AI_Plugin_Localization::filter_gettext(
+		'Source File',
+		'Source File',
+		'ai'
+	)
+	&& 'Base64 图片导入' === Npcink_Cloud_AI_Plugin_Localization::filter_gettext(
+		'Base64 Image Import',
+		'Base64 Image Import',
+		'ai'
+	)
+	&& '图片提示词生成' === Npcink_Cloud_AI_Plugin_Localization::filter_gettext(
+		'Image Prompt Generation',
+		'Image Prompt Generation',
+		'ai'
+	)
+	&& '生成的图片输出' === Npcink_Cloud_AI_Plugin_Localization::filter_gettext(
+		'Generated image output',
+		'Generated image output',
+		'ai'
+	)
+	&& '未找到日志条目。' === Npcink_Cloud_AI_Plugin_Localization::filter_gettext(
+		'Log entry not found.',
+		'Log entry not found.',
+		'ai'
 	),
 	'AI plugin localization translates request log page labels.'
+);
+
+maca_assert(
+	'AI 状态' === Npcink_Cloud_AI_Plugin_Localization::filter_gettext(
+		'AI Status',
+		'AI Status',
+		'ai'
+	)
+	&& '审批矩阵' === Npcink_Cloud_AI_Plugin_Localization::filter_gettext(
+		'Approval matrix',
+		'Approval matrix',
+		'ai'
+	)
+	&& '按 AI 提供方筛选。' === Npcink_Cloud_AI_Plugin_Localization::filter_gettext(
+		'Filter by AI provider.',
+		'Filter by AI provider.',
+		'ai'
+	)
+	&& '提供方 / 模型' === Npcink_Cloud_AI_Plugin_Localization::filter_gettext(
+		'Provider / Model',
+		'Provider / Model',
+		'ai'
+	)
+	&& '待处理请求' === Npcink_Cloud_AI_Plugin_Localization::filter_gettext(
+		'Pending requests',
+		'Pending requests',
+		'ai'
+	)
+	&& '允许 %1$s 使用 %2$s' === Npcink_Cloud_AI_Plugin_Localization::filter_gettext(
+		'Allow %1$s to use %2$s',
+		'Allow %1$s to use %2$s',
+		'ai'
+	)
+	&& '当前没有已注册的 AI 连接器。请先配置连接器。' === Npcink_Cloud_AI_Plugin_Localization::filter_gettext(
+		'No AI connectors are currently registered. Configure a connector first.',
+		'No AI connectors are currently registered. Configure a connector first.',
+		'ai'
+	)
+	&& '%d 个插件或主题正在请求访问 AI 连接器。' === Npcink_Cloud_AI_Plugin_Localization::filter_gettext(
+		'%d plugins or themes are requesting access to AI connectors.',
+		'%d plugins or themes are requesting access to AI connectors.',
+		'ai'
+	)
+	&& '“%1$s” AI 连接器尚未获准供“%2$s”使用。' === Npcink_Cloud_AI_Plugin_Localization::filter_gettext(
+		'The "%1$s" AI connector has not been approved for use by "%2$s".',
+		'The "%1$s" AI connector has not been approved for use by "%2$s".',
+		'ai'
+	)
+	&& '加载审批数据失败。' === Npcink_Cloud_AI_Plugin_Localization::filter_gettext(
+		'Failed to load approval data.',
+		'Failed to load approval data.',
+		'ai'
+	)
+	&& '查看请求' === Npcink_Cloud_AI_Plugin_Localization::filter_gettext(
+		'Review requests',
+		'Review requests',
+		'ai'
+	),
+	'AI plugin localization translates connector approval and status labels.'
 );
 
 maca_assert(
@@ -411,8 +712,12 @@ maca_assert(
 	&& in_array( 'wp-i18n', $enqueued_script['deps'] ?? array(), true )
 	&& 'NpcinkCloudAiPluginLocalization' === ( $localized_script['object_name'] ?? '' )
 	&& '生成图片' === ( $locale_data['Generate Image'][0] ?? '' )
+	&& '生成特色图片' === ( $locale_data['Generate featured image'][0] ?? '' )
+	&& '画笔大小' === ( $locale_data['Brush size'][0] ?? '' )
 	&& '能力浏览器' === ( $locale_data['Abilities Explorer'][0] ?? '' )
+	&& '配置 AI 提供方' === ( $locale_data['Configure an AI provider'][0] ?? '' )
 	&& '生成摘要' === ( $locale_data['Generate Summary'][0] ?? '' )
+	&& '分析情绪和毒性' === ( $locale_data['Analyze Sentiment and Toxicity'][0] ?? '' )
 	&& 'SEO 描述' === ( $locale_data['Meta Description'][0] ?? '' )
 	&& '建议%s' === ( $locale_data['Suggest %s'][0] ?? '' )
 	&& '请添加更多内容以启用 AI 建议（约 150 个词）。' === ( $locale_data['Add more content to enable AI suggestions (approximately 150 words).'][0] ?? '' )
@@ -421,6 +726,12 @@ maca_assert(
 	&& '替代文本' === ( $locale_data['Alt text'][0] ?? '' )
 	&& '应用编辑更新' === ( $locale_data['Apply Editorial Updates'][0] ?? '' )
 	&& '最近 24 小时' === ( $locale_data['Last 24 Hours'][0] ?? '' )
+	&& '请求详情' === ( $locale_data['Request Details'][0] ?? '' )
+	&& 'AI 状态' === ( $locale_data['AI Status'][0] ?? '' )
+	&& 'Token 范围' === ( $locale_data['Token Range'][0] ?? '' )
+	&& '输入预览' === ( $locale_data['Input Preview'][0] ?? '' )
+	&& '日志 ID 已复制到剪贴板。' === ( $locale_data['Log ID copied to clipboard.'][0] ?? '' )
+	&& '待处理请求' === ( $locale_data['Pending requests'][0] ?? '' )
 	&& '所有提供方' === ( $locale_data['All Providers'][0] ?? '' )
 	&& '调用能力' === ( $locale_data['Invoke Ability'][0] ?? '' )
 	&& '无效的 JSON 输入' === ( $locale_data['Invalid JSON input'][0] ?? '' ),

@@ -68,6 +68,51 @@ maca_assert(
 	'Behavior: verification entitlement response can populate the short local summary cache.'
 );
 
+$runtime_normalizer = new ReflectionMethod( Npcink_Cloud_Entitlement_Summary::class, 'normalize_pro_cloud_runtime' );
+$runtime_normalizer->setAccessible( true );
+$runtime_without_optional_fields = $runtime_normalizer->invoke(
+	null,
+	array(
+		'max_nightly_inspection_runs_per_period' => 10,
+		'used_nightly_inspection_runs'           => 2,
+		'quota_exhausted'                       => 'false',
+	)
+);
+$runtime_with_optional_fields = $runtime_normalizer->invoke(
+	null,
+	array(
+		'max_nightly_inspection_runs_per_period' => 10,
+		'used_nightly_inspection_runs'           => 10,
+		'max_batch_items'                       => '25',
+		'result_retention_days'                 => '14',
+	)
+);
+
+$format_runtime_integer = new ReflectionMethod( Npcink_Cloud_Settings_Page::class, 'format_runtime_integer_projection' );
+$format_runtime_integer->setAccessible( true );
+$format_runtime_days = new ReflectionMethod( Npcink_Cloud_Settings_Page::class, 'format_runtime_days_projection' );
+$format_runtime_days->setAccessible( true );
+$format_runtime_boolean = new ReflectionMethod( Npcink_Cloud_Settings_Page::class, 'format_runtime_boolean_projection' );
+$format_runtime_boolean->setAccessible( true );
+$format_runtime_quota = new ReflectionMethod( Npcink_Cloud_Settings_Page::class, 'format_runtime_quota_projection' );
+$format_runtime_quota->setAccessible( true );
+
+maca_assert(
+	is_array( $runtime_without_optional_fields )
+	&& null === ( $runtime_without_optional_fields['max_batch_items'] ?? null )
+	&& null === ( $runtime_without_optional_fields['result_retention_days'] ?? null )
+	&& false === (bool) ( $runtime_without_optional_fields['quota_exhausted'] ?? true )
+	&& 'unavailable' === $format_runtime_integer->invoke( null, $runtime_without_optional_fields, 'max_batch_items' )
+	&& 'unavailable' === $format_runtime_days->invoke( null, $runtime_without_optional_fields, 'result_retention_days' )
+	&& 'no' === $format_runtime_boolean->invoke( null, $runtime_without_optional_fields, 'quota_exhausted' )
+	&& '2 used / 10 limit / 8 remaining' === $format_runtime_quota->invoke( null, $runtime_without_optional_fields )
+	&& is_array( $runtime_with_optional_fields )
+	&& true === (bool) ( $runtime_with_optional_fields['quota_exhausted'] ?? false )
+	&& '25' === $format_runtime_integer->invoke( null, $runtime_with_optional_fields, 'max_batch_items' )
+	&& '14 days' === $format_runtime_days->invoke( null, $runtime_with_optional_fields, 'result_retention_days' ),
+	'Behavior: Pro Cloud Runtime projection preserves unavailable optional fields and parses quota exhaustion strictly.'
+);
+
 maca_reset_test_state();
 maca_seed_settings( true );
 $GLOBALS['maca_http_response_queue'][] = array(

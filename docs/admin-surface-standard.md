@@ -30,12 +30,15 @@ When verified, the default page should prioritize:
 - last verification time;
 - read-only entitlement summary;
 - a dedicated Site Knowledge tab for local delivery consent, bounded public
-  content refresh, index start/rebuild/delete intents, and shallow bridge state;
+  content refresh transport, explicit administrator delivery intents, and
+  shallow bridge state while Cloud owns index execution, rebuild/delete
+  handling, lifecycle, and freshness policy;
 - a bounded Diagnostics tab for connection, liveness, signed Cloud read,
   entitlement/quota, hosted runtime entitlement detail, capability readiness
   notes, Site Knowledge bridge status, and monitoring status;
 - a dedicated Runtime Runs tab for low-frequency Nightly Inspection Cloud
-  recent runs, one-run status/result reads, and bounded retry requests;
+  entitlement/quota detail, batch limit, result retention, recent runs, one-run
+  status/result reads, and bounded retry requests;
 - opt-in monitoring state and read-only Cloud observability / Agent feedback
   quality summaries;
 - a clear path to update/re-verify settings.

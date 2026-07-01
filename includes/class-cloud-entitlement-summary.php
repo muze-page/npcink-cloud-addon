@@ -291,9 +291,9 @@ if ( ! class_exists( 'Npcink_Cloud_Entitlement_Summary' ) ) {
 				'max_nightly_inspection_runs_per_period' => $max_runs,
 				'used_nightly_inspection_runs' => $used_runs,
 				'remaining_nightly_inspection_runs' => $remaining_runs,
-				'quota_exhausted' => ! empty( $runtime['quota_exhausted'] ) || ( $max_runs > 0 && $used_runs >= $max_runs ),
-				'max_batch_items' => absint( $runtime['max_batch_items'] ?? 0 ),
-				'result_retention_days' => absint( $runtime['result_retention_days'] ?? 0 ),
+				'quota_exhausted' => self::normalize_runtime_boolean( $runtime['quota_exhausted'] ?? false ) || ( $max_runs > 0 && $used_runs >= $max_runs ),
+				'max_batch_items' => self::normalize_optional_absint( $runtime, 'max_batch_items' ),
+				'result_retention_days' => self::normalize_optional_absint( $runtime, 'result_retention_days' ),
 				'payload_modes' => self::sanitize_string_list( $runtime['payload_modes'] ?? array() ),
 				'cloud_role' => sanitize_key( (string) ( $runtime['cloud_role'] ?? 'runtime_detail' ) ),
 				'local_truth' => array(
@@ -304,6 +304,41 @@ if ( ! class_exists( 'Npcink_Cloud_Entitlement_Summary' ) ) {
 				),
 				'local_billing_truth' => false,
 			);
+		}
+
+		/**
+		 * Normalizes an optional positive integer projection.
+		 *
+		 * @param array<string,mixed> $source Source payload.
+		 * @param string              $key Field key.
+		 * @return int|null
+		 */
+		private static function normalize_optional_absint( array $source, string $key ): ?int {
+			if ( ! array_key_exists( $key, $source ) || ! is_numeric( $source[ $key ] ) ) {
+				return null;
+			}
+
+			return absint( $source[ $key ] );
+		}
+
+		/**
+		 * Normalizes explicit boolean-like Cloud fields without treating "false" as true.
+		 *
+		 * @param mixed $value Raw boolean projection.
+		 * @return bool
+		 */
+		private static function normalize_runtime_boolean( $value ): bool {
+			if ( is_bool( $value ) ) {
+				return $value;
+			}
+			if ( is_int( $value ) || is_float( $value ) ) {
+				return 1 === (int) $value;
+			}
+			if ( is_string( $value ) ) {
+				return in_array( strtolower( trim( $value ) ), array( '1', 'true', 'yes', 'on' ), true );
+			}
+
+			return false;
 		}
 
 		/**

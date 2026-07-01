@@ -30,8 +30,8 @@ Cloud Addon may show:
 - capability readiness rows when there is an explicit addon-side contract.
 - Site Knowledge bridge status for signed runtime transport.
 - a dedicated Site Knowledge tab with local delivery consent, bounded manual
-  public content refresh transport, and local administrator start/rebuild/delete
-  index intents.
+  public content refresh transport, and explicit administrator delivery intents
+  for Cloud-owned index operations.
 - metadata-only monitoring status and read-only aggregate summaries.
 
 Cloud Addon must not become:
@@ -69,7 +69,8 @@ The diagnostics table shows:
 - Cloud image generation as a scene runtime only, not a provider/source tool;
 - Site Knowledge bridge status as signed runtime transport only;
 - Site Knowledge local delivery consent, manual public content refresh, and
-  explicit administrator start/rebuild/delete intents as delivery transport only;
+  explicit administrator delivery intents for Cloud-owned index operations as
+  delivery transport only;
 - monitoring detail as metadata-only and read-only.
 
 Advanced raw status is folded behind a disclosure and contains sanitized local
@@ -77,11 +78,12 @@ status fields only. It omits secrets and split credentials.
 
 The Site Knowledge tab shows bridge delivery status, local delivery consent, a
 manual `Request public content refresh` action, and explicit administrator
-start/rebuild/delete index intents. These actions only send local intent and
-bounded public WordPress manifests through the existing signed delivery
-transport. Turning delivery off stops future refresh/start/rebuild transport but
-does not delete existing Cloud index data; the confirmed delete action remains
-available. The addon does not own index execution truth, freshness policy,
+delivery intents for Cloud-owned index operations. These actions only send local
+intent and bounded public WordPress manifests through the existing signed
+delivery transport. Turning delivery off stops future refresh/start/rebuild
+transport but does not delete existing Cloud index data; the confirmed delete
+action remains available. The addon does not own index execution truth,
+freshness policy,
 collection management, or deep troubleshooting.
 
 ## Related Transport Closeout

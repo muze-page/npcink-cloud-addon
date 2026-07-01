@@ -111,6 +111,21 @@ maca_assert(
 		'Chat History',
 		'Chat History',
 		'ai'
+	)
+	&& '模型' === Npcink_Cloud_AI_Plugin_Localization::filter_gettext(
+		'Model',
+		'Model',
+		'ai'
+	)
+	&& '%s 已启用。' === Npcink_Cloud_AI_Plugin_Localization::filter_gettext(
+		'%s enabled.',
+		'%s enabled.',
+		'ai'
+	)
+	&& '重置为默认值' === Npcink_Cloud_AI_Plugin_Localization::filter_gettext(
+		'Reset to default',
+		'Reset to default',
+		'ai'
 	),
 	'AI plugin localization translates dashboard status and capability labels.'
 );
@@ -243,6 +258,16 @@ maca_assert(
 		'Maximum Suggestions',
 		'ai'
 	)
+	&& '分类策略' === Npcink_Cloud_AI_Plugin_Localization::filter_gettext(
+		'Taxonomy strategy',
+		'Taxonomy strategy',
+		'ai'
+	)
+	&& '仅建议现有术语' === Npcink_Cloud_AI_Plugin_Localization::filter_gettext(
+		'Only suggest existing terms',
+		'Only suggest existing terms',
+		'ai'
+	)
 	&& '建议%s' === Npcink_Cloud_AI_Plugin_Localization::filter_gettext(
 		'Suggest %s',
 		'Suggest %s',
@@ -361,6 +386,11 @@ maca_assert(
 	&& '替代文本' === Npcink_Cloud_AI_Plugin_Localization::filter_gettext(
 		'Alt text',
 		'Alt text',
+		'ai'
+	)
+	&& '替代文本' === Npcink_Cloud_AI_Plugin_Localization::filter_gettext(
+		'Alt Text',
+		'Alt Text',
 		'ai'
 	)
 	&& '正在生成替代文本…' === Npcink_Cloud_AI_Plugin_Localization::filter_gettext(
@@ -486,6 +516,16 @@ maca_assert(
 		'Source File',
 		'ai'
 	)
+	&& 'Base64 图片导入' === Npcink_Cloud_AI_Plugin_Localization::filter_gettext(
+		'Base64 Image Import',
+		'Base64 Image Import',
+		'ai'
+	)
+	&& '图片提示词生成' === Npcink_Cloud_AI_Plugin_Localization::filter_gettext(
+		'Image Prompt Generation',
+		'Image Prompt Generation',
+		'ai'
+	)
 	&& '生成的图片输出' === Npcink_Cloud_AI_Plugin_Localization::filter_gettext(
 		'Generated image output',
 		'Generated image output',
@@ -528,6 +568,21 @@ maca_assert(
 	&& '允许 %1$s 使用 %2$s' === Npcink_Cloud_AI_Plugin_Localization::filter_gettext(
 		'Allow %1$s to use %2$s',
 		'Allow %1$s to use %2$s',
+		'ai'
+	)
+	&& '当前没有已注册的 AI 连接器。请先配置连接器。' === Npcink_Cloud_AI_Plugin_Localization::filter_gettext(
+		'No AI connectors are currently registered. Configure a connector first.',
+		'No AI connectors are currently registered. Configure a connector first.',
+		'ai'
+	)
+	&& '%d 个插件或主题正在请求访问 AI 连接器。' === Npcink_Cloud_AI_Plugin_Localization::filter_gettext(
+		'%d plugins or themes are requesting access to AI connectors.',
+		'%d plugins or themes are requesting access to AI connectors.',
+		'ai'
+	)
+	&& '“%1$s” AI 连接器尚未获准供“%2$s”使用。' === Npcink_Cloud_AI_Plugin_Localization::filter_gettext(
+		'The "%1$s" AI connector has not been approved for use by "%2$s".',
+		'The "%1$s" AI connector has not been approved for use by "%2$s".',
 		'ai'
 	)
 	&& '加载审批数据失败。' === Npcink_Cloud_AI_Plugin_Localization::filter_gettext(

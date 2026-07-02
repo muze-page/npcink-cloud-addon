@@ -66,7 +66,11 @@ maca_assert(
 	false !== strpos( $composer, '"ai:i18n:audit": "@php scripts/audit-ai-plugin-localization.php"' )
 	&& false !== strpos( $ai_i18n_audit, 'AI_PLUGIN_PATH' )
 	&& false !== strpos( $ai_i18n_audit, 'Npcink_Cloud_AI_Plugin_Localization::translations()' )
-	&& false !== strpos( $ai_i18n_audit, 'Missing fixed UI candidates' )
+	&& false !== strpos( $ai_i18n_audit, 'Missing review groups' )
+	&& false !== strpos( $ai_i18n_audit, 'fixed_ui_candidates' )
+	&& false !== strpos( $ai_i18n_audit, 'dynamic_ability_metadata' )
+	&& false !== strpos( $ai_i18n_audit, 'schema_or_json_fields' )
+	&& false !== strpos( $ai_i18n_audit, 'long_prompt_copy' )
 	&& false !== strpos( $ai_i18n_audit, 'Do not add dynamic ability names' )
 	&& false === strpos( $ai_i18n_audit, 'npcink_cloud_addon_runtime_client' ),
 	'AI plugin localization audit compares local ai-domain strings against the bounded shim without Cloud runtime.'

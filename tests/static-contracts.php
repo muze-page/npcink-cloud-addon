@@ -76,6 +76,17 @@ maca_assert(
 );
 
 maca_assert(
+	false !== strpos( $settings_page, 'npcink-ai-tabs npcink-cloud-tabs' )
+	&& false !== strpos( $settings_page, 'npcink-ai-tab-active' )
+	&& false !== strpos( $settings_page, 'aria-current="page"' )
+	&& false === strpos( $settings_page, 'nav-tab-wrapper' )
+	&& false === strpos( $settings_page, 'nav-tab-active' )
+	&& false !== strpos( $admin_css, '.npcink-ai-tabs' )
+	&& false !== strpos( $admin_css, '.npcink-ai-tab-active' ),
+	'Cloud Addon settings tabs use the shared Npcink AI tab visual standard instead of boxed WordPress nav tabs.'
+);
+
+maca_assert(
 	false !== strpos( $bootstrap, 'plugin_action_links_' )
 	&& false !== strpos( $bootstrap, 'npcink_cloud_addon_filter_plugin_action_links' )
 	&& false !== strpos( $bootstrap, 'admin.php?page=npcink-cloud-addon' ),
@@ -399,15 +410,17 @@ maca_assert(
 	&& false !== strpos( $settings_page, 'format_runtime_quota_projection' )
 	&& false !== strpos( $entitlement_summary, 'normalize_optional_absint' )
 	&& false !== strpos( $entitlement_summary, 'normalize_runtime_boolean' )
-	&& false !== strpos( $settings_page, 'Cloud-owned Nightly Inspection run status, result reads, and bounded retry requests.' )
+	&& false !== strpos( $settings_page, 'Cloud-owned Nightly Inspection run status, result reads, and bounded retry requests. This troubleshooting section creates no local queue, scheduler, proposal, approval record, or WordPress write.' )
 	&& false !== strpos( $settings_page, 'Cloud owns run state, retry processing, retention, and usage detail.' )
 	&& false !== strpos( $settings_page, 'get_recent_nightly_inspection_runs( 5' )
 	&& false !== strpos( $settings_page, 'get_run_result( $run_id' )
 	&& false !== strpos( $settings_page, 'Request Cloud retry' )
 	&& false !== strpos( $settings_page, 'self::ACTION_RETRY_RUNTIME_RUN' )
+	&& false !== strpos( $settings_page, 'Cloud did not return Runtime Runs entitlement for this site yet.' )
+	&& false !== strpos( $settings_page, 'Run status, result reads, and retry controls appear after Cloud reports the runtime entitlement.' )
 	&& false !== strpos( $settings_page, "local_queue_created'     => false" )
 	&& false !== strpos( $settings_page, 'This addon does not own billing truth, scheduling, queues, or WordPress writes.' ),
-	'Entitlement summary and Runtime Runs tab preserve Pro Cloud Runtime detail as read-only/Cloud-owned projection without local billing, scheduler, queue, proposal, or write truth.'
+	'Entitlement summary and Troubleshooting runtime section preserve Pro Cloud Runtime detail as read-only/Cloud-owned projection without local billing, scheduler, queue, proposal, or write truth.'
 );
 
 maca_assert(
@@ -513,6 +526,9 @@ maca_assert(
 	&& false !== strpos( $settings_page, 'Monitoring & Quality' )
 	&& false !== strpos( $settings_page, 'Refresh monitoring and quality' )
 	&& false !== strpos( $settings_page, 'Agent quality events' )
+	&& false !== strpos( $settings_page, 'function has_monitoring_detail' )
+	&& false !== strpos( $settings_page, 'Monitoring collection is disabled and no local monitoring history is available.' )
+	&& false !== strpos( $settings_page, 'Monitoring collection is disabled. Historical local and Cloud summaries are shown read-only.' )
 	&& false !== strpos( $settings_page, 'Read-only Cloud eval summary. Approval, proposal, preflight, and WordPress writes remain local.' ),
 	'Cloud Addon Monitoring owns the read-only Agent quality summary without adding write or control-plane authority.'
 );
@@ -681,18 +697,22 @@ maca_assert(
 
 maca_assert(
 		false !== strpos( $settings_page, "\$default = \$is_verified ? 'status' : 'connect';" )
+		&& false !== strpos( $settings_page, 'function should_show_unverified_advanced_tab' )
+		&& false !== strpos( $settings_page, 'self::should_show_unverified_advanced_tab( $state )' )
 		&& false !== strpos( $settings_page, "'status'   => __( 'Status'" )
 		&& false !== strpos( $settings_page, "'site_knowledge' => __( 'Site Knowledge'" )
-		&& false !== strpos( $settings_page, "'diagnostics' => __( 'Diagnostics'" )
-		&& false !== strpos( $settings_page, "'runtime_runs' => __( 'Runtime runs'" )
-	&& false !== strpos( $settings_page, "'connect'  => __( 'Connect'" )
-		&& false !== strpos( $settings_page, "'details'  => __( 'Details'" )
+		&& false !== strpos( $settings_page, "'diagnostics' => __( 'Troubleshooting'" )
+		&& false !== strpos( $settings_page, "'connect'  => __( 'Connect'" )
+		&& false !== strpos( $settings_page, "'advanced' => __( 'Connection management'" )
 		&& false !== strpos( $settings_page, 'Connect this site' )
 		&& false !== strpos( $settings_page, "'site_knowledge' === \$active_tab" )
 		&& false !== strpos( $settings_page, "'diagnostics' === \$active_tab" )
-	&& false !== strpos( $settings_page, "'runtime_runs' === \$active_tab" )
+	&& false !== strpos( $settings_page, "if ( \$is_verified && 'runtime_runs' === \$requested )" )
+	&& false !== strpos( $settings_page, "if ( \$is_verified && 'details' === \$requested )" )
 	&& false !== strpos( $settings_page, 'function render_diagnostics' )
 	&& false !== strpos( $settings_page, 'function render_runtime_runs' )
+	&& false !== strpos( $settings_page, 'Cloud runtime runs' )
+	&& false !== strpos( $settings_page, 'Account and usage details' )
 	&& false !== strpos( $settings_page, 'Open Cloud status detail' )
 	&& false !== strpos( $settings_page, 'Cloud Base URL' )
 	&& false !== strpos( $settings_page, 'Cloud API Key' )
@@ -702,23 +722,30 @@ maca_assert(
 	&& false !== strpos( $settings_page, 'Cloud web search' )
 	&& false !== strpos( $settings_page, 'No Cloud Addon status API is currently contracted for web search capability.' )
 	&& false !== strpos( $settings_page, 'Tavily, Unsplash, and other product search tools are not Cloud Addon admin actions.' )
+	&& false !== strpos( $settings_page, 'Cloud-owned capability notes' )
+	&& false !== strpos( $settings_page, 'Provider readiness and product tools stay outside this local connector.' )
 	&& false !== strpos( $settings_page, 'Advanced raw status' )
 	&& false !== strpos( $settings_page, 'Manual connection fallback' )
+	&& false !== strpos( $settings_page, 'Local connection fallback and last verification failure.' )
 	&& false !== strpos( $settings_page, 'Advanced diagnostics' )
+	&& false !== strpos( $settings_page, 'function render_details_panel' )
+	&& false !== strpos( $settings_page, 'Cloud detail projections are not available yet. Re-verify the connection or open Cloud for service detail.' )
+	&& false !== strpos( $settings_page, 'function has_entitlement_detail' )
 	&& false !== strpos( $settings_page, 'function render_status_overview' )
 	&& false !== strpos( $settings_page, 'format_monitoring_overview' )
 	&& false !== strpos( $settings_page, 'format_site_knowledge_overview' )
 	&& false !== strpos( $settings_page, 'Re-verify and refresh' )
 	&& false !== strpos( $settings_page, 'Entitlement, monitoring, and Site Knowledge are local connector summaries.' )
-	&& false !== strpos( $settings_page, 'This tab creates no local queue, scheduler, proposal, approval record, or WordPress write.' )
+	&& false !== strpos( $settings_page, 'This troubleshooting section creates no local queue, scheduler, proposal, approval record, or WordPress write.' )
 		&& false === strpos( $settings_page, 'Refresh Cloud summary' )
 		&& false !== strpos( $settings_page, '<h3><?php esc_html_e( \'Entitlement Summary\'' )
 		&& false === strpos( $settings_page, '<h3><?php esc_html_e( \'Site Knowledge\'' )
-		&& false !== strpos( $settings_page, '<h2><?php esc_html_e( \'Site Knowledge\'' )
+		&& false !== strpos( $settings_page, '<h2 class="screen-reader-text"><?php esc_html_e( \'Site Knowledge\'' )
 		&& false !== strpos( $settings_page, '<h3><?php esc_html_e( \'Monitoring & Quality\'' )
-	&& false !== strpos( $settings_page, "self::redirect_to_page( 'details' );" )
+	&& false !== strpos( $settings_page, "self::redirect_to_page( 'status' );" )
+	&& false !== strpos( $settings_page, "self::redirect_to_page( 'diagnostics' );" )
 	&& false === strpos( $settings_page, "'monitoring'  =>" ),
-		'Settings page defaults to a connect view before verification, keeps verified status compact, adds bounded Cloud diagnostics, and gives Site Knowledge a dedicated verified tab.'
+		'Settings page defaults to a connect view before verification, keeps verified status compact, folds details into Status, folds runtime runs into Troubleshooting, and gives Site Knowledge a dedicated verified tab.'
 	);
 
 	maca_assert(
@@ -734,6 +761,7 @@ maca_assert(
 		&& false !== strpos( $settings_page, "site_knowledge_delivery_enabled" )
 		&& false !== strpos( $settings_page, 'Enable Site Knowledge delivery' )
 		&& false !== strpos( $settings_page, 'Existing Cloud index data is not deleted unless you run Delete site index.' )
+		&& false !== strpos( $settings_page, 'Delivery is off; routine status and refresh controls are hidden.' )
 		&& false !== strpos( $settings_page, 'Npcink_Cloud_Site_Knowledge_Change_Bridge::buffer_recent_public_content()' )
 		&& false !== strpos( $settings_page, 'Npcink_Cloud_Site_Knowledge_Change_Bridge::flush_buffer()' )
 		&& false !== strpos( $settings_page, 'Npcink_Cloud_Site_Knowledge_Change_Bridge::sync_schedule()' )
@@ -744,9 +772,29 @@ maca_assert(
 	&& false !== strpos( $settings_page, 'Delete site index' )
 	&& false !== strpos( $settings_page, 'site_knowledge_confirmation' )
 	&& false !== strpos( $settings_page, 'Open Cloud Site Knowledge' )
-	&& false !== strpos( $settings_page, 'Allow this WordPress site to send bounded public content updates and administrator delivery requests for Cloud-owned Site Knowledge operations.' )
-	&& false !== strpos( $settings_page, 'Cloud index delivery requests' )
-	&& false !== strpos( $settings_page, 'These buttons send local administrator delivery intent and bounded public WordPress content for Cloud-owned Site Knowledge operations.' )
+	&& false !== strpos( $settings_page, '<h2 class="screen-reader-text"><?php esc_html_e( \'Site Knowledge\'' )
+	&& false !== strpos( $settings_page, 'npcink-cloud-site-knowledge-consent__copy' )
+	&& false !== strpos( $settings_page, 'npcink-cloud-site-knowledge-consent__actions' )
+	&& false !== strpos( $settings_page, 'Allow public content-change delivery and explicit administrator delivery intent.' )
+	&& false !== strpos( $settings_page, 'Enable delivery' )
+	&& false !== strpos( $settings_page, 'Delivery enabled' )
+	&& false !== strpos( $settings_page, 'npcink-cloud-save-link' )
+	&& false !== strpos( $settings_page, 'npcink-cloud-text-link' )
+	&& false !== strpos( $settings_page, 'function format_site_knowledge_status_label' )
+	&& false !== strpos( $settings_page, "'idle'       => __( 'idle'" )
+	&& false !== strpos( $settings_page, "'queued'     => __( 'queued'" )
+	&& false !== strpos( $settings_page, 'function render_site_knowledge_error_cell' )
+	&& false !== strpos( $settings_page, 'Show original Cloud error' )
+	&& false !== strpos( $settings_page, 'data_classification=pii' )
+	&& false !== strpos( $settings_page, 'Cloud active run limit reached' )
+	&& false !== strpos( $settings_page, 'Transport only; Cloud owns indexing detail.' )
+	&& false !== strpos( $settings_page, 'Advanced index maintenance' )
+	&& false !== strpos( $settings_page, 'Use only for initial indexing, rebuilds, or explicit Cloud index cleanup.' )
+	&& false !== strpos( $settings_page, 'Cloud index cleanup' )
+	&& false !== strpos( $settings_page, 'Use only when deleting existing Cloud Site Knowledge data.' )
+	&& false !== strpos( $settings_page, 'This sends cleanup intent only; WordPress content is not changed.' )
+	&& false !== strpos( $settings_page, 'These actions send intent only; WordPress content is not changed.' )
+	&& false !== strpos( $settings_page, 'These actions send local administrator delivery intent and bounded public WordPress content for Cloud-owned Site Knowledge operations.' )
 	&& false !== strpos( $settings_page, 'This addon sends public change hints and explicit administrator delivery intents through signed runtime requests.' )
 	&& false !== strpos( $settings_page, 'Toolbox uses Site Knowledge results in best-practice buttons.' )
 	&& false !== strpos( $settings_page, 'Cloud owns index execution, rebuild/delete handling, freshness policy, collection lifecycle, and diagnostics detail.' )
@@ -830,6 +878,8 @@ maca_assert(
 	&& false !== strpos( $settings_page, 'Npcink_Cloud_Site_Knowledge_Change_Bridge::delete_data()' )
 	&& false !== strpos( $settings_page, 'Change connection in Cloud' )
 	&& false !== strpos( $settings_page, 'Open Cloud sites' )
+	&& false !== strpos( $settings_page, 'function render_connection_actions( array $settings, bool $is_verified )' )
+	&& false !== strpos( $settings_page, 'if ( $is_verified )' )
 	&& false !== strpos( $settings_page, 'Disconnect locally' )
 	&& false === strpos( $settings_page, 'Site ID' )
 	&& false === strpos( $settings_page, 'Key ID' )

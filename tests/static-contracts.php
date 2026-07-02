@@ -31,6 +31,7 @@ $cloud_bulk_article_doc = maca_read( $root . '/docs/cloud-bulk-article-run-seam.
 $admin_surface_standard = maca_read( $root . '/docs/admin-surface-standard.md' );
 $admin_ui_simplification_doc = maca_read( $root . '/docs/cloud-addon-admin-ui-simplification-2026-07-02.md' );
 $site_knowledge_vector_ops_doc = maca_read( $root . '/docs/site-knowledge-vector-operations.md' );
+$public_onboarding_doc = maca_read( $root . '/docs/public-cloud-onboarding-checklist.md' );
 $agents = maca_read( $root . '/AGENTS.md' );
 $readme = maca_read( $root . '/README.md' );
 $composer = maca_read( $root . '/composer.json' );
@@ -909,6 +910,21 @@ maca_assert(
 	&& false !== strpos( $settings_page, 'persist_and_verify_settings' )
 	&& false !== strpos( $settings_page, 'Cloud connection completed and verified.' ),
 	'Settings page defaults to Cloud-side site authorization, exchanges the callback key, and verifies the saved connection immediately.'
+);
+
+maca_assert(
+	false !== strpos( $settings_page, "sanitize_text_field( wp_unslash( \$_POST['runtime_run_id'] ) )" ),
+	'Runtime retry admin action sanitizes the submitted run ID before retry dispatch.'
+);
+
+maca_assert(
+	false !== strpos( $public_onboarding_doc, 'https://cloud.npc.ink/' )
+	&& false !== strpos( $public_onboarding_doc, '/portal/sites' )
+	&& false !== strpos( $public_onboarding_doc, '/portal/v1/addon-connections/exchange' )
+	&& false !== strpos( $public_onboarding_doc, 'must not become a Cloud operations console or a second control plane' )
+	&& false !== strpos( $public_onboarding_doc, 'must not send prompts, generated content' )
+	&& false !== strpos( $readme, 'docs/public-cloud-onboarding-checklist.md' ),
+	'Public Cloud onboarding checklist keeps production default, Portal authorization, metadata-only monitoring, and addon boundary checks explicit.'
 );
 
 maca_assert(

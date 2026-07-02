@@ -61,6 +61,14 @@ function npcink_cloud_addon_ai_i18n_audit_resolve_path( array $argv, string $roo
  * @return string
  */
 function npcink_cloud_addon_ai_i18n_audit_decode_literal( string $value ): string {
+	$value = (string) preg_replace_callback(
+		'/\\\\u([0-9a-fA-F]{4})/',
+		static function ( array $matches ): string {
+			return html_entity_decode( '&#x' . $matches[1] . ';', ENT_QUOTES, 'UTF-8' );
+		},
+		$value
+	);
+
 	return stripcslashes( $value );
 }
 

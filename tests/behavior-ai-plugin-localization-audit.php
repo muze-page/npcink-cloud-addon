@@ -31,6 +31,8 @@ file_put_contents(
 	$fixture_root . '/build-scripts/admin/page.js',
 	<<<'JS'
 (0,wp.i18n.__)("JS Audit Label","ai");
+(0,wp.i18n.__)("Unicode ellipsis\u2026","ai");
+(0,wp.i18n.__)("\u2014 Unicode default \u2014","ai");
 (0,wp.i18n.__)("Ignored JS Label","default");
 JS
 );
@@ -49,6 +51,10 @@ maca_assert(
 	&& false !== strpos( $report, '"One audit result"' )
 	&& false !== strpos( $report, '"Many audit results"' )
 	&& false !== strpos( $report, '"JS Audit Label"' )
+	&& false !== strpos( $report, '"Unicode ellipsis…"' )
+	&& false !== strpos( $report, '"— Unicode default —"' )
+	&& false === strpos( $report, 'Unicode ellipsisu2026' )
+	&& false === strpos( $report, 'u2014 Unicode default u2014' )
 	&& false === strpos( $report, 'Ignore Default Domain' )
 	&& false === strpos( $report, 'Ignored JS Label' ),
 	'AI plugin localization audit reports missing ai-domain strings and ignores other domains.'

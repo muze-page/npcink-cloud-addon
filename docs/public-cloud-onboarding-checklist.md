@@ -2,6 +2,9 @@
 
 Status: active smoke checklist for public Cloud readiness.
 
+Closeout context: see
+`docs/public-cloud-readiness-closeout-2026-07-02.md`.
+
 Use this checklist before treating the WordPress.org package as ready for
 public Cloud connections. This is an addon-side verification checklist only; it
 must not become a Cloud operations console or a second control plane.

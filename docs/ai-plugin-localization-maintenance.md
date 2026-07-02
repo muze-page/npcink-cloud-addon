@@ -92,8 +92,17 @@ least these forms:
 
 The command should output:
 
-- Missing fixed UI strings that are not in the shim.
-- Existing shim strings that no longer appear in the scanned plugin.
+- Missing strings grouped for review:
+  - `fixed_ui_candidates` for likely fixed admin/editor UI copy that may belong
+    in this shim.
+  - `dynamic_ability_metadata` for likely ability labels, descriptions, or
+    feature metadata that should usually stay out of this addon.
+  - `schema_or_json_fields` for schema labels, JSON fields, REST arguments, and
+    field descriptions that should usually stay out of this addon.
+  - `long_prompt_copy` for generated-image prompt templates or other long
+    prompt copy that should not be bulk-translated in this addon.
+- Existing shim strings that no longer appear in the scanned plugin as
+  `stale_review`.
 - Near matches for likely changed English copy.
 - A count by surface when it can infer one, such as settings, editor, image
   generation, request logs, or abilities explorer.

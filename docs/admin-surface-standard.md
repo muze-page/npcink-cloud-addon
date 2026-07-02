@@ -33,22 +33,41 @@ When verified, the default page should prioritize:
   content refresh transport, explicit administrator delivery intents, and
   shallow bridge state while Cloud owns index execution, rebuild/delete
   handling, lifecycle, and freshness policy;
-- a bounded Diagnostics tab for connection, liveness, signed Cloud read,
+- a bounded Troubleshooting tab for connection, liveness, signed Cloud read,
   entitlement/quota, hosted runtime entitlement detail, capability readiness
-  notes, Site Knowledge bridge status, and monitoring status;
-- a dedicated Runtime Runs tab for low-frequency Nightly Inspection Cloud
-  entitlement/quota detail, batch limit, result retention, recent runs, one-run
-  status/result reads, and bounded retry requests;
+  notes, Site Knowledge bridge status, monitoring status, and low-frequency
+  Runtime Runs entitlement/quota detail, batch limit, result retention, recent
+  runs, one-run status/result reads, and bounded retry requests;
+- a Connection Management tab for connection recovery, local disconnect,
+  sanitized raw status, and other low-frequency connector details;
 - opt-in monitoring state and read-only Cloud observability / Agent feedback
   quality summaries;
 - a clear path to update/re-verify settings.
 
 Toolbox no longer owns Cloud Checks or Troubleshooting Checks for basic AI
 connection, Hosted Runtime, Cloud search, Cloud image/source, quota,
-entitlement, or service health. The Cloud Addon Diagnostics tab is the local
+entitlement, or service health. The Cloud Addon Troubleshooting tab is the local
 entry for those Cloud connection and service-status details, but it must remain
 a summary/detail surface rather than a Toolbox product workflow or operations
 console.
+
+## Tab Model
+
+Verified admin navigation should stay shallow:
+
+- `Status`: compact local connector summaries and one collapsed account/usage
+  detail entry.
+- `Site Knowledge`: local delivery consent, public content refresh transport,
+  explicit administrator delivery intents, and shallow bridge status.
+- `Troubleshooting`: read-only diagnostics, runtime run detail, Cloud-owned
+  capability notes, and direct Cloud detail links.
+- `Connection Management`: Cloud-side connection change link, local disconnect,
+  recovery fallback, and sanitized advanced raw status.
+
+Do not reintroduce separate `Details`, `Runtime Runs`, or `Advanced` product
+tabs when the content is low-frequency detail that fits one of the entries
+above. Old `details` and `runtime_runs` URLs may redirect to the current tab
+owners for compatibility.
 
 ## Advanced / Low-Frequency Details
 
@@ -63,6 +82,27 @@ Low-frequency details may include:
 - aggregate Cloud observability counters;
 - aggregate Agent feedback quality counters;
 - last verification failure text.
+
+These details should be collapsed or moved behind a clear detail affordance
+unless they are blocking the current task.
+
+## Layout and Copy Rules
+
+Admin panels should use utility copy and summary/detail separation:
+
+- keep one page title and one scope sentence;
+- avoid repeated section titles when the active tab already names the area;
+- place primary actions beside the relevant state, not scattered above and
+  below the same section;
+- prefer one table row per fact and avoid narrow label columns that force
+  awkward wrapping;
+- use table headers for tabular diagnostics;
+- keep long explanatory text behind explicit detail affordances such as
+  disclosure rows or a small `!` detail entry;
+- avoid nested disclosure controls inside another disclosure;
+- keep fixed admin terminology translated in zh_CN, while dynamic ability
+  metadata, provider IDs, model IDs, slugs, and contract IDs remain owned by
+  their source systems.
 
 ## Time Display
 

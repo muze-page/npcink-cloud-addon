@@ -61,6 +61,14 @@ function npcink_cloud_addon_ai_i18n_audit_resolve_path( array $argv, string $roo
  * @return string
  */
 function npcink_cloud_addon_ai_i18n_audit_decode_literal( string $value ): string {
+	$value = (string) preg_replace_callback(
+		'/\\\\u([0-9a-fA-F]{4})/',
+		static function ( array $matches ): string {
+			return html_entity_decode( '&#x' . $matches[1] . ';', ENT_QUOTES, 'UTF-8' );
+		},
+		$value
+	);
+
 	return stripcslashes( $value );
 }
 
@@ -176,6 +184,111 @@ function npcink_cloud_addon_ai_i18n_audit_near_matches( string $missing, array $
 	return array_slice( $near, 0, 3 );
 }
 
+/**
+ * Returns whether any discovered file path starts with a prefix.
+ *
+ * @param array<int,string> $files File paths.
+ * @param array<int,string> $prefixes Path prefixes.
+ * @return bool
+ */
+function npcink_cloud_addon_ai_i18n_audit_file_starts_with( array $files, array $prefixes ): bool {
+	foreach ( $files as $file ) {
+		foreach ( $prefixes as $prefix ) {
+			if ( 0 === strpos( $file, $prefix ) ) {
+				return true;
+			}
+		}
+	}
+
+	return false;
+}
+
+/**
+ * Classifies a missing source string for review.
+ *
+ * @param string            $text Source text.
+ * @param array<int,string> $files Discovered source files.
+ * @return string
+ */
+function npcink_cloud_addon_ai_i18n_audit_classify_missing( string $text, array $files ): string {
+	if (
+		strlen( $text ) > 220
+		|| false !== strpos( $text, 'red marking is only an annotation' )
+		|| false !== strpos( $text, 'Outpaint the image' )
+		|| false !== strpos( $text, 'professional studio product photo' )
+	) {
+		return 'long_prompt_copy';
+	}
+
+	if (
+		preg_match( '/^(The|Whether|Optional|Additional|Current|Cursor|Maximum|Filter|Order|Sort|URL|ID|Attachment|Content|Post|Prompt|Generated|Imported|Information|Confidence|Toxicity)\b/', $text )
+		|| false !== strpos( $text, 'schema' )
+		|| false !== strpos( $text, 'JSON' )
+		|| false !== strpos( $text, 'base64' )
+	) {
+		return 'schema_or_json_fields';
+	}
+
+	if (
+		npcink_cloud_addon_ai_i18n_audit_file_starts_with(
+			$files,
+			array(
+				'includes/Abilities/',
+				'includes/Features/',
+				'includes/Experiments/Example_Experiment/',
+			)
+		)
+	) {
+		return 'dynamic_ability_metadata';
+	}
+
+	return 'fixed_ui_candidates';
+}
+
+/**
+ * Groups missing source strings by review category.
+ *
+ * @param array<int,string>                 $missing Missing source strings.
+ * @param array<string,array<string,mixed>> $found Discovered strings.
+ * @return array<string,array<int,string>>
+ */
+function npcink_cloud_addon_ai_i18n_audit_group_missing( array $missing, array $found ): array {
+	$groups = array(
+		'fixed_ui_candidates'      => array(),
+		'dynamic_ability_metadata' => array(),
+		'schema_or_json_fields'    => array(),
+		'long_prompt_copy'         => array(),
+	);
+
+	foreach ( $missing as $text ) {
+		$files    = $found[ $text ]['files'] ?? array();
+		$category = npcink_cloud_addon_ai_i18n_audit_classify_missing( $text, $files );
+		$groups[ $category ][] = $text;
+	}
+
+	return $groups;
+}
+
+/**
+ * Prints one audit string entry.
+ *
+ * @param string                            $text Source text.
+ * @param array<string,array<string,mixed>> $found Discovered strings.
+ * @param array<int,string>                 $known Known source strings.
+ * @return void
+ */
+function npcink_cloud_addon_ai_i18n_audit_print_entry( string $text, array $found, array $known ): void {
+	$files = $found[ $text ]['files'] ?? array();
+	echo '- "' . $text . "\"\n";
+	if ( ! empty( $files ) ) {
+		echo '  files: ' . implode( ', ', array_slice( $files, 0, 3 ) ) . "\n";
+	}
+	$near = npcink_cloud_addon_ai_i18n_audit_near_matches( $text, $known );
+	if ( ! empty( $near ) ) {
+		echo '  near: ' . implode( ' | ', $near ) . "\n";
+	}
+}
+
 $plugin_path = npcink_cloud_addon_ai_i18n_audit_resolve_path( $argv, $root );
 if ( '' === $plugin_path || ! is_dir( $plugin_path ) ) {
 	fwrite( STDERR, "AI plugin path not found. Set AI_PLUGIN_PATH=/path/to/wp-content/plugins/ai or pass --path=/path/to/ai.\n" );
@@ -214,32 +327,33 @@ ksort( $found );
 $found_keys = array_keys( $found );
 $missing    = array_values( array_diff( $found_keys, $known ) );
 $stale      = array_values( array_diff( $known, $found_keys ) );
+$groups     = npcink_cloud_addon_ai_i18n_audit_group_missing( $missing, $found );
 
 echo "WordPress AI plugin localization audit\n";
 echo 'AI plugin path: ' . $plugin_path . "\n";
 echo 'Discovered ai-domain strings: ' . count( $found_keys ) . "\n";
 echo 'Shim translations: ' . count( $known ) . "\n";
-echo 'Missing fixed UI candidates: ' . count( $missing ) . "\n";
+echo 'Missing strings: ' . count( $missing ) . "\n";
+echo 'Fixed UI review candidates: ' . count( $groups['fixed_ui_candidates'] ) . "\n";
 echo 'Possibly stale shim strings: ' . count( $stale ) . "\n\n";
 
-echo "Missing fixed UI candidates:\n";
-if ( empty( $missing ) ) {
-	echo "- none\n";
-} else {
-	foreach ( $missing as $text ) {
-		$files = $found[ $text ]['files'] ?? array();
-		echo '- "' . $text . "\"\n";
-		if ( ! empty( $files ) ) {
-			echo '  files: ' . implode( ', ', array_slice( $files, 0, 3 ) ) . "\n";
-		}
-		$near = npcink_cloud_addon_ai_i18n_audit_near_matches( $text, $known );
-		if ( ! empty( $near ) ) {
-			echo '  near: ' . implode( ' | ', $near ) . "\n";
+echo "Missing review groups:\n";
+foreach ( $groups as $category => $items ) {
+	echo '- ' . $category . ': ' . count( $items ) . "\n";
+}
+
+foreach ( $groups as $category => $items ) {
+	echo "\n" . $category . ":\n";
+	if ( empty( $items ) ) {
+		echo "- none\n";
+	} else {
+		foreach ( $items as $text ) {
+			npcink_cloud_addon_ai_i18n_audit_print_entry( $text, $found, $known );
 		}
 	}
 }
 
-echo "\nPossibly stale shim strings:\n";
+echo "\nstale_review:\n";
 if ( empty( $stale ) ) {
 	echo "- none\n";
 } else {

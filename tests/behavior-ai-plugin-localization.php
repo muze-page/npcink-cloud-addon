@@ -126,6 +126,21 @@ maca_assert(
 		'Reset to default',
 		'Reset to default',
 		'ai'
+	)
+	&& '— 默认 —' === Npcink_Cloud_AI_Plugin_Localization::filter_gettext(
+		'— Default —',
+		'— Default —',
+		'ai'
+	)
+	&& '%d 个字段需要处理' === Npcink_Cloud_AI_Plugin_Localization::filter_gettext(
+		'%d fields need attention',
+		'%d fields need attention',
+		'ai'
+	)
+	&& '先前选择的提供方已不可用。此功能在选择有效提供方或重置为默认值之前可能无法正常工作。' === Npcink_Cloud_AI_Plugin_Localization::filter_gettext(
+		'The previously selected provider is no longer available. This feature will not function as expected until a valid provider is selected or the selection is reset to default.',
+		'The previously selected provider is no longer available. This feature will not function as expected until a valid provider is selected or the selection is reset to default.',
+		'ai'
 	),
 	'AI plugin localization translates dashboard status and capability labels.'
 );
@@ -242,6 +257,11 @@ maca_assert(
 	&& '设置 → 连接器' === Npcink_Cloud_AI_Plugin_Localization::filter_gettext(
 		'Settings → Connectors',
 		'Settings → Connectors',
+		'ai'
+	)
+	&& '此功能需要有效的 AI 连接器才能正常工作。请在 %s 中设置提供方。' === Npcink_Cloud_AI_Plugin_Localization::filter_gettext(
+		'This feature requires a valid AI Connector to function properly. Please set up a provider to use this feature in %s.',
+		'This feature requires a valid AI Connector to function properly. Please set up a provider to use this feature in %s.',
 		'ai'
 	),
 	'AI plugin localization translates comment moderation labels and statuses.'
@@ -535,6 +555,11 @@ maca_assert(
 		'Log entry not found.',
 		'Log entry not found.',
 		'ai'
+	)
+	&& '已选择 %d 项' === Npcink_Cloud_AI_Plugin_Localization::filter_gettext(
+		'%d Items selected',
+		'%d Items selected',
+		'ai'
 	),
 	'AI plugin localization translates request log page labels.'
 );
@@ -594,8 +619,62 @@ maca_assert(
 		'Review requests',
 		'Review requests',
 		'ai'
+	)
+	&& '没有与所提供密钥匹配的待审批请求。' === Npcink_Cloud_AI_Plugin_Localization::filter_gettext(
+		'No pending approval request matches the provided key.',
+		'No pending approval request matches the provided key.',
+		'ai'
+	)
+	&& '插件 basename 和连接器 ID 为必填项。' === Npcink_Cloud_AI_Plugin_Localization::filter_gettext(
+		'Plugin basename and connector ID are required.',
+		'Plugin basename and connector ID are required.',
+		'ai'
 	),
 	'AI plugin localization translates connector approval and status labels.'
+);
+
+maca_assert(
+	'AI 插件初始化失败：%s' === Npcink_Cloud_AI_Plugin_Localization::filter_gettext(
+		'AI Plugin initialization failed: %s',
+		'AI Plugin initialization failed: %s',
+		'ai'
+	)
+	&& 'AI 插件因以下问题无法运行：' === Npcink_Cloud_AI_Plugin_Localization::filter_gettext(
+		'AI plugin cannot run due to the following issues:',
+		'AI plugin cannot run due to the following issues:',
+		'ai'
+	)
+	&& '需要 PHP %1$s 或更高版本。当前运行的是 PHP %2$s。' === Npcink_Cloud_AI_Plugin_Localization::filter_gettext(
+		'PHP version %1$s or higher is required. You are running PHP version %2$s.',
+		'PHP version %1$s or higher is required. You are running PHP version %2$s.',
+		'ai'
+	)
+	&& '需要 WordPress %s 或更高版本。' === Npcink_Cloud_AI_Plugin_Localization::filter_gettext(
+		'WordPress version %s or higher is required.',
+		'WordPress version %s or higher is required.',
+		'ai'
+	)
+	&& '缺少“%1$s”的资源文件，无法注册。' === Npcink_Cloud_AI_Plugin_Localization::filter_gettext(
+		'Asset file for "%1$s" is missing and cannot be registered.',
+		'Asset file for "%1$s" is missing and cannot be registered.',
+		'ai'
+	)
+	&& '缺少 RTL 样式表“%1$s”，因此不可用。' === Npcink_Cloud_AI_Plugin_Localization::filter_gettext(
+		'RTL stylesheet "%1$s" is missing and will not be available.',
+		'RTL stylesheet "%1$s" is missing and will not be available.',
+		'ai'
+	)
+	&& '插件资源尚未构建。这很可能是因为你从 GitHub 仓库下载了插件但未构建资源。请运行 `nvm use && npm ci && npm run build` 来构建资源。' === Npcink_Cloud_AI_Plugin_Localization::filter_gettext(
+		'The plugin assets are not built. This is most likely because you downloaded the plugin from the GitHub repository without building the assets. Please run `nvm use && npm ci && npm run build` to build the assets.',
+		'The plugin assets are not built. This is most likely because you downloaded the plugin from the GitHub repository without building the assets. Please run `nvm use && npm ci && npm run build` to build the assets.',
+		'ai'
+	)
+	&& '你没有足够权限访问此页面。' === Npcink_Cloud_AI_Plugin_Localization::filter_gettext(
+		'You do not have sufficient permissions to access this page.',
+		'You do not have sufficient permissions to access this page.',
+		'ai'
+	),
+	'AI plugin localization translates fixed admin requirement and permission messages.'
 );
 
 maca_assert(

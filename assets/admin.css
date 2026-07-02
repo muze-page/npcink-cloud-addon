@@ -1,5 +1,5 @@
 .npcink-cloud-addon {
-	max-width: 960px;
+	max-width: 1120px;
 }
 
 .npcink-cloud-summary,
@@ -7,7 +7,7 @@
 .npcink-cloud-disclosure,
 .npcink-cloud-tabs {
 	box-sizing: border-box;
-	max-width: 860px;
+	max-width: 1040px;
 }
 
 .npcink-cloud-summary {
@@ -48,6 +48,10 @@
 
 .npcink-cloud-summary__actions .npcink-cloud-verify-form {
 	margin-top: 0;
+}
+
+.npcink-cloud-summary__actions > form {
+	margin: 0;
 }
 
 .npcink-cloud-badge {
@@ -213,6 +217,113 @@
 .npcink-cloud-disclosure form,
 .npcink-cloud-disclosure table {
 	margin: 0 14px 14px;
+}
+
+.npcink-cloud-disclosure table {
+	box-sizing: border-box;
+	width: calc(100% - 28px);
+}
+
+.npcink-cloud-capability-list {
+	margin: 0 14px 14px;
+}
+
+.npcink-cloud-capability-header,
+.npcink-cloud-capability-item {
+	align-items: start;
+	display: grid;
+	gap: 8px 14px;
+	grid-template-columns: minmax(220px, 1.2fr) minmax(120px, .6fr) minmax(48px, max-content);
+}
+
+.npcink-cloud-capability-header {
+	border-bottom: 1px solid #dcdcde;
+	color: #50575e;
+	font-weight: 600;
+	padding: 0 0 8px;
+}
+
+.npcink-cloud-capability-item {
+	border-top: 1px solid #f0f0f1;
+	padding: 10px 0;
+}
+
+.npcink-cloud-capability-item:first-child {
+	border-top: 0;
+}
+
+.npcink-cloud-capability-name,
+.npcink-cloud-capability-state {
+	overflow-wrap: anywhere;
+}
+
+.npcink-cloud-capability-state {
+	color: #50575e;
+}
+
+.npcink-cloud-capability-detail {
+	display: inline-flex;
+	position: relative;
+	width: max-content;
+}
+
+.npcink-cloud-capability-detail:focus {
+	outline: none;
+}
+
+.npcink-cloud-capability-detail:focus .npcink-cloud-capability-icon {
+	border-color: #3858e9;
+	box-shadow: 0 0 0 1px #3858e9;
+	color: #3858e9;
+}
+
+.npcink-cloud-capability-detail:hover .npcink-cloud-capability-icon {
+	border-color: #3858e9;
+	color: #3858e9;
+}
+
+.npcink-cloud-capability-detail[tabindex] {
+	cursor: pointer;
+}
+
+.npcink-cloud-capability-icon {
+	align-items: center;
+	border: 1px solid #8c8f94;
+	border-radius: 999px;
+	color: #50575e;
+	display: inline-flex;
+	font-size: 12px;
+	font-weight: 700;
+	height: 20px;
+	justify-content: center;
+	line-height: 1;
+	width: 20px;
+}
+
+.npcink-cloud-capability-popover {
+	background: #fff;
+	border: 1px solid #c3c4c7;
+	box-shadow: 0 3px 8px rgba(0, 0, 0, .08);
+	color: #50575e;
+	display: none;
+	font-weight: 400;
+	line-height: 1.5;
+	margin-top: 6px;
+	max-width: 760px;
+	min-width: 260px;
+	overflow-wrap: anywhere;
+	padding: 10px 12px;
+	position: absolute;
+	right: 0;
+	top: 100%;
+	width: max-content;
+	z-index: 5;
+}
+
+.npcink-cloud-capability-detail:hover .npcink-cloud-capability-popover,
+.npcink-cloud-capability-detail:focus .npcink-cloud-capability-popover,
+.npcink-cloud-capability-detail:focus-within .npcink-cloud-capability-popover {
+	display: block;
 }
 
 .npcink-cloud-error-detail {
@@ -386,6 +497,18 @@
 	.npcink-cloud-site-knowledge-consent__actions {
 		align-items: flex-start;
 		margin-top: 12px;
+	}
+
+	.npcink-cloud-capability-header,
+	.npcink-cloud-capability-item {
+		grid-template-columns: 1fr;
+	}
+
+	.npcink-cloud-capability-popover {
+		left: 0;
+		max-width: calc(100vw - 64px);
+		right: auto;
+		width: auto;
 	}
 
 	.npcink-cloud-site-knowledge-status th {

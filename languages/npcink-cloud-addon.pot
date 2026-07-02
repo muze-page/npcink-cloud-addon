@@ -860,7 +860,7 @@ msgid "Read-only entitlement, credit, and monitoring projections."
 msgstr ""
 
 #: includes/class-cloud-settings-page.php:1427
-msgid "Read-only Cloud connection and service status for this addon. Product actions, provider tools, approvals, and WordPress writes stay in their owning surfaces."
+msgid "Read-only connection and service status. Product actions, approvals, and WordPress writes stay outside this addon."
 msgstr ""
 
 #: includes/class-cloud-settings-page.php:1430

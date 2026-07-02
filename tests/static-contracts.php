@@ -29,12 +29,14 @@ $adapter_doc = maca_read( $root . '/docs/adapter-integration-seam.md' );
 $complexity_doc = maca_read( $root . '/docs/cloud-addon-complexity-budget.md' );
 $cloud_bulk_article_doc = maca_read( $root . '/docs/cloud-bulk-article-run-seam.md' );
 $admin_surface_standard = maca_read( $root . '/docs/admin-surface-standard.md' );
+$admin_ui_simplification_doc = maca_read( $root . '/docs/cloud-addon-admin-ui-simplification-2026-07-02.md' );
 $site_knowledge_vector_ops_doc = maca_read( $root . '/docs/site-knowledge-vector-operations.md' );
 $agents = maca_read( $root . '/AGENTS.md' );
 $readme = maca_read( $root . '/README.md' );
 $composer = maca_read( $root . '/composer.json' );
 $eval_lab_proxy = maca_read( $root . '/scripts/eval-lab.sh' );
 $ai_i18n_audit = maca_read( $root . '/scripts/audit-ai-plugin-localization.php' );
+$zh_cn_po = maca_read( $root . '/languages/npcink-cloud-addon-zh_CN.po' );
 
 maca_assert(
 	false !== strpos( $composer, '"eval:project:quality": "sh scripts/eval-lab.sh task=project_quality_gate' )
@@ -97,9 +99,18 @@ maca_assert(
 	false !== strpos( maca_read( $root . '/npcink-cloud-addon.php' ), 'Text Domain:       npcink-cloud-addon' )
 	&& false !== strpos( maca_read( $root . '/npcink-cloud-addon.php' ), 'Domain Path:       /languages' )
 	&& false !== strpos( maca_read( $root . '/languages/npcink-cloud-addon.pot' ), 'X-Domain: npcink-cloud-addon' )
-	&& false !== strpos( maca_read( $root . '/languages/npcink-cloud-addon-zh_CN.po' ), 'Language: zh_CN' )
+	&& false !== strpos( $zh_cn_po, 'Language: zh_CN' )
 	&& false === strpos( $bootstrap, 'load_plugin_textdomain' ),
 	'Plugin declares the npcink-cloud-addon text domain and ships generated language files.'
+);
+
+maca_assert(
+	false !== strpos( $zh_cn_po, 'msgstr "Cloud 基础 URL"' )
+	&& false !== strpos( $zh_cn_po, 'msgstr "Cloud API 密钥"' )
+	&& false !== strpos( $zh_cn_po, 'msgstr "托管运行时"' )
+	&& false !== strpos( $zh_cn_po, 'msgstr "Cloud 网页搜索"' )
+	&& false !== strpos( $zh_cn_po, 'msgstr "Cloud 图像生成"' ),
+	'Chinese localization translates fixed Cloud Addon admin terminology without translating dynamic metadata.'
 );
 
 maca_assert(
@@ -699,11 +710,11 @@ maca_assert(
 		false !== strpos( $settings_page, "\$default = \$is_verified ? 'status' : 'connect';" )
 		&& false !== strpos( $settings_page, 'function should_show_unverified_advanced_tab' )
 		&& false !== strpos( $settings_page, 'self::should_show_unverified_advanced_tab( $state )' )
-		&& false !== strpos( $settings_page, "'status'   => __( 'Status'" )
+		&& false !== strpos( $settings_page, "'status'         => __( 'Status'" )
 		&& false !== strpos( $settings_page, "'site_knowledge' => __( 'Site Knowledge'" )
-		&& false !== strpos( $settings_page, "'diagnostics' => __( 'Troubleshooting'" )
+		&& false !== strpos( $settings_page, "'diagnostics'    => __( 'Troubleshooting'" )
 		&& false !== strpos( $settings_page, "'connect'  => __( 'Connect'" )
-		&& false !== strpos( $settings_page, "'advanced' => __( 'Connection management'" )
+		&& false !== strpos( $settings_page, "'advanced'       => __( 'Connection management'" )
 		&& false !== strpos( $settings_page, 'Connect this site' )
 		&& false !== strpos( $settings_page, "'site_knowledge' === \$active_tab" )
 		&& false !== strpos( $settings_page, "'diagnostics' === \$active_tab" )
@@ -711,6 +722,7 @@ maca_assert(
 	&& false !== strpos( $settings_page, "if ( \$is_verified && 'details' === \$requested )" )
 	&& false !== strpos( $settings_page, 'function render_diagnostics' )
 	&& false !== strpos( $settings_page, 'function render_runtime_runs' )
+	&& false !== strpos( $settings_page, 'Read-only connection and service status. Product actions, approvals, and WordPress writes stay outside this addon.' )
 	&& false !== strpos( $settings_page, 'Cloud runtime runs' )
 	&& false !== strpos( $settings_page, 'Account and usage details' )
 	&& false !== strpos( $settings_page, 'Open Cloud status detail' )
@@ -723,6 +735,19 @@ maca_assert(
 	&& false !== strpos( $settings_page, 'No Cloud Addon status API is currently contracted for web search capability.' )
 	&& false !== strpos( $settings_page, 'Tavily, Unsplash, and other product search tools are not Cloud Addon admin actions.' )
 	&& false !== strpos( $settings_page, 'Cloud-owned capability notes' )
+	&& false !== strpos( $settings_page, 'npcink-cloud-capability-list' )
+	&& false !== strpos( $settings_page, 'npcink-cloud-capability-header' )
+	&& false !== strpos( $settings_page, 'npcink-cloud-capability-icon' )
+	&& false !== strpos( $settings_page, 'npcink-cloud-capability-popover' )
+	&& false !== strpos( $settings_page, 'aria-describedby' )
+	&& false !== strpos( $settings_page, 'function render_capability_note' )
+	&& false === strpos( $settings_page, '<details class="npcink-cloud-capability-detail">' )
+	&& false !== strpos( $admin_css, '.npcink-cloud-capability-item' )
+	&& false !== strpos( $admin_css, '.npcink-cloud-capability-popover' )
+	&& false !== strpos( $admin_css, '.npcink-cloud-capability-detail:focus' )
+	&& false !== strpos( $admin_css, 'max-width: 1120px' )
+	&& false !== strpos( $admin_css, 'max-width: 1040px' )
+	&& false !== strpos( $admin_css, 'width: calc(100% - 28px)' )
 	&& false !== strpos( $settings_page, 'Provider readiness and product tools stay outside this local connector.' )
 	&& false !== strpos( $settings_page, 'Advanced raw status' )
 	&& false !== strpos( $settings_page, 'Manual connection fallback' )
@@ -735,6 +760,8 @@ maca_assert(
 	&& false !== strpos( $settings_page, 'format_monitoring_overview' )
 	&& false !== strpos( $settings_page, 'format_site_knowledge_overview' )
 	&& false !== strpos( $settings_page, 'Re-verify and refresh' )
+	&& 1 === substr_count( $settings_page, 'self::render_reverify_form( $settings );' )
+	&& false !== strpos( $admin_css, '.npcink-cloud-summary__actions > form' )
 	&& false !== strpos( $settings_page, 'Entitlement, monitoring, and Site Knowledge are local connector summaries.' )
 	&& false !== strpos( $settings_page, 'This troubleshooting section creates no local queue, scheduler, proposal, approval record, or WordPress write.' )
 		&& false === strpos( $settings_page, 'Refresh Cloud summary' )
@@ -745,8 +772,20 @@ maca_assert(
 	&& false !== strpos( $settings_page, "self::redirect_to_page( 'status' );" )
 	&& false !== strpos( $settings_page, "self::redirect_to_page( 'diagnostics' );" )
 	&& false === strpos( $settings_page, "'monitoring'  =>" ),
-		'Settings page defaults to a connect view before verification, keeps verified status compact, folds details into Status, folds runtime runs into Troubleshooting, and gives Site Knowledge a dedicated verified tab.'
-	);
+	'Settings page defaults to a connect view before verification, keeps verified status compact, folds details into Status, folds runtime runs into Troubleshooting, and gives Site Knowledge a dedicated verified tab.'
+);
+
+maca_assert(
+	false !== strpos( $admin_surface_standard, 'Verified admin navigation should stay shallow' )
+	&& false !== strpos( $admin_surface_standard, 'Do not reintroduce separate `Details`, `Runtime Runs`, or `Advanced` product' )
+	&& false !== strpos( $admin_surface_standard, 'avoid nested disclosure controls inside another disclosure' )
+	&& false !== strpos( $admin_ui_simplification_doc, 'Cloud Addon Admin UI Simplification Closeout' )
+	&& false !== strpos( $admin_ui_simplification_doc, 'Fold legacy `Details` into `Status`' )
+	&& false !== strpos( $admin_ui_simplification_doc, 'dynamic ability metadata' )
+	&& false !== strpos( $admin_ui_simplification_doc, 'no nested `<details>`' )
+	&& false !== strpos( $admin_ui_simplification_doc, 'Cloud remains the owner of runtime detail' ),
+	'Admin UI simplification closeout documents the current tab model, detail hierarchy, localization boundary, and Cloud ownership boundary.'
+);
 
 	maca_assert(
 		false !== strpos( $settings_page, "ACTION_REFRESH_SITE_KNOWLEDGE = 'npcink_cloud_addon_refresh_site_knowledge'" )

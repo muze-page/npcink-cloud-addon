@@ -336,4 +336,6 @@ only as bounded Cloud delivery transport.
 
 For packaged plugin releases, also follow
 [`docs/wordpress-org-release-gate.md`](docs/wordpress-org-release-gate.md),
-including the Cloud Base URL check for local development versus production.
+including the Cloud Base URL check for local development versus production. For
+public Cloud onboarding, use
+[`docs/public-cloud-onboarding-checklist.md`](docs/public-cloud-onboarding-checklist.md).

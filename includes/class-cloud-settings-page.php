@@ -552,7 +552,7 @@ if ( ! class_exists( 'Npcink_Cloud_Settings_Page' ) ) {
 					self::redirect_to_page( 'diagnostics' );
 				}
 
-				$run_id = isset( $_POST['runtime_run_id'] ) ? self::normalize_run_id( wp_unslash( $_POST['runtime_run_id'] ) ) : '';
+				$run_id = isset( $_POST['runtime_run_id'] ) ? self::normalize_run_id( sanitize_text_field( wp_unslash( $_POST['runtime_run_id'] ) ) ) : '';
 				if ( '' === $run_id ) {
 					self::set_admin_notice( 'error', __( 'Enter a Cloud run ID before requesting retry.', 'npcink-cloud-addon' ) );
 					self::redirect_to_page( 'diagnostics' );

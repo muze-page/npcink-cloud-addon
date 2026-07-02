@@ -31,6 +31,7 @@ $cloud_bulk_article_doc = maca_read( $root . '/docs/cloud-bulk-article-run-seam.
 $admin_surface_standard = maca_read( $root . '/docs/admin-surface-standard.md' );
 $admin_ui_simplification_doc = maca_read( $root . '/docs/cloud-addon-admin-ui-simplification-2026-07-02.md' );
 $site_knowledge_vector_ops_doc = maca_read( $root . '/docs/site-knowledge-vector-operations.md' );
+$public_onboarding_doc = maca_read( $root . '/docs/public-cloud-onboarding-checklist.md' );
 $agents = maca_read( $root . '/AGENTS.md' );
 $readme = maca_read( $root . '/README.md' );
 $composer = maca_read( $root . '/composer.json' );
@@ -66,7 +67,11 @@ maca_assert(
 	false !== strpos( $composer, '"ai:i18n:audit": "@php scripts/audit-ai-plugin-localization.php"' )
 	&& false !== strpos( $ai_i18n_audit, 'AI_PLUGIN_PATH' )
 	&& false !== strpos( $ai_i18n_audit, 'Npcink_Cloud_AI_Plugin_Localization::translations()' )
-	&& false !== strpos( $ai_i18n_audit, 'Missing fixed UI candidates' )
+	&& false !== strpos( $ai_i18n_audit, 'Missing review groups' )
+	&& false !== strpos( $ai_i18n_audit, 'fixed_ui_candidates' )
+	&& false !== strpos( $ai_i18n_audit, 'dynamic_ability_metadata' )
+	&& false !== strpos( $ai_i18n_audit, 'schema_or_json_fields' )
+	&& false !== strpos( $ai_i18n_audit, 'long_prompt_copy' )
 	&& false !== strpos( $ai_i18n_audit, 'Do not add dynamic ability names' )
 	&& false === strpos( $ai_i18n_audit, 'npcink_cloud_addon_runtime_client' ),
 	'AI plugin localization audit compares local ai-domain strings against the bounded shim without Cloud runtime.'
@@ -905,6 +910,21 @@ maca_assert(
 	&& false !== strpos( $settings_page, 'persist_and_verify_settings' )
 	&& false !== strpos( $settings_page, 'Cloud connection completed and verified.' ),
 	'Settings page defaults to Cloud-side site authorization, exchanges the callback key, and verifies the saved connection immediately.'
+);
+
+maca_assert(
+	false !== strpos( $settings_page, "sanitize_text_field( wp_unslash( \$_POST['runtime_run_id'] ) )" ),
+	'Runtime retry admin action sanitizes the submitted run ID before retry dispatch.'
+);
+
+maca_assert(
+	false !== strpos( $public_onboarding_doc, 'https://cloud.npc.ink/' )
+	&& false !== strpos( $public_onboarding_doc, '/portal/sites' )
+	&& false !== strpos( $public_onboarding_doc, '/portal/v1/addon-connections/exchange' )
+	&& false !== strpos( $public_onboarding_doc, 'must not become a Cloud operations console or a second control plane' )
+	&& false !== strpos( $public_onboarding_doc, 'must not send prompts, generated content' )
+	&& false !== strpos( $readme, 'docs/public-cloud-onboarding-checklist.md' ),
+	'Public Cloud onboarding checklist keeps production default, Portal authorization, metadata-only monitoring, and addon boundary checks explicit.'
 );
 
 maca_assert(

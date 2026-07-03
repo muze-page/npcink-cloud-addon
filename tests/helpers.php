@@ -377,6 +377,7 @@ function maca_seed_settings( bool $verified, string $base_url = 'https://cloud.e
 		'last_verification_error' => '',
 		'monitoring_enabled' => false,
 		'site_knowledge_delivery_enabled' => true,
+		'wordpress_ai_connector_enabled' => true,
 	);
 }
 
@@ -401,6 +402,18 @@ function maca_set_monitoring_enabled( bool $enabled ): void {
 function maca_set_site_knowledge_delivery_enabled( bool $enabled ): void {
 	$settings = Npcink_Cloud_Addon_Settings::get_settings();
 	$settings['site_knowledge_delivery_enabled'] = $enabled;
+	$GLOBALS['maca_options'][ Npcink_Cloud_Addon_Settings::option_name() ] = $settings;
+}
+
+/**
+ * Enables or disables WordPress AI connector exposure in test storage.
+ *
+ * @param bool $enabled Whether connector exposure is enabled.
+ * @return void
+ */
+function maca_set_wordpress_ai_connector_enabled( bool $enabled ): void {
+	$settings = Npcink_Cloud_Addon_Settings::get_settings();
+	$settings['wordpress_ai_connector_enabled'] = $enabled;
 	$GLOBALS['maca_options'][ Npcink_Cloud_Addon_Settings::option_name() ] = $settings;
 }
 

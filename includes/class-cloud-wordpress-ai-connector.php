@@ -43,6 +43,10 @@ if ( ! class_exists( 'Npcink_Cloud_WordPress_AI_Connector' ) ) {
 		 * @return void
 		 */
 		public static function register_ai_provider(): void {
+			if ( ! self::is_cloud_connector_available() ) {
+				return;
+			}
+
 			if ( ! class_exists( 'WordPress\\AiClient\\AiClient' ) || ! class_exists( 'Npcink_Cloud_WordPress_AI_Provider' ) ) {
 				return;
 			}
@@ -75,6 +79,10 @@ if ( ! class_exists( 'Npcink_Cloud_WordPress_AI_Connector' ) ) {
 				} else {
 					return;
 				}
+			}
+
+			if ( ! self::is_cloud_connector_available() ) {
+				return;
 			}
 
 			$registry->register(
@@ -120,7 +128,7 @@ if ( ! class_exists( 'Npcink_Cloud_WordPress_AI_Connector' ) ) {
 		 * @return void
 		 */
 		public static function sync_connected_marker(): void {
-			if ( class_exists( 'Npcink_Cloud_Addon_Settings' ) && Npcink_Cloud_Addon_Settings::is_verified() ) {
+			if ( self::is_cloud_connector_available() ) {
 				update_option( self::SETTING_NAME, '1', false );
 				return;
 			}
@@ -142,7 +150,7 @@ if ( ! class_exists( 'Npcink_Cloud_WordPress_AI_Connector' ) ) {
 
 			return isset( $connectors[ self::CONNECTOR_ID ] )
 				&& class_exists( 'Npcink_Cloud_Addon_Settings' )
-				&& Npcink_Cloud_Addon_Settings::is_verified();
+				&& Npcink_Cloud_Addon_Settings::is_wordpress_ai_connector_enabled();
 		}
 
 		/**
@@ -152,7 +160,7 @@ if ( ! class_exists( 'Npcink_Cloud_WordPress_AI_Connector' ) ) {
 		 * @return array<int,mixed>
 		 */
 		public static function filter_preferred_text_models( array $preferred_models ): array {
-			if ( ! self::is_cloud_verified() ) {
+			if ( ! self::is_cloud_connector_available() ) {
 				return $preferred_models;
 			}
 
@@ -168,7 +176,7 @@ if ( ! class_exists( 'Npcink_Cloud_WordPress_AI_Connector' ) ) {
 		 * @return array<int,mixed>
 		 */
 		public static function filter_preferred_image_models( array $preferred_models ): array {
-			if ( ! self::is_cloud_verified() ) {
+			if ( ! self::is_cloud_connector_available() ) {
 				return $preferred_models;
 			}
 
@@ -206,12 +214,13 @@ if ( ! class_exists( 'Npcink_Cloud_WordPress_AI_Connector' ) ) {
 			}
 
 			/**
-			 * Checks whether Cloud settings have passed Save and Verify.
+			 * Checks whether verified Cloud settings may be exposed to WordPress AI.
 			 *
 			 * @return bool
 			 */
-			private static function is_cloud_verified(): bool {
-				return class_exists( 'Npcink_Cloud_Addon_Settings' ) && Npcink_Cloud_Addon_Settings::is_verified();
+			private static function is_cloud_connector_available(): bool {
+				return class_exists( 'Npcink_Cloud_Addon_Settings' )
+					&& Npcink_Cloud_Addon_Settings::is_wordpress_ai_connector_enabled();
 			}
 		}
 	}
@@ -280,16 +289,17 @@ if ( ! class_exists( 'Npcink_Cloud_WordPress_AI_Connector' ) ) {
 	}
 
 	/**
-	 * Availability is driven by the addon Save and Verify state.
+	 * Availability is driven by Save and Verify plus local connector exposure consent.
 	 */
 	final class Npcink_Cloud_WordPress_AI_Availability implements \WordPress\AiClient\Providers\Contracts\ProviderAvailabilityInterface {
 		/**
-		 * Checks whether verified Cloud settings are available.
+		 * Checks whether verified Cloud settings may be exposed to WordPress AI.
 		 *
 		 * @return bool
 		 */
 		public function isConfigured(): bool {
-			return class_exists( 'Npcink_Cloud_Addon_Settings' ) && Npcink_Cloud_Addon_Settings::is_verified();
+			return class_exists( 'Npcink_Cloud_Addon_Settings' )
+				&& Npcink_Cloud_Addon_Settings::is_wordpress_ai_connector_enabled();
 		}
 	}
 

@@ -127,3 +127,33 @@ maca_assert(
 	$fallback_image_models === Npcink_Cloud_WordPress_AI_Connector::filter_preferred_image_models( $fallback_image_models ),
 	'Unverified Cloud settings do not change the preferred AI image model list.'
 );
+
+maca_reset_test_state();
+maca_seed_settings( true );
+maca_set_wordpress_ai_connector_enabled( false );
+$disabled_registry = new Maca_Connector_Registry_Stub();
+$disabled_registry->connectors[ Npcink_Cloud_WordPress_AI_Connector::CONNECTOR_ID ] = array(
+	'name' => 'Stale Npcink Cloud',
+);
+Npcink_Cloud_WordPress_AI_Connector::register_connector( $disabled_registry );
+maca_assert(
+	! isset( $disabled_registry->connectors[ Npcink_Cloud_WordPress_AI_Connector::CONNECTOR_ID ] )
+	&& '' === get_option( Npcink_Cloud_WordPress_AI_Connector::SETTING_NAME, '' ),
+	'Disabled WordPress AI connector exposure removes the Npcink Cloud connector card and marker.'
+);
+
+maca_assert(
+	false === Npcink_Cloud_WordPress_AI_Connector::filter_has_ai_credentials(
+		false,
+		array(
+			Npcink_Cloud_WordPress_AI_Connector::CONNECTOR_ID => $connector,
+		)
+	),
+	'Disabled WordPress AI connector exposure does not satisfy AI plugin credential detection.'
+);
+
+maca_assert(
+	$fallback_text_models === Npcink_Cloud_WordPress_AI_Connector::filter_preferred_text_models( $fallback_text_models )
+	&& $fallback_image_models === Npcink_Cloud_WordPress_AI_Connector::filter_preferred_image_models( $fallback_image_models ),
+	'Disabled WordPress AI connector exposure does not change preferred AI model lists.'
+);

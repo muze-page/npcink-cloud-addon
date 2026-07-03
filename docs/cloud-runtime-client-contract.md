@@ -33,6 +33,8 @@ Required config:
 probe_connectivity(): array
 execute_runtime(array $payload, string $trace_id = '', string $idempotency_key = '')
 execute_wordpress_ai_connector_runtime(array $request, string $trace_id = '', string $idempotency_key = '')
+execute_wordpress_ai_image_generation_runtime(array $request, string $trace_id = '', string $idempotency_key = '')
+execute_toolbox_image_generation_runtime(array $request, string $trace_id = '', string $idempotency_key = '')
 request_image_context_evidence(array $image_context_evidence_request, string $trace_id = '', string $idempotency_key = '')
 create_media_derivative(array $payload, array $files = array(), string $trace_id = '', string $idempotency_key = '')
 get_run(string $run_id, string $trace_id = '')
@@ -64,6 +66,8 @@ It returns `null` until the addon settings have passed Save and Verify.
 | `probe_connectivity()` | `GET /health/live`, then signed `GET /v1/entitlements/current` |
 | `execute_runtime()` | `POST /v1/runtime/execute` |
 | `execute_wordpress_ai_connector_runtime()` | `POST /v1/runtime/execute` |
+| `execute_wordpress_ai_image_generation_runtime()` | `POST /v1/runtime/execute` |
+| `execute_toolbox_image_generation_runtime()` | `POST /v1/runtime/execute` |
 | `npcink_cloud_addon_dispatch_site_knowledge_runtime()` | `POST /v1/runtime/execute` |
 | `request_image_context_evidence()` | `POST /v1/runtime/execute` |
 | `create_media_derivative()` | `POST /v1/runtime/media-derivatives` |
@@ -243,6 +247,11 @@ is the bounded transport seam for the WordPress AI image generation feature.
 Both must be treated as scene runtimes, not as generic chat providers, image
 provider proxies, model proxies, or OpenAI-compatible endpoints.
 
+`execute_toolbox_image_generation_runtime()` is the bounded transport seam for
+Toolbox AI image candidate generation. It lets Toolbox keep the editor
+recommendation UI and `image_candidate.v1` normalization while the addon owns
+Cloud credentials, signing, runtime dispatch, and Cloud error mapping.
+
 The optional PHP AI Client provider registers `npcink-cloud-scene-text` and
 `npcink-cloud-scene-image` as scene wrapper models. These ids represent bounded
 WordPress AI surfaces, not bottom-level Cloud provider model ids. The addon may
@@ -297,6 +306,14 @@ not choose provider keys or expose model routing; Cloud owns image-generation
 provider/profile selection. The image generation seam rejects generic chat,
 tool, stream, and credential fields, clamps image count to 1-4, clamps timeout
 to 90 seconds, and does not support reference-image refinement.
+
+Toolbox image generation input uses the same `image_generation_request.v1`
+contract and `task=image_generation`, but the addon projects it as
+`channel=toolbox_image_generation` with one allowlisted `source_surface` such
+as `toolbox_featured_image`. It returns only the Cloud runtime response;
+Toolbox must still normalize generated assets into `image_candidate.v1`, and
+any media import or featured-image adoption remains with the local
+Core/Adapter/Abilities path.
 
 The optional PHP AI Client provider may call this helper only when the current
 call stack originates from a known WordPress AI plugin Ability class and maps to

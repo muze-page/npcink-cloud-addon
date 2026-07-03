@@ -30,6 +30,7 @@ if ( ! class_exists( 'Npcink_Cloud_Runtime_Client' ) ) {
 		private const WP_AI_IMAGE_GENERATION_MAX_RETENTION_TTL = 86400;
 		private const WP_AI_IMAGE_GENERATION_ALLOWED_RESPONSE_FORMATS = array( 'url', 'b64_json' );
 		private const WP_AI_IMAGE_GENERATION_ALLOWED_ASPECT_RATIOS = array( '1:1', '2:3', '3:2', '3:4', '4:3', '4:5', '5:4', '9:16', '16:9', '21:9' );
+		private const TOOLBOX_IMAGE_GENERATION_ALLOWED_SOURCE_SURFACES = array( 'toolbox_featured_image', 'toolbox_editor_featured_image', 'toolbox_editor_image_modal', 'toolbox_ai_image_generation' );
 		private const WP_AI_CONNECTOR_ALLOWED_TASKS = array(
 			'alt_text_suggest',
 			'comment_moderation',
@@ -193,6 +194,31 @@ if ( ! class_exists( 'Npcink_Cloud_Runtime_Client' ) ) {
 
 			if ( '' === $idempotency_key ) {
 				$idempotency_key = 'wp_ai_image_generation_' . wp_generate_uuid4();
+			}
+
+			return $this->request( 'POST', '/v1/runtime/execute', $payload, $idempotency_key, $trace_id );
+		}
+
+		/**
+		 * Executes one bounded Toolbox AI image generation runtime request.
+		 *
+		 * This method is a transport seam for Toolbox image candidates. The
+		 * addon signs and dispatches the Cloud runtime request only; Toolbox
+		 * keeps candidate UX/normalization, and Core/Abilities keep adoption.
+		 *
+		 * @param array<string,mixed> $request Toolbox image generation request.
+		 * @param string              $trace_id Optional trace id.
+		 * @param string              $idempotency_key Optional idempotency key.
+		 * @return array<string,mixed>|WP_Error
+		 */
+		public function execute_toolbox_image_generation_runtime( array $request, string $trace_id = '', string $idempotency_key = '' ) {
+			$payload = $this->normalize_toolbox_image_generation_request( $request );
+			if ( is_wp_error( $payload ) ) {
+				return $payload;
+			}
+
+			if ( '' === $idempotency_key ) {
+				$idempotency_key = 'toolbox_ai_image_generation_' . wp_generate_uuid4();
 			}
 
 			return $this->request( 'POST', '/v1/runtime/execute', $payload, $idempotency_key, $trace_id );
@@ -772,7 +798,8 @@ if ( ! class_exists( 'Npcink_Cloud_Runtime_Client' ) ) {
 			$decoded = is_array( $decoded ) ? $decoded : array();
 			$envelope_status = sanitize_key( (string) ( $decoded['status'] ?? '' ) );
 
-			if ( $status < 200 || $status >= 300 || ( '' !== $envelope_status && 'ok' !== $envelope_status ) ) {
+			$successful_envelope_statuses = array( '', 'ok', 'ready', 'submitted', 'queued', 'running', 'completed', 'success' );
+			if ( $status < 200 || $status >= 300 || ! in_array( $envelope_status, $successful_envelope_statuses, true ) ) {
 				$error_code = sanitize_text_field( (string) ( $decoded['error_code'] ?? $decoded['code'] ?? '' ) );
 				$message = $this->normalize_error_message( $decoded['message'] ?? $decoded['detail'] ?? '' );
 				if ( '' === $message ) {
@@ -1343,6 +1370,129 @@ if ( ! class_exists( 'Npcink_Cloud_Runtime_Client' ) ) {
 					'response_format'   => $response_format,
 					'aspect_ratio'      => $aspect_ratio,
 					'resolution'        => sanitize_key( (string) ( $request['resolution'] ?? 'medium' ) ),
+				),
+				'data_classification' => 'internal',
+				'storage_mode'        => 'result_only',
+				'retention_ttl'       => min( self::WP_AI_IMAGE_GENERATION_MAX_RETENTION_TTL, max( 0, $retention_ttl ) ),
+				'timeout_seconds'     => min( self::WP_AI_IMAGE_GENERATION_MAX_TIMEOUT_SECONDS, max( 1, $timeout_seconds ) ),
+				'retry_max'           => 0,
+				'policy'              => array(
+					'allow_fallback' => false,
+				),
+			);
+		}
+
+		/**
+		 * Normalizes a Toolbox AI image generation request into a bounded runtime payload.
+		 *
+		 * @param array<string,mixed> $request Raw Toolbox image generation request.
+		 * @return array<string,mixed>|WP_Error
+		 */
+		private function normalize_toolbox_image_generation_request( array $request ) {
+			$contract_version = (string) ( $request['contract_version'] ?? self::WP_AI_IMAGE_GENERATION_CONTRACT );
+			if ( self::WP_AI_IMAGE_GENERATION_CONTRACT !== $contract_version ) {
+				return new WP_Error(
+					'cloud_toolbox_image_generation_contract_invalid',
+					__( 'Toolbox image generation requests require the image_generation_request.v1 contract.', 'npcink-cloud-addon' ),
+					array( 'status' => 400 )
+				);
+			}
+
+			$task = sanitize_key( (string) ( $request['task'] ?? 'image_generation' ) );
+			if ( 'image_generation' !== $task ) {
+				return new WP_Error(
+					'cloud_toolbox_image_generation_task_not_allowed',
+					__( 'Toolbox image generation requests require the supported image_generation task surface.', 'npcink-cloud-addon' ),
+					array( 'status' => 400 )
+				);
+			}
+
+			$forbidden_key = $this->find_forbidden_wordpress_ai_connector_key( $request );
+			if ( '' !== $forbidden_key ) {
+				return new WP_Error(
+					'cloud_toolbox_image_generation_shape_not_allowed',
+					__( 'Toolbox image generation requests do not support generic chat sessions, tool calls, streams, or credential fields.', 'npcink-cloud-addon' ),
+					array(
+						'status' => 400,
+						'key'    => $forbidden_key,
+					)
+				);
+			}
+
+			$encoded_request = wp_json_encode( $request );
+			if ( ! is_string( $encoded_request ) || '' === $encoded_request ) {
+				return new WP_Error(
+					'cloud_toolbox_image_generation_encode_failed',
+					__( 'Toolbox image generation request could not be encoded.', 'npcink-cloud-addon' ),
+					array( 'status' => 400 )
+				);
+			}
+			if ( strlen( $encoded_request ) > self::WP_AI_IMAGE_GENERATION_MAX_REQUEST_BYTES ) {
+				return new WP_Error(
+					'cloud_toolbox_image_generation_request_too_large',
+					__( 'Toolbox image generation request exceeds the scene runtime size limit.', 'npcink-cloud-addon' ),
+					array( 'status' => 413 )
+				);
+			}
+
+			$prompt = trim( (string) ( $request['prompt'] ?? '' ) );
+			if ( '' === $prompt ) {
+				return new WP_Error(
+					'cloud_toolbox_image_generation_prompt_required',
+					__( 'Toolbox image generation requires text scene input.', 'npcink-cloud-addon' ),
+					array( 'status' => 400 )
+				);
+			}
+			if ( $this->text_length( $prompt ) > self::WP_AI_IMAGE_GENERATION_MAX_PROMPT_CHARS ) {
+				return new WP_Error(
+					'cloud_toolbox_image_generation_prompt_too_large',
+					__( 'Toolbox image generation prompt exceeds the scene runtime size limit.', 'npcink-cloud-addon' ),
+					array( 'status' => 413 )
+				);
+			}
+
+			$response_format = (string) ( $request['response_format'] ?? 'url' );
+			if ( ! in_array( $response_format, self::WP_AI_IMAGE_GENERATION_ALLOWED_RESPONSE_FORMATS, true ) ) {
+				return new WP_Error(
+					'cloud_toolbox_image_generation_response_format_invalid',
+					__( 'Toolbox image generation response format must be url or b64_json.', 'npcink-cloud-addon' ),
+					array( 'status' => 400 )
+				);
+			}
+
+			$aspect_ratio = (string) ( $request['aspect_ratio'] ?? '16:9' );
+			if ( ! in_array( $aspect_ratio, self::WP_AI_IMAGE_GENERATION_ALLOWED_ASPECT_RATIOS, true ) ) {
+				$aspect_ratio = '16:9';
+			}
+
+			$source_surface = sanitize_key( (string) ( $request['source_surface'] ?? 'toolbox_featured_image' ) );
+			if ( ! in_array( $source_surface, self::TOOLBOX_IMAGE_GENERATION_ALLOWED_SOURCE_SURFACES, true ) ) {
+				$source_surface = 'toolbox_featured_image';
+			}
+
+			$image_count = absint( $request['n'] ?? 1 );
+			$image_count = min( 4, max( 1, $image_count ) );
+
+			$timeout_seconds = absint( $request['timeout_seconds'] ?? self::WP_AI_IMAGE_GENERATION_MAX_TIMEOUT_SECONDS );
+			$retention_ttl   = absint( $request['retention_ttl'] ?? self::WP_AI_IMAGE_GENERATION_MAX_RETENTION_TTL );
+
+			return array(
+				'ability_name'        => 'npcink-cloud/generate-image',
+				'ability_family'      => 'vision',
+				'contract_version'    => self::WP_AI_IMAGE_GENERATION_CONTRACT,
+				'channel'             => 'toolbox_image_generation',
+				'execution_kind'      => 'image_generation',
+				'execution_pattern'   => 'inline',
+				'input'               => array(
+					'contract_version' => self::WP_AI_IMAGE_GENERATION_CONTRACT,
+					'source_surface'   => $source_surface,
+					'connector_id'      => 'npcink-cloud-addon',
+					'task'              => 'image_generation',
+					'prompt'            => $prompt,
+					'n'                 => $image_count,
+					'response_format'   => $response_format,
+					'aspect_ratio'      => $aspect_ratio,
+					'resolution'        => sanitize_key( (string) ( $request['resolution'] ?? 'high' ) ),
 				),
 				'data_classification' => 'internal',
 				'storage_mode'        => 'result_only',

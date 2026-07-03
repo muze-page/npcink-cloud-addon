@@ -61,6 +61,7 @@ npcink_cloud_addon_dispatch_media_derivative_cloud_request(array $ability_respon
 npcink_cloud_addon_request_image_context_evidence(array $image_context_evidence_request, string $trace_id = '', string $idempotency_key = '')
 npcink_cloud_addon_execute_wordpress_ai_connector_runtime(array $request, string $trace_id = '', string $idempotency_key = '')
 npcink_cloud_addon_execute_wordpress_ai_image_generation_runtime(array $request, string $trace_id = '', string $idempotency_key = '')
+npcink_cloud_addon_execute_toolbox_image_generation_runtime(array $request, string $trace_id = '', string $idempotency_key = '')
 npcink_cloud_addon_dispatch_site_knowledge_runtime(array $runtime_payload, string $ability_name = '', string $contract_version = '')
 npcink_cloud_addon_build_media_derivative_proposal_payload(array $ability_response, array $cloud_result, array $derivative_artifact)
 npcink_cloud_addon_download_media_derivative_artifact(array $derivative_artifact, string $trace_id = '')
@@ -74,6 +75,7 @@ probe_connectivity(): array
 execute_runtime(array $payload, string $trace_id = '', string $idempotency_key = '')
 execute_wordpress_ai_connector_runtime(array $request, string $trace_id = '', string $idempotency_key = '')
 execute_wordpress_ai_image_generation_runtime(array $request, string $trace_id = '', string $idempotency_key = '')
+execute_toolbox_image_generation_runtime(array $request, string $trace_id = '', string $idempotency_key = '')
 request_image_context_evidence(array $image_context_evidence_request, string $trace_id = '', string $idempotency_key = '')
 create_media_derivative(array $payload, array $files = array(), string $trace_id = '', string $idempotency_key = '')
 get_run(string $run_id, string $trace_id = '')
@@ -125,6 +127,14 @@ for text connector/provider calls, plus
 WordPress AI image generation feature. Both are WordPress scene runtimes, not
 generic chat APIs, image provider proxies, or OpenAI-compatible provider
 proxies.
+
+`npcink_cloud_addon_execute_toolbox_image_generation_runtime()` is the bounded
+transport seam for Toolbox AI image candidate generation. It accepts one
+reviewed text prompt and small generation options, dispatches through Cloud
+`npcink-cloud/generate-image`, and returns the Cloud runtime response for
+Toolbox to normalize into `image_candidate.v1`. The addon does not render the
+Toolbox recommendation UI, store generated candidate history, import media,
+create proposals, approve anything, or set featured images.
 
 When the PHP AI Client is available, the addon registers scene-gated text and
 image models. The text model only forwards calls that originate from known

@@ -21,25 +21,23 @@ Cloud Base URL must use HTTPS except for local development hosts (`localhost`,
 `127.0.0.1`, or `::1`). The environment default is
 `http://localhost:8010/` for local WordPress environments and
 `https://cloud.npc.ink/` otherwise. Manual Base URL and Cloud API Key wrapper
-entry belong in Advanced as a recovery fallback for local debugging or
-authorization outages.
+entry belong in `Connection Management > Manual fallback` as a recovery
+fallback for local debugging or authorization outages.
 
 When verified, the default page should prioritize:
 
-- compact Cloud status;
-- last verification time;
-- read-only entitlement summary;
+- `Local permissions` as the first working tab for WordPress AI connector
+  exposure, Site Knowledge delivery, and metadata-only monitoring consent;
+- compact Cloud status, last verification time, read-only entitlement
+  availability, and entitlement summary freshness in `Status > Overview`;
 - a dedicated Site Knowledge tab for local delivery consent, bounded public
   content refresh transport, explicit administrator delivery intents, and
   shallow bridge state while Cloud owns index execution, rebuild/delete
   handling, lifecycle, and freshness policy;
-- a bounded Troubleshooting tab for connection, liveness, signed Cloud read,
-  entitlement/quota, hosted runtime entitlement detail, capability readiness
-  notes, Site Knowledge bridge status, monitoring status, and low-frequency
-  Runtime Runs entitlement/quota detail, batch limit, result retention, recent
-  runs, one-run status/result reads, and bounded retry requests;
+- a bounded Troubleshooting tab for connection, liveness, signed Cloud read, entitlement/quota, hosted runtime entitlement detail, capability readiness notes, Site Knowledge bridge status, monitoring status, and low-frequency `Runtime runs` detail, including entitlement/quota detail, batch limit, result retention, recent runs, one-run status/result reads, and bounded retry requests;
 - a Connection Management tab for connection recovery, local disconnect,
-  sanitized raw status, and other low-frequency connector details;
+  manual fallback, timeout, last verification failure, and other low-frequency
+  connector details;
 - opt-in monitoring state and read-only Cloud observability / Agent feedback
   quality summaries;
 - a clear path to update/re-verify settings.
@@ -55,14 +53,16 @@ console.
 
 Verified admin navigation should stay shallow:
 
-- `Status`: compact local connector summaries and one collapsed account/usage
-  detail entry.
-- `Site Knowledge`: local delivery consent, public content refresh transport,
-  explicit administrator delivery intents, and shallow bridge status.
-- `Troubleshooting`: read-only diagnostics, runtime run detail, Cloud-owned
-  capability notes, and direct Cloud detail links.
-- `Connection Management`: Cloud-side connection change link, local disconnect,
-  recovery fallback, and sanitized advanced raw status.
+- `Local permissions`: immediate-save switches for locally exposed Cloud
+  connector services.
+- `Status`: compact local connector summaries, account/usage, monitoring
+  quality, and monitoring diagnostics as secondary tabs.
+- `Site Knowledge`: read-only local delivery state, public content refresh
+  transport, index operations, and shallow bridge status as secondary tabs.
+- `Troubleshooting`: read-only checks, runtime run detail, Cloud-owned
+  capability notes, and direct Cloud detail links as secondary tabs.
+- `Connection Management`: connection status, Cloud-side connection change,
+  local disconnect, and manual fallback as secondary tabs.
 
 Do not reintroduce separate `Details`, `Runtime Runs`, or `Advanced` product
 tabs when the content is low-frequency detail that fits one of the entries
@@ -83,8 +83,9 @@ Low-frequency details may include:
 - aggregate Agent feedback quality counters;
 - last verification failure text.
 
-These details should be collapsed or moved behind a clear detail affordance
-unless they are blocking the current task.
+These details should move into a clear secondary tab or explicit inline detail
+entry unless they are blocking the current task. Do not surface internal enum fields such as credit policy or runtime local truth in the default admin UI;
+keep those in tests and boundary documentation.
 
 ## Layout and Copy Rules
 

@@ -4,7 +4,6 @@
 
 .npcink-cloud-summary,
 .npcink-cloud-section,
-.npcink-cloud-disclosure,
 .npcink-cloud-tabs {
 	box-sizing: border-box;
 	max-width: 1040px;
@@ -106,6 +105,149 @@
 	overflow-wrap: anywhere;
 }
 
+.npcink-cloud-local-permissions {
+	background: #fff;
+	border: 1px solid #dcdcde;
+	box-sizing: border-box;
+	margin: 16px 0;
+	max-width: 1040px;
+	padding: 16px;
+}
+
+.npcink-cloud-local-permissions__header {
+	align-items: baseline;
+	display: flex;
+	gap: 12px;
+	justify-content: space-between;
+	padding-bottom: 12px;
+}
+
+.npcink-cloud-local-permissions__header h2 {
+	font-size: 16px;
+	line-height: 1.4;
+	margin: 0;
+}
+
+.npcink-cloud-local-permissions__header p {
+	color: #646970;
+	margin: 0;
+	max-width: 640px;
+}
+
+.npcink-cloud-local-permissions__list {
+	border-top: 1px solid #f0f0f1;
+}
+
+.npcink-cloud-local-permission {
+	border-bottom: 1px solid #f0f0f1;
+	margin: 0;
+}
+
+.npcink-cloud-local-permission:last-child {
+	border-bottom: 0;
+}
+
+.npcink-cloud-local-permission__control {
+	align-items: center;
+	cursor: pointer;
+	display: grid;
+	gap: 16px;
+	grid-template-columns: 54px minmax(0, 1fr) max-content;
+	min-height: 64px;
+	padding: 14px 0;
+}
+
+.npcink-cloud-local-permission__copy {
+	display: grid;
+	gap: 2px;
+	min-width: 0;
+}
+
+.npcink-cloud-local-permission__title {
+	color: #1d2327;
+	font-weight: 600;
+	overflow-wrap: anywhere;
+}
+
+.npcink-cloud-local-permission__description {
+	color: #646970;
+	line-height: 1.45;
+	overflow-wrap: anywhere;
+}
+
+.npcink-cloud-local-permission__state {
+	color: #646970;
+	font-size: 12px;
+	text-transform: lowercase;
+}
+
+.npcink-ai-switch {
+	align-items: center;
+	display: inline-flex;
+	height: 30px;
+	position: relative;
+	width: 50px;
+}
+
+.npcink-ai-switch__input {
+	cursor: pointer;
+	height: 30px;
+	left: 0;
+	margin: 0;
+	opacity: 0;
+	position: absolute;
+	top: 0;
+	width: 50px;
+	z-index: 2;
+}
+
+.npcink-ai-switch__track {
+	background: #c7cbd1;
+	border-radius: 999px;
+	box-shadow: inset 0 0 0 1px rgba(0, 0, 0, .08);
+	box-sizing: border-box;
+	display: inline-flex;
+	height: 26px;
+	padding: 3px;
+	transition: background-color .16s ease-in-out, box-shadow .16s ease-in-out;
+	width: 46px;
+}
+
+.npcink-ai-switch__thumb {
+	background: #fff;
+	border-radius: 50%;
+	box-shadow: 0 1px 2px rgba(0, 0, 0, .22), 0 1px 1px rgba(0, 0, 0, .08);
+	display: block;
+	height: 20px;
+	transition: transform .16s cubic-bezier(.2, .8, .2, 1), box-shadow .16s ease-in-out;
+	width: 20px;
+}
+
+.npcink-ai-switch__input:checked + .npcink-ai-switch__track {
+	background: #3858e9;
+	box-shadow: inset 0 0 0 1px rgba(0, 0, 0, .04);
+}
+
+.npcink-ai-switch__input:checked + .npcink-ai-switch__track .npcink-ai-switch__thumb {
+	transform: translateX(20px);
+}
+
+.npcink-cloud-local-permission__control:hover .npcink-ai-switch__track {
+	background: #b9bec6;
+}
+
+.npcink-cloud-local-permission__control:hover .npcink-ai-switch__input:checked + .npcink-ai-switch__track {
+	background: #2f4fd4;
+}
+
+.npcink-ai-switch__input:focus-visible + .npcink-ai-switch__track {
+	box-shadow: 0 0 0 2px #fff, 0 0 0 4px rgba(56, 88, 233, .35);
+}
+
+.npcink-cloud-local-permission__control:hover .npcink-ai-switch__thumb {
+	box-shadow: 0 1px 3px rgba(0, 0, 0, .26), 0 1px 1px rgba(0, 0, 0, .1);
+}
+
 .npcink-cloud-verify-form {
 	margin: 0;
 	min-width: 96px;
@@ -134,8 +276,38 @@
 	margin: 12px 0 0;
 }
 
+.npcink-cloud-section-heading {
+	align-items: center;
+	display: flex;
+	gap: 16px;
+	justify-content: space-between;
+	margin: 0 0 12px;
+	max-width: 860px;
+}
+
+.npcink-cloud-section-heading h3 {
+	margin: 0;
+}
+
+.npcink-cloud-section-heading .npcink-cloud-verify-form {
+	flex: 0 0 auto;
+}
+
+.npcink-cloud-section-heading .npcink-cloud-summary__actions {
+	flex: 0 0 auto;
+}
+
+.npcink-cloud-run-detail-actions {
+	margin-top: 12px;
+}
+
 .npcink-cloud-tabs {
 	margin-top: 14px;
+}
+
+.npcink-cloud-secondary-tabs {
+	gap: 16px;
+	margin: 12px 0 16px;
 }
 
 .npcink-ai-tabs {
@@ -181,6 +353,11 @@
 	color: #3858e9;
 }
 
+.npcink-cloud-secondary-tabs .npcink-ai-tab {
+	font-size: 13px;
+	min-height: 36px;
+}
+
 .npcink-cloud-tab-panel {
 	background: #fff;
 	border: 1px solid #dcdcde;
@@ -190,38 +367,6 @@
 
 .npcink-cloud-tab-panel > h2:first-child {
 	margin-top: 0;
-}
-
-.npcink-cloud-disclosure {
-	background: #fff;
-	border: 1px solid #dcdcde;
-	margin-top: 16px;
-}
-
-.npcink-cloud-disclosure > summary {
-	cursor: pointer;
-	display: flex;
-	gap: 8px;
-	justify-content: space-between;
-	padding: 12px 14px;
-}
-
-.npcink-cloud-disclosure > summary:hover {
-	background: #f6f7f7;
-}
-
-.npcink-cloud-disclosure > summary span {
-	color: #646970;
-}
-
-.npcink-cloud-disclosure form,
-.npcink-cloud-disclosure table {
-	margin: 0 14px 14px;
-}
-
-.npcink-cloud-disclosure table {
-	box-sizing: border-box;
-	width: calc(100% - 28px);
 }
 
 .npcink-cloud-capability-list {
@@ -425,27 +570,95 @@
 }
 
 .npcink-cloud-site-knowledge-consent {
-	align-items: flex-start;
-	display: flex;
-	gap: 18px;
-	justify-content: space-between;
+	align-items: center;
+	display: grid;
+	gap: 16px;
+	grid-template-columns: minmax(0, 1fr) auto auto auto;
 }
 
-.npcink-cloud-site-knowledge-consent__actions {
-	align-items: flex-end;
-	display: flex;
-	flex: 0 0 auto;
-	flex-direction: column;
-	gap: 10px;
-	min-width: 190px;
-}
-
-.npcink-cloud-site-knowledge-consent__copy {
+.npcink-cloud-site-knowledge-consent__control {
+	align-items: center;
+	display: grid;
+	gap: 16px;
+	grid-template-columns: minmax(0, 1fr);
 	min-width: 0;
 }
 
-.npcink-cloud-site-knowledge-consent h3 {
-	margin-top: 0;
+.npcink-cloud-site-knowledge-consent__copy {
+	display: grid;
+	gap: 3px;
+	min-width: 0;
+}
+
+.npcink-cloud-site-knowledge-consent__title {
+	color: #1d2327;
+	font-weight: 600;
+	line-height: 1.35;
+}
+
+.npcink-cloud-site-knowledge-consent__description {
+	color: #646970;
+	line-height: 1.45;
+	overflow-wrap: anywhere;
+}
+
+.npcink-cloud-site-knowledge-consent__state {
+	color: #646970;
+	font-size: 12px;
+	text-transform: lowercase;
+	white-space: nowrap;
+}
+
+.npcink-cloud-inline-info {
+	position: relative;
+}
+
+.npcink-cloud-inline-info summary {
+	align-items: center;
+	border: 1px solid #c3c4c7;
+	border-radius: 50%;
+	color: #50575e;
+	cursor: pointer;
+	display: inline-flex;
+	font-size: 13px;
+	font-weight: 600;
+	height: 28px;
+	justify-content: center;
+	line-height: 1;
+	list-style: none;
+	width: 28px;
+}
+
+.npcink-cloud-inline-info summary::-webkit-details-marker {
+	display: none;
+}
+
+.npcink-cloud-inline-info[open] summary,
+.npcink-cloud-inline-info summary:hover {
+	background: #f6f7f7;
+	border-color: #8c8f94;
+	color: #1d2327;
+}
+
+.npcink-cloud-inline-info__content {
+	background: #fff;
+	border: 1px solid #c3c4c7;
+	box-shadow: 0 8px 18px rgba(0, 0, 0, .12);
+	color: #50575e;
+	padding: 12px 14px;
+	position: absolute;
+	right: 0;
+	top: calc(100% + 8px);
+	width: 360px;
+	z-index: 5;
+}
+
+.npcink-cloud-inline-info__content p {
+	margin: 0 0 8px;
+}
+
+.npcink-cloud-inline-info__content p:last-child {
+	margin-bottom: 0;
 }
 
 .npcink-cloud-site-knowledge-status th {
@@ -476,7 +689,7 @@
 
 @media (max-width: 782px) {
 	.npcink-cloud-summary__header,
-	.npcink-cloud-disclosure > summary,
+	.npcink-cloud-local-permissions__header,
 	.npcink-cloud-site-knowledge-consent {
 		display: block;
 	}
@@ -494,9 +707,42 @@
 		margin-top: 12px;
 	}
 
-	.npcink-cloud-site-knowledge-consent__actions {
+	.npcink-cloud-section-heading {
 		align-items: flex-start;
-		margin-top: 12px;
+		display: flex;
+		flex-direction: column;
+		gap: 10px;
+	}
+
+	.npcink-cloud-local-permissions__header p {
+		margin-top: 6px;
+	}
+
+	.npcink-cloud-local-permission__control {
+		grid-template-columns: 54px minmax(0, 1fr);
+	}
+
+	.npcink-cloud-local-permission__state {
+		grid-column: 2;
+	}
+
+	.npcink-cloud-site-knowledge-consent {
+		display: grid;
+		grid-template-columns: minmax(0, 1fr) auto;
+	}
+
+	.npcink-cloud-site-knowledge-consent__control {
+		grid-column: 1 / -1;
+	}
+
+	.npcink-cloud-site-knowledge-consent__state {
+		justify-self: end;
+	}
+
+	.npcink-cloud-inline-info__content {
+		margin-top: 8px;
+		position: static;
+		width: auto;
 	}
 
 	.npcink-cloud-capability-header,

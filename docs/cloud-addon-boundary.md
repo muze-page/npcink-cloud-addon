@@ -19,7 +19,7 @@ index, freshness, and collection lifecycle owner.
 
 - Cloud Base URL.
 - Cloud-side site authorization entry for the current WordPress site.
-- Advanced fallback Cloud API Key wrapper entry.
+- Connection Management manual fallback Cloud API Key wrapper entry.
 - `mak1_{base64url(json)}` key parsing.
 - Internal `site_id`, `key_id`, and `secret` storage for server-side signing.
 - HMAC signatures, trace headers, idempotency headers, and request nonce headers.
@@ -235,7 +235,7 @@ The local UI stays shallow:
 - last verification time
 - entitlement summary
 - opt-in monitoring status and read-only Cloud observability / Agent feedback summaries
-- a bounded Runtime Runs tab for Cloud-owned Nightly Inspection entitlement/quota, batch, retention, recent/status/result, and retry request detail
+- a bounded `Troubleshooting > Runtime runs` section for Cloud-owned Nightly Inspection entitlement/quota, batch, retention, recent/status/result, and retry request detail
 
 It must not become a second control plane.
 

@@ -51,11 +51,13 @@ data.
 
 ## Implemented Shape
 
-The verified Cloud Addon admin page now has `Diagnostics` and `Site Knowledge`
-tabs. They are visible only in the verified flow alongside Status, Details, and
-Advanced.
+The verified Cloud Addon admin page now has top-level `Local permissions`,
+`Status`, `Site Knowledge`, `Troubleshooting`, and `Connection Management` tabs.
+They are visible only in the verified flow; the unverified recovery flow keeps
+the minimal `Connect` and guarded recovery entry.
 
-The diagnostics table shows:
+The `Troubleshooting` tab has secondary tabs for checks, Cloud runtime runs, and
+capability notes. The checks view shows:
 
 - connection storage state for Cloud Base URL and Cloud API Key;
 - Cloud liveness based on the existing save-and-verify flow;
@@ -73,8 +75,11 @@ The diagnostics table shows:
   delivery transport only;
 - monitoring detail as metadata-only and read-only.
 
-Advanced raw status is folded behind a disclosure and contains sanitized local
-status fields only. It omits secrets and split credentials.
+The `Connection Management` tab uses secondary tabs for connection status,
+connection actions, and manual fallback. Internal raw status enums are not
+shown in the default admin UI; the `Status > Overview` list keeps user-relevant
+entitlement freshness visible while secrets and split credentials remain
+omitted.
 
 The Site Knowledge tab shows bridge delivery status, local delivery consent, a
 manual `Request public content refresh` action, and explicit administrator
@@ -109,7 +114,7 @@ The following docs now describe the new ownership boundary:
 - `docs/cloud-addon-boundary.md`
 - `docs/cloud-runtime-client-contract.md`
 
-Static contract tests assert that Diagnostics stays a bounded status/detail
+Static contract tests assert that Troubleshooting stays a bounded status/detail
 surface, does not register Developer diagnostics routes, does not add product
 search tools, and does not simulate missing Cloud service contracts locally.
 

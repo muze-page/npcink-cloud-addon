@@ -95,9 +95,10 @@ fabricating a check.
 
 ## Runtime Runs Surface
 
-The Cloud Addon Runtime Runs tab may use the existing run endpoints for
-Nightly Inspection detail: recent runs, one-run status, one-run result, and a
-nonce-protected retry request for a known run. It is a low-frequency
+The Cloud Addon `Troubleshooting > Runtime runs` section may use the existing
+run endpoints for Nightly Inspection detail: recent runs, one-run status,
+one-run result, and a nonce-protected retry request for a known run. It is a
+low-frequency
 Cloud-owned recovery/detail surface. It may also show the read-only
 `pro_cloud_runtime` projection for run quota, batch limit, result retention,
 and quota-exhausted state.

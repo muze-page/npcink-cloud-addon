@@ -82,6 +82,26 @@ maca_assert(
 		'Connector Approval',
 		'Connector Approval',
 		'ai'
+	)
+	&& '输入预测文本' === Npcink_Cloud_AI_Plugin_Localization::filter_gettext(
+		'Type-ahead Text',
+		'Type-ahead Text',
+		'ai'
+	)
+	&& '在区块编辑器中撰写段落时显示灰色文本建议。需要支持文本生成模型的 AI 连接器。' === Npcink_Cloud_AI_Plugin_Localization::filter_gettext(
+		'Ghost text suggestions while writing paragraphs in the block editor. Requires an AI connector that includes support for text generation models.',
+		'Ghost text suggestions while writing paragraphs in the block editor. Requires an AI connector that includes support for text generation models.',
+		'ai'
+	)
+	&& '密钥加密' === Npcink_Cloud_AI_Plugin_Localization::filter_gettext(
+		'Key Encryption',
+		'Key Encryption',
+		'ai'
+	)
+	&& '使用内置 libsodium 加密静态存储的 AI 提供方 API 密钥。读取时会透明解密，写入时会重新加密。停用此实验功能或停用插件会恢复明文密钥。' === Npcink_Cloud_AI_Plugin_Localization::filter_gettext(
+		'Encrypts AI provider API keys at rest using bundled libsodium encryption. Keys are transparently decrypted on read and re-encrypted on write. Disabling the experiment or deactivating the plugin restores plaintext keys.',
+		'Encrypts AI provider API keys at rest using bundled libsodium encryption. Keys are transparently decrypted on read and re-encrypted on write. Disabling the experiment or deactivating the plugin restores plaintext keys.',
+		'ai'
 	),
 	'AI plugin localization translates admin experiment feature labels.'
 );
@@ -262,6 +282,11 @@ maca_assert(
 	&& '此功能需要有效的 AI 连接器才能正常工作。请在 %s 中设置提供方。' === Npcink_Cloud_AI_Plugin_Localization::filter_gettext(
 		'This feature requires a valid AI Connector to function properly. Please set up a provider to use this feature in %s.',
 		'This feature requires a valid AI Connector to function properly. Please set up a provider to use this feature in %s.',
+		'ai'
+	)
+	&& '自动审核访客评论' === Npcink_Cloud_AI_Plugin_Localization::filter_gettext(
+		'Automatically moderate guest comments',
+		'Automatically moderate guest comments',
 		'ai'
 	),
 	'AI plugin localization translates comment moderation labels and statuses.'

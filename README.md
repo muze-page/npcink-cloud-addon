@@ -31,7 +31,7 @@ The addon owns:
   - `GET /v1/agent-feedback/summary`
 - Site Knowledge public content change bridge through `POST /v1/runtime/execute`, including a bounded settings-page status and manual public refresh transport.
 - Toolbox Site Knowledge runtime bridge through `POST /v1/runtime/execute`.
-- A dedicated Runtime Runs tab for read-only Nightly Inspection recent/status/result detail and nonce-protected Cloud-owned retry requests.
+- A `Troubleshooting > Runtime runs` section for read-only Nightly Inspection recent/status/result detail and nonce-protected Cloud-owned retry requests.
 - Bounded image context evidence transport through `POST /v1/runtime/execute`.
 - Bounded WordPress AI connector scene runtime through `POST /v1/runtime/execute`.
 - `Npcink > Cloud Addon`.
@@ -269,24 +269,23 @@ state token. After Cloud returns a code, the addon exchanges it at
 wrapper and base URL, and verifies the signed connection immediately.
 
 Cloud Base URL must use `https://` unless it points to local development hosts
-such as `localhost`, `127.0.0.1`, or `::1`. Timeout and manual recovery key entry
-are kept in Advanced for local debugging or authorization outages.
+such as `localhost`, `127.0.0.1`, or `::1`. Timeout and manual recovery key
+entry are kept in `Connection Management > Manual fallback` for local debugging
+or authorization outages.
 
-When verified, the page prioritizes Cloud status, last verification time, and a
-read-only entitlement summary. The Diagnostics tab is the Cloud Addon-side
+When verified, the page opens `Local permissions` first, where WordPress AI
+connector exposure, Site Knowledge delivery, and metadata-only monitoring
+consent can be toggled immediately. `Status > Overview` shows Cloud status,
+last verification time, read-only entitlement availability, and entitlement
+summary freshness. The `Troubleshooting` tab is the Cloud Addon-side
 replacement for the old Toolbox Cloud Checks / Troubleshooting Checks entry:
 it shows connection, liveness, signed Cloud read, entitlement/quota, hosted
 runtime entitlement detail, capability readiness notes, Site Knowledge bridge
-status, and monitoring status. It does not recreate Toolbox product tools for
-Cloud search, image source search, provider operations, or task execution.
+status, monitoring status, and `Runtime runs` detail. It does not recreate
+Toolbox product tools for Cloud search, image source search, provider
+operations, or task execution.
 
-The Runtime Runs tab is the low-frequency home for Nightly Inspection Cloud run
-detail that used to crowd Toolbox advanced surfaces. It shows the read-only
-runtime entitlement projection, including run quota, batch limit, result
-retention, and quota-exhausted state. It can read recent runs, inspect one run
-status, inspect one run result, and request a bounded Cloud retry for a known
-run. It does not submit scheduled reviews, build local snapshots, create Core
-proposals, own retry queues, or write WordPress data.
+`Troubleshooting > Runtime runs` is the low-frequency home for Nightly Inspection Cloud run detail that used to crowd Toolbox advanced surfaces. It shows the read-only runtime entitlement projection, including run quota, batch limit, result retention, and quota-exhausted state. It can read recent runs, inspect one run status, inspect one run result, and request a bounded Cloud retry for a known run. It does not submit scheduled reviews, build local snapshots, create Core proposals, own retry queues, or write WordPress data.
 
 The Site Knowledge tab includes connector state, buffered public changes, last
 delivery, local delivery consent, manual public content refresh transport, and

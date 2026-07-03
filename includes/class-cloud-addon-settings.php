@@ -179,6 +179,17 @@ if ( ! class_exists( 'Npcink_Cloud_Addon_Settings' ) ) {
 				return self::is_verified() && ! empty( $settings['site_knowledge_delivery_enabled'] );
 			}
 
+			/**
+			 * Returns whether verified Cloud settings may be exposed to the WordPress AI plugin.
+			 *
+			 * @return bool
+			 */
+			public static function is_wordpress_ai_connector_enabled(): bool {
+				$settings = self::get_settings();
+
+				return self::is_verified() && ! empty( $settings['wordpress_ai_connector_enabled'] );
+			}
+
 		/**
 		 * Returns a compact credential state for local surfaces.
 		 *
@@ -269,6 +280,10 @@ if ( ! class_exists( 'Npcink_Cloud_Addon_Settings' ) ) {
 				$next['site_knowledge_delivery_enabled'] = ! empty( $payload['site_knowledge_delivery_enabled'] );
 			}
 
+			if ( array_key_exists( 'wordpress_ai_connector_enabled', $payload ) ) {
+				$next['wordpress_ai_connector_enabled'] = ! empty( $payload['wordpress_ai_connector_enabled'] );
+			}
+
 			$api_key = array_key_exists( 'api_key', $payload ) ? trim( (string) $payload['api_key'] ) : '';
 			if ( '' !== $api_key ) {
 				$parsed = self::parse_api_key( $api_key );
@@ -342,6 +357,9 @@ if ( ! class_exists( 'Npcink_Cloud_Addon_Settings' ) ) {
 				'site_knowledge_delivery_enabled' => array_key_exists( 'site_knowledge_delivery_enabled', $settings )
 					? ! empty( $settings['site_knowledge_delivery_enabled'] )
 					: true,
+				'wordpress_ai_connector_enabled' => array_key_exists( 'wordpress_ai_connector_enabled', $settings )
+					? ! empty( $settings['wordpress_ai_connector_enabled'] )
+					: true,
 			);
 		}
 
@@ -371,6 +389,7 @@ if ( ! class_exists( 'Npcink_Cloud_Addon_Settings' ) ) {
 				'last_verification_error' => '',
 				'monitoring_enabled' => false,
 				'site_knowledge_delivery_enabled' => true,
+				'wordpress_ai_connector_enabled' => true,
 			);
 		}
 

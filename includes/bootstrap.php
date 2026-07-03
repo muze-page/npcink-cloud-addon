@@ -193,6 +193,68 @@ if ( ! function_exists( 'npcink_cloud_addon_execute_wordpress_ai_image_generatio
 	}
 }
 
+if ( ! function_exists( 'npcink_cloud_addon_execute_toolbox_image_generation_runtime' ) ) {
+	/**
+	 * Executes a bounded Toolbox AI image generation runtime request.
+	 *
+	 * This helper is transport-only for Toolbox candidate generation. It does
+	 * not expose provider routing, store candidates, import media, or write
+	 * featured images.
+	 *
+	 * @param array<string,mixed> $request Toolbox image generation request.
+	 * @param string              $trace_id Optional trace id.
+	 * @param string              $idempotency_key Optional idempotency key.
+	 * @return array<string,mixed>|WP_Error
+	 */
+	function npcink_cloud_addon_execute_toolbox_image_generation_runtime( array $request, string $trace_id = '', string $idempotency_key = '' ) {
+		$client = npcink_cloud_addon_runtime_client();
+		if ( ! $client ) {
+			return new WP_Error(
+				'cloud_runtime_unconfigured',
+				__( 'Npcink Cloud is not configured.', 'npcink-cloud-addon' ),
+				array( 'status' => 400 )
+			);
+		}
+
+		return $client->execute_toolbox_image_generation_runtime(
+			$request,
+			$trace_id,
+			$idempotency_key
+		);
+	}
+}
+
+if ( ! function_exists( 'npcink_cloud_addon_execute_toolbox_audio_generation_runtime' ) ) {
+	/**
+	 * Executes a bounded Toolbox article audio generation runtime request.
+	 *
+	 * This helper is transport-only for Toolbox audio candidates. It does not
+	 * import media, write playback metadata, create adoption plans, or manage
+	 * audio regeneration jobs.
+	 *
+	 * @param array<string,mixed> $request Toolbox audio generation request.
+	 * @param string              $trace_id Optional trace id.
+	 * @param string              $idempotency_key Optional idempotency key.
+	 * @return array<string,mixed>|WP_Error
+	 */
+	function npcink_cloud_addon_execute_toolbox_audio_generation_runtime( array $request, string $trace_id = '', string $idempotency_key = '' ) {
+		$client = npcink_cloud_addon_runtime_client();
+		if ( ! $client ) {
+			return new WP_Error(
+				'cloud_runtime_unconfigured',
+				__( 'Npcink Cloud is not configured.', 'npcink-cloud-addon' ),
+				array( 'status' => 400 )
+			);
+		}
+
+		return $client->execute_toolbox_audio_generation_runtime(
+			$request,
+			$trace_id,
+			$idempotency_key
+		);
+	}
+}
+
 if ( ! function_exists( 'npcink_cloud_addon_dispatch_site_knowledge_runtime' ) ) {
 	/**
 	 * Dispatches a bounded Toolbox Site Knowledge runtime request.

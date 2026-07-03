@@ -35,6 +35,7 @@ execute_runtime(array $payload, string $trace_id = '', string $idempotency_key =
 execute_wordpress_ai_connector_runtime(array $request, string $trace_id = '', string $idempotency_key = '')
 execute_wordpress_ai_image_generation_runtime(array $request, string $trace_id = '', string $idempotency_key = '')
 execute_toolbox_image_generation_runtime(array $request, string $trace_id = '', string $idempotency_key = '')
+execute_toolbox_audio_generation_runtime(array $request, string $trace_id = '', string $idempotency_key = '')
 request_image_context_evidence(array $image_context_evidence_request, string $trace_id = '', string $idempotency_key = '')
 create_media_derivative(array $payload, array $files = array(), string $trace_id = '', string $idempotency_key = '')
 get_run(string $run_id, string $trace_id = '')
@@ -68,6 +69,7 @@ It returns `null` until the addon settings have passed Save and Verify.
 | `execute_wordpress_ai_connector_runtime()` | `POST /v1/runtime/execute` |
 | `execute_wordpress_ai_image_generation_runtime()` | `POST /v1/runtime/execute` |
 | `execute_toolbox_image_generation_runtime()` | `POST /v1/runtime/execute` |
+| `execute_toolbox_audio_generation_runtime()` | `POST /v1/runtime/execute` |
 | `npcink_cloud_addon_dispatch_site_knowledge_runtime()` | `POST /v1/runtime/execute` |
 | `request_image_context_evidence()` | `POST /v1/runtime/execute` |
 | `create_media_derivative()` | `POST /v1/runtime/media-derivatives` |
@@ -252,6 +254,11 @@ Toolbox AI image candidate generation. It lets Toolbox keep the editor
 recommendation UI and `image_candidate.v1` normalization while the addon owns
 Cloud credentials, signing, runtime dispatch, and Cloud error mapping.
 
+`execute_toolbox_audio_generation_runtime()` is the bounded transport seam for
+Toolbox article audio candidate generation. It lets Toolbox keep the editor
+audio candidate UX and Core-governed adoption planning while the addon owns
+Cloud credentials, signing, runtime dispatch, and Cloud error mapping.
+
 The optional PHP AI Client provider registers `npcink-cloud-scene-text` and
 `npcink-cloud-scene-image` as scene wrapper models. These ids represent bounded
 WordPress AI surfaces, not bottom-level Cloud provider model ids. The addon may
@@ -314,6 +321,14 @@ as `toolbox_featured_image`. It returns only the Cloud runtime response;
 Toolbox must still normalize generated assets into `image_candidate.v1`, and
 any media import or featured-image adoption remains with the local
 Core/Adapter/Abilities path.
+
+Toolbox audio generation input uses `contract_version=audio_generation_request.v1`
+and one supported intent: `article_narration` or `article_audio_summary`. The
+addon projects it as `channel=toolbox_audio_generation` with an allowlisted
+`source_surface`, `storage_mode=result_only`, and `policy.allow_fallback=false`.
+It returns only the Cloud runtime response; Toolbox must still normalize audio
+candidates and any media import, post meta write, or playback adoption remains
+with the Core/Adapter/Abilities path after operator review.
 
 The optional PHP AI Client provider may call this helper only when the current
 call stack originates from a known WordPress AI plugin Ability class and maps to

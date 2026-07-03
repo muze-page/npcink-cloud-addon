@@ -31,6 +31,14 @@ if ( ! class_exists( 'Npcink_Cloud_Runtime_Client' ) ) {
 		private const WP_AI_IMAGE_GENERATION_ALLOWED_RESPONSE_FORMATS = array( 'url', 'b64_json' );
 		private const WP_AI_IMAGE_GENERATION_ALLOWED_ASPECT_RATIOS = array( '1:1', '2:3', '3:2', '3:4', '4:3', '4:5', '5:4', '9:16', '16:9', '21:9' );
 		private const TOOLBOX_IMAGE_GENERATION_ALLOWED_SOURCE_SURFACES = array( 'toolbox_featured_image', 'toolbox_editor_featured_image', 'toolbox_editor_image_modal', 'toolbox_ai_image_generation' );
+		private const TOOLBOX_AUDIO_GENERATION_CONTRACT = 'audio_generation_request.v1';
+		private const TOOLBOX_AUDIO_GENERATION_MAX_REQUEST_BYTES = 24000;
+		private const TOOLBOX_AUDIO_GENERATION_MAX_TEXT_CHARS = 5000;
+		private const TOOLBOX_AUDIO_GENERATION_MAX_TIMEOUT_SECONDS = 90;
+		private const TOOLBOX_AUDIO_GENERATION_MAX_RETENTION_TTL = 86400;
+		private const TOOLBOX_AUDIO_GENERATION_ALLOWED_INTENTS = array( 'article_narration', 'article_audio_summary' );
+		private const TOOLBOX_AUDIO_GENERATION_ALLOWED_FORMATS = array( 'mp3', 'wav', 'pcm' );
+		private const TOOLBOX_AUDIO_GENERATION_ALLOWED_SOURCE_SURFACES = array( 'toolbox_article_audio_candidates', 'toolbox_editor_content_support' );
 		private const WP_AI_CONNECTOR_ALLOWED_TASKS = array(
 			'alt_text_suggest',
 			'comment_moderation',
@@ -219,6 +227,32 @@ if ( ! class_exists( 'Npcink_Cloud_Runtime_Client' ) ) {
 
 			if ( '' === $idempotency_key ) {
 				$idempotency_key = 'toolbox_ai_image_generation_' . wp_generate_uuid4();
+			}
+
+			return $this->request( 'POST', '/v1/runtime/execute', $payload, $idempotency_key, $trace_id );
+		}
+
+		/**
+		 * Executes one bounded Toolbox article audio generation runtime request.
+		 *
+		 * This method signs and dispatches the Cloud runtime request only.
+		 * Toolbox keeps review UX and Core-governed adoption planning; the addon
+		 * must not import audio, write playback metadata, or own regeneration
+		 * jobs.
+		 *
+		 * @param array<string,mixed> $request Toolbox audio generation request.
+		 * @param string              $trace_id Optional trace id.
+		 * @param string              $idempotency_key Optional idempotency key.
+		 * @return array<string,mixed>|WP_Error
+		 */
+		public function execute_toolbox_audio_generation_runtime( array $request, string $trace_id = '', string $idempotency_key = '' ) {
+			$payload = $this->normalize_toolbox_audio_generation_request( $request );
+			if ( is_wp_error( $payload ) ) {
+				return $payload;
+			}
+
+			if ( '' === $idempotency_key ) {
+				$idempotency_key = 'toolbox_audio_generation_' . wp_generate_uuid4();
 			}
 
 			return $this->request( 'POST', '/v1/runtime/execute', $payload, $idempotency_key, $trace_id );
@@ -1506,6 +1540,129 @@ if ( ! class_exists( 'Npcink_Cloud_Runtime_Client' ) ) {
 		}
 
 		/**
+		 * Normalizes a Toolbox article audio candidate runtime request.
+		 *
+		 * @param array<string,mixed> $request Raw Toolbox audio request.
+		 * @return array<string,mixed>|WP_Error
+		 */
+		private function normalize_toolbox_audio_generation_request( array $request ) {
+			$contract_version = (string) ( $request['contract_version'] ?? self::TOOLBOX_AUDIO_GENERATION_CONTRACT );
+			if ( self::TOOLBOX_AUDIO_GENERATION_CONTRACT !== $contract_version ) {
+				return new WP_Error(
+					'cloud_toolbox_audio_generation_contract_invalid',
+					__( 'Toolbox audio generation requests require the audio_generation_request.v1 contract.', 'npcink-cloud-addon' ),
+					array( 'status' => 400 )
+				);
+			}
+
+			$intent = sanitize_key( (string) ( $request['intent'] ?? 'article_narration' ) );
+			if ( ! in_array( $intent, self::TOOLBOX_AUDIO_GENERATION_ALLOWED_INTENTS, true ) ) {
+				return new WP_Error(
+					'cloud_toolbox_audio_generation_intent_not_allowed',
+					__( 'Toolbox audio generation requests require a supported article audio intent.', 'npcink-cloud-addon' ),
+					array( 'status' => 400 )
+				);
+			}
+
+			$forbidden_key = $this->find_forbidden_wordpress_ai_connector_key( $request );
+			if ( '' !== $forbidden_key ) {
+				return new WP_Error(
+					'cloud_toolbox_audio_generation_shape_not_allowed',
+					__( 'Toolbox audio generation requests do not support generic chat sessions, tool calls, streams, or credential fields.', 'npcink-cloud-addon' ),
+					array(
+						'status' => 400,
+						'key'    => $forbidden_key,
+					)
+				);
+			}
+
+			$encoded_request = wp_json_encode( $request );
+			if ( ! is_string( $encoded_request ) || '' === $encoded_request ) {
+				return new WP_Error(
+					'cloud_toolbox_audio_generation_encode_failed',
+					__( 'Toolbox audio generation request could not be encoded.', 'npcink-cloud-addon' ),
+					array( 'status' => 400 )
+				);
+			}
+			if ( strlen( $encoded_request ) > self::TOOLBOX_AUDIO_GENERATION_MAX_REQUEST_BYTES ) {
+				return new WP_Error(
+					'cloud_toolbox_audio_generation_request_too_large',
+					__( 'Toolbox audio generation request exceeds the scene runtime size limit.', 'npcink-cloud-addon' ),
+					array( 'status' => 413 )
+				);
+			}
+
+			$raw_text = trim( wp_strip_all_tags( (string) ( $request['text'] ?? ( $request['script'] ?? ( $request['summary_text'] ?? '' ) ) ) ) );
+			if ( '' === $raw_text ) {
+				return new WP_Error(
+					'cloud_toolbox_audio_generation_text_required',
+					__( 'Toolbox audio generation requires reviewed narration text or a summary script.', 'npcink-cloud-addon' ),
+					array( 'status' => 400 )
+				);
+			}
+			if ( $this->text_length( $raw_text ) > self::TOOLBOX_AUDIO_GENERATION_MAX_TEXT_CHARS ) {
+				return new WP_Error(
+					'cloud_toolbox_audio_generation_text_too_large',
+					__( 'Toolbox audio generation text exceeds the scene runtime size limit.', 'npcink-cloud-addon' ),
+					array( 'status' => 413 )
+				);
+			}
+			$text = $this->bounded_text( $raw_text, self::TOOLBOX_AUDIO_GENERATION_MAX_TEXT_CHARS );
+
+			$format = sanitize_key( (string) ( $request['format'] ?? 'mp3' ) );
+			if ( ! in_array( $format, self::TOOLBOX_AUDIO_GENERATION_ALLOWED_FORMATS, true ) ) {
+				$format = 'mp3';
+			}
+
+			$source_surface = sanitize_key( (string) ( $request['source_surface'] ?? 'toolbox_article_audio_candidates' ) );
+			if ( ! in_array( $source_surface, self::TOOLBOX_AUDIO_GENERATION_ALLOWED_SOURCE_SURFACES, true ) ) {
+				$source_surface = 'toolbox_article_audio_candidates';
+			}
+
+			$timeout_seconds = absint( $request['timeout_seconds'] ?? self::TOOLBOX_AUDIO_GENERATION_MAX_TIMEOUT_SECONDS );
+			$retention_ttl   = absint( $request['retention_ttl'] ?? 3600 );
+			$summary_text    = 'article_audio_summary' === $intent ? $this->bounded_text( (string) ( $request['summary_text'] ?? $text ), self::TOOLBOX_AUDIO_GENERATION_MAX_TEXT_CHARS ) : '';
+
+			return array(
+				'ability_name'        => 'npcink-toolbox/generate-audio',
+				'contract_version'    => self::TOOLBOX_AUDIO_GENERATION_CONTRACT,
+				'channel'             => 'toolbox_audio_generation',
+				'execution_kind'      => 'audio_generation',
+				'execution_pattern'   => 'inline',
+				'profile_id'          => sanitize_text_field( (string) ( $request['profile_id'] ?? 'audio.narration.default' ) ),
+				'input'               => array(
+					'contract_version'  => self::TOOLBOX_AUDIO_GENERATION_CONTRACT,
+					'source_surface'    => $source_surface,
+					'connector_id'      => 'npcink-cloud-addon',
+					'intent'            => $intent,
+					'text'              => $text,
+					'summary_text'      => $summary_text,
+					'script'            => $this->bounded_text( (string) ( $request['script'] ?? $text ), self::TOOLBOX_AUDIO_GENERATION_MAX_TEXT_CHARS ),
+					'voice_id'          => sanitize_text_field( (string) ( $request['voice_id'] ?? '' ) ),
+					'format'            => $format,
+					'response_format'   => 'url',
+					'purpose'           => 'article_audio_summary' === $intent ? 'longform_audio_summary' : 'article_narration',
+					'user_instruction'  => $this->bounded_text( (string) ( $request['user_instruction'] ?? '' ), 1200 ),
+					'audio_preferences' => is_array( $request['audio_preferences'] ?? null ) ? $this->sanitize_payload( $request['audio_preferences'] ) : array(),
+					'context'           => is_array( $request['context'] ?? null ) ? $this->sanitize_payload( $request['context'] ) : array(),
+					'review'            => array(
+						'script_review_required' => true,
+						'write_posture'          => 'candidate_only',
+						'direct_wordpress_write' => false,
+					),
+				),
+				'data_classification' => 'public_site_content',
+				'storage_mode'        => 'result_only',
+				'retention_ttl'       => min( self::TOOLBOX_AUDIO_GENERATION_MAX_RETENTION_TTL, max( 0, $retention_ttl ) ),
+				'timeout_seconds'     => min( self::TOOLBOX_AUDIO_GENERATION_MAX_TIMEOUT_SECONDS, max( 1, $timeout_seconds ) ),
+				'retry_max'           => 0,
+				'policy'              => array(
+					'allow_fallback' => false,
+				),
+			);
+		}
+
+		/**
 		 * Finds a forbidden chat/provider-control key in a connector request.
 		 *
 		 * @param mixed $value Raw request value.
@@ -1753,6 +1910,38 @@ if ( ! class_exists( 'Npcink_Cloud_Runtime_Client' ) ) {
 			}
 
 			return strlen( $value ) > $max_chars ? substr( $value, 0, $max_chars ) : $value;
+		}
+
+		/**
+		 * Sanitizes small runtime evidence arrays before projecting them to Cloud.
+		 *
+		 * @param mixed $value Raw payload value.
+		 * @param int   $depth Recursion depth.
+		 * @return mixed
+		 */
+		private function sanitize_payload( $value, int $depth = 0 ) {
+			if ( $depth >= 5 ) {
+				return null;
+			}
+			if ( is_array( $value ) ) {
+				$sanitized = array();
+				foreach ( $value as $key => $item ) {
+					$normalized_key = sanitize_key( (string) $key );
+					if ( '' === $normalized_key ) {
+						continue;
+					}
+					if ( in_array( $normalized_key, self::WP_AI_CONNECTOR_FORBIDDEN_KEYS, true ) ) {
+						continue;
+					}
+					$sanitized[ $normalized_key ] = $this->sanitize_payload( $item, $depth + 1 );
+				}
+				return $sanitized;
+			}
+			if ( is_bool( $value ) || is_int( $value ) || is_float( $value ) || null === $value ) {
+				return $value;
+			}
+
+			return $this->bounded_text( (string) $value, 1200 );
 		}
 
 		/**

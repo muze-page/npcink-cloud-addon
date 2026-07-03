@@ -159,6 +159,7 @@ maca_assert(
 	&& false !== strpos( $bootstrap, 'Npcink_Cloud_WordPress_AI_Connector::register()' )
 	&& false !== strpos( $bootstrap, 'npcink_cloud_addon_execute_wordpress_ai_image_generation_runtime' )
 	&& false !== strpos( $bootstrap, 'npcink_cloud_addon_execute_toolbox_image_generation_runtime' )
+	&& false !== strpos( $bootstrap, 'npcink_cloud_addon_execute_toolbox_audio_generation_runtime' )
 	&& false !== strpos( $wordpress_ai_connector, "CONNECTOR_ID = 'npcink-cloud'" )
 	&& false !== strpos( $wordpress_ai_connector, "CONNECTOR_NAME = 'Npcink Cloud'" )
 	&& false !== strpos( $wordpress_ai_connector, "IMAGE_MODEL_ID = 'npcink-cloud-scene-image'" )
@@ -173,6 +174,19 @@ maca_assert(
 	&& false !== strpos( $wordpress_ai_connector, 'Npcink_Cloud_Addon_Settings::is_wordpress_ai_connector_enabled()' )
 	&& false === strpos( $wordpress_ai_connector, "get_option( 'secret'" ),
 	'WordPress connector registration projects verified opt-in Cloud settings into one fixed status-only Npcink Cloud card without exposing stored secrets.'
+);
+
+maca_assert(
+	false !== strpos( $runtime_client, 'execute_toolbox_audio_generation_runtime' )
+	&& false !== strpos( $runtime_client, 'TOOLBOX_AUDIO_GENERATION_ALLOWED_INTENTS' )
+	&& false !== strpos( $runtime_client, "'article_narration'" )
+	&& false !== strpos( $runtime_client, "'article_audio_summary'" )
+	&& false !== strpos( $runtime_client, "'channel'             => 'toolbox_audio_generation'" )
+	&& false !== strpos( $runtime_client, "'ability_name'        => 'npcink-toolbox/generate-audio'" )
+	&& false !== strpos( $runtime_client, "'storage_mode'        => 'result_only'" )
+	&& false !== strpos( $runtime_client, "'direct_wordpress_write' => false" )
+	&& false !== strpos( $runtime_client, "'allow_fallback' => false" ),
+	'Runtime client exposes a bounded Toolbox audio generation transport without media import, metadata writes, or fallback provider control.'
 );
 
 maca_assert(

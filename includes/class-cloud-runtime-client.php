@@ -39,6 +39,24 @@ if ( ! class_exists( 'Npcink_Cloud_Runtime_Client' ) ) {
 		private const TOOLBOX_AUDIO_GENERATION_ALLOWED_INTENTS = array( 'article_narration', 'article_audio_summary' );
 		private const TOOLBOX_AUDIO_GENERATION_ALLOWED_FORMATS = array( 'mp3', 'wav', 'pcm' );
 		private const TOOLBOX_AUDIO_GENERATION_ALLOWED_SOURCE_SURFACES = array( 'toolbox_article_audio_candidates', 'toolbox_editor_content_support' );
+		private const TOOLBOX_SITE_OPS_CLOUD_ANALYSIS_CONTRACT = 'site_ops_cloud_analysis_request.v1';
+		private const TOOLBOX_SITE_OPS_CLOUD_ANALYSIS_RESULT_CONTRACT = 'site_ops_cloud_analysis_result.v1';
+		private const TOOLBOX_SITE_OPS_CLOUD_ANALYSIS_MAX_REQUEST_BYTES = 750000;
+		private const TOOLBOX_SITE_OPS_CLOUD_ANALYSIS_MAX_TIMEOUT_SECONDS = 90;
+		private const TOOLBOX_SITE_OPS_CLOUD_ANALYSIS_MAX_RETENTION_TTL = 86400;
+		private const TOOLBOX_WEB_SEARCH_CONTRACT = 'web_search.v1';
+		private const TOOLBOX_WEB_SEARCH_MAX_REQUEST_BYTES = 24000;
+		private const TOOLBOX_WEB_SEARCH_MAX_QUERY_CHARS = 1000;
+		private const TOOLBOX_WEB_SEARCH_MAX_TIMEOUT_SECONDS = 60;
+		private const TOOLBOX_WEB_SEARCH_MAX_RETENTION_TTL = 86400;
+		private const TOOLBOX_WEB_SEARCH_ALLOWED_INTENTS = array( 'general_research', 'article_background', 'fact_check', 'news', 'writing_context', 'competitor_research', 'pricing_snapshot', 'product_comparison', 'source_discovery', 'external_links', 'zhihu_global_search', 'zhihu_research', 'zhihu_hot_topics', 'zhida_simple', 'zhida_deep', 'zhida_deepsearch' );
+		private const TOOLBOX_IMAGE_SOURCE_CONTRACT = 'image_source_cloud_request.v1';
+		private const TOOLBOX_IMAGE_SOURCE_MAX_REQUEST_BYTES = 120000;
+		private const TOOLBOX_IMAGE_SOURCE_MAX_QUERY_CHARS = 1000;
+		private const TOOLBOX_IMAGE_SOURCE_MAX_TIMEOUT_SECONDS = 60;
+		private const TOOLBOX_IMAGE_SOURCE_MAX_RETENTION_TTL = 86400;
+		private const TOOLBOX_IMAGE_SOURCE_ALLOWED_PROVIDERS = array( 'auto', 'cloud', 'unsplash', 'pixabay', 'pexels' );
+		private const TOOLBOX_IMAGE_SOURCE_ALLOWED_LATENCY_MODES = array( 'fast_first', 'complete' );
 		private const WP_AI_CONNECTOR_ALLOWED_TASKS = array(
 			'alt_text_suggest',
 			'comment_moderation',
@@ -253,6 +271,80 @@ if ( ! class_exists( 'Npcink_Cloud_Runtime_Client' ) ) {
 
 			if ( '' === $idempotency_key ) {
 				$idempotency_key = 'toolbox_audio_generation_' . wp_generate_uuid4();
+			}
+
+			return $this->request( 'POST', '/v1/runtime/execute', $payload, $idempotency_key, $trace_id );
+		}
+
+		/**
+		 * Executes one bounded Toolbox Site Ops Cloud analysis request.
+		 *
+		 * The addon only signs and dispatches the Cloud runtime/detail request.
+		 * Toolbox keeps the local Site Check product surface, and Core remains
+		 * the owner for any later proposal or WordPress write.
+		 *
+		 * @param array<string,mixed> $request Toolbox site_ops_cloud_analysis_request.v1 artifact.
+		 * @param string              $trace_id Optional trace id.
+		 * @param string              $idempotency_key Optional idempotency key.
+		 * @return array<string,mixed>|WP_Error
+		 */
+		public function execute_toolbox_site_ops_cloud_analysis_runtime( array $request, string $trace_id = '', string $idempotency_key = '' ) {
+			$payload = $this->normalize_toolbox_site_ops_cloud_analysis_request( $request );
+			if ( is_wp_error( $payload ) ) {
+				return $payload;
+			}
+
+			if ( '' === $idempotency_key ) {
+				$idempotency_key = 'toolbox_site_ops_cloud_analysis_' . wp_generate_uuid4();
+			}
+
+			return $this->request( 'POST', '/v1/runtime/execute', $payload, $idempotency_key, $trace_id );
+		}
+
+		/**
+		 * Executes one bounded Toolbox managed web search runtime request.
+		 *
+		 * The addon only signs and dispatches the Cloud request. Toolbox keeps
+		 * the operator-facing result UX and evidence normalization.
+		 *
+		 * @param array<string,mixed> $request Toolbox web_search.v1 request.
+		 * @param string              $trace_id Optional trace id.
+		 * @param string              $idempotency_key Optional idempotency key.
+		 * @return array<string,mixed>|WP_Error
+		 */
+		public function execute_toolbox_web_search_runtime( array $request, string $trace_id = '', string $idempotency_key = '' ) {
+			$payload = $this->normalize_toolbox_web_search_request( $request );
+			if ( is_wp_error( $payload ) ) {
+				return $payload;
+			}
+
+			if ( '' === $idempotency_key ) {
+				$idempotency_key = 'toolbox_web_search_' . wp_generate_uuid4();
+			}
+
+			return $this->request( 'POST', '/v1/runtime/execute', $payload, $idempotency_key, $trace_id );
+		}
+
+		/**
+		 * Executes one bounded Toolbox image-source candidate runtime request.
+		 *
+		 * The addon only signs and dispatches the Cloud request. Toolbox keeps
+		 * image-source UX, candidate normalization, attribution handling, and
+		 * any Core-governed adoption path.
+		 *
+		 * @param array<string,mixed> $request Toolbox image_source_cloud_request.v1 request.
+		 * @param string              $trace_id Optional trace id.
+		 * @param string              $idempotency_key Optional idempotency key.
+		 * @return array<string,mixed>|WP_Error
+		 */
+		public function execute_toolbox_image_source_runtime( array $request, string $trace_id = '', string $idempotency_key = '' ) {
+			$payload = $this->normalize_toolbox_image_source_request( $request );
+			if ( is_wp_error( $payload ) ) {
+				return $payload;
+			}
+
+			if ( '' === $idempotency_key ) {
+				$idempotency_key = 'toolbox_image_source_' . wp_generate_uuid4();
 			}
 
 			return $this->request( 'POST', '/v1/runtime/execute', $payload, $idempotency_key, $trace_id );
@@ -1658,6 +1750,311 @@ if ( ! class_exists( 'Npcink_Cloud_Runtime_Client' ) ) {
 				'retry_max'           => 0,
 				'policy'              => array(
 					'allow_fallback' => false,
+				),
+			);
+		}
+
+		/**
+		 * Normalizes a Toolbox Site Ops Cloud analysis request.
+		 *
+		 * @param array<string,mixed> $request Raw Toolbox Site Ops request artifact.
+		 * @return array<string,mixed>|WP_Error
+		 */
+		private function normalize_toolbox_site_ops_cloud_analysis_request( array $request ) {
+			$contract_version = (string) ( $request['contract_version'] ?? self::TOOLBOX_SITE_OPS_CLOUD_ANALYSIS_CONTRACT );
+			if ( self::TOOLBOX_SITE_OPS_CLOUD_ANALYSIS_CONTRACT !== $contract_version ) {
+				return new WP_Error(
+					'cloud_toolbox_site_ops_cloud_analysis_contract_invalid',
+					__( 'Toolbox Site Check Cloud detail requests require the site_ops_cloud_analysis_request.v1 contract.', 'npcink-cloud-addon' ),
+					array( 'status' => 400 )
+				);
+			}
+
+			if ( self::TOOLBOX_SITE_OPS_CLOUD_ANALYSIS_RESULT_CONTRACT !== (string) ( $request['expected_result_contract'] ?? '' ) ) {
+				return new WP_Error(
+					'cloud_toolbox_site_ops_cloud_analysis_result_contract_invalid',
+					__( 'Toolbox Site Check Cloud detail requests require the site_ops_cloud_analysis_result.v1 result contract.', 'npcink-cloud-addon' ),
+					array( 'status' => 400 )
+				);
+			}
+
+			if (
+				'runtime_detail' !== (string) ( $request['cloud_role'] ?? '' )
+				|| 'whole_run_offload' !== (string) ( $request['execution_pattern'] ?? '' )
+				|| 'suggestion_only' !== (string) ( $request['write_posture'] ?? '' )
+				|| false !== (bool) ( $request['direct_wordpress_write'] ?? true )
+				|| false !== (bool) ( $request['core_proposal_created'] ?? true )
+			) {
+				return new WP_Error(
+					'cloud_toolbox_site_ops_cloud_analysis_request_invalid',
+					__( 'Toolbox Site Check Cloud detail requests must remain runtime-detail, suggestion-only, and no-write.', 'npcink-cloud-addon' ),
+					array( 'status' => 400 )
+				);
+			}
+
+			if ( ! is_array( $request['input'] ?? null ) ) {
+				return new WP_Error(
+					'cloud_toolbox_site_ops_cloud_analysis_input_required',
+					__( 'Toolbox Site Check Cloud detail requests require bounded local analysis input.', 'npcink-cloud-addon' ),
+					array( 'status' => 400 )
+				);
+			}
+
+			$forbidden_key = $this->find_forbidden_wordpress_ai_connector_key( $request );
+			if ( '' !== $forbidden_key ) {
+				return new WP_Error(
+					'cloud_toolbox_site_ops_cloud_analysis_shape_not_allowed',
+					__( 'Toolbox Site Check Cloud detail requests do not support generic chat sessions, tool calls, streams, or credential fields.', 'npcink-cloud-addon' ),
+					array(
+						'status' => 400,
+						'key'    => $forbidden_key,
+					)
+				);
+			}
+
+			$encoded_request = wp_json_encode( $request );
+			if ( ! is_string( $encoded_request ) || '' === $encoded_request ) {
+				return new WP_Error(
+					'cloud_toolbox_site_ops_cloud_analysis_encode_failed',
+					__( 'Toolbox Site Check Cloud detail request could not be encoded.', 'npcink-cloud-addon' ),
+					array( 'status' => 400 )
+				);
+			}
+			if ( strlen( $encoded_request ) > self::TOOLBOX_SITE_OPS_CLOUD_ANALYSIS_MAX_REQUEST_BYTES ) {
+				return new WP_Error(
+					'cloud_toolbox_site_ops_cloud_analysis_request_too_large',
+					__( 'Toolbox Site Check Cloud detail request exceeds the runtime size limit.', 'npcink-cloud-addon' ),
+					array( 'status' => 413 )
+				);
+			}
+
+			$timeout_seconds = absint( $request['timeout_seconds'] ?? self::TOOLBOX_SITE_OPS_CLOUD_ANALYSIS_MAX_TIMEOUT_SECONDS );
+			$retention_ttl   = absint( $request['retention_ttl'] ?? 3600 );
+
+			return array(
+				'ability_name'        => 'npcink-toolbox/analyze-site-ops',
+				'contract_version'    => self::TOOLBOX_SITE_OPS_CLOUD_ANALYSIS_CONTRACT,
+				'channel'             => 'toolbox_site_ops_cloud_analysis',
+				'execution_kind'      => 'site_ops_cloud_analysis',
+				'execution_pattern'   => 'whole_run_offload',
+				'profile_id'          => sanitize_text_field( (string) ( $request['profile_id'] ?? 'site-ops-analysis.managed' ) ),
+				'input'               => $this->sanitize_payload( $request ),
+				'data_classification' => 'public_site_aggregate',
+				'storage_mode'        => 'result_only',
+				'retention_ttl'       => min( self::TOOLBOX_SITE_OPS_CLOUD_ANALYSIS_MAX_RETENTION_TTL, max( 0, $retention_ttl ) ),
+				'timeout_seconds'     => min( self::TOOLBOX_SITE_OPS_CLOUD_ANALYSIS_MAX_TIMEOUT_SECONDS, max( 1, $timeout_seconds ) ),
+				'retry_max'           => 0,
+				'policy'              => array(
+					'allow_fallback' => false,
+				),
+			);
+		}
+
+		/**
+		 * Normalizes a Toolbox managed web search request.
+		 *
+		 * @param array<string,mixed> $request Raw Toolbox web search request.
+		 * @return array<string,mixed>|WP_Error
+		 */
+		private function normalize_toolbox_web_search_request( array $request ) {
+			$contract_version = (string) ( $request['contract_version'] ?? self::TOOLBOX_WEB_SEARCH_CONTRACT );
+			if ( self::TOOLBOX_WEB_SEARCH_CONTRACT !== $contract_version ) {
+				return new WP_Error(
+					'cloud_toolbox_web_search_contract_invalid',
+					__( 'Toolbox web search requests require the web_search.v1 contract.', 'npcink-cloud-addon' ),
+					array( 'status' => 400 )
+				);
+			}
+
+			$forbidden_key = $this->find_forbidden_wordpress_ai_connector_key( $request );
+			if ( '' !== $forbidden_key ) {
+				return new WP_Error(
+					'cloud_toolbox_web_search_shape_not_allowed',
+					__( 'Toolbox web search requests do not support generic chat sessions, tool calls, streams, or credential fields.', 'npcink-cloud-addon' ),
+					array(
+						'status' => 400,
+						'key'    => $forbidden_key,
+					)
+				);
+			}
+
+			$encoded_request = wp_json_encode( $request );
+			if ( ! is_string( $encoded_request ) || '' === $encoded_request ) {
+				return new WP_Error(
+					'cloud_toolbox_web_search_encode_failed',
+					__( 'Toolbox web search request could not be encoded.', 'npcink-cloud-addon' ),
+					array( 'status' => 400 )
+				);
+			}
+			if ( strlen( $encoded_request ) > self::TOOLBOX_WEB_SEARCH_MAX_REQUEST_BYTES ) {
+				return new WP_Error(
+					'cloud_toolbox_web_search_request_too_large',
+					__( 'Toolbox web search request exceeds the runtime size limit.', 'npcink-cloud-addon' ),
+					array( 'status' => 413 )
+				);
+			}
+
+			$query = $this->bounded_text( (string) ( $request['query'] ?? '' ), self::TOOLBOX_WEB_SEARCH_MAX_QUERY_CHARS );
+			if ( '' === $query ) {
+				return new WP_Error(
+					'cloud_toolbox_web_search_query_required',
+					__( 'Toolbox web search requires a query.', 'npcink-cloud-addon' ),
+					array( 'status' => 400 )
+				);
+			}
+
+			$intent = sanitize_key( (string) ( $request['intent'] ?? 'news' ) );
+			if ( ! in_array( $intent, self::TOOLBOX_WEB_SEARCH_ALLOWED_INTENTS, true ) ) {
+				$intent = 'news';
+			}
+
+			$input = $this->sanitize_payload( $request );
+			if ( ! is_array( $input ) ) {
+				$input = array();
+			}
+			$input['contract_version']       = self::TOOLBOX_WEB_SEARCH_CONTRACT;
+			$input['query']                  = $query;
+			$input['intent']                 = $intent;
+			$input['max_results']            = max( 1, min( 5, absint( $request['max_results'] ?? 3 ) ) );
+			$input['recency_days']           = max( 0, min( 30, absint( $request['recency_days'] ?? 7 ) ) );
+			$input['write_posture']          = 'suggestion_only';
+			$input['direct_wordpress_write'] = false;
+			$input['connector_id']           = 'npcink-cloud-addon';
+			if ( ! is_array( $input['evidence_policy'] ?? null ) ) {
+				$input['evidence_policy'] = array(
+					'required_sources' => 1,
+					'no_hit_policy'    => 'abstain',
+				);
+			}
+
+			$timeout_seconds = absint( $request['timeout_seconds'] ?? self::TOOLBOX_WEB_SEARCH_MAX_TIMEOUT_SECONDS );
+			$retention_ttl   = absint( $request['retention_ttl'] ?? 3600 );
+
+			return array(
+				'ability_name'        => 'npcink-cloud/web-search',
+				'ability_family'      => 'knowledge',
+				'contract_version'    => self::TOOLBOX_WEB_SEARCH_CONTRACT,
+				'channel'             => 'toolbox_web_search',
+				'execution_kind'      => 'web_search',
+				'execution_pattern'   => 'inline',
+				'profile_id'          => sanitize_text_field( (string) ( $request['profile_id'] ?? 'web-search.managed' ) ),
+				'input'               => $input,
+				'data_classification' => 'public',
+				'storage_mode'        => 'result_only',
+				'retention_ttl'       => min( self::TOOLBOX_WEB_SEARCH_MAX_RETENTION_TTL, max( 0, $retention_ttl ) ),
+				'timeout_seconds'     => min( self::TOOLBOX_WEB_SEARCH_MAX_TIMEOUT_SECONDS, max( 1, $timeout_seconds ) ),
+				'retry_max'           => 0,
+				'policy'              => array(
+					'allow_fallback' => true,
+				),
+			);
+		}
+
+		/**
+		 * Normalizes a Toolbox image-source candidate request.
+		 *
+		 * @param array<string,mixed> $request Raw Toolbox image-source request.
+		 * @return array<string,mixed>|WP_Error
+		 */
+		private function normalize_toolbox_image_source_request( array $request ) {
+			$contract_version = (string) ( $request['contract_version'] ?? self::TOOLBOX_IMAGE_SOURCE_CONTRACT );
+			if ( self::TOOLBOX_IMAGE_SOURCE_CONTRACT !== $contract_version ) {
+				return new WP_Error(
+					'cloud_toolbox_image_source_contract_invalid',
+					__( 'Toolbox image-source requests require the image_source_cloud_request.v1 contract.', 'npcink-cloud-addon' ),
+					array( 'status' => 400 )
+				);
+			}
+
+			$forbidden_key = $this->find_forbidden_wordpress_ai_connector_key( $request );
+			if ( '' !== $forbidden_key ) {
+				return new WP_Error(
+					'cloud_toolbox_image_source_shape_not_allowed',
+					__( 'Toolbox image-source requests do not support generic chat sessions, tool calls, streams, or credential fields.', 'npcink-cloud-addon' ),
+					array(
+						'status' => 400,
+						'key'    => $forbidden_key,
+					)
+				);
+			}
+
+			$encoded_request = wp_json_encode( $request );
+			if ( ! is_string( $encoded_request ) || '' === $encoded_request ) {
+				return new WP_Error(
+					'cloud_toolbox_image_source_encode_failed',
+					__( 'Toolbox image-source request could not be encoded.', 'npcink-cloud-addon' ),
+					array( 'status' => 400 )
+				);
+			}
+			if ( strlen( $encoded_request ) > self::TOOLBOX_IMAGE_SOURCE_MAX_REQUEST_BYTES ) {
+				return new WP_Error(
+					'cloud_toolbox_image_source_request_too_large',
+					__( 'Toolbox image-source request exceeds the runtime size limit.', 'npcink-cloud-addon' ),
+					array( 'status' => 413 )
+				);
+			}
+
+			$query = $this->bounded_text( (string) ( $request['query'] ?? '' ), self::TOOLBOX_IMAGE_SOURCE_MAX_QUERY_CHARS );
+			if ( '' === $query ) {
+				return new WP_Error(
+					'cloud_toolbox_image_source_query_required',
+					__( 'Toolbox image-source search requires a query.', 'npcink-cloud-addon' ),
+					array( 'status' => 400 )
+				);
+			}
+
+			$provider = sanitize_key( (string) ( $request['provider'] ?? 'auto' ) );
+			if ( ! in_array( $provider, self::TOOLBOX_IMAGE_SOURCE_ALLOWED_PROVIDERS, true ) ) {
+				$provider = 'auto';
+			}
+
+			$latency_mode = sanitize_key( (string) ( $request['latency_mode'] ?? 'complete' ) );
+			if ( ! in_array( $latency_mode, self::TOOLBOX_IMAGE_SOURCE_ALLOWED_LATENCY_MODES, true ) ) {
+				$latency_mode = 'complete';
+			}
+
+			$input = $this->sanitize_payload( $request );
+			if ( ! is_array( $input ) ) {
+				$input = array();
+			}
+			$input['contract_version']       = self::TOOLBOX_IMAGE_SOURCE_CONTRACT;
+			$input['query']                  = $query;
+			$input['provider']               = $provider;
+			$input['provider_origin']        = 'cloud';
+			$input['per_page']               = max( 1, min( 30, absint( $request['per_page'] ?? 8 ) ) );
+			$input['latency_mode']           = $latency_mode;
+			$input['candidate_contract']     = 'image_candidate.v1';
+			$input['write_posture']          = 'suggestion_only';
+			$input['direct_wordpress_write'] = false;
+			$input['connector_id']           = 'npcink-cloud-addon';
+
+			$storage_mode = sanitize_key( (string) ( $request['storage_mode'] ?? 'result_only' ) );
+			if ( ! in_array( $storage_mode, array( 'result_only', 'no_store' ), true ) ) {
+				$storage_mode = 'result_only';
+			}
+			$data_classification = sanitize_key( (string) ( $request['data_classification'] ?? 'public_reference_media' ) );
+			if ( '' === $data_classification ) {
+				$data_classification = 'public_reference_media';
+			}
+			$default_timeout = 'fast_first' === $latency_mode ? 5 : self::TOOLBOX_IMAGE_SOURCE_MAX_TIMEOUT_SECONDS;
+			$timeout_seconds = absint( $request['timeout_seconds'] ?? $default_timeout );
+			$retention_ttl   = absint( $request['retention_ttl'] ?? 3600 );
+
+			return array(
+				'ability_name'        => 'npcink-toolbox/search-image-source',
+				'contract_version'    => self::TOOLBOX_IMAGE_SOURCE_CONTRACT,
+				'channel'             => 'toolbox_image_source',
+				'execution_kind'      => 'image_source',
+				'execution_pattern'   => 'inline',
+				'profile_id'          => sanitize_text_field( (string) ( $request['profile_id'] ?? 'image-source.managed' ) ),
+				'input'               => $input,
+				'data_classification' => $data_classification,
+				'storage_mode'        => $storage_mode,
+				'retention_ttl'       => min( self::TOOLBOX_IMAGE_SOURCE_MAX_RETENTION_TTL, max( 0, $retention_ttl ) ),
+				'timeout_seconds'     => min( self::TOOLBOX_IMAGE_SOURCE_MAX_TIMEOUT_SECONDS, max( 1, $timeout_seconds ) ),
+				'retry_max'           => 0,
+				'policy'              => array(
+					'allow_fallback' => true,
 				),
 			);
 		}

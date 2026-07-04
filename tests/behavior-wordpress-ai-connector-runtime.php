@@ -330,3 +330,265 @@ maca_assert(
 	is_wp_error( $audio_chat_shape ) && 'cloud_toolbox_audio_generation_shape_not_allowed' === $audio_chat_shape->get_error_code(),
 	'Behavior: Toolbox audio generation runtime rejects generic chat message shapes.'
 );
+
+$GLOBALS['maca_http_response_queue'][] = array(
+	'response' => array( 'code' => 200 ),
+	'body'     => wp_json_encode(
+		array(
+			'status' => 'ok',
+			'run_id' => 'run_toolbox_site_ops_1',
+			'data'   => array(
+				'status' => 'succeeded',
+				'result' => array(
+					'contract_version'       => 'site_ops_cloud_analysis_result.v1',
+					'direct_wordpress_write' => false,
+					'priority_queue'         => array(
+						array( 'finding_id' => 'finding_media_alt_gap' ),
+					),
+				),
+			),
+		)
+	),
+);
+
+$toolbox_site_ops_result = $client->execute_toolbox_site_ops_cloud_analysis_runtime(
+	array(
+		'artifact_type'              => 'site_ops_cloud_analysis_request',
+		'contract_version'           => 'site_ops_cloud_analysis_request.v1',
+		'expected_result_contract'   => 'site_ops_cloud_analysis_result.v1',
+		'cloud_role'                => 'runtime_detail',
+		'execution_pattern'          => 'whole_run_offload',
+		'write_posture'              => 'suggestion_only',
+		'direct_wordpress_write'     => false,
+		'core_proposal_created'      => false,
+		'profile_id'                 => 'site-ops-analysis.managed',
+		'timeout_seconds'            => 120,
+		'input'                      => array(
+			'local_summary'  => array( 'finding_count' => 3 ),
+			'local_findings' => array(
+				array(
+					'id'             => 'finding_media_alt_gap',
+					'issue_type'     => 'media',
+					'write_boundary' => 'core_handoff_candidate',
+				),
+			),
+		),
+		'safety'                     => array(
+			'cloud_is_runtime_detail_only' => true,
+			'direct_wordpress_write'       => false,
+		),
+	),
+	'trace-toolbox-site-ops',
+	'toolbox-site-ops-idempotency'
+);
+$toolbox_site_ops_request      = end( $GLOBALS['maca_http_requests'] );
+$toolbox_site_ops_request_body = json_decode( (string) ( $toolbox_site_ops_request['args']['body'] ?? '' ), true );
+
+maca_assert(
+	is_array( $toolbox_site_ops_result ) && 'run_toolbox_site_ops_1' === (string) ( $toolbox_site_ops_result['run_id'] ?? '' ),
+	'Behavior: Toolbox Site Ops Cloud analysis runtime returns the Cloud response for a supported detail request.'
+);
+
+maca_assert(
+	is_array( $toolbox_site_ops_request_body )
+	&& 'npcink-toolbox/analyze-site-ops' === (string) ( $toolbox_site_ops_request_body['ability_name'] ?? '' )
+	&& 'site_ops_cloud_analysis_request.v1' === (string) ( $toolbox_site_ops_request_body['contract_version'] ?? '' )
+	&& 'toolbox_site_ops_cloud_analysis' === (string) ( $toolbox_site_ops_request_body['channel'] ?? '' )
+	&& 'site_ops_cloud_analysis' === (string) ( $toolbox_site_ops_request_body['execution_kind'] ?? '' )
+	&& 'whole_run_offload' === (string) ( $toolbox_site_ops_request_body['execution_pattern'] ?? '' )
+	&& 'result_only' === (string) ( $toolbox_site_ops_request_body['storage_mode'] ?? '' )
+	&& 90 === (int) ( $toolbox_site_ops_request_body['timeout_seconds'] ?? 0 )
+	&& 0 === (int) ( $toolbox_site_ops_request_body['retry_max'] ?? -1 )
+	&& false === (bool) ( $toolbox_site_ops_request_body['policy']['allow_fallback'] ?? true )
+	&& 'site_ops_cloud_analysis_request.v1' === (string) ( $toolbox_site_ops_request_body['input']['contract_version'] ?? '' )
+	&& 'site_ops_cloud_analysis_result.v1' === (string) ( $toolbox_site_ops_request_body['input']['expected_result_contract'] ?? '' )
+	&& 'runtime_detail' === (string) ( $toolbox_site_ops_request_body['input']['cloud_role'] ?? '' )
+	&& 'suggestion_only' === (string) ( $toolbox_site_ops_request_body['input']['write_posture'] ?? '' )
+	&& false === (bool) ( $toolbox_site_ops_request_body['input']['direct_wordpress_write'] ?? true )
+	&& false === (bool) ( $toolbox_site_ops_request_body['input']['core_proposal_created'] ?? true ),
+	'Behavior: Toolbox Site Ops Cloud analysis runtime projects transport-only runtime detail without local writes.'
+);
+
+$site_ops_chat_shape = $client->execute_toolbox_site_ops_cloud_analysis_runtime(
+	array(
+		'contract_version'         => 'site_ops_cloud_analysis_request.v1',
+		'expected_result_contract' => 'site_ops_cloud_analysis_result.v1',
+		'cloud_role'              => 'runtime_detail',
+		'execution_pattern'        => 'whole_run_offload',
+		'write_posture'            => 'suggestion_only',
+		'direct_wordpress_write'   => false,
+		'core_proposal_created'    => false,
+		'input'                    => array( 'local_summary' => array() ),
+		'messages'                 => array(
+			array(
+				'role'    => 'user',
+				'content' => 'Chat with me.',
+			),
+		),
+	)
+);
+maca_assert(
+	is_wp_error( $site_ops_chat_shape ) && 'cloud_toolbox_site_ops_cloud_analysis_shape_not_allowed' === $site_ops_chat_shape->get_error_code(),
+	'Behavior: Toolbox Site Ops Cloud analysis runtime rejects generic chat message shapes.'
+);
+
+$GLOBALS['maca_http_response_queue'][] = array(
+	'response' => array( 'code' => 200 ),
+	'body'     => wp_json_encode(
+		array(
+			'status' => 'ok',
+			'run_id' => 'run_toolbox_web_search_1',
+			'data'   => array(
+				'result' => array(
+					'artifact_type'          => 'web_search_results',
+					'contract_version'       => 'web_search_result.v1',
+					'direct_wordpress_write' => false,
+					'results'                => array(
+						array(
+							'title'   => 'Example result',
+							'url'     => 'https://example.test/research',
+							'snippet' => 'A bounded search result.',
+						),
+					),
+				),
+			),
+		)
+	),
+);
+
+$toolbox_web_search_result = $client->execute_toolbox_web_search_runtime(
+	array(
+		'contract_version' => 'web_search.v1',
+		'query'            => 'WordPress editorial workflow research',
+		'intent'           => 'writing_context',
+		'max_results'      => 4,
+		'recency_days'     => 14,
+		'timeout_seconds'  => 90,
+	),
+	'trace-toolbox-web-search',
+	'toolbox-web-search-idempotency'
+);
+$toolbox_web_search_request      = end( $GLOBALS['maca_http_requests'] );
+$toolbox_web_search_request_body = json_decode( (string) ( $toolbox_web_search_request['args']['body'] ?? '' ), true );
+
+maca_assert(
+	is_array( $toolbox_web_search_result ) && 'run_toolbox_web_search_1' === (string) ( $toolbox_web_search_result['run_id'] ?? '' ),
+	'Behavior: Toolbox web search runtime returns the Cloud response for a supported query request.'
+);
+
+maca_assert(
+	is_array( $toolbox_web_search_request_body )
+	&& 'npcink-cloud/web-search' === (string) ( $toolbox_web_search_request_body['ability_name'] ?? '' )
+	&& 'web_search.v1' === (string) ( $toolbox_web_search_request_body['contract_version'] ?? '' )
+	&& 'toolbox_web_search' === (string) ( $toolbox_web_search_request_body['channel'] ?? '' )
+	&& 'web_search' === (string) ( $toolbox_web_search_request_body['execution_kind'] ?? '' )
+	&& 'inline' === (string) ( $toolbox_web_search_request_body['execution_pattern'] ?? '' )
+	&& 'result_only' === (string) ( $toolbox_web_search_request_body['storage_mode'] ?? '' )
+	&& 60 === (int) ( $toolbox_web_search_request_body['timeout_seconds'] ?? 0 )
+	&& true === (bool) ( $toolbox_web_search_request_body['policy']['allow_fallback'] ?? false )
+	&& 'web_search.v1' === (string) ( $toolbox_web_search_request_body['input']['contract_version'] ?? '' )
+	&& 'writing_context' === (string) ( $toolbox_web_search_request_body['input']['intent'] ?? '' )
+	&& 4 === (int) ( $toolbox_web_search_request_body['input']['max_results'] ?? 0 )
+	&& 'suggestion_only' === (string) ( $toolbox_web_search_request_body['input']['write_posture'] ?? '' )
+	&& false === (bool) ( $toolbox_web_search_request_body['input']['direct_wordpress_write'] ?? true ),
+	'Behavior: Toolbox web search runtime projects transport-only search evidence without WordPress writes.'
+);
+
+$web_search_chat_shape = $client->execute_toolbox_web_search_runtime(
+	array(
+		'contract_version' => 'web_search.v1',
+		'query'            => 'Research this.',
+		'messages'         => array(
+			array(
+				'role'    => 'user',
+				'content' => 'Chat with me.',
+			),
+		),
+	)
+);
+maca_assert(
+	is_wp_error( $web_search_chat_shape ) && 'cloud_toolbox_web_search_shape_not_allowed' === $web_search_chat_shape->get_error_code(),
+	'Behavior: Toolbox web search runtime rejects generic chat message shapes.'
+);
+
+$GLOBALS['maca_http_response_queue'][] = array(
+	'response' => array( 'code' => 200 ),
+	'body'     => wp_json_encode(
+		array(
+			'status' => 'ok',
+			'run_id' => 'run_toolbox_image_source_1',
+			'data'   => array(
+				'result' => array(
+					'artifact_type'          => 'image_source_candidates',
+					'contract_version'       => 'image_source_candidates.v1',
+					'direct_wordpress_write' => false,
+					'images'                 => array(
+						array(
+							'id'  => 'image-source-1',
+							'url' => 'https://images.example.test/photo.jpg',
+						),
+					),
+				),
+			),
+		)
+	),
+);
+
+$toolbox_image_source_result = $client->execute_toolbox_image_source_runtime(
+	array(
+		'contract_version'    => 'image_source_cloud_request.v1',
+		'query'               => 'Editorial office desk',
+		'provider'            => 'unsplash',
+		'per_page'            => 12,
+		'latency_mode'        => 'fast_first',
+		'candidate_contract'  => 'image_candidate.v1',
+		'timeout_seconds'     => 90,
+		'data_classification' => 'public_reference_media',
+	),
+	'trace-toolbox-image-source',
+	'toolbox-image-source-idempotency'
+);
+$toolbox_image_source_request      = end( $GLOBALS['maca_http_requests'] );
+$toolbox_image_source_request_body = json_decode( (string) ( $toolbox_image_source_request['args']['body'] ?? '' ), true );
+
+maca_assert(
+	is_array( $toolbox_image_source_result ) && 'run_toolbox_image_source_1' === (string) ( $toolbox_image_source_result['run_id'] ?? '' ),
+	'Behavior: Toolbox image-source runtime returns the Cloud response for a supported candidate request.'
+);
+
+maca_assert(
+	is_array( $toolbox_image_source_request_body )
+	&& 'npcink-toolbox/search-image-source' === (string) ( $toolbox_image_source_request_body['ability_name'] ?? '' )
+	&& 'image_source_cloud_request.v1' === (string) ( $toolbox_image_source_request_body['contract_version'] ?? '' )
+	&& 'toolbox_image_source' === (string) ( $toolbox_image_source_request_body['channel'] ?? '' )
+	&& 'image_source' === (string) ( $toolbox_image_source_request_body['execution_kind'] ?? '' )
+	&& 'inline' === (string) ( $toolbox_image_source_request_body['execution_pattern'] ?? '' )
+	&& 'result_only' === (string) ( $toolbox_image_source_request_body['storage_mode'] ?? '' )
+	&& 60 === (int) ( $toolbox_image_source_request_body['timeout_seconds'] ?? 0 )
+	&& true === (bool) ( $toolbox_image_source_request_body['policy']['allow_fallback'] ?? false )
+	&& 'image_source_cloud_request.v1' === (string) ( $toolbox_image_source_request_body['input']['contract_version'] ?? '' )
+	&& 'unsplash' === (string) ( $toolbox_image_source_request_body['input']['provider'] ?? '' )
+	&& 'cloud' === (string) ( $toolbox_image_source_request_body['input']['provider_origin'] ?? '' )
+	&& 'fast_first' === (string) ( $toolbox_image_source_request_body['input']['latency_mode'] ?? '' )
+	&& 'image_candidate.v1' === (string) ( $toolbox_image_source_request_body['input']['candidate_contract'] ?? '' )
+	&& 'suggestion_only' === (string) ( $toolbox_image_source_request_body['input']['write_posture'] ?? '' )
+	&& false === (bool) ( $toolbox_image_source_request_body['input']['direct_wordpress_write'] ?? true ),
+	'Behavior: Toolbox image-source runtime projects transport-only source candidates without media writes.'
+);
+
+$image_source_chat_shape = $client->execute_toolbox_image_source_runtime(
+	array(
+		'contract_version' => 'image_source_cloud_request.v1',
+		'query'            => 'Find source images.',
+		'messages'         => array(
+			array(
+				'role'    => 'user',
+				'content' => 'Chat with me.',
+			),
+		),
+	)
+);
+maca_assert(
+	is_wp_error( $image_source_chat_shape ) && 'cloud_toolbox_image_source_shape_not_allowed' === $image_source_chat_shape->get_error_code(),
+	'Behavior: Toolbox image-source runtime rejects generic chat message shapes.'
+);

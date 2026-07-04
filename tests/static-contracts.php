@@ -160,6 +160,9 @@ maca_assert(
 	&& false !== strpos( $bootstrap, 'npcink_cloud_addon_execute_wordpress_ai_image_generation_runtime' )
 	&& false !== strpos( $bootstrap, 'npcink_cloud_addon_execute_toolbox_image_generation_runtime' )
 	&& false !== strpos( $bootstrap, 'npcink_cloud_addon_execute_toolbox_audio_generation_runtime' )
+	&& false !== strpos( $bootstrap, 'npcink_cloud_addon_execute_toolbox_site_ops_cloud_analysis_runtime' )
+	&& false !== strpos( $bootstrap, 'npcink_cloud_addon_execute_toolbox_web_search_runtime' )
+	&& false !== strpos( $bootstrap, 'npcink_cloud_addon_execute_toolbox_image_source_runtime' )
 	&& false !== strpos( $wordpress_ai_connector, "CONNECTOR_ID = 'npcink-cloud'" )
 	&& false !== strpos( $wordpress_ai_connector, "CONNECTOR_NAME = 'Npcink Cloud'" )
 	&& false !== strpos( $wordpress_ai_connector, "IMAGE_MODEL_ID = 'npcink-cloud-scene-image'" )
@@ -187,6 +190,43 @@ maca_assert(
 	&& false !== strpos( $runtime_client, "'direct_wordpress_write' => false" )
 	&& false !== strpos( $runtime_client, "'allow_fallback' => false" ),
 	'Runtime client exposes a bounded Toolbox audio generation transport without media import, metadata writes, or fallback provider control.'
+);
+
+maca_assert(
+	false !== strpos( $runtime_client, 'execute_toolbox_site_ops_cloud_analysis_runtime' )
+	&& false !== strpos( $runtime_client, 'TOOLBOX_SITE_OPS_CLOUD_ANALYSIS_CONTRACT' )
+	&& false !== strpos( $runtime_client, "'channel'             => 'toolbox_site_ops_cloud_analysis'" )
+	&& false !== strpos( $runtime_client, "'ability_name'        => 'npcink-toolbox/analyze-site-ops'" )
+	&& false !== strpos( $runtime_client, "'execution_pattern'   => 'whole_run_offload'" )
+	&& false !== strpos( $runtime_client, "'storage_mode'        => 'result_only'" )
+	&& false !== strpos( $runtime_client, "\$request['direct_wordpress_write'] ?? true" )
+	&& false !== strpos( $runtime_client, "\$request['core_proposal_created'] ?? true" )
+	&& false !== strpos( $runtime_client, "'allow_fallback' => false" ),
+	'Runtime client exposes a bounded Toolbox Site Ops Cloud analysis transport without proposal, scheduler, or WordPress write ownership.'
+);
+
+maca_assert(
+	false !== strpos( $runtime_client, 'execute_toolbox_web_search_runtime' )
+	&& false !== strpos( $runtime_client, "TOOLBOX_WEB_SEARCH_CONTRACT = 'web_search.v1'" )
+	&& false !== strpos( $runtime_client, "'channel'             => 'toolbox_web_search'" )
+	&& false !== strpos( $runtime_client, "'ability_name'        => 'npcink-cloud/web-search'" )
+	&& false !== strpos( $runtime_client, "'execution_kind'      => 'web_search'" )
+	&& false !== strpos( $runtime_client, "'write_posture']          = 'suggestion_only'" )
+	&& false !== strpos( $runtime_client, "'direct_wordpress_write'] = false" )
+	&& false !== strpos( $runtime_client, "'allow_fallback' => true" ),
+	'Runtime client exposes a bounded Toolbox web search transport without local search keys, proposal ownership, or WordPress writes.'
+);
+
+maca_assert(
+	false !== strpos( $runtime_client, 'execute_toolbox_image_source_runtime' )
+	&& false !== strpos( $runtime_client, "TOOLBOX_IMAGE_SOURCE_CONTRACT = 'image_source_cloud_request.v1'" )
+	&& false !== strpos( $runtime_client, "'channel'             => 'toolbox_image_source'" )
+	&& false !== strpos( $runtime_client, "'ability_name'        => 'npcink-toolbox/search-image-source'" )
+	&& false !== strpos( $runtime_client, "'execution_kind'      => 'image_source'" )
+	&& false !== strpos( $runtime_client, "'candidate_contract']     = 'image_candidate.v1'" )
+	&& false !== strpos( $runtime_client, "'direct_wordpress_write'] = false" )
+	&& false !== strpos( $runtime_client, "'allow_fallback' => true" ),
+	'Runtime client exposes a bounded Toolbox image-source transport without media import, featured-image writes, or attribution writes.'
 );
 
 maca_assert(
@@ -257,6 +297,9 @@ maca_assert(
 	false !== strpos( $readme, 'WordPress AI Connector Runtime' )
 	&& false !== strpos( $readme, 'OpenAI-compatible provider' )
 	&& false !== strpos( $readme, 'npcink_cloud_addon_execute_toolbox_image_generation_runtime()' )
+	&& false !== strpos( $readme, 'npcink_cloud_addon_execute_toolbox_site_ops_cloud_analysis_runtime()' )
+	&& false !== strpos( $readme, 'npcink_cloud_addon_execute_toolbox_web_search_runtime()' )
+	&& false !== strpos( $readme, 'npcink_cloud_addon_execute_toolbox_image_source_runtime()' )
 	&& false !== strpos( $readme, 'Toolbox to normalize into `image_candidate.v1`' )
 	&& false !== strpos( $readme, 'scene-gated text and' )
 	&& false !== strpos( $readme, 'rejects reference-image refinement' )
@@ -264,7 +307,13 @@ maca_assert(
 	&& false !== strpos( $runtime_contract, 'generic chat provider' )
 	&& false !== strpos( $runtime_contract, 'image_generation_request.v1' )
 	&& false !== strpos( $runtime_contract, 'execute_toolbox_image_generation_runtime()' )
+	&& false !== strpos( $runtime_contract, 'execute_toolbox_site_ops_cloud_analysis_runtime()' )
+	&& false !== strpos( $runtime_contract, 'execute_toolbox_web_search_runtime()' )
+	&& false !== strpos( $runtime_contract, 'execute_toolbox_image_source_runtime()' )
 	&& false !== strpos( $runtime_contract, 'channel=toolbox_image_generation' )
+	&& false !== strpos( $runtime_contract, 'channel=toolbox_site_ops_cloud_analysis' )
+	&& false !== strpos( $runtime_contract, 'channel=toolbox_web_search' )
+	&& false !== strpos( $runtime_contract, 'channel=toolbox_image_source' )
 	&& false !== strpos( $runtime_contract, 'scene wrapper models' )
 	&& false !== strpos( $runtime_contract, 'does not register a `wpai_preferred_vision_models` override' )
 	&& false !== strpos( $runtime_contract, 'does not support reference-image refinement' )

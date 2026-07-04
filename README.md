@@ -63,6 +63,9 @@ npcink_cloud_addon_execute_wordpress_ai_connector_runtime(array $request, string
 npcink_cloud_addon_execute_wordpress_ai_image_generation_runtime(array $request, string $trace_id = '', string $idempotency_key = '')
 npcink_cloud_addon_execute_toolbox_image_generation_runtime(array $request, string $trace_id = '', string $idempotency_key = '')
 npcink_cloud_addon_execute_toolbox_audio_generation_runtime(array $request, string $trace_id = '', string $idempotency_key = '')
+npcink_cloud_addon_execute_toolbox_site_ops_cloud_analysis_runtime(array $request, string $trace_id = '', string $idempotency_key = '')
+npcink_cloud_addon_execute_toolbox_web_search_runtime(array $request, string $trace_id = '', string $idempotency_key = '')
+npcink_cloud_addon_execute_toolbox_image_source_runtime(array $request, string $trace_id = '', string $idempotency_key = '')
 npcink_cloud_addon_dispatch_site_knowledge_runtime(array $runtime_payload, string $ability_name = '', string $contract_version = '')
 npcink_cloud_addon_build_media_derivative_proposal_payload(array $ability_response, array $cloud_result, array $derivative_artifact)
 npcink_cloud_addon_download_media_derivative_artifact(array $derivative_artifact, string $trace_id = '')
@@ -78,6 +81,9 @@ execute_wordpress_ai_connector_runtime(array $request, string $trace_id = '', st
 execute_wordpress_ai_image_generation_runtime(array $request, string $trace_id = '', string $idempotency_key = '')
 execute_toolbox_image_generation_runtime(array $request, string $trace_id = '', string $idempotency_key = '')
 execute_toolbox_audio_generation_runtime(array $request, string $trace_id = '', string $idempotency_key = '')
+execute_toolbox_site_ops_cloud_analysis_runtime(array $request, string $trace_id = '', string $idempotency_key = '')
+execute_toolbox_web_search_runtime(array $request, string $trace_id = '', string $idempotency_key = '')
+execute_toolbox_image_source_runtime(array $request, string $trace_id = '', string $idempotency_key = '')
 request_image_context_evidence(array $image_context_evidence_request, string $trace_id = '', string $idempotency_key = '')
 create_media_derivative(array $payload, array $files = array(), string $trace_id = '', string $idempotency_key = '')
 get_run(string $run_id, string $trace_id = '')
@@ -144,6 +150,29 @@ reviewed narration or audio-summary requests, dispatches through Cloud
 `npcink-toolbox/generate-audio`, and returns the Cloud runtime response for
 Toolbox to normalize into audio candidates. The addon does not import audio,
 write playback metadata, create adoption plans, or run audio refresh jobs.
+
+`npcink_cloud_addon_execute_toolbox_site_ops_cloud_analysis_runtime()` is the
+bounded transport seam for optional Toolbox Site Check Cloud detail. It accepts
+only `site_ops_cloud_analysis_request.v1` packets that are runtime-detail,
+suggestion-only, and no-write, dispatches through Cloud
+`npcink-toolbox/analyze-site-ops`, and returns the Cloud runtime response for
+Toolbox to render as review-only detail. The addon does not create a local run
+table, scheduler, Core proposal, or WordPress write path.
+
+`npcink_cloud_addon_execute_toolbox_web_search_runtime()` is the bounded
+transport seam for Toolbox managed web search evidence. It accepts only
+`web_search.v1` query packets, dispatches through Cloud
+`npcink-cloud/web-search`, and returns the Cloud runtime response for Toolbox
+to normalize as `web_search_results`. The addon does not store local search
+provider keys, create proposals, or write WordPress content.
+
+`npcink_cloud_addon_execute_toolbox_image_source_runtime()` is the bounded
+transport seam for Toolbox image-source candidates. It accepts only
+`image_source_cloud_request.v1` packets, dispatches through Cloud
+`npcink-toolbox/search-image-source`, and returns the Cloud runtime response for
+Toolbox to normalize into `image_candidate.v1` source candidates. The addon
+does not import media, set featured images, write attribution, or create Core
+proposals.
 
 When the PHP AI Client is available, the addon registers scene-gated text and
 image models. The text model only forwards calls that originate from known

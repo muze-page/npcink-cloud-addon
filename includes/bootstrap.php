@@ -255,6 +255,99 @@ if ( ! function_exists( 'npcink_cloud_addon_execute_toolbox_audio_generation_run
 	}
 }
 
+if ( ! function_exists( 'npcink_cloud_addon_execute_toolbox_site_ops_cloud_analysis_runtime' ) ) {
+	/**
+	 * Executes a bounded Toolbox Site Check Cloud analysis runtime request.
+	 *
+	 * This helper is transport-only for optional Site Check Cloud detail. It
+	 * does not create local run state, Core proposals, scheduled jobs, or
+	 * WordPress writes.
+	 *
+	 * @param array<string,mixed> $request Toolbox site_ops_cloud_analysis_request.v1 artifact.
+	 * @param string              $trace_id Optional trace id.
+	 * @param string              $idempotency_key Optional idempotency key.
+	 * @return array<string,mixed>|WP_Error
+	 */
+	function npcink_cloud_addon_execute_toolbox_site_ops_cloud_analysis_runtime( array $request, string $trace_id = '', string $idempotency_key = '' ) {
+		$client = npcink_cloud_addon_runtime_client();
+		if ( ! $client ) {
+			return new WP_Error(
+				'cloud_runtime_unconfigured',
+				__( 'Npcink Cloud is not configured.', 'npcink-cloud-addon' ),
+				array( 'status' => 400 )
+			);
+		}
+
+		return $client->execute_toolbox_site_ops_cloud_analysis_runtime(
+			$request,
+			$trace_id,
+			$idempotency_key
+		);
+	}
+}
+
+if ( ! function_exists( 'npcink_cloud_addon_execute_toolbox_web_search_runtime' ) ) {
+	/**
+	 * Executes a bounded Toolbox managed web search runtime request.
+	 *
+	 * This helper is transport-only for Toolbox search evidence. It does not
+	 * create local provider configuration, provider keys, proposals, or
+	 * WordPress writes.
+	 *
+	 * @param array<string,mixed> $request Toolbox web_search.v1 request.
+	 * @param string              $trace_id Optional trace id.
+	 * @param string              $idempotency_key Optional idempotency key.
+	 * @return array<string,mixed>|WP_Error
+	 */
+	function npcink_cloud_addon_execute_toolbox_web_search_runtime( array $request, string $trace_id = '', string $idempotency_key = '' ) {
+		$client = npcink_cloud_addon_runtime_client();
+		if ( ! $client ) {
+			return new WP_Error(
+				'cloud_runtime_unconfigured',
+				__( 'Npcink Cloud is not configured.', 'npcink-cloud-addon' ),
+				array( 'status' => 400 )
+			);
+		}
+
+		return $client->execute_toolbox_web_search_runtime(
+			$request,
+			$trace_id,
+			$idempotency_key
+		);
+	}
+}
+
+if ( ! function_exists( 'npcink_cloud_addon_execute_toolbox_image_source_runtime' ) ) {
+	/**
+	 * Executes a bounded Toolbox image-source candidate runtime request.
+	 *
+	 * This helper is transport-only for source candidates. It does not import
+	 * media, set featured images, write attribution, create proposals, or own
+	 * image-source provider configuration.
+	 *
+	 * @param array<string,mixed> $request Toolbox image_source_cloud_request.v1 request.
+	 * @param string              $trace_id Optional trace id.
+	 * @param string              $idempotency_key Optional idempotency key.
+	 * @return array<string,mixed>|WP_Error
+	 */
+	function npcink_cloud_addon_execute_toolbox_image_source_runtime( array $request, string $trace_id = '', string $idempotency_key = '' ) {
+		$client = npcink_cloud_addon_runtime_client();
+		if ( ! $client ) {
+			return new WP_Error(
+				'cloud_runtime_unconfigured',
+				__( 'Npcink Cloud is not configured.', 'npcink-cloud-addon' ),
+				array( 'status' => 400 )
+			);
+		}
+
+		return $client->execute_toolbox_image_source_runtime(
+			$request,
+			$trace_id,
+			$idempotency_key
+		);
+	}
+}
+
 if ( ! function_exists( 'npcink_cloud_addon_dispatch_site_knowledge_runtime' ) ) {
 	/**
 	 * Dispatches a bounded Toolbox Site Knowledge runtime request.

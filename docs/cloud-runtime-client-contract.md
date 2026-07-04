@@ -36,6 +36,9 @@ execute_wordpress_ai_connector_runtime(array $request, string $trace_id = '', st
 execute_wordpress_ai_image_generation_runtime(array $request, string $trace_id = '', string $idempotency_key = '')
 execute_toolbox_image_generation_runtime(array $request, string $trace_id = '', string $idempotency_key = '')
 execute_toolbox_audio_generation_runtime(array $request, string $trace_id = '', string $idempotency_key = '')
+execute_toolbox_site_ops_cloud_analysis_runtime(array $request, string $trace_id = '', string $idempotency_key = '')
+execute_toolbox_web_search_runtime(array $request, string $trace_id = '', string $idempotency_key = '')
+execute_toolbox_image_source_runtime(array $request, string $trace_id = '', string $idempotency_key = '')
 request_image_context_evidence(array $image_context_evidence_request, string $trace_id = '', string $idempotency_key = '')
 create_media_derivative(array $payload, array $files = array(), string $trace_id = '', string $idempotency_key = '')
 get_run(string $run_id, string $trace_id = '')
@@ -70,6 +73,9 @@ It returns `null` until the addon settings have passed Save and Verify.
 | `execute_wordpress_ai_image_generation_runtime()` | `POST /v1/runtime/execute` |
 | `execute_toolbox_image_generation_runtime()` | `POST /v1/runtime/execute` |
 | `execute_toolbox_audio_generation_runtime()` | `POST /v1/runtime/execute` |
+| `execute_toolbox_site_ops_cloud_analysis_runtime()` | `POST /v1/runtime/execute` |
+| `execute_toolbox_web_search_runtime()` | `POST /v1/runtime/execute` |
+| `execute_toolbox_image_source_runtime()` | `POST /v1/runtime/execute` |
 | `npcink_cloud_addon_dispatch_site_knowledge_runtime()` | `POST /v1/runtime/execute` |
 | `request_image_context_evidence()` | `POST /v1/runtime/execute` |
 | `create_media_derivative()` | `POST /v1/runtime/media-derivatives` |
@@ -259,6 +265,24 @@ Toolbox article audio candidate generation. It lets Toolbox keep the editor
 audio candidate UX and Core-governed adoption planning while the addon owns
 Cloud credentials, signing, runtime dispatch, and Cloud error mapping.
 
+`execute_toolbox_site_ops_cloud_analysis_runtime()` is the bounded transport
+seam for optional Toolbox Site Check Cloud detail. It lets Toolbox keep the
+local Site Check product surface and `site_ops_cloud_analysis_result.v1`
+normalization while the addon owns Cloud credentials, signing, runtime
+dispatch, and Cloud error mapping.
+
+`execute_toolbox_web_search_runtime()` is the bounded transport seam for
+Toolbox managed web search evidence. It accepts `web_search.v1` request packets
+and projects them to `channel=toolbox_web_search` for Cloud
+`npcink-cloud/web-search`. It does not expose local provider keys, create
+proposals, or write WordPress content.
+
+`execute_toolbox_image_source_runtime()` is the bounded transport seam for
+Toolbox image-source candidates. It accepts `image_source_cloud_request.v1`
+request packets and projects them to `channel=toolbox_image_source` for Cloud
+`npcink-toolbox/search-image-source`. It does not import media, set featured
+images, write attribution, or own image-source candidate UX.
+
 The optional PHP AI Client provider registers `npcink-cloud-scene-text` and
 `npcink-cloud-scene-image` as scene wrapper models. These ids represent bounded
 WordPress AI surfaces, not bottom-level Cloud provider model ids. The addon may
@@ -329,6 +353,16 @@ addon projects it as `channel=toolbox_audio_generation` with an allowlisted
 It returns only the Cloud runtime response; Toolbox must still normalize audio
 candidates and any media import, post meta write, or playback adoption remains
 with the Core/Adapter/Abilities path after operator review.
+
+Toolbox Site Ops Cloud analysis input uses
+`contract_version=site_ops_cloud_analysis_request.v1` and expected result
+contract `site_ops_cloud_analysis_result.v1`. The addon projects it as
+`channel=toolbox_site_ops_cloud_analysis`, `execution_pattern=whole_run_offload`,
+`storage_mode=result_only`, and `policy.allow_fallback=false`. It rejects
+generic chat/tool/stream/credential fields and requests that are not
+`runtime_detail`, `suggestion_only`, and no-write. It returns only the Cloud
+runtime response; Toolbox must still render it as review-only detail, and any
+Core proposal or WordPress write remains outside this addon transport.
 
 The optional PHP AI Client provider may call this helper only when the current
 call stack originates from a known WordPress AI plugin Ability class and maps to

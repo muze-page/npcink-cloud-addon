@@ -497,7 +497,11 @@ if ( ! function_exists( 'npcink_cloud_addon_site_knowledge_change_bridge_health'
 	 * Returns local Site Knowledge change bridge health for host plugins.
 	 *
 	 * The bridge only reports and transports public content change hints to
-	 * Cloud Site Knowledge. It is not a local index lifecycle owner.
+	 * Cloud Site Knowledge. Consumers should treat the returned
+	 * `site_knowledge_change_bridge_status.v1` payload as the
+	 * `change_bridge` status projection and prefer `buffer_count` for bounded
+	 * delivery-buffer depth. It is not queue truth or local index lifecycle
+	 * ownership.
 	 *
 	 * @return array<string,mixed>
 	 */

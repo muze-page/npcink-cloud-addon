@@ -286,6 +286,12 @@ index, freshness, and collection lifecycle owner. The addon does not create a
 local index, decide stale-index policy, register a workflow engine, own scheduler
 truth, or perform WordPress writes.
 
+`npcink_cloud_addon_site_knowledge_change_bridge_health()` returns the stable
+`site_knowledge_change_bridge_status.v1` projection. Host plugins should expose
+that payload as `change_bridge` and prefer `buffer_count` for bounded delivery
+buffer depth. `buffer_count` is local transport durability only; it is not queue
+truth, freshness truth, index lifecycle truth, or Cloud diagnostics truth.
+
 ## Site Knowledge Runtime Bridge
 
 The addon registers the `npcink_toolbox_site_knowledge_cloud_request` filter so

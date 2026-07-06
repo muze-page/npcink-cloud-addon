@@ -40,6 +40,13 @@ collection lifecycle switch.
   error, next flush, last local index action, and a link to Cloud Site
   Knowledge detail.
 
+The status projection returned by
+`npcink_cloud_addon_site_knowledge_change_bridge_health()` is
+`site_knowledge_change_bridge_status.v1`. Consumers should expose it as
+`change_bridge` and prefer `buffer_count` for the bounded local delivery-buffer
+depth. That count is not vector queue truth, index freshness truth, collection
+lifecycle truth, or Cloud diagnostics truth.
+
 ## Forbidden Addon Operations
 
 The addon must reject or omit:

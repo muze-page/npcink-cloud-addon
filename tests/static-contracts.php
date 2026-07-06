@@ -647,6 +647,9 @@ maca_assert(
 	&& false !== strpos( $bootstrap, 'npcink_cloud_addon_dispatch_site_knowledge_runtime' )
 	&& false !== strpos( $bootstrap, 'Npcink_Cloud_Site_Knowledge_Change_Bridge::register()' )
 	&& false !== strpos( $bootstrap, 'Npcink_Cloud_Site_Knowledge_Runtime_Bridge::register()' )
+	&& false !== strpos( $bootstrap, 'site_knowledge_change_bridge_status.v1' )
+	&& false !== strpos( $bootstrap, '`change_bridge` status projection' )
+	&& false !== strpos( $bootstrap, 'prefer `buffer_count`' )
 	&& false !== strpos( $readme, 'npcink_cloud_addon_site_knowledge_change_bridge_health(): array' ),
 	'Bootstrap exposes Cloud Addon Site Knowledge change bridge health and runtime dispatch seams.'
 );
@@ -696,9 +699,19 @@ maca_assert(
 
 	maca_assert(
 		false !== strpos( $site_knowledge_bridge, "'status' => \$bridge_status" )
-		&& false !== strpos( $site_knowledge_bridge, "'health_detail_version' => 'site_knowledge_bridge_health.v1'" )
+		&& false !== strpos( $site_knowledge_bridge, "STATUS_CONTRACT = 'site_knowledge_change_bridge_status.v1'" )
+		&& false !== strpos( $site_knowledge_bridge, "'preferred_status_field' => 'change_bridge'" )
+		&& false !== strpos( $site_knowledge_bridge, "'preferred_count_field' => 'buffer_count'" )
+		&& false !== strpos( $site_knowledge_bridge, "HEALTH_DETAIL_CONTRACT = 'site_knowledge_bridge_health.v1'" )
+		&& false !== strpos( $site_knowledge_bridge, "'health_detail_version' => self::HEALTH_DETAIL_CONTRACT" )
 		&& false !== strpos( $site_knowledge_bridge, "'delivery_enabled' => \$delivery_enabled" )
 		&& false !== strpos( $site_knowledge_bridge, "'delivery_attempts' => absint" )
+		&& false !== strpos( $site_knowledge_bridge, "'buffer_semantics' => 'bounded_delivery_buffer'" )
+		&& false !== strpos( $site_knowledge_bridge, "'buffer_truth' => 'local_delivery_durability_only'" )
+		&& false !== strpos( $site_knowledge_bridge, "'delivery_truth_owner' => 'cloud_addon'" )
+		&& false !== strpos( $site_knowledge_bridge, "'index_execution_owner' => 'cloud_service'" )
+		&& false !== strpos( $site_knowledge_bridge, "'freshness_policy_owner' => 'cloud_service'" )
+		&& false !== strpos( $site_knowledge_bridge, "'diagnostics_detail_owner' => 'cloud_service'" )
 		&& false !== strpos( $site_knowledge_bridge, "'disabled'" )
 		&& false !== strpos( $site_knowledge_bridge, "'error'" )
 		&& false !== strpos( $site_knowledge_bridge, "'last_delivery_at'" )
@@ -754,7 +767,10 @@ maca_assert(
 	&& false === strpos( $site_knowledge_bridge, 'register_rest_route' )
 	&& false === strpos( $site_knowledge_bridge, 'ActionScheduler' )
 	&& false === strpos( $site_knowledge_bridge, 'as_enqueue' )
-	&& false !== strpos( $site_knowledge_bridge, "'index_lifecycle_owner' => 'cloud_service'" ),
+	&& false !== strpos( $site_knowledge_bridge, "'index_lifecycle_owner' => 'cloud_service'" )
+	&& false !== strpos( $site_knowledge_bridge, "'scheduler_truth' => false" )
+	&& false !== strpos( $site_knowledge_bridge, "'workflow_truth' => false" )
+	&& false !== strpos( $site_knowledge_bridge, "'wordpress_write_included' => false" ),
 	'Site Knowledge change bridge does not introduce WordPress writes, REST control routes, Action Scheduler, or local index lifecycle ownership.'
 );
 
@@ -1025,7 +1041,12 @@ maca_assert(
 	&& false !== strpos( $site_knowledge_vector_ops_doc, 'must not contain' )
 	&& false !== strpos( $site_knowledge_vector_ops_doc, 'drafts, private posts, password-protected posts' )
 	&& false !== strpos( $site_knowledge_vector_ops_doc, 'provider credentials, API keys' )
-	&& false !== strpos( $site_knowledge_vector_ops_doc, 'Cloud Site Knowledge remains the owner for embedding, vector storage' ),
+	&& false !== strpos( $site_knowledge_vector_ops_doc, 'Cloud Site Knowledge remains the owner for embedding, vector storage' )
+	&& false !== strpos( $site_knowledge_vector_ops_doc, 'site_knowledge_change_bridge_status.v1' )
+	&& false !== strpos( $site_knowledge_vector_ops_doc, 'expose it as' )
+	&& false !== strpos( $site_knowledge_vector_ops_doc, '`change_bridge`' )
+	&& false !== strpos( $site_knowledge_vector_ops_doc, '`buffer_count`' )
+	&& false !== strpos( $site_knowledge_vector_ops_doc, 'not vector queue truth' ),
 	'Site Knowledge vector operations doc records public content admission and Cloud index lifecycle ownership.'
 );
 

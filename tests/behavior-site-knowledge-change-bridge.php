@@ -210,6 +210,13 @@ maca_assert(
 	&& 703 === absint( $status['last_post_id'] ?? 0 )
 	&& 1 === absint( $status['buffer_count'] ?? 0 )
 	&& 1 === absint( $health['buffer_count'] ?? 0 )
+	&& 'site_knowledge_change_bridge_status.v1' === (string) ( $health['status_contract'] ?? '' )
+	&& 'change_bridge' === (string) ( $health['preferred_status_field'] ?? '' )
+	&& 'buffer_count' === (string) ( $health['preferred_count_field'] ?? '' )
+	&& 'bounded_delivery_buffer' === (string) ( $health['buffer_semantics'] ?? '' )
+	&& 'local_delivery_durability_only' === (string) ( $health['buffer_truth'] ?? '' )
+	&& 'cloud_addon' === (string) ( $health['delivery_truth_owner'] ?? '' )
+	&& 'cloud_service' === (string) ( $health['index_execution_owner'] ?? '' )
 	&& 'suggestion_only' === (string) ( $health['write_posture'] ?? '' )
 	&& false === (bool) ( $health['wordpress_write_included'] ?? true )
 	&& true === (bool) ( $health['enabled'] ?? false )
@@ -306,7 +313,11 @@ maca_assert(
 	&& 2 === absint( $error_health['delivery_attempts'] ?? 0 )
 	&& 3 === absint( $error_health['max_delivery_attempts'] ?? 0 )
 	&& 'delivery_failed_retry_scheduled' === (string) ( $error_health['last_error_code'] ?? '' )
-	&& '2026-07-06T00:00:00+00:00' === (string) ( $error_health['last_error_at'] ?? '' ),
+	&& '2026-07-06T00:00:00+00:00' === (string) ( $error_health['last_error_at'] ?? '' )
+	&& false === (bool) ( $error_health['scheduler_truth'] ?? true )
+	&& false === (bool) ( $error_health['workflow_truth'] ?? true )
+	&& 'cloud_service' === (string) ( $error_health['freshness_policy_owner'] ?? '' )
+	&& 'cloud_service' === (string) ( $error_health['diagnostics_detail_owner'] ?? '' ),
 	'Behavior: Site Knowledge bridge health exposes retry and error detail without becoming lifecycle truth.'
 );
 

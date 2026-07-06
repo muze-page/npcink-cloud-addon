@@ -21,6 +21,8 @@ if ( ! class_exists( 'Npcink_Cloud_Site_Knowledge_Change_Bridge' ) ) {
 		public const FLUSH_HOOK = 'npcink_cloud_addon_flush_site_knowledge_changes';
 		public const RECONCILE_HOOK = 'npcink_cloud_addon_reconcile_site_knowledge_changes';
 
+		private const STATUS_CONTRACT = 'site_knowledge_change_bridge_status.v1';
+		private const HEALTH_DETAIL_CONTRACT = 'site_knowledge_bridge_health.v1';
 		private const DEFAULT_POST_TYPES = array( 'post', 'page' );
 		private const MAX_BUFFER_ITEMS = 500;
 		private const MAX_BATCH_ITEMS = 25;
@@ -82,13 +84,18 @@ if ( ! class_exists( 'Npcink_Cloud_Site_Knowledge_Change_Bridge' ) ) {
 			return array(
 				'owner' => 'cloud_addon',
 				'mode' => 'site_knowledge_change_bridge',
-				'health_detail_version' => 'site_knowledge_bridge_health.v1',
+				'status_contract' => self::STATUS_CONTRACT,
+				'preferred_status_field' => 'change_bridge',
+				'preferred_count_field' => 'buffer_count',
+				'health_detail_version' => self::HEALTH_DETAIL_CONTRACT,
 				'enabled' => $delivery_enabled,
 				'delivery_enabled' => $delivery_enabled,
 				'configured' => $configured,
 				'verified' => $verified,
 				'status' => $bridge_status,
 				'buffer_count' => $buffer_count,
+				'buffer_semantics' => 'bounded_delivery_buffer',
+				'buffer_truth' => 'local_delivery_durability_only',
 				'delivery_attempts' => absint( $buffer['attempts'] ?? 0 ),
 				'max_buffer_items' => self::MAX_BUFFER_ITEMS,
 				'batch_size' => self::MAX_BATCH_ITEMS,
@@ -114,7 +121,12 @@ if ( ! class_exists( 'Npcink_Cloud_Site_Knowledge_Change_Bridge' ) ) {
 				'wp_cli_command' => 'wp cron event run ' . self::FLUSH_HOOK,
 				'write_posture' => 'suggestion_only',
 				'cloud_runtime_contract' => 'site_knowledge_sync.v1',
+				'transport_owner' => 'cloud_addon',
+				'delivery_truth_owner' => 'cloud_addon',
+				'index_execution_owner' => 'cloud_service',
 				'index_lifecycle_owner' => 'cloud_service',
+				'freshness_policy_owner' => 'cloud_service',
+				'diagnostics_detail_owner' => 'cloud_service',
 				'legacy_toolbox_fallback' => false,
 				'scheduler_truth' => false,
 				'workflow_truth' => false,

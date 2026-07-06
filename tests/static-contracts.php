@@ -666,6 +666,11 @@ maca_assert(
 	&& false !== strpos( $site_knowledge_runtime_bridge, "'suggestion_only'" )
 	&& false !== strpos( $site_knowledge_runtime_bridge, 'cloud_site_knowledge_sync_mode_not_allowed' )
 	&& false !== strpos( $site_knowledge_runtime_bridge, "'refresh' !== sanitize_key" )
+	&& false !== strpos( $site_knowledge_runtime_bridge, 'site_knowledge_cloud_boundary' )
+	&& false !== strpos( $site_knowledge_runtime_bridge, 'normalize_ownership_map' )
+	&& false !== strpos( $site_knowledge_runtime_bridge, 'normalize_truth_boundaries' )
+	&& false !== strpos( $site_knowledge_runtime_bridge, 'cloud_is_wordpress_control_plane' )
+	&& false !== strpos( $site_knowledge_runtime_bridge, 'cloud_creates_wordpress_writes' )
 	&& false !== strpos( $site_knowledge_runtime_bridge, 'execute_runtime' )
 	&& false !== strpos( $site_knowledge_runtime_bridge, 'MAX_RUNTIME_PAYLOAD_BYTES = 900000' ),
 	'Site Knowledge runtime bridge accepts only known Toolbox ability contracts and forwards suggestion-only public refresh payloads through runtime execute.'
@@ -1004,6 +1009,11 @@ maca_assert(
 	&& false !== strpos( $settings_page, 'Delivery attempts' )
 	&& false !== strpos( $settings_page, 'Next reconcile' )
 	&& false !== strpos( $settings_page, 'Manual flush command' )
+	&& false !== strpos( $settings_page, 'render_site_knowledge_boundary_truth_detail' )
+	&& false !== strpos( $settings_page, 'Cloud boundary truth' )
+	&& false !== strpos( $settings_page, 'Cloud WordPress control plane' )
+	&& false !== strpos( $settings_page, 'Cloud creates WordPress writes' )
+	&& false !== strpos( $settings_page, 'format_site_knowledge_owner_label' )
 	&& false !== strpos( $settings_page, 'This detail is local connector health only; Cloud remains the owner of indexing, freshness policy, collection lifecycle, and diagnostics.' )
 	&& false !== strpos( $settings_page, 'render_site_knowledge_index_operations' )
 	&& false !== strpos( $settings_page, 'Index operations' )

@@ -104,7 +104,12 @@ if ( ! class_exists( 'Npcink_Cloud_Site_Knowledge_Runtime_Bridge' ) ) {
 			$trace_id = 'trace_site_knowledge_toolbox_' . wp_generate_uuid4();
 			$idempotency_key = 'site_knowledge_' . str_replace( '.', '_', $contract_version ) . '_' . substr( md5( (string) wp_json_encode( $payload['input'] ?? array() ) ), 0, 16 );
 
-			return $client->execute_runtime( $payload, $trace_id, $idempotency_key );
+			$result = $client->execute_runtime( $payload, $trace_id, $idempotency_key );
+			if ( is_wp_error( $result ) || ! is_array( $result ) ) {
+				return $result;
+			}
+
+			return self::attach_cloud_boundary_projection( $result, $contract_version );
 		}
 
 		/**
@@ -204,6 +209,108 @@ if ( ! class_exists( 'Npcink_Cloud_Site_Knowledge_Runtime_Bridge' ) ) {
 			}
 
 			return $payload;
+		}
+
+		/**
+		 * Adds a stable Site Knowledge Cloud boundary projection when Cloud returns it.
+		 *
+		 * @param array<string,mixed> $result Cloud runtime result.
+		 * @param string              $contract_version Expected Site Knowledge contract.
+		 * @return array<string,mixed>
+		 */
+		private static function attach_cloud_boundary_projection( array $result, string $contract_version ): array {
+			$source = is_array( $result['data'] ?? null ) ? $result['data'] : $result;
+
+			$ownership = self::normalize_ownership_map( is_array( $source['ownership'] ?? null ) ? $source['ownership'] : array() );
+			$truth_boundaries = self::normalize_truth_boundaries( is_array( $source['truth_boundaries'] ?? null ) ? $source['truth_boundaries'] : array() );
+			if ( array() === $ownership && array() === $truth_boundaries ) {
+				return $result;
+			}
+
+			$result['site_knowledge_cloud_boundary'] = array(
+				'contract_version' => sanitize_text_field( (string) ( $source['contract_version'] ?? $contract_version ) ),
+				'ownership' => $ownership,
+				'truth_boundaries' => $truth_boundaries,
+			);
+
+			return $result;
+		}
+
+		/**
+		 * Normalizes the Cloud-returned Site Knowledge ownership map.
+		 *
+		 * @param array<string,mixed> $ownership Raw ownership map.
+		 * @return array<string,string>
+		 */
+		private static function normalize_ownership_map( array $ownership ): array {
+			$allowed_keys = array(
+				'source_content_owner',
+				'delivery_bridge_owner',
+				'index_execution_owner',
+				'index_lifecycle_owner',
+				'freshness_policy_owner',
+				'diagnostics_detail_owner',
+				'vector_storage_owner',
+				'embedding_execution_owner',
+				'approval_owner',
+				'final_write_owner',
+				'wordpress_write_owner',
+			);
+			$normalized = array();
+
+			foreach ( $allowed_keys as $key ) {
+				$value = sanitize_key( (string) ( $ownership[ $key ] ?? '' ) );
+				if ( '' !== $value ) {
+					$normalized[ $key ] = $value;
+				}
+			}
+
+			return $normalized;
+		}
+
+		/**
+		 * Normalizes the Cloud-returned Site Knowledge truth boundaries.
+		 *
+		 * @param array<string,mixed> $truth_boundaries Raw truth boundary map.
+		 * @return array<string,bool>
+		 */
+		private static function normalize_truth_boundaries( array $truth_boundaries ): array {
+			$allowed_keys = array(
+				'cloud_is_index_truth',
+				'cloud_is_freshness_truth',
+				'cloud_is_diagnostics_truth',
+				'cloud_is_wordpress_control_plane',
+				'cloud_creates_wordpress_writes',
+				'cloud_owns_local_approval',
+				'cloud_owns_ability_registry',
+				'cloud_owns_workflow_registry',
+			);
+			$normalized = array();
+
+			foreach ( $allowed_keys as $key ) {
+				if ( array_key_exists( $key, $truth_boundaries ) ) {
+					$normalized[ $key ] = self::normalize_bool( $truth_boundaries[ $key ] );
+				}
+			}
+
+			return $normalized;
+		}
+
+		/**
+		 * Normalizes bool-like Cloud response fields.
+		 *
+		 * @param mixed $value Raw value.
+		 * @return bool
+		 */
+		private static function normalize_bool( $value ): bool {
+			if ( is_bool( $value ) ) {
+				return $value;
+			}
+			if ( is_string( $value ) ) {
+				return in_array( strtolower( trim( $value ) ), array( '1', 'true', 'yes', 'on' ), true );
+			}
+
+			return (bool) $value;
 		}
 
 		/**

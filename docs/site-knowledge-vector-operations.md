@@ -47,6 +47,15 @@ The status projection returned by
 depth. That count is not vector queue truth, index freshness truth, collection
 lifecycle truth, or Cloud diagnostics truth.
 
+The bridge health projection also carries `ownership` and `truth_boundaries`
+maps that mirror the Cloud `site_knowledge_status.v1` and
+`site_knowledge_sync.v1` owner contract. Local consumers may render those maps
+as read-only boundary detail: Cloud owns index execution, index lifecycle,
+freshness, vector storage, embedding execution, and diagnostics; Cloud Addon
+owns the delivery bridge; the local WordPress host owns source content, local
+approval, and final WordPress writes. These maps are not settings, not
+collection lifecycle controls, and not a Cloud-to-WordPress write grant.
+
 ## Forbidden Addon Operations
 
 The addon must reject or omit:

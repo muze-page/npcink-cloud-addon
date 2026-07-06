@@ -115,6 +115,62 @@ maca_assert(
 
 maca_reset_test_state();
 maca_seed_settings( true );
+$GLOBALS['maca_http_response_queue'][] = array(
+	'response' => array( 'code' => 200 ),
+	'body' => wp_json_encode(
+		array(
+			'status' => 'ok',
+			'data' => array(
+				'contract_version' => 'site_knowledge_status.v1',
+				'ownership' => array(
+					'source_content_owner' => 'local_wordpress_host',
+					'delivery_bridge_owner' => 'cloud_addon',
+					'index_execution_owner' => 'cloud_service',
+					'index_lifecycle_owner' => 'cloud_service',
+					'freshness_policy_owner' => 'cloud_service',
+					'diagnostics_detail_owner' => 'cloud_service',
+					'vector_storage_owner' => 'cloud_service',
+					'embedding_execution_owner' => 'cloud_service',
+					'approval_owner' => 'local_wordpress_host',
+					'final_write_owner' => 'local_wordpress_host',
+					'wordpress_write_owner' => 'local_wordpress_host',
+				),
+				'truth_boundaries' => array(
+					'cloud_is_index_truth' => true,
+					'cloud_is_freshness_truth' => true,
+					'cloud_is_diagnostics_truth' => true,
+					'cloud_is_wordpress_control_plane' => false,
+					'cloud_creates_wordpress_writes' => false,
+					'cloud_owns_local_approval' => false,
+					'cloud_owns_ability_registry' => false,
+					'cloud_owns_workflow_registry' => false,
+				),
+			),
+		)
+	),
+);
+$status_payload = maca_site_knowledge_runtime_payload();
+$status_payload['ability_name'] = 'npcink-cloud/site-knowledge-status';
+$status_payload['contract_version'] = 'site_knowledge_status.v1';
+$status_payload['input']['contract_version'] = 'site_knowledge_status.v1';
+$status_result = Npcink_Cloud_Site_Knowledge_Runtime_Bridge::dispatch_runtime(
+	$status_payload,
+	'npcink-cloud/site-knowledge-status',
+	'site_knowledge_status.v1'
+);
+maca_assert(
+	is_array( $status_result )
+	&& 'site_knowledge_status.v1' === (string) ( $status_result['site_knowledge_cloud_boundary']['contract_version'] ?? '' )
+	&& 'cloud_service' === (string) ( $status_result['site_knowledge_cloud_boundary']['ownership']['index_execution_owner'] ?? '' )
+	&& 'local_wordpress_host' === (string) ( $status_result['site_knowledge_cloud_boundary']['ownership']['final_write_owner'] ?? '' )
+	&& true === (bool) ( $status_result['site_knowledge_cloud_boundary']['truth_boundaries']['cloud_is_index_truth'] ?? false )
+	&& false === (bool) ( $status_result['site_knowledge_cloud_boundary']['truth_boundaries']['cloud_is_wordpress_control_plane'] ?? true )
+	&& false === (bool) ( $status_result['site_knowledge_cloud_boundary']['truth_boundaries']['cloud_creates_wordpress_writes'] ?? true ),
+	'Behavior: Site Knowledge runtime bridge preserves Cloud status owner and truth boundary fields as read-only projection.'
+);
+
+maca_reset_test_state();
+maca_seed_settings( true );
 Npcink_Cloud_Site_Knowledge_Runtime_Bridge::register();
 $ignored = apply_filters(
 	'npcink_toolbox_site_knowledge_cloud_request',

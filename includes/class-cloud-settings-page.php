@@ -2167,7 +2167,8 @@ if ( ! class_exists( 'Npcink_Cloud_Settings_Page' ) ) {
 						</div>
 					</div>
 					<?php if ( ! $delivery_enabled ) : ?>
-						<p class="description npcink-cloud-site-knowledge-disabled-note"><?php esc_html_e( 'Delivery is off; routine status and refresh controls are hidden.', 'npcink-cloud-addon' ); ?></p>
+						<p class="description npcink-cloud-site-knowledge-disabled-note"><?php esc_html_e( 'Delivery is off; refresh controls and routine delivery rows are hidden.', 'npcink-cloud-addon' ); ?></p>
+						<?php self::render_site_knowledge_bridge_health_detail( $site_knowledge ); ?>
 						<?php
 						return;
 					endif;
@@ -2220,7 +2221,75 @@ if ( ! class_exists( 'Npcink_Cloud_Settings_Page' ) ) {
 							</tr>
 						</tbody>
 					</table>
+					<?php self::render_site_knowledge_bridge_health_detail( $site_knowledge ); ?>
 			<p class="description"><?php esc_html_e( 'Toolbox uses Site Knowledge results in best-practice buttons. Provider settings, collection lifecycle, and deep troubleshooting remain Cloud-owned.', 'npcink-cloud-addon' ); ?></p>
+			<?php
+		}
+
+		/**
+		 * Renders read-only Site Knowledge bridge health detail.
+		 *
+		 * @param array<string,mixed> $site_knowledge Site Knowledge bridge status.
+		 * @return void
+		 */
+		private static function render_site_knowledge_bridge_health_detail( array $site_knowledge ): void {
+			$wp_cron_disabled = ! empty( $site_knowledge['wp_cron_disabled'] );
+			$health_contract  = (string) ( $site_knowledge['health_detail_version'] ?? 'site_knowledge_bridge_health.v1' );
+			?>
+			<h4><?php esc_html_e( 'Bridge health detail', 'npcink-cloud-addon' ); ?></h4>
+			<table class="widefat striped npcink-cloud-site-knowledge-status npcink-cloud-site-knowledge-health-detail">
+				<tbody>
+					<tr>
+						<th scope="row"><?php esc_html_e( 'Health contract', 'npcink-cloud-addon' ); ?></th>
+						<td><code><?php echo esc_html( self::format_empty( $health_contract ) ); ?></code></td>
+					</tr>
+					<tr>
+						<th scope="row"><?php esc_html_e( 'Last success', 'npcink-cloud-addon' ); ?></th>
+						<td><?php echo esc_html( self::format_datetime_value( (string) ( $site_knowledge['last_success_at'] ?? '' ) ) ); ?></td>
+					</tr>
+					<tr>
+						<th scope="row"><?php esc_html_e( 'Last error code', 'npcink-cloud-addon' ); ?></th>
+						<td><code><?php echo esc_html( self::format_empty( (string) ( $site_knowledge['last_error_code'] ?? '' ) ) ); ?></code></td>
+					</tr>
+					<tr>
+						<th scope="row"><?php esc_html_e( 'Last error time', 'npcink-cloud-addon' ); ?></th>
+						<td><?php echo esc_html( self::format_datetime_value( (string) ( $site_knowledge['last_error_at'] ?? '' ) ) ); ?></td>
+					</tr>
+					<tr>
+						<th scope="row"><?php esc_html_e( 'Delivery attempts', 'npcink-cloud-addon' ); ?></th>
+						<td><?php echo esc_html( sprintf( '%1$d / %2$d', absint( $site_knowledge['delivery_attempts'] ?? 0 ), absint( $site_knowledge['max_delivery_attempts'] ?? 0 ) ) ); ?></td>
+					</tr>
+					<tr>
+						<th scope="row"><?php esc_html_e( 'Batch limit', 'npcink-cloud-addon' ); ?></th>
+						<td><?php echo esc_html( sprintf( '%1$d / %2$d', absint( $site_knowledge['batch_size'] ?? 0 ), absint( $site_knowledge['max_buffer_items'] ?? 0 ) ) ); ?></td>
+					</tr>
+					<tr>
+						<th scope="row"><?php esc_html_e( 'Total sent', 'npcink-cloud-addon' ); ?></th>
+						<td><?php echo esc_html( (string) absint( $site_knowledge['total_sent'] ?? 0 ) ); ?></td>
+					</tr>
+					<tr>
+						<th scope="row"><?php esc_html_e( 'Last index action time', 'npcink-cloud-addon' ); ?></th>
+						<td><?php echo esc_html( self::format_datetime_value( (string) ( $site_knowledge['last_index_action_at'] ?? '' ) ) ); ?></td>
+					</tr>
+					<tr>
+						<th scope="row"><?php esc_html_e( 'Last index action sent', 'npcink-cloud-addon' ); ?></th>
+						<td><?php echo esc_html( (string) absint( $site_knowledge['last_index_action_sent_count'] ?? 0 ) ); ?></td>
+					</tr>
+					<tr>
+						<th scope="row"><?php esc_html_e( 'Next reconcile', 'npcink-cloud-addon' ); ?></th>
+						<td><?php echo esc_html( self::format_datetime_value( (string) ( $site_knowledge['next_reconcile_at'] ?? '' ) ) ); ?></td>
+					</tr>
+					<tr>
+						<th scope="row"><?php esc_html_e( 'WP-Cron disabled', 'npcink-cloud-addon' ); ?></th>
+						<td><?php echo $wp_cron_disabled ? esc_html__( 'yes', 'npcink-cloud-addon' ) : esc_html__( 'no', 'npcink-cloud-addon' ); ?></td>
+					</tr>
+					<tr>
+						<th scope="row"><?php esc_html_e( 'Manual flush command', 'npcink-cloud-addon' ); ?></th>
+						<td><code><?php echo esc_html( self::format_empty( (string) ( $site_knowledge['wp_cli_command'] ?? $site_knowledge['cron_command'] ?? '' ) ) ); ?></code></td>
+					</tr>
+				</tbody>
+			</table>
+			<p class="description"><?php esc_html_e( 'This detail is local connector health only; Cloud remains the owner of indexing, freshness policy, collection lifecycle, and diagnostics.', 'npcink-cloud-addon' ); ?></p>
 			<?php
 		}
 
@@ -3226,13 +3295,14 @@ if ( ! class_exists( 'Npcink_Cloud_Settings_Page' ) ) {
 		 */
 		private static function format_site_knowledge_status_label( string $status ): string {
 			$labels = array(
-				'idle'       => __( 'idle', 'npcink-cloud-addon' ),
-				'unverified' => __( 'unverified', 'npcink-cloud-addon' ),
-				'disabled'   => __( 'disabled', 'npcink-cloud-addon' ),
-				'error'      => __( 'error', 'npcink-cloud-addon' ),
-				'pending'    => __( 'pending', 'npcink-cloud-addon' ),
-				'queued'     => __( 'queued', 'npcink-cloud-addon' ),
-				'ok'         => __( 'ok', 'npcink-cloud-addon' ),
+				'idle'           => __( 'idle', 'npcink-cloud-addon' ),
+				'not_configured' => __( 'not configured', 'npcink-cloud-addon' ),
+				'unverified'     => __( 'unverified', 'npcink-cloud-addon' ),
+				'disabled'       => __( 'disabled', 'npcink-cloud-addon' ),
+				'error'          => __( 'error', 'npcink-cloud-addon' ),
+				'pending'        => __( 'pending', 'npcink-cloud-addon' ),
+				'queued'         => __( 'queued', 'npcink-cloud-addon' ),
+				'ok'             => __( 'ok', 'npcink-cloud-addon' ),
 			);
 
 			return $labels[ $status ] ?? self::format_empty( $status );

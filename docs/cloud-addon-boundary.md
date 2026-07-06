@@ -148,12 +148,13 @@ perform re-index policy decisions, own stale-index detection, become a workflow
 engine, become scheduler truth, or perform WordPress writes.
 
 The settings page may expose a dedicated Site Knowledge tab, show shallow bridge
-health, update local delivery consent, and send bounded public refresh plus
-explicit administrator delivery intents for Cloud-owned index operations.
-Cloud remains responsible for index execution, rebuild/delete handling,
-freshness policy, and lifecycle. The addon must not expose collection
-management, stale-index policy controls, embedding/vector provider settings, or
-Cloud operations-console actions.
+health detail such as delivery attempts, bounded buffer limits, last local
+delivery outcome, and WP-Cron scheduling, update local delivery consent, and
+send bounded public refresh plus explicit administrator delivery intents for
+Cloud-owned index operations. Cloud remains responsible for index execution,
+rebuild/delete handling, freshness policy, and lifecycle. The addon must not
+expose collection management, stale-index policy controls, embedding/vector
+provider settings, or Cloud operations-console actions.
 
 ## Endpoint Rule
 

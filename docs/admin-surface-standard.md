@@ -58,7 +58,8 @@ Verified admin navigation should stay shallow:
 - `Status`: compact local connector summaries, account/usage, monitoring
   quality, and monitoring diagnostics as secondary tabs.
 - `Site Knowledge`: read-only local delivery state, public content refresh
-  transport, index operations, and shallow bridge status as secondary tabs.
+  transport, index operations, and shallow bridge health detail as secondary
+  tabs.
 - `Troubleshooting`: read-only checks, runtime run detail, Cloud-owned
   capability notes, and direct Cloud detail links as secondary tabs.
 - `Connection Management`: connection status, Cloud-side connection change,

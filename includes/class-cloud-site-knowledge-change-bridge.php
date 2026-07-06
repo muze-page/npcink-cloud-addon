@@ -57,9 +57,9 @@ if ( ! class_exists( 'Npcink_Cloud_Site_Knowledge_Change_Bridge' ) ) {
 		 *
 		 * @return bool
 		 */
-			public static function is_enabled(): bool {
-				return Npcink_Cloud_Addon_Settings::is_site_knowledge_delivery_enabled();
-			}
+		public static function is_enabled(): bool {
+			return Npcink_Cloud_Addon_Settings::is_site_knowledge_delivery_enabled();
+		}
 
 		/**
 		 * Returns local bridge status for other plugins.
@@ -71,22 +71,25 @@ if ( ! class_exists( 'Npcink_Cloud_Site_Knowledge_Change_Bridge' ) ) {
 			$status = self::get_status();
 			$next_flush = function_exists( 'wp_next_scheduled' ) ? wp_next_scheduled( self::FLUSH_HOOK ) : false;
 			$next_reconcile = function_exists( 'wp_next_scheduled' ) ? wp_next_scheduled( self::RECONCILE_HOOK ) : false;
-				$configured = Npcink_Cloud_Addon_Settings::is_configured();
-				$verified = Npcink_Cloud_Addon_Settings::is_verified();
-				$delivery_enabled = self::is_enabled();
-				$buffer_count = count( $buffer['post_ids'] );
-				$last_success_at = ! empty( $status['last_delivery_ok'] ) ? sanitize_text_field( (string) ( $status['last_delivered_at'] ?? '' ) ) : '';
-				$bridge_status = ! $configured ? 'not_configured' : ( ! $verified ? 'unverified' : ( ! $delivery_enabled ? 'disabled' : ( $buffer_count > 0 ? 'queued' : 'idle' ) ) );
+			$configured = Npcink_Cloud_Addon_Settings::is_configured();
+			$verified = Npcink_Cloud_Addon_Settings::is_verified();
+			$delivery_enabled = self::is_enabled();
+			$buffer_count = count( $buffer['post_ids'] );
+			$last_success_at = ! empty( $status['last_delivery_ok'] ) ? sanitize_text_field( (string) ( $status['last_delivered_at'] ?? '' ) ) : '';
+			$has_error = empty( $status['last_delivery_ok'] ) && ( '' !== (string) ( $status['last_delivery_error'] ?? '' ) || '' !== (string) ( $status['last_error_code'] ?? '' ) );
+			$bridge_status = ! $configured ? 'not_configured' : ( ! $verified ? 'unverified' : ( ! $delivery_enabled ? 'disabled' : ( $has_error ? 'error' : ( $buffer_count > 0 ? 'queued' : 'idle' ) ) ) );
 
 			return array(
 				'owner' => 'cloud_addon',
 				'mode' => 'site_knowledge_change_bridge',
-					'enabled' => $delivery_enabled,
-					'delivery_enabled' => $delivery_enabled,
+				'health_detail_version' => 'site_knowledge_bridge_health.v1',
+				'enabled' => $delivery_enabled,
+				'delivery_enabled' => $delivery_enabled,
 				'configured' => $configured,
 				'verified' => $verified,
 				'status' => $bridge_status,
 				'buffer_count' => $buffer_count,
+				'delivery_attempts' => absint( $buffer['attempts'] ?? 0 ),
 				'max_buffer_items' => self::MAX_BUFFER_ITEMS,
 				'batch_size' => self::MAX_BATCH_ITEMS,
 				'max_delivery_attempts' => self::MAX_DELIVERY_ATTEMPTS,
@@ -96,15 +99,16 @@ if ( ! class_exists( 'Npcink_Cloud_Site_Knowledge_Change_Bridge' ) ) {
 				'last_success_at' => $last_success_at,
 				'last_delivery_error' => sanitize_text_field( (string) ( $status['last_delivery_error'] ?? '' ) ),
 				'last_error_code' => sanitize_key( (string) ( $status['last_error_code'] ?? '' ) ),
+				'last_error_at' => sanitize_text_field( (string) ( $status['last_error_at'] ?? '' ) ),
 				'last_changed_at' => sanitize_text_field( (string) ( $status['last_changed_at'] ?? '' ) ),
 				'last_post_id' => absint( $status['last_post_id'] ?? 0 ),
 				'last_sent_count' => absint( $status['last_sent_count'] ?? 0 ),
-					'total_sent' => absint( $status['total_sent'] ?? 0 ),
-					'last_index_action' => sanitize_key( (string) ( $status['last_index_action'] ?? '' ) ),
-					'last_index_action_at' => sanitize_text_field( (string) ( $status['last_index_action_at'] ?? '' ) ),
-					'last_index_action_sent_count' => absint( $status['last_index_action_sent_count'] ?? 0 ),
-					'next_flush_at' => false === $next_flush ? '' : gmdate( 'c', (int) $next_flush ),
-					'next_reconcile_at' => false === $next_reconcile ? '' : gmdate( 'c', (int) $next_reconcile ),
+				'total_sent' => absint( $status['total_sent'] ?? 0 ),
+				'last_index_action' => sanitize_key( (string) ( $status['last_index_action'] ?? '' ) ),
+				'last_index_action_at' => sanitize_text_field( (string) ( $status['last_index_action_at'] ?? '' ) ),
+				'last_index_action_sent_count' => absint( $status['last_index_action_sent_count'] ?? 0 ),
+				'next_flush_at' => false === $next_flush ? '' : gmdate( 'c', (int) $next_flush ),
+				'next_reconcile_at' => false === $next_reconcile ? '' : gmdate( 'c', (int) $next_reconcile ),
 				'wp_cron_disabled' => defined( 'DISABLE_WP_CRON' ) && DISABLE_WP_CRON,
 				'cron_command' => 'wp cron event run ' . self::FLUSH_HOOK,
 				'wp_cli_command' => 'wp cron event run ' . self::FLUSH_HOOK,
@@ -639,7 +643,7 @@ if ( ! class_exists( 'Npcink_Cloud_Site_Knowledge_Change_Bridge' ) ) {
 		 * @param string $error Error message.
 		 * @return array<string,mixed>
 		 */
-			private static function record_delivery_result( bool $ok, int $sent, string $error, string $error_code = '' ): array {
+		private static function record_delivery_result( bool $ok, int $sent, string $error, string $error_code = '' ): array {
 			$buffer = self::get_buffer();
 			$status = array_merge(
 				self::get_status(),
@@ -648,6 +652,7 @@ if ( ! class_exists( 'Npcink_Cloud_Site_Knowledge_Change_Bridge' ) ) {
 					'last_delivered_at' => $ok ? gmdate( 'c' ) : (string) ( self::get_status()['last_delivered_at'] ?? '' ),
 					'last_delivery_error' => $ok ? '' : sanitize_text_field( $error ),
 					'last_error_code' => $ok ? '' : sanitize_key( $error_code ),
+					'last_error_at' => $ok ? '' : gmdate( 'c' ),
 					'last_sent_count' => $ok ? max( 0, $sent ) : 0,
 					'total_sent' => absint( self::get_status()['total_sent'] ?? 0 ) + ( $ok ? max( 0, $sent ) : 0 ),
 					'buffer_count' => count( $buffer['post_ids'] ),

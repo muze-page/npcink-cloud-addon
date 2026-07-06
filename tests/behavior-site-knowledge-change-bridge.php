@@ -281,6 +281,37 @@ maca_assert(
 
 maca_reset_site_knowledge_bridge_state();
 maca_seed_settings( true );
+update_option(
+	Npcink_Cloud_Site_Knowledge_Change_Bridge::BUFFER_OPTION,
+	array(
+		'post_ids' => array( 707 ),
+		'attempts' => 2,
+	),
+	false
+);
+update_option(
+	Npcink_Cloud_Site_Knowledge_Change_Bridge::STATUS_OPTION,
+	array(
+		'last_delivery_ok' => false,
+		'last_delivery_error' => 'Cloud active run limit reached',
+		'last_error_code' => 'delivery_failed_retry_scheduled',
+		'last_error_at' => '2026-07-06T00:00:00+00:00',
+	),
+	false
+);
+$error_health = Npcink_Cloud_Site_Knowledge_Change_Bridge::health_snapshot();
+maca_assert(
+	'error' === (string) ( $error_health['status'] ?? '' )
+	&& 'site_knowledge_bridge_health.v1' === (string) ( $error_health['health_detail_version'] ?? '' )
+	&& 2 === absint( $error_health['delivery_attempts'] ?? 0 )
+	&& 3 === absint( $error_health['max_delivery_attempts'] ?? 0 )
+	&& 'delivery_failed_retry_scheduled' === (string) ( $error_health['last_error_code'] ?? '' )
+	&& '2026-07-06T00:00:00+00:00' === (string) ( $error_health['last_error_at'] ?? '' ),
+	'Behavior: Site Knowledge bridge health exposes retry and error detail without becoming lifecycle truth.'
+);
+
+maca_reset_site_knowledge_bridge_state();
+maca_seed_settings( true );
 maca_set_site_knowledge_delivery_enabled( false );
 maca_add_public_post_fixture( 750 );
 $disabled_start = Npcink_Cloud_Site_Knowledge_Change_Bridge::request_manual_index_operation( 'start' );

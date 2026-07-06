@@ -336,12 +336,13 @@ operations, or task execution.
 `Troubleshooting > Runtime runs` is the low-frequency home for Nightly Inspection Cloud run detail that used to crowd Toolbox advanced surfaces. It shows the read-only runtime entitlement projection, including run quota, batch limit, result retention, and quota-exhausted state. It can read recent runs, inspect one run status, inspect one run result, and request a bounded Cloud retry for a known run. It does not submit scheduled reviews, build local snapshots, create Core proposals, own retry queues, or write WordPress data.
 
 The Site Knowledge tab includes connector state, buffered public changes, last
-delivery, local delivery consent, manual public content refresh transport, and
-explicit administrator delivery intents for Cloud-owned index operations. It is
-a transport/status surface only: Cloud owns index execution, rebuild/delete
-handling, freshness policy, collection lifecycle, and deep diagnostics. Toolbox
-consumes Site Knowledge results in fixed best-practice buttons instead of owning
-index management UI.
+delivery, local delivery consent, a read-only bridge health detail table,
+manual public content refresh transport, and explicit administrator delivery
+intents for Cloud-owned index operations. The health detail is local transport
+observability only: Cloud owns index execution, rebuild/delete handling,
+freshness policy, collection lifecycle, and deep diagnostics. Toolbox consumes
+Site Knowledge results in fixed best-practice buttons instead of owning index
+management UI.
 
 The settings page never displays split signing credentials and does not provide
 split credential editing.

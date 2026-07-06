@@ -2289,8 +2289,86 @@ if ( ! class_exists( 'Npcink_Cloud_Settings_Page' ) ) {
 					</tr>
 				</tbody>
 			</table>
+			<?php self::render_site_knowledge_boundary_truth_detail( $site_knowledge ); ?>
 			<p class="description"><?php esc_html_e( 'This detail is local connector health only; Cloud remains the owner of indexing, freshness policy, collection lifecycle, and diagnostics.', 'npcink-cloud-addon' ); ?></p>
 			<?php
+		}
+
+		/**
+		 * Renders Site Knowledge owner/truth detail without adding local controls.
+		 *
+		 * @param array<string,mixed> $site_knowledge Site Knowledge bridge status.
+		 * @return void
+		 */
+		private static function render_site_knowledge_boundary_truth_detail( array $site_knowledge ): void {
+			$ownership = is_array( $site_knowledge['ownership'] ?? null ) ? $site_knowledge['ownership'] : array();
+			$truth_boundaries = is_array( $site_knowledge['truth_boundaries'] ?? null ) ? $site_knowledge['truth_boundaries'] : array();
+			if ( array() === $ownership && array() === $truth_boundaries ) {
+				return;
+			}
+
+			?>
+			<h4><?php esc_html_e( 'Cloud boundary truth', 'npcink-cloud-addon' ); ?></h4>
+			<table class="widefat striped npcink-cloud-site-knowledge-status npcink-cloud-site-knowledge-boundary-detail">
+				<tbody>
+					<tr>
+						<th scope="row"><?php esc_html_e( 'Source content owner', 'npcink-cloud-addon' ); ?></th>
+						<td><?php echo esc_html( self::format_site_knowledge_owner_label( (string) ( $ownership['source_content_owner'] ?? '' ) ) ); ?></td>
+					</tr>
+					<tr>
+						<th scope="row"><?php esc_html_e( 'Delivery bridge owner', 'npcink-cloud-addon' ); ?></th>
+						<td><?php echo esc_html( self::format_site_knowledge_owner_label( (string) ( $ownership['delivery_bridge_owner'] ?? '' ) ) ); ?></td>
+					</tr>
+					<tr>
+						<th scope="row"><?php esc_html_e( 'Index and freshness owner', 'npcink-cloud-addon' ); ?></th>
+						<td><?php echo esc_html( self::format_site_knowledge_owner_label( (string) ( $ownership['index_execution_owner'] ?? $ownership['freshness_policy_owner'] ?? '' ) ) ); ?></td>
+					</tr>
+					<tr>
+						<th scope="row"><?php esc_html_e( 'Vector and embedding owner', 'npcink-cloud-addon' ); ?></th>
+						<td><?php echo esc_html( self::format_site_knowledge_owner_label( (string) ( $ownership['vector_storage_owner'] ?? $ownership['embedding_execution_owner'] ?? '' ) ) ); ?></td>
+					</tr>
+					<tr>
+						<th scope="row"><?php esc_html_e( 'Approval and final write owner', 'npcink-cloud-addon' ); ?></th>
+						<td><?php echo esc_html( self::format_site_knowledge_owner_label( (string) ( $ownership['final_write_owner'] ?? $ownership['approval_owner'] ?? '' ) ) ); ?></td>
+					</tr>
+					<tr>
+						<th scope="row"><?php esc_html_e( 'Cloud WordPress control plane', 'npcink-cloud-addon' ); ?></th>
+						<td><?php echo esc_html( self::format_site_knowledge_bool_label( (bool) ( $truth_boundaries['cloud_is_wordpress_control_plane'] ?? false ) ) ); ?></td>
+					</tr>
+					<tr>
+						<th scope="row"><?php esc_html_e( 'Cloud creates WordPress writes', 'npcink-cloud-addon' ); ?></th>
+						<td><?php echo esc_html( self::format_site_knowledge_bool_label( (bool) ( $truth_boundaries['cloud_creates_wordpress_writes'] ?? false ) ) ); ?></td>
+					</tr>
+				</tbody>
+			</table>
+			<?php
+		}
+
+		/**
+		 * Formats a Site Knowledge owner token for admin display.
+		 *
+		 * @param string $owner Owner token.
+		 * @return string
+		 */
+		private static function format_site_knowledge_owner_label( string $owner ): string {
+			$labels = array(
+				'cloud_addon' => __( 'Cloud Addon', 'npcink-cloud-addon' ),
+				'cloud_service' => __( 'Cloud service', 'npcink-cloud-addon' ),
+				'local_wordpress_host' => __( 'Local WordPress host', 'npcink-cloud-addon' ),
+			);
+			$owner = sanitize_key( $owner );
+
+			return $labels[ $owner ] ?? self::format_empty( $owner );
+		}
+
+		/**
+		 * Formats a Site Knowledge boolean boundary value.
+		 *
+		 * @param bool $value Boundary value.
+		 * @return string
+		 */
+		private static function format_site_knowledge_bool_label( bool $value ): string {
+			return $value ? __( 'yes', 'npcink-cloud-addon' ) : __( 'no', 'npcink-cloud-addon' );
 		}
 
 		/**

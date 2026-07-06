@@ -52,6 +52,12 @@ consent state, and explicit administrator delivery intents for Cloud-owned index
 operations. Drafts, private posts, password-protected posts, credentials, and
 raw database fields must not be sent by this transport.
 
+The Site Knowledge change bridge health seam returns
+`site_knowledge_change_bridge_status.v1`. Local consumers should surface it as
+`change_bridge` and treat `buffer_count` as bounded delivery-buffer depth only,
+not queue truth, freshness truth, index lifecycle truth, or Cloud diagnostics
+truth.
+
 For WordPress AI connector scene runtime, image context evidence, Runtime Runs
 detail, artifact preview download, and Agent feedback event transport, requests
 may include the bounded scene request, media URL or artifact descriptor, run id,

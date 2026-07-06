@@ -156,6 +156,14 @@ rebuild/delete handling, freshness policy, and lifecycle. The addon must not
 expose collection management, stale-index policy controls, embedding/vector
 provider settings, or Cloud operations-console actions.
 
+The public PHP health seam
+`npcink_cloud_addon_site_knowledge_change_bridge_health()` returns
+`site_knowledge_change_bridge_status.v1`. Consumers should surface that payload
+as `change_bridge` and use `buffer_count` as the preferred count field.
+`buffer_count` describes only the bounded local delivery buffer that survives
+until a signed Cloud refresh request can be sent. It is not queue truth,
+freshness truth, index lifecycle truth, or Cloud diagnostics truth.
+
 ## Endpoint Rule
 
 Allowed Cloud contract endpoints:

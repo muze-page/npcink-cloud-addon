@@ -350,6 +350,8 @@ The admin page scope is documented in
 [`docs/admin-surface-standard.md`](docs/admin-surface-standard.md). The Cloud
 site connection flow history is summarized in
 [`docs/cloud-site-connection-flow-history.md`](docs/cloud-site-connection-flow-history.md).
+Current reference-plugin learning notes for the connector surface are recorded
+in [`docs/cloud-addon-reference-notes-2026-07.md`](docs/cloud-addon-reference-notes-2026-07.md).
 
 ## Repository Management
 

@@ -169,6 +169,46 @@ maca_assert(
 	'Behavior: WordPress AI connector runtime projects bounded alt text image URL context without local writes.'
 );
 
+$GLOBALS['maca_http_response_queue'][] = array(
+	'response' => array( 'code' => 200 ),
+	'body'     => wp_json_encode(
+		array(
+			'status' => 'ok',
+			'run_id' => 'run_wp_ai_alt_text_data_url_1',
+			'data'   => array(
+				'result' => array(
+					'output_text' => 'A small inline test image.',
+				),
+			),
+		)
+	),
+);
+
+$alt_text_data_url = 'data:image/png;base64,' . base64_encode( 'image-bytes' );
+$data_url_result   = $client->execute_wordpress_ai_connector_runtime(
+	array(
+		'contract_version' => 'wp_ai_connector_runtime.v1',
+		'task'             => 'alt_text_suggest',
+		'prompt'           => 'Generate alt text.',
+		'input'            => array(
+			'image_url' => $alt_text_data_url,
+			'mime_type' => 'image/png',
+			'filename'  => 'inline-test.png',
+		),
+	),
+	'trace-wp-ai-alt-text-data-url',
+	'wp-ai-alt-text-data-url-idempotency'
+);
+$data_url_request      = end( $GLOBALS['maca_http_requests'] );
+$data_url_request_body = json_decode( (string) ( $data_url_request['args']['body'] ?? '' ), true );
+
+maca_assert(
+	is_array( $data_url_result )
+	&& 'run_wp_ai_alt_text_data_url_1' === (string) ( $data_url_result['run_id'] ?? '' )
+	&& $alt_text_data_url === (string) ( $data_url_request_body['input']['request']['image_url'] ?? '' ),
+	'Behavior: WordPress AI connector runtime accepts bounded alt text data URL references without accepting generic base64 fields.'
+);
+
 $inline_alt_text = $client->execute_wordpress_ai_connector_runtime(
 	array(
 		'contract_version' => 'wp_ai_connector_runtime.v1',

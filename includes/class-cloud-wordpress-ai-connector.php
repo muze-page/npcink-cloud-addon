@@ -1008,6 +1008,14 @@ if ( ! class_exists( 'Npcink_Cloud_WordPress_AI_Connector' ) ) {
 	final class Npcink_Cloud_WordPress_AI_Vision_Text_Model implements
 		\WordPress\AiClient\Providers\Models\Contracts\ModelInterface,
 		\WordPress\AiClient\Providers\Models\TextGeneration\Contracts\TextGenerationModelInterface {
+		private const ALT_TEXT_INLINE_IMAGE_MAX_BYTES = 650000;
+		private const ALT_TEXT_INLINE_IMAGE_MIME_TYPES = array(
+			'image/gif',
+			'image/jpeg',
+			'image/png',
+			'image/webp',
+		);
+
 		/**
 		 * Model metadata.
 		 *
@@ -1303,20 +1311,80 @@ if ( ! class_exists( 'Npcink_Cloud_WordPress_AI_Connector' ) ) {
 
 			$file_path = get_attached_file( $attachment_id );
 			$filename  = is_string( $file_path ) && '' !== $file_path ? basename( $file_path ) : '';
+			$mime_type = sanitize_mime_type( (string) get_post_mime_type( $attachment_id ) );
 			if ( '' === $filename && '' !== $image_url ) {
 				$path     = wp_parse_url( $image_url, PHP_URL_PATH );
 				$filename = is_string( $path ) ? basename( $path ) : '';
 			}
+			if ( is_string( $file_path ) && '' !== $file_path && $this->should_inline_attachment_image( $image_url ) ) {
+				$data_url = $this->attachment_image_data_url( $file_path, $mime_type );
+				if ( '' !== $data_url ) {
+					$image_url = $data_url;
+				}
+			}
+			$safe_image_url = str_starts_with( $image_url, 'data:' ) ? $image_url : esc_url_raw( $image_url );
 
 			return array(
-				'image_url'        => esc_url_raw( $image_url ),
+				'image_url'        => $safe_image_url,
 				'thumbnail_url'    => is_array( $thumbnail ) && ! empty( $thumbnail[0] ) ? esc_url_raw( (string) $thumbnail[0] ) : '',
-				'mime_type'        => sanitize_mime_type( (string) get_post_mime_type( $attachment_id ) ),
+				'mime_type'        => $mime_type,
 				'filename'         => sanitize_file_name( $filename ),
 				'title'            => $attachment ? sanitize_text_field( $attachment->post_title ) : '',
 				'existing_alt'     => sanitize_text_field( (string) get_post_meta( $attachment_id, '_wp_attachment_image_alt', true ) ),
 				'existing_caption' => $attachment ? sanitize_text_field( $attachment->post_excerpt ) : '',
 			);
+		}
+
+		/**
+		 * Determines whether an attachment URL needs inline media for provider access.
+		 *
+		 * @param string $image_url Attachment URL.
+		 * @return bool
+		 */
+		private function should_inline_attachment_image( string $image_url ): bool {
+			$host = strtolower( (string) wp_parse_url( $image_url, PHP_URL_HOST ) );
+			if ( '' === $host ) {
+				return false;
+			}
+			if ( in_array( $host, array( 'localhost', '127.0.0.1', '::1' ), true ) ) {
+				return true;
+			}
+			if ( str_ends_with( $host, '.local' ) || str_ends_with( $host, '.test' ) || str_ends_with( $host, '.invalid' ) ) {
+				return true;
+			}
+			if ( filter_var( $host, FILTER_VALIDATE_IP ) ) {
+				return false === filter_var( $host, FILTER_VALIDATE_IP, FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE );
+			}
+
+			return false;
+		}
+
+		/**
+		 * Builds a bounded image data URL from a local WordPress attachment file.
+		 *
+		 * @param string $file_path Attachment file path.
+		 * @param string $mime_type Attachment MIME type.
+		 * @return string
+		 */
+		private function attachment_image_data_url( string $file_path, string $mime_type ): string {
+			if ( ! in_array( $mime_type, self::ALT_TEXT_INLINE_IMAGE_MIME_TYPES, true ) ) {
+				return '';
+			}
+			$real_path = realpath( $file_path );
+			if ( false === $real_path || ! is_file( $real_path ) || ! is_readable( $real_path ) ) {
+				return '';
+			}
+			$size = filesize( $real_path );
+			if ( false === $size || 0 >= $size || $size > self::ALT_TEXT_INLINE_IMAGE_MAX_BYTES ) {
+				return '';
+			}
+			// phpcs:ignore WordPress.WP.AlternativeFunctions.file_get_contents_file_get_contents -- Reads a bounded local attachment file for a single alt-text scene request.
+			$bytes = file_get_contents( $real_path );
+			if ( false === $bytes || '' === $bytes || strlen( $bytes ) > self::ALT_TEXT_INLINE_IMAGE_MAX_BYTES ) {
+				return '';
+			}
+
+			return 'data:' . $mime_type . ';base64,' . base64_encode( $bytes );
 		}
 
 		/**

@@ -296,7 +296,11 @@ The addon registers a bounded `wpai_preferred_vision_models` override only for
 WordPress AI alt-text generation. It projects a fetchable image URL and bounded
 media metadata to Cloud `alt_text_suggest`; it does not accept arbitrary base64
 image payloads, become a generic vision provider or router, write media
-metadata, or own final approval.
+metadata, or own final approval. For local or private attachment URLs that an
+external vision provider cannot fetch, the provider wrapper may generate a
+bounded `data:image/...;base64,...` URL from the local WordPress attachment
+file; this fallback is limited to the alt-text scene and is not exposed as a
+generic image upload channel.
 
 Input must use `contract_version=wp_ai_connector_runtime.v1` and one of the
 supported task surfaces:

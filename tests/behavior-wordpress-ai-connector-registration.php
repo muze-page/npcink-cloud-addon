@@ -59,6 +59,38 @@ if ( ! class_exists( 'Maca_Connector_Registry_Stub' ) ) {
 	}
 }
 
+if ( ! class_exists( 'Maca_Ability_Stub' ) ) {
+	/**
+	 * Minimal ability stub for discovery ordering tests.
+	 */
+	final class Maca_Ability_Stub {
+		/**
+		 * Ability name.
+		 *
+		 * @var string
+		 */
+		private $name;
+
+		/**
+		 * Constructor.
+		 *
+		 * @param string $name Ability name.
+		 */
+		public function __construct( string $name ) {
+			$this->name = $name;
+		}
+
+		/**
+		 * Gets the ability name.
+		 *
+		 * @return string
+		 */
+		public function get_name(): string {
+			return $this->name;
+		}
+	}
+}
+
 maca_reset_test_state();
 maca_seed_settings( true );
 
@@ -105,6 +137,42 @@ maca_assert(
 	'Npcink Cloud scene image model is added as the first preferred AI image model.'
 );
 
+$abilities = array();
+for ( $i = 1; $i <= 120; $i++ ) {
+	$name               = 'core/test-' . $i;
+	$abilities[ $name ] = new Maca_Ability_Stub( $name );
+}
+$abilities['ai/summarization']     = new Maca_Ability_Stub( 'ai/summarization' );
+$abilities['ai/meta-description']  = new Maca_Ability_Stub( 'ai/meta-description' );
+$abilities['third-party/example']  = new Maca_Ability_Stub( 'third-party/example' );
+$prioritized = Npcink_Cloud_WordPress_AI_Connector::prioritize_wordpress_ai_abilities_for_rest_list(
+	$abilities,
+	array(
+		'meta' => array(
+			'show_in_rest' => true,
+		),
+	)
+);
+$prioritized_names = array_keys( $prioritized );
+maca_assert(
+	array( 'ai/summarization', 'ai/meta-description' ) === array_slice( $prioritized_names, 0, 2 ),
+	'REST-visible WordPress AI abilities are prioritized for default Abilities API discovery when Cloud connector exposure is enabled.'
+);
+
+$namespace_scoped = Npcink_Cloud_WordPress_AI_Connector::prioritize_wordpress_ai_abilities_for_rest_list(
+	$abilities,
+	array(
+		'namespace' => 'ai',
+		'meta'      => array(
+			'show_in_rest' => true,
+		),
+	)
+);
+maca_assert(
+	$abilities === $namespace_scoped,
+	'Namespace-scoped Abilities API queries are left untouched.'
+);
+
 maca_reset_test_state();
 maca_seed_settings( false );
 Npcink_Cloud_WordPress_AI_Connector::sync_connected_marker();
@@ -126,6 +194,18 @@ maca_assert(
 maca_assert(
 	$fallback_image_models === Npcink_Cloud_WordPress_AI_Connector::filter_preferred_image_models( $fallback_image_models ),
 	'Unverified Cloud settings do not change the preferred AI image model list.'
+);
+
+maca_assert(
+	$abilities === Npcink_Cloud_WordPress_AI_Connector::prioritize_wordpress_ai_abilities_for_rest_list(
+		$abilities,
+		array(
+			'meta' => array(
+				'show_in_rest' => true,
+			),
+		)
+	),
+	'Unverified Cloud settings do not change Abilities API discovery ordering.'
 );
 
 maca_reset_test_state();

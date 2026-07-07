@@ -35,6 +35,7 @@ if ( ! class_exists( 'Npcink_Cloud_WordPress_AI_Connector' ) ) {
 			add_filter( 'wpai_has_ai_credentials', array( __CLASS__, 'filter_has_ai_credentials' ), 100, 2 );
 			add_filter( 'wpai_preferred_text_models', array( __CLASS__, 'filter_preferred_text_models' ) );
 			add_filter( 'wpai_preferred_image_models', array( __CLASS__, 'filter_preferred_image_models' ) );
+			add_filter( 'wp_get_abilities_result', array( __CLASS__, 'prioritize_wordpress_ai_abilities_for_rest_list' ), 20, 2 );
 		}
 
 		/**
@@ -183,6 +184,55 @@ if ( ! class_exists( 'Npcink_Cloud_WordPress_AI_Connector' ) ) {
 			array_unshift( $preferred_models, array( self::CONNECTOR_ID, self::IMAGE_MODEL_ID ) );
 
 			return $preferred_models;
+		}
+
+		/**
+		 * Keeps WordPress AI abilities discoverable on the default Abilities REST list.
+		 *
+		 * The AI plugin may use the unfiltered REST list as a client-side discovery
+		 * cache. Busy local sites can exceed the first page before ai/* abilities are
+		 * reached, which makes clients report "Ability not found" and fall back even
+		 * though the individual ability endpoint and run callback work.
+		 *
+		 * @param array<string,mixed> $abilities Matched abilities keyed by ability name.
+		 * @param array<string,mixed> $args      Query arguments passed to wp_get_abilities().
+		 * @return array<string,mixed>
+		 */
+		public static function prioritize_wordpress_ai_abilities_for_rest_list( array $abilities, array $args ): array {
+			if ( ! self::is_cloud_connector_available() || empty( $abilities ) ) {
+				return $abilities;
+			}
+
+			if ( ! empty( $args['namespace'] ) || ! empty( $args['category'] ) ) {
+				return $abilities;
+			}
+
+			$meta = isset( $args['meta'] ) && is_array( $args['meta'] ) ? $args['meta'] : array();
+			if ( true !== ( $meta['show_in_rest'] ?? null ) ) {
+				return $abilities;
+			}
+
+			$wordpress_ai = array();
+			$others       = array();
+
+			foreach ( $abilities as $key => $ability ) {
+				$name = is_object( $ability ) && method_exists( $ability, 'get_name' )
+					? (string) $ability->get_name()
+					: (string) $key;
+
+				if ( str_starts_with( $name, 'ai/' ) ) {
+					$wordpress_ai[ $key ] = $ability;
+					continue;
+				}
+
+				$others[ $key ] = $ability;
+			}
+
+			if ( empty( $wordpress_ai ) ) {
+				return $abilities;
+			}
+
+			return $wordpress_ai + $others;
 		}
 
 		/**

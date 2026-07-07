@@ -137,6 +137,16 @@ maca_assert(
 	'Npcink Cloud scene image model is added as the first preferred AI image model.'
 );
 
+$preferred_vision = Npcink_Cloud_WordPress_AI_Connector::filter_preferred_vision_models(
+	array(
+		array( 'openai', 'gpt-4.1-vision' ),
+	)
+);
+maca_assert(
+	array( Npcink_Cloud_WordPress_AI_Connector::CONNECTOR_ID, Npcink_Cloud_WordPress_AI_Connector::VISION_MODEL_ID ) === $preferred_vision[0],
+	'Npcink Cloud scene vision model is added as the first preferred AI vision model.'
+);
+
 $abilities = array();
 for ( $i = 1; $i <= 120; $i++ ) {
 	$name               = 'core/test-' . $i;
@@ -187,6 +197,9 @@ $fallback_text_models = array(
 $fallback_image_models = array(
 	array( 'openai', 'gpt-image-2' ),
 );
+$fallback_vision_models = array(
+	array( 'openai', 'gpt-4.1-vision' ),
+);
 maca_assert(
 	$fallback_text_models === Npcink_Cloud_WordPress_AI_Connector::filter_preferred_text_models( $fallback_text_models ),
 	'Unverified Cloud settings do not change the preferred AI text model list.'
@@ -194,6 +207,10 @@ maca_assert(
 maca_assert(
 	$fallback_image_models === Npcink_Cloud_WordPress_AI_Connector::filter_preferred_image_models( $fallback_image_models ),
 	'Unverified Cloud settings do not change the preferred AI image model list.'
+);
+maca_assert(
+	$fallback_vision_models === Npcink_Cloud_WordPress_AI_Connector::filter_preferred_vision_models( $fallback_vision_models ),
+	'Unverified Cloud settings do not change the preferred AI vision model list.'
 );
 
 maca_assert(

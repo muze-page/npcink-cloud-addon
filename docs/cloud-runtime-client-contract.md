@@ -283,18 +283,24 @@ request packets and projects them to `channel=toolbox_image_source` for Cloud
 `npcink-toolbox/search-image-source`. It does not import media, set featured
 images, write attribution, or own image-source candidate UX.
 
-The optional PHP AI Client provider registers `npcink-cloud-scene-text` and
-`npcink-cloud-scene-image` as scene wrapper models. These ids represent bounded
-WordPress AI surfaces, not bottom-level Cloud provider model ids. The addon may
-make those wrappers first-choice text/image preferences only after Cloud
-settings pass Save and Verify; otherwise it must preserve the WordPress AI
-plugin's original preferred model order. Bottom-level provider/model routing
-stays with Cloud hosted runtime profiles.
+The optional PHP AI Client provider registers `npcink-cloud-scene-text`,
+`npcink-cloud-scene-vision`, and `npcink-cloud-scene-image` as scene wrapper
+models. These ids represent bounded WordPress AI surfaces, not bottom-level
+Cloud provider model ids. The addon may make those wrappers first-choice
+text/vision/image preferences only after Cloud settings pass Save and Verify;
+otherwise it must preserve the WordPress AI plugin's original preferred model
+order. Bottom-level provider/model routing stays with Cloud hosted runtime
+profiles.
 
-The addon does not register a `wpai_preferred_vision_models` override. Vision
-or Alt Text defaults must stay with the WordPress AI plugin until a separate
-bounded vision scene contract is defined; image context evidence transport does
-not make this addon a generic vision provider or router.
+The addon registers a bounded `wpai_preferred_vision_models` override only for
+WordPress AI alt-text generation. It projects a fetchable image URL and bounded
+media metadata to Cloud `alt_text_suggest`; it does not accept arbitrary base64
+image payloads, become a generic vision provider or router, write media
+metadata, or own final approval. For local or private attachment URLs that an
+external vision provider cannot fetch, the provider wrapper may generate a
+bounded `data:image/...;base64,...` URL from the local WordPress attachment
+file; this fallback is limited to the alt-text scene and is not exposed as a
+generic image upload channel.
 
 Input must use `contract_version=wp_ai_connector_runtime.v1` and one of the
 supported task surfaces:

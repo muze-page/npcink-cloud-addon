@@ -20,6 +20,7 @@ if ( ! class_exists( 'Npcink_Cloud_Runtime_Client' ) ) {
 		private const MAX_DOWNLOAD_BYTES = 26214400;
 		private const WP_AI_CONNECTOR_CONTRACT = 'wp_ai_connector_runtime.v1';
 		private const WP_AI_CONNECTOR_MAX_REQUEST_BYTES = 24000;
+		private const WP_AI_CONNECTOR_ALT_TEXT_MAX_REQUEST_BYTES = 900000;
 		private const WP_AI_CONNECTOR_MAX_PROMPT_CHARS = 12000;
 		private const WP_AI_CONNECTOR_MAX_TIMEOUT_SECONDS = 60;
 		private const WP_AI_CONNECTOR_MAX_RETENTION_TTL = 86400;
@@ -71,21 +72,35 @@ if ( ! class_exists( 'Npcink_Cloud_Runtime_Client' ) ) {
 		private const WP_AI_CONNECTOR_FORBIDDEN_KEYS = array(
 			'api_key',
 			'authorization',
+			'base64',
+			'b64',
+			'b64_json',
+			'callback_secret',
 			'chat_id',
 			'conversation_id',
 			'cookie',
 			'credentials',
 			'function_call',
 			'functions',
+			'headers',
+			'image_base64',
+			'image_data',
 			'messages',
 			'nonce',
 			'password',
+			'provider_key',
+			'provider_secret',
 			'secret',
 			'session_id',
 			'stream',
 			'thread_id',
 			'tool_calls',
 			'tools',
+			'update_attachment_metadata',
+			'wordpress_write_policy',
+			'wordpress_write_target',
+			'write_control',
+			'write_controls',
 			'x_npcink_signature',
 			'x_magick_signature',
 		);
@@ -1333,7 +1348,8 @@ if ( ! class_exists( 'Npcink_Cloud_Runtime_Client' ) ) {
 					array( 'status' => 400 )
 				);
 			}
-			if ( strlen( $encoded_request ) > self::WP_AI_CONNECTOR_MAX_REQUEST_BYTES ) {
+			$max_request_bytes = 'alt_text_suggest' === $task ? self::WP_AI_CONNECTOR_ALT_TEXT_MAX_REQUEST_BYTES : self::WP_AI_CONNECTOR_MAX_REQUEST_BYTES;
+			if ( strlen( $encoded_request ) > $max_request_bytes ) {
 				return new WP_Error(
 					'cloud_wp_ai_connector_request_too_large',
 					__( 'WordPress AI connector request exceeds the scene runtime size limit.', 'npcink-cloud-addon' ),

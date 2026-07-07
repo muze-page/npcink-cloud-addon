@@ -7,6 +7,7 @@
  *
  * Optional:
  * WP_AI_SMOKE_USER=1 WP_AI_SMOKE_IMAGE=1 composer run smoke:wp-ai-abilities
+ * WP_AI_SMOKE_ALT_TEXT_URL=https://example.com/image.jpg composer run smoke:wp-ai-abilities
  *
  * @package NpcinkCloudAddon
  */
@@ -187,5 +188,23 @@ if ( '1' === (string) getenv( 'WP_AI_SMOKE_IMAGE' ) ) {
 	npcink_cloud_addon_wp_ai_smoke_ok( 'Image generation run skipped. Set WP_AI_SMOKE_IMAGE=1 to exercise the provider.' );
 }
 
-npcink_cloud_addon_wp_ai_smoke_ok( 'Alt text run skipped because it requires a real vision-capable provider; discovery is covered.' );
+$alt_text_url = (string) ( getenv( 'WP_AI_SMOKE_ALT_TEXT_URL' ) ?: '' );
+if ( '' !== $alt_text_url ) {
+	$alt_text_data = npcink_cloud_addon_wp_ai_smoke_data(
+		npcink_cloud_addon_wp_ai_smoke_rest_request(
+			'POST',
+			'/wp-abilities/v1/abilities/ai/alt-text-generation/run',
+			array(
+				'input' => array(
+					'image_url' => $alt_text_url,
+					'context'   => 'Codex smoke verifies the Npcink Cloud connector through the WordPress AI alt text ability.',
+				),
+			)
+		),
+		'Alt text run'
+	);
+	npcink_cloud_addon_wp_ai_smoke_ok( 'Alt text run returned ' . strlen( wp_json_encode( $alt_text_data ) ) . ' bytes of JSON.' );
+} else {
+	npcink_cloud_addon_wp_ai_smoke_ok( 'Alt text run skipped. Set WP_AI_SMOKE_ALT_TEXT_URL to a public image URL to exercise the vision provider.' );
+}
 npcink_cloud_addon_wp_ai_smoke_ok( 'Image import run skipped because it writes media; discovery is covered.' );

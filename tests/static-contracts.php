@@ -38,6 +38,7 @@ $composer = maca_read( $root . '/composer.json' );
 $eval_lab_proxy = maca_read( $root . '/scripts/eval-lab.sh' );
 $ai_i18n_audit = maca_read( $root . '/scripts/audit-ai-plugin-localization.php' );
 $wp_ai_smoke = maca_read( $root . '/scripts/smoke-wordpress-ai-abilities.php' );
+$wp_ai_editor_smoke = maca_read( $root . '/scripts/smoke-wordpress-ai-editor.php' );
 $zh_cn_po = maca_read( $root . '/languages/npcink-cloud-addon-zh_CN.po' );
 
 maca_assert(
@@ -62,6 +63,20 @@ maca_assert(
 maca_assert(
 	false === strpos( $composer . "\n" . $eval_lab_proxy, 'sk-' ),
 	'Cloud Addon eval-lab integration does not contain committed provider keys.'
+);
+
+maca_assert(
+	false !== strpos( $composer, '"smoke:wp-ai-editor":' )
+	&& false !== strpos( $wp_ai_editor_smoke, '/wp-abilities/v1/abilities/ai/summarization/run' )
+	&& false !== strpos( $wp_ai_editor_smoke, '/wp-abilities/v1/abilities/ai/meta-description/run' )
+	&& false !== strpos( $wp_ai_editor_smoke, '/wp-abilities/v1/abilities/ai/content-classification/run' )
+	&& false !== strpos( $wp_ai_editor_smoke, 'ai-summarization-summary' )
+	&& false !== strpos( $wp_ai_editor_smoke, 'wpai_meta_description' )
+	&& false !== strpos( $wp_ai_editor_smoke, "'status'  => 'draft'" )
+	&& false === strpos( $wp_ai_editor_smoke, "'status'  => 'publish'" )
+	&& false === strpos( $wp_ai_editor_smoke, '"status":"publish"' )
+	&& false === strpos( $wp_ai_editor_smoke, 'trash' ),
+	'WordPress AI editor smoke covers draft-only summary, SEO, and classification suggestion paths without publish or cleanup side effects.'
 );
 
 maca_assert(
@@ -273,11 +288,15 @@ maca_assert(
 maca_assert(
 	false !== strpos( $wordpress_ai_connector, 'class Npcink_Cloud_WordPress_AI_Provider' )
 	&& false !== strpos( $wordpress_ai_connector, 'class Npcink_Cloud_WordPress_AI_Text_Model' )
+	&& false !== strpos( $wordpress_ai_connector, 'class Npcink_Cloud_WordPress_AI_Vision_Text_Model' )
 	&& false !== strpos( $wordpress_ai_connector, 'class Npcink_Cloud_WordPress_AI_Image_Model' )
 	&& false !== strpos( $wordpress_ai_connector, 'ImageGenerationModelInterface' )
+	&& false !== strpos( $wordpress_ai_connector, "VISION_MODEL_ID = 'npcink-cloud-scene-vision'" )
 	&& false !== strpos( $wordpress_ai_connector, 'CapabilityEnum::imageGeneration()' )
 	&& false !== strpos( $wordpress_ai_connector, 'wpai_preferred_image_models' )
-	&& false === strpos( $wordpress_ai_connector, 'wpai_preferred_vision_models' )
+	&& false !== strpos( $wordpress_ai_connector, 'wpai_preferred_vision_models' )
+	&& false !== strpos( $wordpress_ai_connector, 'requires a public image URL for alt text generation' )
+	&& false !== strpos( $wordpress_ai_connector, "'task'             => 'alt_text_suggest'" )
 	&& false !== strpos( $wordpress_ai_connector, 'npcink_cloud_addon_execute_wordpress_ai_image_generation_runtime' )
 	&& false !== strpos( $wordpress_ai_connector, 'does not support reference image refinement yet' )
 	&& false !== strpos( $wordpress_ai_connector, 'detect_scene_task' )
@@ -301,6 +320,7 @@ maca_assert(
 	&& false !== strpos( $wp_ai_smoke, "'ai/meta-description'" )
 	&& false !== strpos( $wp_ai_smoke, "'ai/alt-text-generation'" )
 	&& false !== strpos( $wp_ai_smoke, 'WP_AI_SMOKE_IMAGE' )
+	&& false !== strpos( $wp_ai_smoke, 'WP_AI_SMOKE_ALT_TEXT_URL' )
 	&& false === strpos( $wp_ai_smoke, '/wp-abilities/v1/abilities/ai/image-import/run' ),
 	'WordPress AI smoke gate verifies discovery and bounded runs without default media writes.'
 );
@@ -322,8 +342,9 @@ maca_assert(
 	&& false !== strpos( $readme, 'npcink_cloud_addon_execute_toolbox_web_search_runtime()' )
 	&& false !== strpos( $readme, 'npcink_cloud_addon_execute_toolbox_image_source_runtime()' )
 	&& false !== strpos( $readme, 'Toolbox to normalize into `image_candidate.v1`' )
-	&& false !== strpos( $readme, 'scene-gated text and' )
-	&& false !== strpos( $readme, 'rejects reference-image refinement' )
+	&& false !== strpos( $readme, 'scene-gated text,' )
+	&& false !== strpos( $readme, '`npcink-cloud-scene-vision`' )
+	&& false !== strpos( $readme, 'reference-image refinement' )
 	&& false !== strpos( $runtime_contract, 'WordPress AI Connector Runtime' )
 	&& false !== strpos( $runtime_contract, 'generic chat provider' )
 	&& false !== strpos( $runtime_contract, 'image_generation_request.v1' )
@@ -335,8 +356,8 @@ maca_assert(
 	&& false !== strpos( $runtime_contract, 'channel=toolbox_site_ops_cloud_analysis' )
 	&& false !== strpos( $runtime_contract, 'channel=toolbox_web_search' )
 	&& false !== strpos( $runtime_contract, 'channel=toolbox_image_source' )
-	&& false !== strpos( $runtime_contract, 'scene wrapper models' )
-	&& false !== strpos( $runtime_contract, 'does not register a `wpai_preferred_vision_models` override' )
+	&& false !== strpos( $runtime_contract, 'scene wrapper' )
+	&& false !== strpos( $runtime_contract, 'registers a bounded `wpai_preferred_vision_models` override' )
 	&& false !== strpos( $runtime_contract, 'does not support reference-image refinement' )
 	&& false !== strpos( $runtime_contract, 'Direct free-form `wp_ai_client_prompt()`' )
 	&& false !== strpos( $adapter_doc, 'WordPress AI Connector Flow' )

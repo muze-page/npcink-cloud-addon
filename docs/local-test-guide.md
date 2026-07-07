@@ -65,6 +65,38 @@ Steps:
 8. View page source and confirm the stored connection key is not present.
 9. Confirm entitlement read failures show `unavailable` and are not presented as usable entitlement.
 
+## WordPress AI Editor Smoke Test
+
+For the local `magick-ai.local` development site with Cloud settings already
+verified and WordPress AI features enabled, run:
+
+```bash
+composer run smoke:wp-ai-editor
+```
+
+The command uses WP-CLI against `WP_PATH`, defaulting to
+`/Users/muze/Local Sites/magick-ai/app/public`. Override `WP_AI_SMOKE_USER`,
+`WP_PATH`, `WP_CLI_BIN`, `WP_CLI_PHP`, or `WP_DB_SOCKET` when the local site
+differs.
+
+This smoke creates one local draft post, runs the same WordPress AI ability
+surfaces used by the editor for summarization, SEO description, and content
+classification, applies only the summary block and SEO description to the draft,
+and reads the draft back through REST.
+
+Expected:
+
+- the created post remains `draft`;
+- the content contains an `ai-summarization-summary` block;
+- `wpai_meta_description` contains direct suggestion text;
+- classification returns labels but the smoke does not accept or create terms;
+- no publish action is performed.
+
+Use this after changing the Cloud WordPress AI connector, runtime output
+normalization, or the local AI-plugin compatibility shim. Browser visual smoke
+is still useful before release, but this command gives a repeatable regression
+gate for the editor data path.
+
 ## Cloud Contract Smoke Test
 
 With valid Cloud credentials:

@@ -38,6 +38,7 @@ $composer = maca_read( $root . '/composer.json' );
 $eval_lab_proxy = maca_read( $root . '/scripts/eval-lab.sh' );
 $ai_i18n_audit = maca_read( $root . '/scripts/audit-ai-plugin-localization.php' );
 $wp_ai_smoke = maca_read( $root . '/scripts/smoke-wordpress-ai-abilities.php' );
+$wp_ai_editor_smoke = maca_read( $root . '/scripts/smoke-wordpress-ai-editor.php' );
 $zh_cn_po = maca_read( $root . '/languages/npcink-cloud-addon-zh_CN.po' );
 
 maca_assert(
@@ -62,6 +63,20 @@ maca_assert(
 maca_assert(
 	false === strpos( $composer . "\n" . $eval_lab_proxy, 'sk-' ),
 	'Cloud Addon eval-lab integration does not contain committed provider keys.'
+);
+
+maca_assert(
+	false !== strpos( $composer, '"smoke:wp-ai-editor":' )
+	&& false !== strpos( $wp_ai_editor_smoke, '/wp-abilities/v1/abilities/ai/summarization/run' )
+	&& false !== strpos( $wp_ai_editor_smoke, '/wp-abilities/v1/abilities/ai/meta-description/run' )
+	&& false !== strpos( $wp_ai_editor_smoke, '/wp-abilities/v1/abilities/ai/content-classification/run' )
+	&& false !== strpos( $wp_ai_editor_smoke, 'ai-summarization-summary' )
+	&& false !== strpos( $wp_ai_editor_smoke, 'wpai_meta_description' )
+	&& false !== strpos( $wp_ai_editor_smoke, "'status'  => 'draft'" )
+	&& false === strpos( $wp_ai_editor_smoke, "'status'  => 'publish'" )
+	&& false === strpos( $wp_ai_editor_smoke, '"status":"publish"' )
+	&& false === strpos( $wp_ai_editor_smoke, 'trash' ),
+	'WordPress AI editor smoke covers draft-only summary, SEO, and classification suggestion paths without publish or cleanup side effects.'
 );
 
 maca_assert(

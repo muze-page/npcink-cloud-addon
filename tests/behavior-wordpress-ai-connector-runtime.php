@@ -119,6 +119,77 @@ $GLOBALS['maca_http_response_queue'][] = array(
 	'body'     => wp_json_encode(
 		array(
 			'status' => 'ok',
+			'run_id' => 'run_wp_ai_alt_text_1',
+			'data'   => array(
+				'result' => array(
+					'output_text' => 'A blue ceramic mug on a white table.',
+				),
+			),
+		)
+	),
+);
+
+$alt_text_result = $client->execute_wordpress_ai_connector_runtime(
+	array(
+		'contract_version' => 'wp_ai_connector_runtime.v1',
+		'task'             => 'alt_text_suggest',
+		'prompt'           => 'Generate accessible alt text for this media item.',
+		'input'            => array(
+			'image_url'        => 'https://cdn.example.test/uploads/blue-mug.jpg',
+			'thumbnail_url'    => 'https://cdn.example.test/uploads/blue-mug-150x150.jpg',
+			'mime_type'        => 'image/jpeg',
+			'filename'         => 'blue-mug.jpg',
+			'title'            => 'Blue mug',
+			'existing_alt'     => '',
+			'existing_caption' => '',
+			'locale'           => 'en_US',
+		),
+		'timeout_seconds'  => 90,
+	),
+	'trace-wp-ai-alt-text',
+	'wp-ai-alt-text-idempotency'
+);
+$alt_text_request      = end( $GLOBALS['maca_http_requests'] );
+$alt_text_request_body = json_decode( (string) ( $alt_text_request['args']['body'] ?? '' ), true );
+
+maca_assert(
+	is_array( $alt_text_result ) && 'run_wp_ai_alt_text_1' === (string) ( $alt_text_result['run_id'] ?? '' ),
+	'Behavior: WordPress AI connector runtime returns the Cloud response for a supported alt text scene task.'
+);
+
+maca_assert(
+	is_array( $alt_text_request_body )
+	&& 'npcink-cloud/wp-ai-connector' === (string) ( $alt_text_request_body['ability_name'] ?? '' )
+	&& 'wordpress_ai_connector' === (string) ( $alt_text_request_body['execution_kind'] ?? '' )
+	&& 'alt_text_suggest' === (string) ( $alt_text_request_body['input']['task'] ?? '' )
+	&& 'https://cdn.example.test/uploads/blue-mug.jpg' === (string) ( $alt_text_request_body['input']['request']['image_url'] ?? '' )
+	&& 'image/jpeg' === (string) ( $alt_text_request_body['input']['request']['mime_type'] ?? '' )
+	&& 'suggestion_only' === (string) ( $alt_text_request_body['input']['write_posture'] ?? '' )
+	&& false === (bool) ( $alt_text_request_body['input']['direct_wordpress_write'] ?? true ),
+	'Behavior: WordPress AI connector runtime projects bounded alt text image URL context without local writes.'
+);
+
+$inline_alt_text = $client->execute_wordpress_ai_connector_runtime(
+	array(
+		'contract_version' => 'wp_ai_connector_runtime.v1',
+		'task'             => 'alt_text_suggest',
+		'prompt'           => 'Generate alt text.',
+		'input'            => array(
+			'image_base64' => base64_encode( 'image-bytes' ),
+			'mime_type'    => 'image/png',
+		),
+	)
+);
+maca_assert(
+	is_wp_error( $inline_alt_text ) && 'cloud_wp_ai_connector_chat_shape_not_allowed' === $inline_alt_text->get_error_code(),
+	'Behavior: WordPress AI connector runtime rejects inline base64 alt text image payloads.'
+);
+
+$GLOBALS['maca_http_response_queue'][] = array(
+	'response' => array( 'code' => 200 ),
+	'body'     => wp_json_encode(
+		array(
+			'status' => 'ok',
 			'run_id' => 'run_wp_ai_image_1',
 			'data'   => array(
 				'result' => array(

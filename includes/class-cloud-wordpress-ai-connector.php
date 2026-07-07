@@ -19,6 +19,7 @@ if ( ! class_exists( 'Npcink_Cloud_WordPress_AI_Connector' ) ) {
 		public const CONNECTOR_ID = 'npcink-cloud';
 		public const CONNECTOR_NAME = 'Npcink Cloud';
 		public const MODEL_ID = 'npcink-cloud-scene-text';
+		public const VISION_MODEL_ID = 'npcink-cloud-scene-vision';
 		public const IMAGE_MODEL_ID = 'npcink-cloud-scene-image';
 		public const SETTING_NAME = 'npcink_cloud_addon_wp_ai_connector_connected';
 
@@ -34,6 +35,7 @@ if ( ! class_exists( 'Npcink_Cloud_WordPress_AI_Connector' ) ) {
 			add_action( 'admin_enqueue_scripts', array( __CLASS__, 'enqueue_connectors_page_assets' ) );
 			add_filter( 'wpai_has_ai_credentials', array( __CLASS__, 'filter_has_ai_credentials' ), 100, 2 );
 			add_filter( 'wpai_preferred_text_models', array( __CLASS__, 'filter_preferred_text_models' ) );
+			add_filter( 'wpai_preferred_vision_models', array( __CLASS__, 'filter_preferred_vision_models' ) );
 			add_filter( 'wpai_preferred_image_models', array( __CLASS__, 'filter_preferred_image_models' ) );
 			add_filter( 'wp_get_abilities_result', array( __CLASS__, 'prioritize_wordpress_ai_abilities_for_rest_list' ), 20, 2 );
 		}
@@ -166,6 +168,22 @@ if ( ! class_exists( 'Npcink_Cloud_WordPress_AI_Connector' ) ) {
 			}
 
 			array_unshift( $preferred_models, array( self::CONNECTOR_ID, self::MODEL_ID ) );
+
+			return $preferred_models;
+		}
+
+		/**
+		 * Makes the scene-bound Cloud vision model the first preference when available.
+		 *
+		 * @param array<int,mixed> $preferred_models Existing preferred model list.
+		 * @return array<int,mixed>
+		 */
+		public static function filter_preferred_vision_models( array $preferred_models ): array {
+			if ( ! self::is_cloud_connector_available() ) {
+				return $preferred_models;
+			}
+
+			array_unshift( $preferred_models, array( self::CONNECTOR_ID, self::VISION_MODEL_ID ) );
 
 			return $preferred_models;
 		}
@@ -490,6 +508,9 @@ if ( ! class_exists( 'Npcink_Cloud_WordPress_AI_Connector' ) ) {
 			if ( Npcink_Cloud_WordPress_AI_Connector::IMAGE_MODEL_ID === $model_metadata->getId() ) {
 				return new Npcink_Cloud_WordPress_AI_Image_Model( $model_metadata, $provider_metadata );
 			}
+			if ( Npcink_Cloud_WordPress_AI_Connector::VISION_MODEL_ID === $model_metadata->getId() ) {
+				return new Npcink_Cloud_WordPress_AI_Vision_Text_Model( $model_metadata, $provider_metadata );
+			}
 
 			return new Npcink_Cloud_WordPress_AI_Text_Model( $model_metadata, $provider_metadata );
 		}
@@ -554,7 +575,7 @@ if ( ! class_exists( 'Npcink_Cloud_WordPress_AI_Connector' ) ) {
 		 * @return list<\WordPress\AiClient\Providers\Models\DTO\ModelMetadata>
 		 */
 		public function listModelMetadata(): array {
-			return array( $this->text_model_metadata(), $this->image_model_metadata() );
+			return array( $this->text_model_metadata(), $this->vision_model_metadata(), $this->image_model_metadata() );
 		}
 
 		/**
@@ -568,6 +589,7 @@ if ( ! class_exists( 'Npcink_Cloud_WordPress_AI_Connector' ) ) {
 				$model_id,
 				array(
 					Npcink_Cloud_WordPress_AI_Connector::MODEL_ID,
+					Npcink_Cloud_WordPress_AI_Connector::VISION_MODEL_ID,
 					Npcink_Cloud_WordPress_AI_Connector::IMAGE_MODEL_ID,
 				),
 				true
@@ -587,6 +609,9 @@ if ( ! class_exists( 'Npcink_Cloud_WordPress_AI_Connector' ) ) {
 
 			if ( Npcink_Cloud_WordPress_AI_Connector::IMAGE_MODEL_ID === $model_id ) {
 				return $this->image_model_metadata();
+			}
+			if ( Npcink_Cloud_WordPress_AI_Connector::VISION_MODEL_ID === $model_id ) {
+				return $this->vision_model_metadata();
 			}
 
 			return $this->text_model_metadata();
@@ -620,6 +645,43 @@ if ( ! class_exists( 'Npcink_Cloud_WordPress_AI_Connector' ) ) {
 					new \WordPress\AiClient\Providers\Models\DTO\SupportedOption( \WordPress\AiClient\Providers\Models\Enums\OptionEnum::outputSchema() ),
 					new \WordPress\AiClient\Providers\Models\DTO\SupportedOption( \WordPress\AiClient\Providers\Models\Enums\OptionEnum::systemInstruction() ),
 					new \WordPress\AiClient\Providers\Models\DTO\SupportedOption( \WordPress\AiClient\Providers\Models\Enums\OptionEnum::candidateCount() ),
+					new \WordPress\AiClient\Providers\Models\DTO\SupportedOption( \WordPress\AiClient\Providers\Models\Enums\OptionEnum::maxTokens() ),
+					new \WordPress\AiClient\Providers\Models\DTO\SupportedOption( \WordPress\AiClient\Providers\Models\Enums\OptionEnum::temperature() ),
+				)
+			);
+		}
+
+		/**
+		 * Builds the fixed vision text model metadata.
+		 *
+		 * @return \WordPress\AiClient\Providers\Models\DTO\ModelMetadata
+		 */
+		private function vision_model_metadata(): \WordPress\AiClient\Providers\Models\DTO\ModelMetadata {
+			return new \WordPress\AiClient\Providers\Models\DTO\ModelMetadata(
+				Npcink_Cloud_WordPress_AI_Connector::VISION_MODEL_ID,
+				'Npcink Cloud Scene Vision',
+				array(
+					\WordPress\AiClient\Providers\Models\Enums\CapabilityEnum::textGeneration(),
+				),
+				array(
+					new \WordPress\AiClient\Providers\Models\DTO\SupportedOption(
+						\WordPress\AiClient\Providers\Models\Enums\OptionEnum::inputModalities(),
+						array(
+							array(
+								\WordPress\AiClient\Messages\Enums\ModalityEnum::text(),
+								\WordPress\AiClient\Messages\Enums\ModalityEnum::image(),
+							),
+						)
+					),
+					new \WordPress\AiClient\Providers\Models\DTO\SupportedOption(
+						\WordPress\AiClient\Providers\Models\Enums\OptionEnum::outputModalities(),
+						array( array( \WordPress\AiClient\Messages\Enums\ModalityEnum::text() ) )
+					),
+					new \WordPress\AiClient\Providers\Models\DTO\SupportedOption(
+						\WordPress\AiClient\Providers\Models\Enums\OptionEnum::outputMimeType(),
+						array( 'text/plain' )
+					),
+					new \WordPress\AiClient\Providers\Models\DTO\SupportedOption( \WordPress\AiClient\Providers\Models\Enums\OptionEnum::systemInstruction() ),
 					new \WordPress\AiClient\Providers\Models\DTO\SupportedOption( \WordPress\AiClient\Providers\Models\Enums\OptionEnum::maxTokens() ),
 					new \WordPress\AiClient\Providers\Models\DTO\SupportedOption( \WordPress\AiClient\Providers\Models\Enums\OptionEnum::temperature() ),
 				)
@@ -888,7 +950,6 @@ if ( ! class_exists( 'Npcink_Cloud_WordPress_AI_Connector' ) ) {
 				'WordPress\\AI\\Abilities\\Meta_Description\\Meta_Description'              => 'meta_description',
 				'WordPress\\AI\\Abilities\\Title_Generation\\Title_Generation'              => 'title_generation',
 				'WordPress\\AI\\Abilities\\Summarization\\Summarization'                    => 'content_summary',
-				'WordPress\\AI\\Abilities\\Image\\Alt_Text_Generation'                      => 'alt_text_suggest',
 			);
 
 			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_debug_backtrace -- Bounded stack inspection gates calls to known WordPress AI ability classes.
@@ -900,6 +961,380 @@ if ( ! class_exists( 'Npcink_Cloud_WordPress_AI_Connector' ) ) {
 			}
 
 			return '';
+		}
+
+		/**
+		 * Extracts text from common Cloud runtime result shapes.
+		 *
+		 * @param array<string,mixed> $response Cloud response.
+		 * @return string
+		 */
+		private function extract_text( array $response ): string {
+			$candidates = array(
+				$response['text'] ?? null,
+				$response['content'] ?? null,
+				$response['output_text'] ?? null,
+				$response['result']['text'] ?? null,
+				$response['result']['content'] ?? null,
+				$response['result']['output_text'] ?? null,
+				$response['data']['text'] ?? null,
+				$response['data']['content'] ?? null,
+				$response['data']['output_text'] ?? null,
+				$response['data']['result']['text'] ?? null,
+				$response['data']['result']['content'] ?? null,
+				$response['data']['result']['output_text'] ?? null,
+			);
+
+			foreach ( $candidates as $candidate ) {
+				if ( is_string( $candidate ) && '' !== trim( $candidate ) ) {
+					return trim( $candidate );
+				}
+			}
+
+			if ( isset( $response['choices'][0]['text'] ) && is_string( $response['choices'][0]['text'] ) ) {
+				return trim( $response['choices'][0]['text'] );
+			}
+			if ( isset( $response['data']['choices'][0]['text'] ) && is_string( $response['data']['choices'][0]['text'] ) ) {
+				return trim( $response['data']['choices'][0]['text'] );
+			}
+
+			return '';
+		}
+	}
+
+	/**
+	 * Scene-gated vision text model for WordPress AI alt text generation.
+	 */
+	final class Npcink_Cloud_WordPress_AI_Vision_Text_Model implements
+		\WordPress\AiClient\Providers\Models\Contracts\ModelInterface,
+		\WordPress\AiClient\Providers\Models\TextGeneration\Contracts\TextGenerationModelInterface {
+		/**
+		 * Model metadata.
+		 *
+		 * @var \WordPress\AiClient\Providers\Models\DTO\ModelMetadata
+		 */
+		private $metadata;
+
+		/**
+		 * Provider metadata.
+		 *
+		 * @var \WordPress\AiClient\Providers\DTO\ProviderMetadata
+		 */
+		private $provider_metadata;
+
+		/**
+		 * Model config.
+		 *
+		 * @var \WordPress\AiClient\Providers\Models\DTO\ModelConfig
+		 */
+		private $config;
+
+		/**
+		 * Constructor.
+		 *
+		 * @param \WordPress\AiClient\Providers\Models\DTO\ModelMetadata $metadata Model metadata.
+		 * @param \WordPress\AiClient\Providers\DTO\ProviderMetadata     $provider_metadata Provider metadata.
+		 */
+		public function __construct(
+			\WordPress\AiClient\Providers\Models\DTO\ModelMetadata $metadata,
+			\WordPress\AiClient\Providers\DTO\ProviderMetadata $provider_metadata
+		) {
+			$this->metadata          = $metadata;
+			$this->provider_metadata = $provider_metadata;
+			$this->config            = new \WordPress\AiClient\Providers\Models\DTO\ModelConfig();
+		}
+
+		/**
+		 * Gets model metadata.
+		 *
+		 * @return \WordPress\AiClient\Providers\Models\DTO\ModelMetadata
+		 */
+		public function metadata(): \WordPress\AiClient\Providers\Models\DTO\ModelMetadata {
+			return $this->metadata;
+		}
+
+		/**
+		 * Gets provider metadata.
+		 *
+		 * @return \WordPress\AiClient\Providers\DTO\ProviderMetadata
+		 */
+		public function providerMetadata(): \WordPress\AiClient\Providers\DTO\ProviderMetadata {
+			return $this->provider_metadata;
+		}
+
+		/**
+		 * Sets model config.
+		 *
+		 * @param \WordPress\AiClient\Providers\Models\DTO\ModelConfig $config Model config.
+		 * @return void
+		 */
+		public function setConfig( \WordPress\AiClient\Providers\Models\DTO\ModelConfig $config ): void {
+			$this->config = $config;
+		}
+
+		/**
+		 * Gets model config.
+		 *
+		 * @return \WordPress\AiClient\Providers\Models\DTO\ModelConfig
+		 */
+		public function getConfig(): \WordPress\AiClient\Providers\Models\DTO\ModelConfig {
+			return $this->config;
+		}
+
+		/**
+		 * Generates alt text through the bounded Cloud vision runtime seam.
+		 *
+		 * @param list<\WordPress\AiClient\Messages\DTO\Message> $prompt Prompt messages.
+		 * @return \WordPress\AiClient\Results\DTO\GenerativeAiResult
+		 */
+		public function generateTextResult( array $prompt ): \WordPress\AiClient\Results\DTO\GenerativeAiResult {
+			if ( ! $this->is_alt_text_scene() ) {
+				throw new \WordPress\AiClient\Common\Exception\RuntimeException( 'Npcink Cloud AI vision connector only accepts WordPress AI alt text generation scene calls.' );
+			}
+
+			if ( 1 !== count( $prompt ) ) {
+				throw new \WordPress\AiClient\Common\Exception\RuntimeException( 'Npcink Cloud AI vision connector does not support chat history.' );
+			}
+
+			if ( null !== $this->config->getFunctionDeclarations() || null !== $this->config->getWebSearch() ) {
+				throw new \WordPress\AiClient\Common\Exception\RuntimeException( 'Npcink Cloud AI vision connector does not support tools or web search.' );
+			}
+
+			$text = $this->prompt_text( $prompt );
+			if ( '' === $text ) {
+				throw new \WordPress\AiClient\Common\Exception\RuntimeException( 'Npcink Cloud AI vision connector requires text scene input.' );
+			}
+
+			$source = $this->alt_text_source_context( $prompt );
+			if ( '' === $source['image_url'] && '' === $source['thumbnail_url'] ) {
+				throw new \WordPress\AiClient\Common\Exception\RuntimeException( 'Npcink Cloud AI vision connector requires a public image URL for alt text generation.' );
+			}
+
+			$request = array(
+				'contract_version' => 'wp_ai_connector_runtime.v1',
+				'task'             => 'alt_text_suggest',
+				'prompt'           => $text,
+				'input'            => array(
+					'prompt'             => $text,
+					'image_url'          => $source['image_url'],
+					'thumbnail_url'      => $source['thumbnail_url'],
+					'mime_type'          => $source['mime_type'],
+					'filename'           => $source['filename'],
+					'title'              => $source['title'],
+					'existing_alt'       => $source['existing_alt'],
+					'existing_caption'   => $source['existing_caption'],
+					'locale'             => function_exists( 'get_locale' ) ? get_locale() : '',
+					'scene_gate'         => array(
+						'source' => 'wordpress_ai_plugin_ability',
+						'task'   => 'alt_text_suggest',
+					),
+				),
+				'timeout_seconds'  => 60,
+				'retention_ttl'    => 86400,
+				'retry_max'        => 0,
+			);
+
+			$started  = Npcink_Cloud_WordPress_AI_Connector::runtime_timer_start();
+			$response = npcink_cloud_addon_execute_wordpress_ai_connector_runtime(
+				$request,
+				'trace_wp_ai_vision_' . wp_generate_uuid4(),
+				'wp_ai_vision_' . wp_generate_uuid4()
+			);
+			Npcink_Cloud_WordPress_AI_Connector::maybe_log_wordpress_ai_request_evidence(
+				array(
+					'type'              => 'vision',
+					'operation'         => 'npcink-cloud/wp-ai-connector',
+					'task'              => 'alt_text_suggest',
+					'contract_version'  => 'wp_ai_connector_runtime.v1',
+					'response'          => $response,
+					'duration_ms'       => Npcink_Cloud_WordPress_AI_Connector::runtime_timer_elapsed_ms( $started ),
+					'fallback_model_id' => Npcink_Cloud_WordPress_AI_Connector::VISION_MODEL_ID,
+				)
+			);
+
+			if ( is_wp_error( $response ) ) {
+				throw new \WordPress\AiClient\Common\Exception\RuntimeException( esc_html( $response->get_error_message() ) );
+			}
+
+			$output_text = $this->extract_text( is_array( $response ) ? $response : array() );
+			if ( '' === $output_text ) {
+				throw new \WordPress\AiClient\Common\Exception\RuntimeException( 'Npcink Cloud AI vision connector response did not include alt text output.' );
+			}
+
+			return new \WordPress\AiClient\Results\DTO\GenerativeAiResult(
+				(string) ( $response['run_id'] ?? ( $response['data']['run_id'] ?? wp_generate_uuid4() ) ),
+				array(
+					new \WordPress\AiClient\Results\DTO\Candidate(
+						new \WordPress\AiClient\Messages\DTO\ModelMessage(
+							array( new \WordPress\AiClient\Messages\DTO\MessagePart( $output_text ) )
+						),
+						\WordPress\AiClient\Results\Enums\FinishReasonEnum::stop()
+					),
+				),
+				new \WordPress\AiClient\Results\DTO\TokenUsage( 0, 0, 0 ),
+				$this->provider_metadata,
+				$this->metadata,
+				array(
+					'contract_version'       => 'wp_ai_connector_result.v1',
+					'task'                   => 'alt_text_suggest',
+					'suggestion_only'        => true,
+					'direct_wordpress_write' => false,
+				)
+			);
+		}
+
+		/**
+		 * Extracts text from a single user prompt.
+		 *
+		 * @param list<\WordPress\AiClient\Messages\DTO\Message> $prompt Prompt messages.
+		 * @return string
+		 */
+		private function prompt_text( array $prompt ): string {
+			$message = $prompt[0];
+			if ( ! $message->getRole()->isUser() ) {
+				return '';
+			}
+
+			$parts = array();
+			foreach ( $message->getParts() as $part ) {
+				$text = $part->getText();
+				if ( null !== $text && '' !== trim( $text ) ) {
+					$parts[] = trim( $text );
+				}
+			}
+
+			return trim( implode( "\n\n", $parts ) );
+		}
+
+		/**
+		 * Checks whether the current stack is the WordPress AI alt text ability.
+		 *
+		 * @return bool
+		 */
+		private function is_alt_text_scene(): bool {
+			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_debug_backtrace -- Bounded stack inspection gates calls to one known WordPress AI ability class.
+			foreach ( debug_backtrace( DEBUG_BACKTRACE_IGNORE_ARGS, 24 ) as $frame ) {
+				$class = isset( $frame['class'] ) ? (string) $frame['class'] : '';
+				if ( 'WordPress\\AI\\Abilities\\Image\\Alt_Text_Generation' === $class ) {
+					return true;
+				}
+			}
+
+			return false;
+		}
+
+		/**
+		 * Builds bounded image URL and metadata context for Cloud.
+		 *
+		 * @param list<\WordPress\AiClient\Messages\DTO\Message> $prompt Prompt messages.
+		 * @return array<string,string>
+		 */
+		private function alt_text_source_context( array $prompt ): array {
+			$source = array(
+				'image_url'        => '',
+				'thumbnail_url'    => '',
+				'mime_type'        => '',
+				'filename'         => '',
+				'title'            => '',
+				'existing_alt'     => '',
+				'existing_caption' => '',
+			);
+
+			$input = $this->alt_text_ability_input();
+			if ( ! empty( $input['attachment_id'] ) ) {
+				$source = $this->attachment_source_context( absint( $input['attachment_id'] ) );
+			} elseif ( ! empty( $input['image_url'] ) && is_string( $input['image_url'] ) && ! str_starts_with( $input['image_url'], 'data:' ) ) {
+				$source['image_url'] = esc_url_raw( $input['image_url'] );
+			}
+
+			if ( '' === $source['image_url'] && '' === $source['thumbnail_url'] ) {
+				$file = $this->prompt_file( $prompt );
+				if ( null !== $file && method_exists( $file, 'getUrl' ) ) {
+					$url = $file->getUrl();
+					if ( is_string( $url ) && '' !== $url ) {
+						$source['image_url'] = esc_url_raw( $url );
+					}
+				}
+				if ( null !== $file && method_exists( $file, 'getMimeType' ) ) {
+					$source['mime_type'] = sanitize_mime_type( (string) $file->getMimeType() );
+				}
+			}
+
+			return $source;
+		}
+
+		/**
+		 * Extracts the original alt-text ability input from the call stack.
+		 *
+		 * @return array<string,mixed>
+		 */
+		private function alt_text_ability_input(): array {
+			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_debug_backtrace -- Args are inspected only to recover the local attachment URL for the bounded Cloud vision scene.
+			foreach ( debug_backtrace( DEBUG_BACKTRACE_PROVIDE_OBJECT, 32 ) as $frame ) {
+				$class  = isset( $frame['class'] ) ? (string) $frame['class'] : '';
+				$method = isset( $frame['function'] ) ? (string) $frame['function'] : '';
+				if ( 'WordPress\\AI\\Abilities\\Image\\Alt_Text_Generation' !== $class || 'execute_callback' !== $method ) {
+					continue;
+				}
+				$args = isset( $frame['args'] ) && is_array( $frame['args'] ) ? $frame['args'] : array();
+				if ( isset( $args[0] ) && is_array( $args[0] ) ) {
+					return $args[0];
+				}
+			}
+
+			return array();
+		}
+
+		/**
+		 * Builds source context for a WordPress attachment.
+		 *
+		 * @param int $attachment_id Attachment ID.
+		 * @return array<string,string>
+		 */
+		private function attachment_source_context( int $attachment_id ): array {
+			$attachment = get_post( $attachment_id );
+			$large      = wp_get_attachment_image_src( $attachment_id, 'large' );
+			$full       = wp_get_attachment_image_src( $attachment_id, 'full' );
+			$thumbnail  = wp_get_attachment_image_src( $attachment_id, 'thumbnail' );
+			$image_url  = is_array( $large ) && ! empty( $large[0] ) ? (string) $large[0] : '';
+			if ( '' === $image_url && is_array( $full ) && ! empty( $full[0] ) ) {
+				$image_url = (string) $full[0];
+			}
+
+			$file_path = get_attached_file( $attachment_id );
+			$filename  = is_string( $file_path ) && '' !== $file_path ? basename( $file_path ) : '';
+			if ( '' === $filename && '' !== $image_url ) {
+				$path     = wp_parse_url( $image_url, PHP_URL_PATH );
+				$filename = is_string( $path ) ? basename( $path ) : '';
+			}
+
+			return array(
+				'image_url'        => esc_url_raw( $image_url ),
+				'thumbnail_url'    => is_array( $thumbnail ) && ! empty( $thumbnail[0] ) ? esc_url_raw( (string) $thumbnail[0] ) : '',
+				'mime_type'        => sanitize_mime_type( (string) get_post_mime_type( $attachment_id ) ),
+				'filename'         => sanitize_file_name( $filename ),
+				'title'            => $attachment ? sanitize_text_field( $attachment->post_title ) : '',
+				'existing_alt'     => sanitize_text_field( (string) get_post_meta( $attachment_id, '_wp_attachment_image_alt', true ) ),
+				'existing_caption' => $attachment ? sanitize_text_field( $attachment->post_excerpt ) : '',
+			);
+		}
+
+		/**
+		 * Returns the first file part from the prompt.
+		 *
+		 * @param list<\WordPress\AiClient\Messages\DTO\Message> $prompt Prompt messages.
+		 * @return \WordPress\AiClient\Files\DTO\File|null
+		 */
+		private function prompt_file( array $prompt ) {
+			$message = $prompt[0];
+			foreach ( $message->getParts() as $part ) {
+				$file = $part->getFile();
+				if ( null !== $file ) {
+					return $file;
+				}
+			}
+
+			return null;
 		}
 
 		/**

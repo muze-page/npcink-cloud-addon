@@ -174,22 +174,24 @@ Toolbox to normalize into `image_candidate.v1` source candidates. The addon
 does not import media, set featured images, write attribution, or create Core
 proposals.
 
-When the PHP AI Client is available, the addon registers scene-gated text and
-image models. The text model only forwards calls that originate from known
+When the PHP AI Client is available, the addon registers scene-gated text,
+vision, and image models. The text model only forwards calls that originate from known
 WordPress AI plugin Ability classes, such as title, excerpt, metadata, summary,
-classification, moderation, rewrite, or alt-text generation. The image model
-only forwards text-to-image calls from the WordPress AI image generation
-feature and rejects reference-image refinement. Direct `wp_ai_client_prompt()`
-usage outside supported scenes is rejected before a Cloud request is made.
+classification, moderation, or rewrite. The vision model only forwards
+WordPress AI alt-text generation calls that can be represented as a fetchable
+image URL plus bounded media metadata. The image model only forwards
+text-to-image calls from the WordPress AI image generation feature and rejects
+reference-image refinement. Direct `wp_ai_client_prompt()` usage outside
+supported scenes is rejected before a Cloud request is made.
 
-The registered `npcink-cloud-scene-text` and `npcink-cloud-scene-image` entries
-are WordPress AI scene wrapper models, not direct provider model ids. They are
-added to the WordPress AI preferred model lists only after Cloud settings pass
-Save and Verify. The addon does not expose bottom-level provider model
-selection; Cloud hosted runtime profiles choose the underlying provider/model.
-The addon does not register a preferred vision model override. Alt text and
-other vision defaults should remain with the WordPress AI plugin unless a
-separate bounded vision scene contract is introduced.
+The registered `npcink-cloud-scene-text`, `npcink-cloud-scene-vision`, and
+`npcink-cloud-scene-image` entries are WordPress AI scene wrapper models, not
+direct provider model ids. They are added to the WordPress AI preferred model
+lists only after Cloud settings pass Save and Verify. The addon does not expose
+bottom-level provider model selection; Cloud hosted runtime profiles choose the
+underlying provider/model. The bounded vision wrapper is only for
+`alt_text_suggest`; it does not make the addon a generic vision provider,
+router, media metadata writer, or approval owner.
 
 The request must use `wp_ai_connector_runtime.v1` and one supported task
 surface, such as `title_generation`, `excerpt_generation`, `meta_description`,

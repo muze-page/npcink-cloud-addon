@@ -35,6 +35,7 @@ if ( ! class_exists( 'Npcink_Cloud_WordPress_AI_Connector' ) ) {
 			add_filter( 'wpai_has_ai_credentials', array( __CLASS__, 'filter_has_ai_credentials' ), 100, 2 );
 			add_filter( 'wpai_preferred_text_models', array( __CLASS__, 'filter_preferred_text_models' ) );
 			add_filter( 'wpai_preferred_image_models', array( __CLASS__, 'filter_preferred_image_models' ) );
+			add_filter( 'wp_get_abilities_result', array( __CLASS__, 'prioritize_wordpress_ai_abilities_for_rest_list' ), 20, 2 );
 		}
 
 		/**
@@ -186,6 +187,177 @@ if ( ! class_exists( 'Npcink_Cloud_WordPress_AI_Connector' ) ) {
 		}
 
 		/**
+		 * Keeps WordPress AI abilities discoverable on the default Abilities REST list.
+		 *
+		 * The AI plugin may use the unfiltered REST list as a client-side discovery
+		 * cache. Busy local sites can exceed the first page before ai/* abilities are
+		 * reached, which makes clients report "Ability not found" and fall back even
+		 * though the individual ability endpoint and run callback work.
+		 *
+		 * @param array<string,mixed> $abilities Matched abilities keyed by ability name.
+		 * @param array<string,mixed> $args      Query arguments passed to wp_get_abilities().
+		 * @return array<string,mixed>
+		 */
+		public static function prioritize_wordpress_ai_abilities_for_rest_list( array $abilities, array $args ): array {
+			if ( ! self::is_cloud_connector_available() || empty( $abilities ) ) {
+				return $abilities;
+			}
+
+			if ( ! empty( $args['namespace'] ) || ! empty( $args['category'] ) ) {
+				return $abilities;
+			}
+
+			$meta = isset( $args['meta'] ) && is_array( $args['meta'] ) ? $args['meta'] : array();
+			if ( true !== ( $meta['show_in_rest'] ?? null ) ) {
+				return $abilities;
+			}
+
+			$wordpress_ai = array();
+			$others       = array();
+
+			foreach ( $abilities as $key => $ability ) {
+				$name = is_object( $ability ) && method_exists( $ability, 'get_name' )
+					? (string) $ability->get_name()
+					: (string) $key;
+
+				if ( str_starts_with( $name, 'ai/' ) ) {
+					$wordpress_ai[ $key ] = $ability;
+					continue;
+				}
+
+				$others[ $key ] = $ability;
+			}
+
+			if ( empty( $wordpress_ai ) ) {
+				return $abilities;
+			}
+
+			return $wordpress_ai + $others;
+		}
+
+		/**
+		 * Writes metadata-only Cloud run evidence into the optional AI request log.
+		 *
+		 * @param array<string,mixed> $event Runtime event metadata.
+		 * @return void
+		 */
+		public static function maybe_log_wordpress_ai_request_evidence( array $event ): void {
+			if ( ! self::is_wordpress_ai_request_logging_enabled() ) {
+				return;
+			}
+
+			$manager_class = 'WordPress\\AI\\Logging\\AI_Request_Log_Manager';
+			if ( ! class_exists( $manager_class ) ) {
+				return;
+			}
+
+			$response = $event['response'] ?? null;
+			$is_error = is_wp_error( $response );
+			$response_array = is_array( $response ) ? $response : array();
+			$task     = self::clean_log_value( (string) ( $event['task'] ?? 'unknown' ), 80 );
+			$type     = self::clean_log_value( (string) ( $event['type'] ?? 'text' ), 20 );
+			$provider = self::first_response_string(
+				$response_array,
+				array(
+					'provider',
+					'provider_id',
+					'selected_provider',
+					'data.provider',
+					'data.provider_id',
+					'data.selected_provider',
+					'data.result.provider',
+					'data.result.provider_id',
+					'data.result.provider_metadata.id',
+					'result.provider',
+					'result.provider_id',
+					'result.provider_metadata.id',
+				),
+				self::CONNECTOR_ID
+			);
+			$model    = self::first_response_string(
+				$response_array,
+				array(
+					'model',
+					'model_id',
+					'selected_model',
+					'data.model',
+					'data.model_id',
+					'data.selected_model',
+					'data.result.model',
+					'data.result.model_id',
+					'data.result.model_metadata.id',
+					'result.model',
+					'result.model_id',
+					'result.model_metadata.id',
+				),
+				(string) ( $event['fallback_model_id'] ?? self::MODEL_ID )
+			);
+			$run_id   = self::first_response_string(
+				$response_array,
+				array( 'run_id', 'data.run_id', 'data.result.run_id', 'result.run_id' ),
+				''
+			);
+
+			$context = array(
+				'contract_version'       => self::clean_log_value( (string) ( $event['contract_version'] ?? '' ), 80 ),
+				'source_surface'         => 'wordpress_ai_connector',
+				'connector_id'           => self::CONNECTOR_ID,
+				'task'                   => $task,
+				'cloud_run_id'           => $run_id,
+				'suggestion_only'        => true,
+				'direct_wordpress_write' => false,
+				'content_storage'        => 'omitted_metadata_only',
+			);
+
+			$log_data = array(
+				'type'        => $type,
+				'operation'   => self::clean_log_value( (string) ( $event['operation'] ?? 'npcink-cloud/wp-ai-connector' ), 120 ) . ':' . $task,
+				'provider'    => self::clean_log_value( $provider, 120 ),
+				'model'       => self::clean_log_value( $model, 160 ),
+				'duration_ms' => max( 0, (int) ( $event['duration_ms'] ?? 0 ) ),
+				'status'      => $is_error ? 'error' : 'success',
+				'error_message' => $is_error ? self::clean_log_value( $response->get_error_message(), 300 ) : '',
+				'user_id'     => function_exists( 'get_current_user_id' ) ? get_current_user_id() : 0,
+				'context'     => $context,
+			);
+
+			try {
+				$manager = new $manager_class();
+				if ( method_exists( $manager, 'init' ) ) {
+					$manager->init();
+				}
+				if ( method_exists( $manager, 'log' ) ) {
+					$manager->log( $log_data );
+				}
+			} catch ( \Throwable $error ) {
+				return;
+			}
+		}
+
+		/**
+		 * Returns a millisecond timestamp for runtime evidence.
+		 *
+		 * @return int
+		 */
+		public static function runtime_timer_start(): int {
+			return function_exists( 'hrtime' ) ? (int) hrtime( true ) : (int) round( microtime( true ) * 1000 );
+		}
+
+		/**
+		 * Returns elapsed milliseconds from runtime_timer_start().
+		 *
+		 * @param int $start Start timestamp.
+		 * @return int
+		 */
+		public static function runtime_timer_elapsed_ms( int $start ): int {
+			if ( function_exists( 'hrtime' ) ) {
+				return max( 0, (int) round( ( hrtime( true ) - $start ) / 1000000 ) );
+			}
+
+			return max( 0, (int) round( microtime( true ) * 1000 ) - $start );
+		}
+
+		/**
 		 * Registers the synthetic marker setting without exposing it through REST.
 		 *
 		 * @return void
@@ -221,6 +393,75 @@ if ( ! class_exists( 'Npcink_Cloud_WordPress_AI_Connector' ) ) {
 			private static function is_cloud_connector_available(): bool {
 				return class_exists( 'Npcink_Cloud_Addon_Settings' )
 					&& Npcink_Cloud_Addon_Settings::is_wordpress_ai_connector_enabled();
+			}
+
+			/**
+			 * Checks whether AI request logging is enabled by the AI plugin feature flags.
+			 *
+			 * @return bool
+			 */
+			private static function is_wordpress_ai_request_logging_enabled(): bool {
+				$global_enabled = (bool) get_option( 'wpai_features_enabled', false );
+				$feature_enabled = (bool) get_option( 'wpai_feature_ai-request-logging_enabled', false );
+				if ( function_exists( 'apply_filters' ) ) {
+					$feature_enabled = (bool) apply_filters( 'wpai_feature_ai-request-logging_enabled', $feature_enabled );
+				}
+
+				return $global_enabled && $feature_enabled;
+			}
+
+			/**
+			 * Returns the first non-empty string at one of the dot paths.
+			 *
+			 * @param array<string,mixed> $source Source array.
+			 * @param list<string>        $paths Dot paths.
+			 * @param string              $fallback Fallback.
+			 * @return string
+			 */
+			private static function first_response_string( array $source, array $paths, string $fallback ): string {
+				foreach ( $paths as $path ) {
+					$value = self::array_dot_value( $source, $path );
+					if ( is_scalar( $value ) && '' !== trim( (string) $value ) ) {
+						return trim( (string) $value );
+					}
+				}
+
+				return $fallback;
+			}
+
+			/**
+			 * Returns a nested array value by dot path.
+			 *
+			 * @param array<string,mixed> $source Source array.
+			 * @param string              $path Dot path.
+			 * @return mixed
+			 */
+			private static function array_dot_value( array $source, string $path ) {
+				$value = $source;
+				foreach ( explode( '.', $path ) as $segment ) {
+					if ( ! is_array( $value ) || ! array_key_exists( $segment, $value ) ) {
+						return null;
+					}
+					$value = $value[ $segment ];
+				}
+
+				return $value;
+			}
+
+			/**
+			 * Sanitizes and bounds metadata values before writing optional logs.
+			 *
+			 * @param string $value Raw value.
+			 * @param int    $max_length Max length.
+			 * @return string
+			 */
+			private static function clean_log_value( string $value, int $max_length ): string {
+				$value = sanitize_text_field( $value );
+				if ( strlen( $value ) <= $max_length ) {
+					return $value;
+				}
+
+				return substr( $value, 0, $max_length );
 			}
 		}
 	}
@@ -550,10 +791,22 @@ if ( ! class_exists( 'Npcink_Cloud_WordPress_AI_Connector' ) ) {
 				'retry_max'        => 0,
 			);
 
+			$started  = Npcink_Cloud_WordPress_AI_Connector::runtime_timer_start();
 			$response = npcink_cloud_addon_execute_wordpress_ai_connector_runtime(
 				$request,
 				'trace_wp_ai_connector_' . wp_generate_uuid4(),
 				'wp_ai_connector_' . wp_generate_uuid4()
+			);
+			Npcink_Cloud_WordPress_AI_Connector::maybe_log_wordpress_ai_request_evidence(
+				array(
+					'type'             => 'text',
+					'operation'        => 'npcink-cloud/wp-ai-connector',
+					'task'             => $task,
+					'contract_version' => 'wp_ai_connector_runtime.v1',
+					'response'         => $response,
+					'duration_ms'      => Npcink_Cloud_WordPress_AI_Connector::runtime_timer_elapsed_ms( $started ),
+					'fallback_model_id' => Npcink_Cloud_WordPress_AI_Connector::MODEL_ID,
+				)
 			);
 
 			if ( is_wp_error( $response ) ) {
@@ -799,10 +1052,22 @@ if ( ! class_exists( 'Npcink_Cloud_WordPress_AI_Connector' ) ) {
 				'retention_ttl'    => 86400,
 			);
 
+			$started  = Npcink_Cloud_WordPress_AI_Connector::runtime_timer_start();
 			$response = npcink_cloud_addon_execute_wordpress_ai_image_generation_runtime(
 				$request,
 				'trace_wp_ai_image_' . wp_generate_uuid4(),
 				'wp_ai_image_' . wp_generate_uuid4()
+			);
+			Npcink_Cloud_WordPress_AI_Connector::maybe_log_wordpress_ai_request_evidence(
+				array(
+					'type'             => 'image',
+					'operation'        => 'npcink-cloud/generate-image',
+					'task'             => 'image_generation',
+					'contract_version' => 'image_generation_request.v1',
+					'response'         => $response,
+					'duration_ms'      => Npcink_Cloud_WordPress_AI_Connector::runtime_timer_elapsed_ms( $started ),
+					'fallback_model_id' => Npcink_Cloud_WordPress_AI_Connector::IMAGE_MODEL_ID,
+				)
 			);
 
 			if ( is_wp_error( $response ) ) {

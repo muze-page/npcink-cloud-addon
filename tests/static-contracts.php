@@ -37,6 +37,7 @@ $readme = maca_read( $root . '/README.md' );
 $composer = maca_read( $root . '/composer.json' );
 $eval_lab_proxy = maca_read( $root . '/scripts/eval-lab.sh' );
 $ai_i18n_audit = maca_read( $root . '/scripts/audit-ai-plugin-localization.php' );
+$wp_ai_smoke = maca_read( $root . '/scripts/smoke-wordpress-ai-abilities.php' );
 $zh_cn_po = maca_read( $root . '/languages/npcink-cloud-addon-zh_CN.po' );
 
 maca_assert(
@@ -291,6 +292,26 @@ maca_assert(
 	&& false === strpos( $wordpress_ai_connector, 'chat/completions' )
 	&& false === strpos( $wordpress_ai_connector, 'OpenAiCompatible' ),
 	'AI Client provider is scene-gated to known WordPress AI abilities and does not expose an OpenAI-compatible chat proxy or deep schema payload.'
+);
+
+maca_assert(
+	false !== strpos( $composer, '"smoke:wp-ai-abilities"' )
+	&& is_readable( $root . '/scripts/smoke-wordpress-ai-abilities.php' )
+	&& false !== strpos( $wp_ai_smoke, "'ai/summarization'" )
+	&& false !== strpos( $wp_ai_smoke, "'ai/meta-description'" )
+	&& false !== strpos( $wp_ai_smoke, "'ai/alt-text-generation'" )
+	&& false !== strpos( $wp_ai_smoke, 'WP_AI_SMOKE_IMAGE' )
+	&& false === strpos( $wp_ai_smoke, '/wp-abilities/v1/abilities/ai/image-import/run' ),
+	'WordPress AI smoke gate verifies discovery and bounded runs without default media writes.'
+);
+
+maca_assert(
+	false !== strpos( $wordpress_ai_connector, 'maybe_log_wordpress_ai_request_evidence' )
+	&& false !== strpos( $wordpress_ai_connector, 'AI_Request_Log_Manager' )
+	&& false !== strpos( $wordpress_ai_connector, 'omitted_metadata_only' )
+	&& false === strpos( $wordpress_ai_connector, "'input_preview'" )
+	&& false === strpos( $wordpress_ai_connector, "'output_preview'" ),
+	'WordPress AI request log bridge is metadata-only and does not persist prompt or output previews.'
 );
 
 maca_assert(

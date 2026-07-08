@@ -367,6 +367,8 @@ site connection flow history is summarized in
 [`docs/cloud-site-connection-flow-history.md`](docs/cloud-site-connection-flow-history.md).
 Current reference-plugin learning notes for the connector surface are recorded
 in [`docs/cloud-addon-reference-notes-2026-07.md`](docs/cloud-addon-reference-notes-2026-07.md).
+The current signed-transport contract reuse observation is recorded in
+[`docs/cloud-addon-contract-reuse-readiness-2026-07-08.md`](docs/cloud-addon-contract-reuse-readiness-2026-07-08.md).
 
 ## Repository Management
 
@@ -374,9 +376,9 @@ GitHub is the primary remote for ongoing development:
 
 `https://github.com/muze-page/npcink-cloud-addon`
 
-The former Gitee remote may be kept as a read-only or backup mirror, but new
-work should branch, review, and merge through GitHub. Keep `master` as the
-default branch unless the CI and release process are intentionally migrated.
+Do not keep or publish through Gitee remotes for current development. New work
+should branch, review, and merge through GitHub. Keep `master` as the default
+branch unless the CI and release process are intentionally migrated.
 
 ## Local Checks
 

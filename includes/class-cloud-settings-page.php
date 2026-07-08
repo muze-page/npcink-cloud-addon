@@ -3101,6 +3101,10 @@ if ( ! class_exists( 'Npcink_Cloud_Settings_Page' ) ) {
 						<th scope="row"><?php esc_html_e( 'Runtime ownership', 'npcink-cloud-addon' ); ?></th>
 						<td><?php esc_html_e( 'Cloud owns run state, retry processing, retention, and usage detail. Local Core owns approval and WordPress writes.', 'npcink-cloud-addon' ); ?></td>
 					</tr>
+					<tr>
+						<th scope="row"><?php esc_html_e( 'Contract reuse', 'npcink-cloud-addon' ); ?></th>
+						<td><?php esc_html_e( 'Reuses Cloud runtime/detail, Toolbox product buttons, Core proposal handoff, Adapter execution profiles, and Toolkit ability contracts. This addon adds no registry, scheduler, approval store, queue, or write executor.', 'npcink-cloud-addon' ); ?></td>
+					</tr>
 				</tbody>
 			</table>
 			<?php

@@ -102,6 +102,16 @@ maca_assert(
 	&& null === ( $runtime_without_optional_fields['max_batch_items'] ?? null )
 	&& null === ( $runtime_without_optional_fields['result_retention_days'] ?? null )
 	&& false === (bool) ( $runtime_without_optional_fields['quota_exhausted'] ?? true )
+	&& 'runtime_detail' === (string) ( $runtime_without_optional_fields['contract_reuse']['cloud_role'] ?? '' )
+	&& 'product_surface' === (string) ( $runtime_without_optional_fields['contract_reuse']['toolbox_role'] ?? '' )
+	&& 'proposal_handoff' === (string) ( $runtime_without_optional_fields['contract_reuse']['core_role'] ?? '' )
+	&& 'execution_profiles' === (string) ( $runtime_without_optional_fields['contract_reuse']['adapter_role'] ?? '' )
+	&& 'ability_contracts' === (string) ( $runtime_without_optional_fields['contract_reuse']['toolkit_role'] ?? '' )
+	&& false === (bool) ( $runtime_without_optional_fields['contract_reuse']['adds_registry'] ?? true )
+	&& false === (bool) ( $runtime_without_optional_fields['contract_reuse']['adds_scheduler_truth'] ?? true )
+	&& false === (bool) ( $runtime_without_optional_fields['contract_reuse']['adds_approval_store'] ?? true )
+	&& false === (bool) ( $runtime_without_optional_fields['contract_reuse']['adds_queue'] ?? true )
+	&& false === (bool) ( $runtime_without_optional_fields['contract_reuse']['adds_write_executor'] ?? true )
 	&& 'unavailable' === $format_runtime_integer->invoke( null, $runtime_without_optional_fields, 'max_batch_items' )
 	&& 'unavailable' === $format_runtime_days->invoke( null, $runtime_without_optional_fields, 'result_retention_days' )
 	&& 'no' === $format_runtime_boolean->invoke( null, $runtime_without_optional_fields, 'quota_exhausted' )
@@ -110,7 +120,7 @@ maca_assert(
 	&& true === (bool) ( $runtime_with_optional_fields['quota_exhausted'] ?? false )
 	&& '25' === $format_runtime_integer->invoke( null, $runtime_with_optional_fields, 'max_batch_items' )
 	&& '14 days' === $format_runtime_days->invoke( null, $runtime_with_optional_fields, 'result_retention_days' ),
-	'Behavior: Pro Cloud Runtime projection preserves unavailable optional fields and parses quota exhaustion strictly.'
+	'Behavior: Pro Cloud Runtime projection preserves unavailable optional fields, contract reuse boundaries, and quota exhaustion strictly.'
 );
 
 maca_reset_test_state();

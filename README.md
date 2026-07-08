@@ -4,6 +4,11 @@ Standalone WordPress plugin for connecting a local Npcink installation to `npcin
 
 The addon is a thin Cloud connector. It stores the Cloud Base URL and Cloud API Key returned by Cloud site authorization, parses the key into signing credentials, sends signed runtime requests, reads health and entitlement status, transports opt-in metadata-only plugin observability events, shows read-only Agent feedback quality summaries, bridges public Site Knowledge change hints to Cloud, and exposes a minimal PHP interface for local plugins.
 
+Cross-project platform coordination starts from
+`/Users/muze/gitee/npcink-workflow-toolbox/docs/platform/README.md`. This
+repository remains authoritative only for Cloud Addon connector contracts and
+bounded signed transport.
+
 ## Scope
 
 The addon owns:

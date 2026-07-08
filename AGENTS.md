@@ -2,6 +2,12 @@
 
 This repository is the standalone `npcink-cloud-addon` WordPress plugin.
 
+Cross-project platform coordination starts from
+`/Users/muze/gitee/npcink-workflow-toolbox/docs/platform/README.md`. This
+repository remains the Cloud Addon transport owner; do not expand platform,
+Core governance, Toolkit ability, Adapter channel, product-surface, billing, or
+runtime truth rules here beyond addon-owned connector contracts.
+
 ## Boundaries
 
 - Keep this addon a Cloud connector only.

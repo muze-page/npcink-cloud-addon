@@ -367,6 +367,8 @@ site connection flow history is summarized in
 [`docs/cloud-site-connection-flow-history.md`](docs/cloud-site-connection-flow-history.md).
 Current reference-plugin learning notes for the connector surface are recorded
 in [`docs/cloud-addon-reference-notes-2026-07.md`](docs/cloud-addon-reference-notes-2026-07.md).
+The current signed-transport contract reuse observation is recorded in
+[`docs/cloud-addon-contract-reuse-readiness-2026-07-08.md`](docs/cloud-addon-contract-reuse-readiness-2026-07-08.md).
 
 ## Repository Management
 

@@ -27,6 +27,7 @@ $boundary_doc = maca_read( $root . '/docs/cloud-addon-boundary.md' );
 $runtime_contract = maca_read( $root . '/docs/cloud-runtime-client-contract.md' );
 $adapter_doc = maca_read( $root . '/docs/adapter-integration-seam.md' );
 $complexity_doc = maca_read( $root . '/docs/cloud-addon-complexity-budget.md' );
+$contract_reuse_readiness_doc = maca_read( $root . '/docs/cloud-addon-contract-reuse-readiness-2026-07-08.md' );
 $cloud_bulk_article_doc = maca_read( $root . '/docs/cloud-bulk-article-run-seam.md' );
 $admin_surface_standard = maca_read( $root . '/docs/admin-surface-standard.md' );
 $admin_ui_simplification_doc = maca_read( $root . '/docs/cloud-addon-admin-ui-simplification-2026-07-02.md' );
@@ -1229,4 +1230,24 @@ maca_assert(
 	&& false !== strpos( $complexity_doc, 'tests/static-contracts.php' )
 	&& false !== strpos( $complexity_doc, 'tests/behavior-media-derivative.php' ),
 	'Complexity budget document records what complexity is worth keeping and where tests belong.'
+);
+
+foreach ( array( 'npcink-governance-core', 'npcink-abilities-toolkit', 'npcink-ai-client-adapter', 'npcink-workflow-toolbox', 'npcink-cloud-addon', 'npcink-ai-cloud' ) as $contract_reuse_repo_name ) {
+	maca_assert(
+		false !== strpos( $contract_reuse_readiness_doc, $contract_reuse_repo_name ),
+		'Cloud Addon contract reuse readiness includes repo: ' . $contract_reuse_repo_name
+	);
+}
+
+foreach ( array( 'Cloud Addon Contract Reuse Readiness', 'signed_transport', 'ability_contracts', 'proposal_handoff', 'execution_profiles', 'product_surface', 'runtime_detail', 'Reference-Plugin Learning', 'Jetpack', 'Site Kit by Google', 'WP Mail SMTP', 'Health Check & Troubleshooting', 'WordPress Application Passwords', 'No new Cloud Addon endpoint', 'workflow runtime', 'scheduler truth', 'WordPress write executor is needed for this pass', 'contract_reuse', 'mak1_{base64url(json)}', 'POST /v1/runtime/execute', 'POST /v1/runtime/media-derivatives', 'GET /v1/runs/{run_id}', 'GET /v1/runs/{run_id}/result', 'GET /v1/runs/nightly-inspection/recent', 'POST /v1/runs/{run_id}/retry', 'GET /v1/runtime/artifacts/{artifact_id}/download', 'GET /v1/entitlements/current', 'POST /v1/observability/plugin-events', 'GET /v1/observability/plugin-summary', 'POST /v1/agent-feedback/events', 'GET /v1/agent-feedback/summary', 'site_knowledge_change_bridge_status.v1', 'wp_ai_connector_runtime.v1', 'image_context_evidence_request.v1', 'cloud_agent_feedback.v1', 'Stop and write a boundary note or ADR', 'generic Cloud proxy routes', 'raw request/response', 'provider credentials', 'npcink-ai-cloud', 'composer run test:all' ) as $required_contract_reuse_text ) {
+	maca_assert(
+		false !== strpos( $contract_reuse_readiness_doc, $required_contract_reuse_text ),
+		'Cloud Addon contract reuse readiness preserves: ' . $required_contract_reuse_text
+	);
+}
+
+maca_assert(
+	false !== strpos( $readme, 'docs/cloud-addon-reference-notes-2026-07.md' )
+	&& false !== strpos( $readme, 'docs/cloud-addon-contract-reuse-readiness-2026-07-08.md' ),
+	'README links Cloud Addon reference-plugin learning notes and contract reuse readiness.'
 );

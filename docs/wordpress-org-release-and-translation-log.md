@@ -2,7 +2,7 @@
 
 Status: active operational handoff.
 
-Last updated: 2026-07-02.
+Last updated: 2026-07-08.
 
 This document records the WordPress.org release, assets, legal pages, and zh_CN
 translation work completed for `npcink-cloud-addon`.
@@ -12,9 +12,9 @@ translation work completed for `npcink-cloud-addon`.
 - WordPress.org plugin URL: `https://wordpress.org/plugins/npcink-cloud-addon/`
 - Plugin slug: `npcink-cloud-addon`
 - WordPress.org SVN URL: `https://plugins.svn.wordpress.org/npcink-cloud-addon/`
-- Local SVN working copy: `build/wporg-svn`
+- Historical local SVN working copy: `build/wporg-svn`
 - Release package: `build/npcink-cloud-addon.zip`
-- Stable tag: `0.1.1`
+- Stable tag: `0.1.2`
 
 The plugin has passed WordPress.org review and was submitted to SVN. Later asset
 updates were submitted separately.
@@ -25,6 +25,9 @@ Known SVN revisions:
 - `r3582534`: regenerated WordPress.org icon and banner assets.
 - `r3590121`: release `0.1.1` with refreshed Cloud status UI, entitlement
   cache reuse, WordPress AI connector integration, and zh_CN metadata.
+- `r3600099`: release `0.1.2` with bounded Site Knowledge Cloud transport,
+  WordPress AI request-log compatibility, contract reuse documentation, and a
+  clean Plugin Check release gate.
 
 ## Release Verification
 
@@ -39,11 +42,124 @@ rg "/v1/runtime/workflows/runs|wp_insert_post|wp_update_post" --glob '*.php' --g
 For full WordPress.org release verification, use:
 
 ```sh
-composer run release:verify
+WP_CLI_BIN=/opt/homebrew/bin/wp composer run release:verify
 ```
 
 The local Plugin Check release command depends on the Local WordPress site and
-the local WP-CLI/PHP paths configured in `composer.json`.
+the local WP-CLI/PHP paths configured in `composer.json`. On this machine,
+Composer's default `/tmp/wp-cli.phar` path is not reliable, so pass
+`WP_CLI_BIN=/opt/homebrew/bin/wp` explicitly for Plugin Check and release
+verification commands.
+
+## 2026-07-08 0.1.2 Release Closeout
+
+Version `0.1.2` was published to WordPress.org SVN on 2026-07-08:
+
+```text
+SVN revision: r3600099
+Author: muze233
+Tag: https://plugins.svn.wordpress.org/npcink-cloud-addon/tags/0.1.2/
+Download: https://downloads.wordpress.org/plugin/npcink-cloud-addon.0.1.2.zip
+```
+
+WordPress.org API reported after the release:
+
+```text
+version=0.1.2
+last_updated=2026-07-08 9:46am GMT
+download_link=https://downloads.wordpress.org/plugin/npcink-cloud-addon.0.1.2.zip
+```
+
+### Release Contents
+
+The release deliberately kept the addon as a thin Cloud connector. The release
+included:
+
+- bounded Site Knowledge Cloud transport and runtime bridge refinements;
+- WordPress AI connector request-log compatibility;
+- Cloud runtime contract reuse documentation and release metadata;
+- Plugin Check cleanup for an external WordPress AI feature-flag filter.
+
+The release did not add router, prompt, preset, proposal, approval, workflow,
+scheduler, billing, or WordPress write ownership.
+
+### Plugin Check Warning Handling
+
+Plugin Check originally reported one warning:
+
+```text
+WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound
+Found: wpai_feature_ai-request-logging_enabled
+```
+
+The hook name was not renamed because it is owned by the external WordPress AI
+plugin feature-flag surface. Renaming it to an `npcink_cloud_addon_*` hook would
+remove compatibility rather than improve safety. The accepted fix was a single
+targeted PHPCS ignore on the `apply_filters()` call, with a comment explaining
+that WordPress AI owns the filter name.
+
+This is the preferred pattern for future external integration hooks:
+
+- keep external hook names intact when the integration contract requires them;
+- suppress only the exact sniff at the exact call site;
+- explain the owning integration in the ignore comment;
+- verify Plugin Check returns a clean result afterward.
+
+### Verification Evidence
+
+Before SVN commit, the following gates passed:
+
+```sh
+WP_CLI_BIN=/opt/homebrew/bin/wp composer run release:verify
+git diff --check
+rg "/v1/runtime/workflows/runs|wp_insert_post|wp_update_post" --glob '*.php' --glob '!build/**' .
+```
+
+Plugin Check returned:
+
+```text
+Success: Checks complete. No errors found.
+```
+
+The release package was regenerated with:
+
+```sh
+composer run package:release
+```
+
+The generated package was:
+
+```text
+build/npcink-cloud-addon.zip
+SHA256: 2878cf32a66b366014629cb373ddf3ac333ebf4c99d2cceb918de5decd60d955
+```
+
+The package was inspected to confirm:
+
+- `npcink-cloud-addon.php` version is `0.1.2`;
+- `NPCINK_CLOUD_ADDON_VERSION` is `0.1.2`;
+- `readme.txt` stable tag is `0.1.2`;
+- no `tests/`, `scripts/`, `docs/`, `sj/`, `.git/`, `composer.json`, or other
+  non-release files were included.
+
+After SVN commit, the downloaded WordPress.org `0.1.2` zip was compared against
+the local `build/npcink-cloud-addon.zip`; the contents matched.
+
+### SVN Release Procedure Used
+
+The release was made from a temporary SVN working copy rather than the Git
+working tree:
+
+```sh
+svn checkout https://plugins.svn.wordpress.org/npcink-cloud-addon/ /tmp/npcink-cloud-addon-svn.<id>/npcink-cloud-addon
+rsync -a --delete build/npcink-cloud-addon/ /tmp/npcink-cloud-addon-svn.<id>/npcink-cloud-addon/trunk/
+svn add --force /tmp/npcink-cloud-addon-svn.<id>/npcink-cloud-addon/trunk
+svn copy /tmp/npcink-cloud-addon-svn.<id>/npcink-cloud-addon/trunk /tmp/npcink-cloud-addon-svn.<id>/npcink-cloud-addon/tags/0.1.2
+svn commit --non-interactive -m "Release 0.1.2" /tmp/npcink-cloud-addon-svn.<id>/npcink-cloud-addon
+```
+
+Before commit, both `trunk` and `tags/0.1.2` were checked for version metadata
+and for accidental inclusion of non-release directories.
 
 ## WordPress.org Assets
 

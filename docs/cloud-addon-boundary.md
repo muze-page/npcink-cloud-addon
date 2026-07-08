@@ -62,6 +62,21 @@ index, freshness, and collection lifecycle owner.
   troubleshooting ownership.
 - Cloud search, image source search, or provider tool product UX.
 
+## Local Persistence Boundary
+
+Cloud Addon local persistence is limited to Cloud connection settings, bounded
+status projections, and bounded delivery buffers. The observability buffer and
+Site Knowledge change buffer are local delivery durability only: they help the
+addon survive temporary upload failures and expose health counts, but they are
+not queue truth, run truth, billing truth, indexing truth, approval truth, or audit truth.
+
+The addon must not create WordPress custom tables for workflow runs, Cloud
+runtime history, provider request logs, Site Knowledge indexing jobs,
+observability history, retry queues, leases, or dead-letter records. If a
+feature needs long-term queryable history, reliable queue semantics, retry
+recovery, usage/billing detail, entitlement detail, vector indexing lifecycle,
+or diagnostics detail, that state belongs in Cloud service storage.
+
 ## Local Truth Rule
 
 Local Core remains the owner for final WordPress permissions, proposal/preflight, approval, apply, and canonical WordPress writes.

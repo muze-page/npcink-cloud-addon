@@ -690,6 +690,17 @@ maca_assert(
 );
 
 maca_assert(
+	false === strpos( $bootstrap . $settings . $observability . $site_knowledge_bridge . $site_knowledge_runtime_bridge . $runtime_client, 'dbDelta(' )
+	&& false === strpos( $bootstrap . $settings . $observability . $site_knowledge_bridge . $site_knowledge_runtime_bridge . $runtime_client, 'CREATE TABLE' )
+	&& false !== strpos( $boundary_doc, 'Local Persistence Boundary' )
+	&& false !== strpos( $boundary_doc, 'local delivery durability only' )
+	&& false !== strpos( $boundary_doc, 'not queue truth, run truth, billing truth, indexing truth, approval truth, or audit truth' )
+	&& false !== strpos( $boundary_doc, 'must not create WordPress custom tables' )
+	&& false !== strpos( $boundary_doc, 'that state belongs in Cloud service storage' ),
+	'Cloud Addon keeps local persistence to bounded options/buffers and leaves durable queue, run, billing, indexing, and diagnostics storage to Cloud.'
+);
+
+maca_assert(
 	false !== strpos( $observability, 'Npcink_Cloud_Addon_Settings::is_monitoring_enabled()' )
 	&& false !== strpos( $observability, 'wp_schedule_event' )
 	&& false !== strpos( $agents, 'Bounded observability buffering and WP-Cron flushing are allowed only' ),

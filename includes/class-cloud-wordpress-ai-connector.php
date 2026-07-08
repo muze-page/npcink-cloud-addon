@@ -422,6 +422,7 @@ if ( ! class_exists( 'Npcink_Cloud_WordPress_AI_Connector' ) ) {
 				$global_enabled = (bool) get_option( 'wpai_features_enabled', false );
 				$feature_enabled = (bool) get_option( 'wpai_feature_ai-request-logging_enabled', false );
 				if ( function_exists( 'apply_filters' ) ) {
+					// phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- WordPress AI owns this feature-flag filter name.
 					$feature_enabled = (bool) apply_filters( 'wpai_feature_ai-request-logging_enabled', $feature_enabled );
 				}
 

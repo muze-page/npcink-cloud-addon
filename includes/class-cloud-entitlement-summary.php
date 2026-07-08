@@ -302,6 +302,19 @@ if ( ! class_exists( 'Npcink_Cloud_Entitlement_Summary' ) ) {
 					'final_write_path' => sanitize_key( (string) ( $local_truth['final_write_path'] ?? 'core_proposal_required' ) ),
 					'direct_wordpress_write' => false,
 				),
+				'contract_reuse' => array(
+					'cloud_role' => 'runtime_detail',
+					'toolbox_role' => 'product_surface',
+					'core_role' => 'proposal_handoff',
+					'adapter_role' => 'execution_profiles',
+					'toolkit_role' => 'ability_contracts',
+					'addon_role' => 'signed_transport',
+					'adds_registry' => false,
+					'adds_scheduler_truth' => false,
+					'adds_approval_store' => false,
+					'adds_queue' => false,
+					'adds_write_executor' => false,
+				),
 				'local_billing_truth' => false,
 			);
 		}

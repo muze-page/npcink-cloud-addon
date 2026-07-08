@@ -130,6 +130,13 @@ that read-only detail for local plugins that need Pro Cloud Runtime status, such
 as Nightly Site Inspection run quota, remaining runs, batch limits, result
 retention, payload modes, and quota exhaustion.
 
+The normalized projection includes `contract_reuse` so local displays can show
+that Cloud owns runtime/detail, Toolbox owns product buttons, Core owns proposal
+handoff, Adapter owns execution profiles, and Toolkit owns ability contracts.
+The addon role is signed transport only; the projection must keep
+`adds_registry`, `adds_scheduler_truth`, `adds_approval_store`, `adds_queue`,
+and `adds_write_executor` false.
+
 Runtime projection field types:
 
 - `max_nightly_inspection_runs_per_period`, `used_nightly_inspection_runs`, and

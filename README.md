@@ -376,9 +376,9 @@ GitHub is the primary remote for ongoing development:
 
 `https://github.com/muze-page/npcink-cloud-addon`
 
-The former Gitee remote may be kept as a read-only or backup mirror, but new
-work should branch, review, and merge through GitHub. Keep `master` as the
-default branch unless the CI and release process are intentionally migrated.
+Do not keep or publish through Gitee remotes for current development. New work
+should branch, review, and merge through GitHub. Keep `master` as the default
+branch unless the CI and release process are intentionally migrated.
 
 ## Local Checks
 

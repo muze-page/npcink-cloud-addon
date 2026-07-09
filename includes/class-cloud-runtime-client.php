@@ -935,6 +935,29 @@ if ( ! class_exists( 'Npcink_Cloud_Runtime_Client' ) ) {
 			$owner_label = 'cloud_addon';
 			$blocked_reason = '';
 			$next_action = 'retry_test';
+			$base_url = untrailingslashit( (string) ( $this->config['base_url'] ?? '' ) );
+			$base_url_present = '' !== $base_url;
+			$site_id_present = '' !== (string) ( $this->config['site_id'] ?? '' );
+			$key_id_present = '' !== (string) ( $this->config['key_id'] ?? '' );
+			$secret_present = '' !== (string) ( $this->config['secret'] ?? '' );
+			$credential_slots_complete = $base_url_present && $site_id_present && $key_id_present && $secret_present;
+			$credential_slot_readiness = 'not_configured';
+			if ( $credential_slots_complete ) {
+				$credential_slot_readiness = 'ready';
+			} elseif ( $base_url_present || $site_id_present || $key_id_present || $secret_present ) {
+				$credential_slot_readiness = 'partial';
+			}
+			$service_liveness_status = $base_url_present ? ( ! empty( $probe['live_ok'] ) ? 'ready' : 'unavailable' ) : 'not_configured';
+			$signed_transport_status = 'not_configured';
+			if ( 'ready' === $credential_slot_readiness ) {
+				if ( 'ready' !== $service_liveness_status ) {
+					$signed_transport_status = 'unavailable';
+				} elseif ( ! empty( $probe['auth_ok'] ) ) {
+					$signed_transport_status = 'ready';
+				} else {
+					$signed_transport_status = 'failed';
+				}
+			}
 
 			if ( ! $this->is_configured() ) {
 				$status = 'not_configured';
@@ -962,14 +985,19 @@ if ( ! class_exists( 'Npcink_Cloud_Runtime_Client' ) ) {
 				$blocked_reason = __( 'Connector readiness could not be verified.', 'npcink-cloud-addon' );
 			}
 
-			$base_url = untrailingslashit( (string) ( $this->config['base_url'] ?? '' ) );
 			$host = '' !== $base_url ? sanitize_text_field( (string) wp_parse_url( $base_url, PHP_URL_HOST ) ) : '';
 			$support_facts = array(
 				'contract_version' => 'cloud_addon_readiness_result.v1',
+				'connector_slot' => 'npcink_cloud_runtime',
+				'credential_slot_readiness' => $credential_slot_readiness,
+				'signed_transport_status' => $signed_transport_status,
+				'service_liveness_status' => $service_liveness_status,
 				'base_url_host' => '' !== $host ? $host : 'not_set',
-				'site_id_present' => '' !== (string) ( $this->config['site_id'] ?? '' ) ? 'yes' : 'no',
-				'key_id_present' => '' !== (string) ( $this->config['key_id'] ?? '' ) ? 'yes' : 'no',
-				'signing_credentials_complete' => $this->is_configured() ? 'yes' : 'no',
+				'base_url_present' => $base_url_present ? 'yes' : 'no',
+				'site_id_present' => $site_id_present ? 'yes' : 'no',
+				'key_id_present' => $key_id_present ? 'yes' : 'no',
+				'signing_secret_slot_present' => $secret_present ? 'yes' : 'no',
+				'signing_credentials_complete' => $credential_slots_complete ? 'yes' : 'no',
 				'timeout_seconds' => (string) max( 5, absint( $this->config['timeout'] ?? 8 ) ),
 				'live_ok' => ! empty( $probe['live_ok'] ) ? 'yes' : 'no',
 				'signed_read_ok' => ! empty( $probe['auth_ok'] ) ? 'yes' : 'no',
@@ -980,6 +1008,10 @@ if ( ! class_exists( 'Npcink_Cloud_Runtime_Client' ) ) {
 			return array(
 				'contract_version' => 'cloud_addon_readiness_result.v1',
 				'manual_test_action' => 'probe_connectivity',
+				'connector_slot' => 'npcink_cloud_runtime',
+				'credential_slot_readiness' => $credential_slot_readiness,
+				'signed_transport_status' => $signed_transport_status,
+				'service_liveness_status' => $service_liveness_status,
 				'status' => $status,
 				'bounded_status' => $status,
 				'owner_label' => $owner_label,

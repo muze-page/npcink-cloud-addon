@@ -114,13 +114,16 @@ paths through the addon.
 `manual_readiness_test()` reuses the existing `/health/live` plus signed
 `GET /v1/entitlements/current` probe and returns
 `cloud_addon_readiness_result.v1` with `status`, `bounded_status`,
-`owner_label`, `blocked_reason`, `next_safe_action`, `copyable_support_facts`,
-`write_posture=read_only`, and `tested_at`. The result is non-secret support
-detail for connector/readiness status only. It does not create runtime work,
-queues, registries, approvals, provider logs, billing truth, or WordPress
-writes. The admin Diagnostics page runs this test only from the explicit
-administrator `Run readiness test` action; rendering the page does not perform
-a live probe or signed Cloud read.
+`connector_slot`, `credential_slot_readiness`, `signed_transport_status`,
+`service_liveness_status`, `owner_label`, `blocked_reason`,
+`next_safe_action`, `copyable_support_facts`, `write_posture=read_only`, and
+`tested_at`. The slot statuses are non-secret support detail for the local
+connector slot, credential-slot completeness, public service liveness, and the
+signed entitlement read only. They do not create runtime work, queues,
+registries, approvals, provider logs, billing truth, or WordPress writes. The
+admin Diagnostics page runs this test only from the explicit administrator
+`Run readiness test` action; rendering the page does not perform a live probe
+or signed Cloud read.
 
 ## Image Context Evidence Transport
 

@@ -164,7 +164,7 @@ if ( ! class_exists( 'Npcink_Cloud_Runtime_Client' ) ) {
 				}
 			}
 
-			return array(
+			$probe = array(
 				'ok' => ! empty( $live_probe['ok'] ) && ! empty( $auth_probe['ok'] ),
 				'live_ok' => ! empty( $live_probe['ok'] ),
 				'auth_ok' => ! empty( $auth_probe['ok'] ),
@@ -172,6 +172,24 @@ if ( ! class_exists( 'Npcink_Cloud_Runtime_Client' ) ) {
 				'auth_message' => sanitize_text_field( (string) ( $auth_probe['message'] ?? '' ) ),
 				'entitlement_response' => is_array( $auth_probe['entitlement_response'] ?? null ) ? $auth_probe['entitlement_response'] : array(),
 			);
+			$probe['readiness_result'] = $this->build_readiness_result( $probe );
+
+			return $probe;
+		}
+
+		/**
+		 * Runs the bounded manual connector readiness test.
+		 *
+		 * This is the same liveness plus signed-read check used by Save and
+		 * Verify. It returns a non-secret support shape for local status and
+		 * optional read-only consumers.
+		 *
+		 * @return array<string,mixed>
+		 */
+		public function manual_readiness_test(): array {
+			$probe = $this->probe_connectivity();
+
+			return is_array( $probe['readiness_result'] ?? null ) ? $probe['readiness_result'] : $this->build_readiness_result( $probe );
 		}
 
 		/**
@@ -904,6 +922,89 @@ if ( ! class_exists( 'Npcink_Cloud_Runtime_Client' ) ) {
 				'ok' => true,
 				'message' => '' !== $message ? $message : __( 'Cloud service is live.', 'npcink-cloud-addon' ),
 			);
+		}
+
+		/**
+		 * Builds a bounded non-secret readiness result for diagnostics.
+		 *
+		 * @param array<string,mixed> $probe Connectivity probe result.
+		 * @return array<string,mixed>
+		 */
+		private function build_readiness_result( array $probe ): array {
+			$status = 'failed';
+			$owner_label = 'cloud_addon';
+			$blocked_reason = '';
+			$next_action = 'retry_test';
+
+			if ( ! $this->is_configured() ) {
+				$status = 'not_configured';
+				$owner_label = 'operator';
+				$blocked_reason = __( 'Cloud settings are incomplete.', 'npcink-cloud-addon' );
+				$next_action = 'open_settings';
+			} elseif ( ! empty( $probe['ok'] ) ) {
+				$status = 'ready';
+				$owner_label = 'cloud_addon';
+				$blocked_reason = '';
+				$next_action = 'continue';
+			} elseif ( empty( $probe['live_ok'] ) ) {
+				$status = 'unavailable';
+				$owner_label = 'cloud';
+				$blocked_reason = $this->redact_support_text( (string) ( $probe['live_message'] ?? '' ) );
+				$next_action = 'check_cloud_status';
+			} else {
+				$status = 'failed';
+				$owner_label = 'cloud';
+				$blocked_reason = $this->redact_support_text( (string) ( $probe['auth_message'] ?? '' ) );
+				$next_action = 'retry_test';
+			}
+
+			if ( '' === $blocked_reason && 'ready' !== $status ) {
+				$blocked_reason = __( 'Connector readiness could not be verified.', 'npcink-cloud-addon' );
+			}
+
+			$base_url = untrailingslashit( (string) ( $this->config['base_url'] ?? '' ) );
+			$host = '' !== $base_url ? sanitize_text_field( (string) wp_parse_url( $base_url, PHP_URL_HOST ) ) : '';
+			$support_facts = array(
+				'contract_version' => 'cloud_addon_readiness_result.v1',
+				'base_url_host' => '' !== $host ? $host : 'not_set',
+				'site_id_present' => '' !== (string) ( $this->config['site_id'] ?? '' ) ? 'yes' : 'no',
+				'key_id_present' => '' !== (string) ( $this->config['key_id'] ?? '' ) ? 'yes' : 'no',
+				'signing_credentials_complete' => $this->is_configured() ? 'yes' : 'no',
+				'timeout_seconds' => (string) max( 5, absint( $this->config['timeout'] ?? 8 ) ),
+				'live_ok' => ! empty( $probe['live_ok'] ) ? 'yes' : 'no',
+				'signed_read_ok' => ! empty( $probe['auth_ok'] ) ? 'yes' : 'no',
+				'signed_read_endpoint' => 'GET /v1/entitlements/current',
+				'write_posture' => 'read_only',
+			);
+
+			return array(
+				'contract_version' => 'cloud_addon_readiness_result.v1',
+				'manual_test_action' => 'probe_connectivity',
+				'status' => $status,
+				'bounded_status' => $status,
+				'owner_label' => $owner_label,
+				'blocked_reason' => sanitize_text_field( $blocked_reason ),
+				'next_action' => $next_action,
+				'next_safe_action' => $next_action,
+				'support_facts' => $support_facts,
+				'copyable_support_facts' => $support_facts,
+				'write_posture' => 'read_only',
+				'tested_at' => gmdate( 'c' ),
+			);
+		}
+
+		/**
+		 * Redacts sensitive token shapes from readiness support text.
+		 *
+		 * @param string $message Raw support message.
+		 * @return string
+		 */
+		private function redact_support_text( string $message ): string {
+			$message = preg_replace( '/mak1_[A-Za-z0-9_-]+/', '[redacted]', $message );
+			$message = preg_replace( '/Bearer\s+[A-Za-z0-9._~+\/=-]+/i', 'Bearer [redacted]', (string) $message );
+			$message = preg_replace( '/secret[_-]?[A-Za-z0-9._:-]*/i', '[redacted]', (string) $message );
+
+			return sanitize_text_field( (string) $message );
 		}
 
 		/**

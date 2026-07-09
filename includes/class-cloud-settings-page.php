@@ -1749,6 +1749,7 @@ if ( ! class_exists( 'Npcink_Cloud_Settings_Page' ) ) {
 			$credit_detail = is_array( $entitlement['credit_usage_detail'] ?? null ) ? $entitlement['credit_usage_detail'] : array();
 			$links = is_array( $entitlement['links'] ?? null ) ? $entitlement['links'] : array();
 			$usage_url = esc_url( (string) ( $links['usage_url'] ?? '' ) );
+			$readiness = ( new Npcink_Cloud_Runtime_Client( $settings ) )->manual_readiness_test();
 			?>
 			<div class="npcink-cloud-section-heading">
 				<h3><?php esc_html_e( 'Checks', 'npcink-cloud-addon' ); ?></h3>
@@ -1767,6 +1768,8 @@ if ( ! class_exists( 'Npcink_Cloud_Settings_Page' ) ) {
 					<?php self::render_diagnostic_row( __( 'Cloud Base URL', 'npcink-cloud-addon' ), self::diagnostic_status( '' !== (string) ( $settings['base_url'] ?? '' ), __( 'saved', 'npcink-cloud-addon' ), __( 'missing', 'npcink-cloud-addon' ) ), self::format_setting_value( (string) ( $settings['base_url'] ?? '' ), __( 'Not set', 'npcink-cloud-addon' ) ) ); ?>
 					<?php self::render_diagnostic_row( __( 'Cloud API Key', 'npcink-cloud-addon' ), self::diagnostic_status( ! empty( $state['configured'] ), __( 'saved', 'npcink-cloud-addon' ), __( 'missing', 'npcink-cloud-addon' ) ), __( 'Stored server-side only. Split signing credentials are not displayed.', 'npcink-cloud-addon' ) ); ?>
 					<?php self::render_diagnostic_row( __( 'Cloud liveness', 'npcink-cloud-addon' ), self::diagnostic_status( ! empty( $state['verified'] ), __( 'verified', 'npcink-cloud-addon' ), __( 'not verified', 'npcink-cloud-addon' ) ), sprintf( /* translators: %s: last verification time. */ __( 'Last checked: %s', 'npcink-cloud-addon' ), self::format_datetime_value( (string) ( $settings['verified_at'] ?? '' ), __( 'Never', 'npcink-cloud-addon' ) ) ) ); ?>
+					<?php self::render_diagnostic_row( __( 'Manual readiness test', 'npcink-cloud-addon' ), self::format_readiness_status( $readiness ), self::format_readiness_detail( $readiness ) ); ?>
+					<?php self::render_diagnostic_row( __( 'Readiness support facts', 'npcink-cloud-addon' ), (string) ( $readiness['write_posture'] ?? 'read_only' ), self::format_readiness_support_facts( $readiness ) ); ?>
 					<?php self::render_diagnostic_row( __( 'Signed Cloud read', 'npcink-cloud-addon' ), self::format_entitlement_availability( $entitlement, $is_verified ), self::format_empty( (string) ( $entitlement['message'] ?? '' ) ) ); ?>
 					<?php self::render_diagnostic_row( __( 'Entitlement and quota', 'npcink-cloud-addon' ), self::diagnostic_status( ! empty( $entitlement['available'] ), __( 'available', 'npcink-cloud-addon' ), __( 'not refreshed', 'npcink-cloud-addon' ) ), self::format_package_label( $entitlement, $is_verified ) ); ?>
 					<?php self::render_diagnostic_row( __( 'Hosted Runtime', 'npcink-cloud-addon' ), self::diagnostic_status( ! empty( $runtime['feature_id'] ), __( 'reported', 'npcink-cloud-addon' ), __( 'not returned', 'npcink-cloud-addon' ) ), self::format_hosted_runtime_diagnostic_detail( $runtime ) ); ?>
@@ -1858,6 +1861,64 @@ if ( ! class_exists( 'Npcink_Cloud_Settings_Page' ) ) {
 		 */
 		private static function diagnostic_status( bool $ok, string $ok_label, string $fail_label ): string {
 			return $ok ? $ok_label : $fail_label;
+		}
+
+		/**
+		 * Formats the bounded readiness status.
+		 *
+		 * @param array<string,mixed> $readiness Readiness result.
+		 * @return string
+		 */
+		private static function format_readiness_status( array $readiness ): string {
+			return sanitize_key( (string) ( $readiness['bounded_status'] ?? $readiness['status'] ?? 'unavailable' ) );
+		}
+
+		/**
+		 * Formats the bounded readiness owner and next action.
+		 *
+		 * @param array<string,mixed> $readiness Readiness result.
+		 * @return string
+		 */
+		private static function format_readiness_detail( array $readiness ): string {
+			$owner = sanitize_key( (string) ( $readiness['owner_label'] ?? 'cloud_addon' ) );
+			$next_action = sanitize_key( (string) ( $readiness['next_safe_action'] ?? $readiness['next_action'] ?? 'retry_test' ) );
+			$blocked = sanitize_text_field( (string) ( $readiness['blocked_reason'] ?? '' ) );
+
+			if ( '' !== $blocked ) {
+				return sprintf(
+					/* translators: 1: owner label, 2: next action, 3: blocked reason. */
+					__( 'Owner: %1$s. Next safe action: %2$s. Blocked reason: %3$s', 'npcink-cloud-addon' ),
+					$owner,
+					$next_action,
+					$blocked
+				);
+			}
+
+			return sprintf(
+				/* translators: 1: owner label, 2: next action. */
+				__( 'Owner: %1$s. Next safe action: %2$s.', 'npcink-cloud-addon' ),
+				$owner,
+				$next_action
+			);
+		}
+
+		/**
+		 * Formats copyable non-secret readiness support facts.
+		 *
+		 * @param array<string,mixed> $readiness Readiness result.
+		 * @return string
+		 */
+		private static function format_readiness_support_facts( array $readiness ): string {
+			$facts = is_array( $readiness['copyable_support_facts'] ?? null ) ? $readiness['copyable_support_facts'] : array();
+			$parts = array();
+			foreach ( $facts as $key => $value ) {
+				if ( ! is_scalar( $value ) ) {
+					continue;
+				}
+				$parts[] = sanitize_key( (string) $key ) . '=' . sanitize_text_field( (string) $value );
+			}
+
+			return self::format_empty( implode( '; ', $parts ) );
 		}
 
 		/**

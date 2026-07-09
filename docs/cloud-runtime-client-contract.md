@@ -31,6 +31,7 @@ Required config:
 
 ```php
 probe_connectivity(): array
+manual_readiness_test(): array
 execute_runtime(array $payload, string $trace_id = '', string $idempotency_key = '')
 execute_wordpress_ai_connector_runtime(array $request, string $trace_id = '', string $idempotency_key = '')
 execute_wordpress_ai_image_generation_runtime(array $request, string $trace_id = '', string $idempotency_key = '')
@@ -68,6 +69,7 @@ It returns `null` until the addon settings have passed Save and Verify.
 | Method | Endpoint |
 | --- | --- |
 | `probe_connectivity()` | `GET /health/live`, then signed `GET /v1/entitlements/current` |
+| `manual_readiness_test()` | Reuses `probe_connectivity()` and returns bounded local result shape |
 | `execute_runtime()` | `POST /v1/runtime/execute` |
 | `execute_wordpress_ai_connector_runtime()` | `POST /v1/runtime/execute` |
 | `execute_wordpress_ai_image_generation_runtime()` | `POST /v1/runtime/execute` |
@@ -98,6 +100,18 @@ The Cloud Addon Diagnostics tab reuses the existing connection state,
 `probe_connectivity()` result cache, entitlement summary, monitoring summary,
 and Cloud Portal links. It does not expose the private `request()` helper,
 register a Developer diagnostics route, or add ad hoc Cloud service endpoints.
+
+The bounded manual readiness result contract is
+`cloud_addon_readiness_result.v1`. It may expose only non-secret fields:
+`manual_test_action`, `status`, `bounded_status`, `owner_label`,
+`blocked_reason`, `next_action`, `next_safe_action`, `support_facts`,
+`copyable_support_facts`, `write_posture=read_only`, and `tested_at`.
+Support facts may include booleans such as whether credential slots are
+present, the Cloud host, timeout, liveness status, signed-read status, and the
+signed read endpoint. They must not include the stored secret, raw provider
+logs, raw prompts, raw outputs, Authorization headers, cookies, nonces,
+billing/quota detail, queues, registries, approval records, or WordPress write
+targets.
 
 Capability rows such as Platform Models, provider readiness, Cloud web search,
 image source search, image generation, and Site Knowledge bridge must only show

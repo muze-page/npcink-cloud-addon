@@ -21,6 +21,7 @@ if ( ! class_exists( 'Npcink_Cloud_Settings_Page' ) ) {
 		private const MENU_CAPABILITY = 'manage_options';
 		private const ACTION_SAVE = 'npcink_cloud_addon_save';
 		private const ACTION_COMPLETE_AUTH = 'npcink_cloud_addon_complete_auth';
+		private const ACTION_START_CUSTOM_AUTH = 'npcink_cloud_addon_start_custom_auth';
 		private const ACTION_DISCONNECT = 'npcink_cloud_addon_disconnect';
 		private const ACTION_UPDATE_LOCAL_PERMISSION = 'npcink_cloud_addon_update_local_permission';
 		private const ACTION_REFRESH_MONITORING = 'npcink_cloud_addon_refresh_monitoring';
@@ -42,6 +43,7 @@ if ( ! class_exists( 'Npcink_Cloud_Settings_Page' ) ) {
 			add_action( 'admin_enqueue_scripts', array( __CLASS__, 'enqueue_admin_assets' ) );
 			add_action( 'admin_post_' . self::ACTION_SAVE, array( __CLASS__, 'handle_save' ) );
 			add_action( 'admin_post_' . self::ACTION_COMPLETE_AUTH, array( __CLASS__, 'handle_complete_auth' ) );
+			add_action( 'admin_post_' . self::ACTION_START_CUSTOM_AUTH, array( __CLASS__, 'handle_start_custom_auth' ) );
 			add_action( 'admin_post_' . self::ACTION_DISCONNECT, array( __CLASS__, 'handle_disconnect' ) );
 			add_action( 'admin_post_' . self::ACTION_UPDATE_LOCAL_PERMISSION, array( __CLASS__, 'handle_update_local_permission' ) );
 			add_action( 'admin_post_' . self::ACTION_REFRESH_MONITORING, array( __CLASS__, 'handle_refresh_monitoring' ) );
@@ -289,6 +291,46 @@ if ( ! class_exists( 'Npcink_Cloud_Settings_Page' ) ) {
 			self::persist_and_verify_settings( $settings, __( 'Cloud connection completed and verified.', 'npcink-cloud-addon' ) );
 
 			self::redirect_to_page( 'permissions' );
+		}
+
+		/**
+		 * Starts authorization against an administrator-supplied Cloud endpoint.
+		 *
+		 * @return void
+		 */
+		public static function handle_start_custom_auth(): void {
+			if ( ! current_user_can( 'manage_options' ) ) {
+				wp_die( esc_html__( 'You do not have permission to manage Npcink Cloud settings.', 'npcink-cloud-addon' ) );
+			}
+
+			check_admin_referer( self::ACTION_START_CUSTOM_AUTH );
+
+			$base_url = isset( $_POST['self_hosted_base_url'] )
+				? sanitize_text_field( wp_unslash( $_POST['self_hosted_base_url'] ) )
+				: '';
+			if ( '' === trim( $base_url ) ) {
+				self::set_admin_notice( 'error', __( 'Enter a Cloud Base URL before starting self-hosted authorization.', 'npcink-cloud-addon' ) );
+				self::redirect_to_page( 'connect' );
+			}
+
+			$settings = Npcink_Cloud_Addon_Settings::build_settings_from_admin_payload(
+				array(
+					'base_url' => $base_url,
+				)
+			);
+			if ( is_wp_error( $settings ) ) {
+				self::set_admin_notice( 'error', $settings->get_error_message() );
+				self::redirect_to_page( 'connect' );
+			}
+
+			$normalized_base_url = (string) ( $settings['base_url'] ?? '' );
+			if ( '' === $normalized_base_url ) {
+				self::set_admin_notice( 'error', __( 'Cloud Base URL must use HTTPS unless it points to localhost or 127.0.0.1.', 'npcink-cloud-addon' ) );
+				self::redirect_to_page( 'connect' );
+			}
+
+			wp_redirect( esc_url_raw( self::build_authorization_url_for_base_url( $normalized_base_url ) ) );
+			exit;
 		}
 
 		/**
@@ -1158,6 +1200,16 @@ if ( ! class_exists( 'Npcink_Cloud_Settings_Page' ) ) {
 		 */
 		private static function build_authorization_url( array $settings ): string {
 			$base_url = Npcink_Cloud_Addon_Settings::get_effective_base_url( $settings );
+			return self::build_authorization_url_for_base_url( $base_url );
+		}
+
+		/**
+		 * Builds a Cloud Portal URL for one normalized Cloud base URL.
+		 *
+		 * @param string $base_url Normalized Cloud base URL.
+		 * @return string
+		 */
+		private static function build_authorization_url_for_base_url( string $base_url ): string {
 			$state = self::create_authorization_state( $base_url );
 			$return_url = add_query_arg(
 				array(
@@ -2186,28 +2238,53 @@ if ( ! class_exists( 'Npcink_Cloud_Settings_Page' ) ) {
 		private static function render_cloud_authorization_panel( array $settings, array $state ): void {
 			$base_url = Npcink_Cloud_Addon_Settings::get_effective_base_url( $settings );
 			?>
-			<table class="widefat striped" style="max-width: 860px;">
-				<tbody>
-					<tr>
-						<th scope="row"><?php esc_html_e( 'Connection', 'npcink-cloud-addon' ); ?></th>
-						<td><?php echo esc_html( (string) ( $state['label'] ?? '' ) ); ?></td>
-					</tr>
-					<tr>
-						<th scope="row"><?php esc_html_e( 'Cloud', 'npcink-cloud-addon' ); ?></th>
-						<td><code><?php echo esc_html( $base_url ); ?></code></td>
-					</tr>
-					<tr>
-						<th scope="row"><?php esc_html_e( 'Current site', 'npcink-cloud-addon' ); ?></th>
-						<td><?php echo esc_html( home_url( '/' ) ); ?></td>
-					</tr>
-				</tbody>
-			</table>
-			<p class="npcink-cloud-section-action">
-				<a class="button button-primary button-hero" href="<?php echo esc_url( self::build_authorization_url( $settings ) ); ?>">
+			<div class="npcink-cloud-connect-context" aria-label="<?php esc_attr_e( 'Connection context', 'npcink-cloud-addon' ); ?>">
+				<div class="npcink-cloud-connect-context__item">
+					<span class="npcink-cloud-connect-context__label"><?php esc_html_e( 'Connection', 'npcink-cloud-addon' ); ?></span>
+					<strong class="npcink-cloud-connect-context__value"><?php echo esc_html( (string) ( $state['label'] ?? '' ) ); ?></strong>
+				</div>
+				<div class="npcink-cloud-connect-context__item">
+					<span class="npcink-cloud-connect-context__label"><?php esc_html_e( 'Cloud', 'npcink-cloud-addon' ); ?></span>
+					<code class="npcink-cloud-connect-context__value"><?php echo esc_html( $base_url ); ?></code>
+				</div>
+				<div class="npcink-cloud-connect-context__item">
+					<span class="npcink-cloud-connect-context__label"><?php esc_html_e( 'Current site', 'npcink-cloud-addon' ); ?></span>
+					<span class="npcink-cloud-connect-context__value"><?php echo esc_html( home_url( '/' ) ); ?></span>
+				</div>
+			</div>
+			<div class="npcink-cloud-connect-actions">
+				<a class="button button-primary button-hero" href="<?php echo esc_url( self::build_authorization_url( $settings ) ); ?>" target="_blank" rel="noopener noreferrer">
 					<?php esc_html_e( 'Add this site in Npcink Cloud', 'npcink-cloud-addon' ); ?>
 				</a>
-			</p>
-			<p class="description"><?php esc_html_e( 'Cloud will create or activate this site connection and return here with a one-time authorization code.', 'npcink-cloud-addon' ); ?></p>
+				<p class="description"><?php esc_html_e( 'Cloud will create or activate this site connection and return here with a one-time authorization code.', 'npcink-cloud-addon' ); ?></p>
+			</div>
+			<details class="npcink-cloud-endpoint-advanced">
+				<summary>
+					<span><?php esc_html_e( 'Advanced connection', 'npcink-cloud-addon' ); ?></span>
+					<small><?php esc_html_e( 'Self-hosted Cloud endpoint', 'npcink-cloud-addon' ); ?></small>
+				</summary>
+				<div class="npcink-cloud-endpoint-advanced__body">
+					<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>">
+						<?php wp_nonce_field( self::ACTION_START_CUSTOM_AUTH ); ?>
+						<input type="hidden" name="action" value="<?php echo esc_attr( self::ACTION_START_CUSTOM_AUTH ); ?>" />
+						<label for="npcink-cloud-self-hosted-base-url"><?php esc_html_e( 'Cloud Base URL', 'npcink-cloud-addon' ); ?></label>
+						<div class="npcink-cloud-endpoint-advanced__controls">
+							<input
+								type="url"
+								class="regular-text code"
+								id="npcink-cloud-self-hosted-base-url"
+								name="self_hosted_base_url"
+								value="<?php echo esc_attr( $base_url ); ?>"
+								placeholder="<?php echo esc_attr( Npcink_Cloud_Addon_Settings::get_default_base_url() ); ?>"
+								required
+							/>
+							<button type="submit" class="button button-secondary" formtarget="_blank"><?php esc_html_e( 'Authorize with this endpoint', 'npcink-cloud-addon' ); ?></button>
+						</div>
+					</form>
+					<p class="description"><?php esc_html_e( 'For compatible Npcink Cloud deployments only. Cloud still owns site activation and key issuance.', 'npcink-cloud-addon' ); ?></p>
+					<p class="description"><?php esc_html_e( 'This does not manage Cloud sites, keys, billing, models, router, workflows, or runtime policy.', 'npcink-cloud-addon' ); ?></p>
+				</div>
+			</details>
 			<?php if ( '' !== (string) ( $state['last_verification_error'] ?? '' ) ) : ?>
 				<p class="npcink-cloud-empty"><?php echo esc_html( (string) $state['last_verification_error'] ); ?></p>
 			<?php endif; ?>

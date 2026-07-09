@@ -14,6 +14,7 @@ $bootstrap = maca_read( $root . '/includes/bootstrap.php' );
 $transport = maca_read( $root . '/includes/class-cloud-media-derivative-transport.php' );
 $runtime_client = maca_read( $root . '/includes/class-cloud-runtime-client.php' );
 $wordpress_ai_connector = maca_read( $root . '/includes/class-cloud-wordpress-ai-connector.php' );
+$cloud_addon_localization = maca_read( $root . '/includes/class-cloud-addon-localization.php' );
 $ai_plugin_localization = maca_read( $root . '/includes/class-ai-plugin-localization.php' );
 $ai_plugin_localization_js = maca_read( $root . '/assets/ai-plugin-localization.js' );
 $admin_css = maca_read( $root . '/assets/admin.css' );
@@ -1192,14 +1193,77 @@ maca_assert(
 	&& false !== strpos( $settings, "PRODUCTION_DEFAULT_BASE_URL = 'https://cloud.npc.ink/'" )
 	&& false !== strpos( $settings, 'function get_default_base_url' )
 	&& false !== strpos( $settings_page, "ACTION_COMPLETE_AUTH = 'npcink_cloud_addon_complete_auth'" )
+	&& false !== strpos( $settings_page, "ACTION_START_CUSTOM_AUTH = 'npcink_cloud_addon_start_custom_auth'" )
 	&& false !== strpos( $settings_page, "admin_post_' . self::ACTION_COMPLETE_AUTH" )
+	&& false !== strpos( $settings_page, "admin_post_' . self::ACTION_START_CUSTOM_AUTH" )
 	&& false !== strpos( $settings_page, 'function build_authorization_url' )
+	&& false !== strpos( $settings_page, 'function build_authorization_url_for_base_url' )
 	&& false !== strpos( $settings_page, "'connect'    => 'wordpress-addon'" )
 	&& false !== strpos( $settings_page, '/portal/v1/addon-connections/exchange' )
 	&& false !== strpos( $settings_page, 'Add this site in Npcink Cloud' )
 	&& false !== strpos( $settings_page, 'persist_and_verify_settings' )
 	&& false !== strpos( $settings_page, 'Cloud connection completed and verified.' ),
 	'Settings page defaults to Cloud-side site authorization, exchanges the callback key, and verifies the saved connection immediately.'
+);
+
+maca_assert(
+	false !== strpos( $settings_page, 'function handle_start_custom_auth' )
+	&& false !== strpos( $settings_page, "check_admin_referer( self::ACTION_START_CUSTOM_AUTH )" )
+	&& false !== strpos( $settings_page, "current_user_can( 'manage_options' )" )
+	&& false !== strpos( $settings_page, "\$_POST['self_hosted_base_url']" )
+	&& false !== strpos( $settings_page, "build_settings_from_admin_payload(\n\t\t\t\tarray(\n\t\t\t\t\t'base_url' => \$base_url," )
+	&& false !== strpos( $settings_page, 'wp_redirect( esc_url_raw( self::build_authorization_url_for_base_url( $normalized_base_url ) ) );' )
+	&& false !== strpos( $settings_page, 'class="npcink-cloud-connect-context"' )
+	&& false !== strpos( $settings_page, 'target="_blank" rel="noopener noreferrer"' )
+	&& false !== strpos( $settings_page, '<details class="npcink-cloud-endpoint-advanced">' )
+	&& false !== strpos( $settings_page, 'Advanced connection' )
+	&& false !== strpos( $settings_page, 'Self-hosted Cloud endpoint' )
+	&& false !== strpos( $settings_page, 'Authorize with this endpoint' )
+	&& false !== strpos( $settings_page, 'formtarget="_blank"' )
+	&& false !== strpos( $settings_page, 'This does not manage Cloud sites, keys, billing, models, router, workflows, or runtime policy.' )
+	&& false !== strpos( $admin_css, '.npcink-cloud-connect-context' )
+	&& false !== strpos( $admin_css, '.npcink-cloud-endpoint-advanced' )
+	&& false !== strpos( $admin_css, 'max-width: 720px' )
+	&& false !== strpos( $admin_css, 'border-left: 3px solid #dcdcde' )
+	&& false !== strpos( $admin_surface_standard, 'folded `Advanced connection /' )
+	&& false !== strpos( $admin_surface_standard, 'must not save partial credentials before' )
+	&& false !== strpos( $admin_surface_standard, 'open in a new browser tab' )
+	&& false !== strpos( $admin_surface_standard, 'must not manage Cloud sites, keys, billing, models' ),
+	'Self-hosted Cloud endpoint authorization stays folded, nonce-protected, endpoint-only, and outside Cloud object management.'
+);
+
+maca_assert(
+	false !== strpos( $zh_cn_po, 'msgid "Advanced connection"' )
+	&& false !== strpos( $zh_cn_po, 'msgstr "高级连接"' )
+	&& false !== strpos( $zh_cn_po, 'msgid "Self-hosted Cloud endpoint"' )
+	&& false !== strpos( $zh_cn_po, 'msgstr "自托管 Cloud 端点"' )
+	&& false !== strpos( $zh_cn_po, 'msgid "Authorize with this endpoint"' )
+	&& false !== strpos( $zh_cn_po, 'msgstr "使用此端点授权"' )
+	&& false !== strpos( $zh_cn_po, 'msgstr "仅用于兼容的 Npcink Cloud 部署。Cloud 仍负责站点激活和密钥签发。"' )
+	&& false !== strpos( $zh_cn_po, 'msgstr "这里不管理 Cloud 站点、密钥、账单、模型、路由器、工作流或运行时策略。"' ),
+	'Self-hosted endpoint connection copy has zh_CN translations for the visible admin UI.'
+);
+
+maca_assert(
+	false === strpos( $zh_cn_po, "msgstr \"\"\n\n#:" ),
+	'Chinese localization has no empty fixed-string translations.'
+);
+
+maca_assert(
+	false !== strpos( $bootstrap, "require_once __DIR__ . '/class-cloud-addon-localization.php';" )
+	&& false !== strpos( $bootstrap, 'Npcink_Cloud_Addon_Localization::register();' )
+	&& false !== strpos( $cloud_addon_localization, "TEXT_DOMAIN = 'npcink-cloud-addon'" )
+	&& false !== strpos( $cloud_addon_localization, "add_filter( 'gettext', array( __CLASS__, 'filter_gettext' ), 20, 3 )" )
+	&& false !== strpos( $cloud_addon_localization, '$translation !== $text' )
+	&& false !== strpos( $cloud_addon_localization, "'Advanced connection' => '高级连接'" )
+	&& false !== strpos( $cloud_addon_localization, "'Local permissions' => '本地授权'" )
+	&& false !== strpos( $cloud_addon_localization, "'Site Knowledge' => '站点知识库'" )
+	&& false !== strpos( $cloud_addon_localization, "'Allow the WordPress AI plugin to select Npcink Cloud as an AI connector.' =>" )
+	&& false !== strpos( $cloud_addon_localization, "'Bridge health detail' => '桥接健康详情'" )
+	&& false !== strpos( $cloud_addon_localization, "'Manual flush command' => '手动刷新命令'" )
+	&& false === strpos( $cloud_addon_localization, 'npcink_cloud_addon_runtime_client' )
+	&& false === strpos( $cloud_addon_localization, 'wp_remote_' ),
+	'Addon zh_CN fallback localization is fixed-string, domain-scoped, and transport-free.'
 );
 
 maca_assert(

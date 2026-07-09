@@ -133,6 +133,7 @@ $GLOBALS['maca_http_response_queue'][] = array(
 $client = new Npcink_Cloud_Runtime_Client( Npcink_Cloud_Addon_Settings::get_settings() );
 $probe  = $client->probe_connectivity();
 $readiness = is_array( $probe['readiness_result'] ?? null ) ? $probe['readiness_result'] : array();
+$readiness_support_facts = is_array( $readiness['copyable_support_facts'] ?? null ) ? $readiness['copyable_support_facts'] : array();
 $probe_live_request = $GLOBALS['maca_http_requests'][0] ?? array();
 $probe_signed_request = $GLOBALS['maca_http_requests'][1] ?? array();
 
@@ -146,6 +147,13 @@ maca_assert(
 	&& 'cloud_addon' === (string) ( $readiness['owner_label'] ?? '' )
 	&& 'continue' === (string) ( $readiness['next_safe_action'] ?? '' )
 	&& 'read_only' === (string) ( $readiness['write_posture'] ?? '' )
+	&& 'npcink_cloud_runtime' === (string) ( $readiness['connector_slot'] ?? '' )
+	&& 'ready' === (string) ( $readiness['credential_slot_readiness'] ?? '' )
+	&& 'ready' === (string) ( $readiness['service_liveness_status'] ?? '' )
+	&& 'ready' === (string) ( $readiness['signed_transport_status'] ?? '' )
+	&& 'ready' === (string) ( $readiness_support_facts['credential_slot_readiness'] ?? '' )
+	&& 'yes' === (string) ( $readiness_support_facts['base_url_present'] ?? '' )
+	&& 'yes' === (string) ( $readiness_support_facts['signing_secret_slot_present'] ?? '' )
 	&& 'Pro' === (string) ( $probe['entitlement_response']['data']['package'] ?? '' )
 	&& 2 === count( $GLOBALS['maca_http_requests'] )
 	&& false !== strpos( (string) ( $probe_live_request['url'] ?? '' ), '/health/live' )
@@ -156,6 +164,7 @@ maca_assert(
 maca_reset_test_state();
 $not_configured_client = new Npcink_Cloud_Runtime_Client( array() );
 $not_configured = $not_configured_client->manual_readiness_test();
+$not_configured_support_facts = is_array( $not_configured['copyable_support_facts'] ?? null ) ? $not_configured['copyable_support_facts'] : array();
 
 maca_assert(
 	'cloud_addon_readiness_result.v1' === (string) ( $not_configured['contract_version'] ?? '' )
@@ -164,6 +173,12 @@ maca_assert(
 	&& 'operator' === (string) ( $not_configured['owner_label'] ?? '' )
 	&& 'open_settings' === (string) ( $not_configured['next_safe_action'] ?? '' )
 	&& 'read_only' === (string) ( $not_configured['write_posture'] ?? '' )
+	&& 'npcink_cloud_runtime' === (string) ( $not_configured['connector_slot'] ?? '' )
+	&& 'not_configured' === (string) ( $not_configured['credential_slot_readiness'] ?? '' )
+	&& 'not_configured' === (string) ( $not_configured['service_liveness_status'] ?? '' )
+	&& 'not_configured' === (string) ( $not_configured['signed_transport_status'] ?? '' )
+	&& 'no' === (string) ( $not_configured_support_facts['base_url_present'] ?? '' )
+	&& 'no' === (string) ( $not_configured_support_facts['signing_secret_slot_present'] ?? '' )
 	&& 0 === count( $GLOBALS['maca_http_requests'] ),
 	'Behavior: manual readiness test returns a bounded not_configured result without a signed Cloud request.'
 );
@@ -193,8 +208,15 @@ maca_assert(
 	&& 'cloud' === (string) ( $failed['owner_label'] ?? '' )
 	&& 'retry_test' === (string) ( $failed['next_safe_action'] ?? '' )
 	&& 'read_only' === (string) ( $failed['write_posture'] ?? '' )
+	&& 'npcink_cloud_runtime' === (string) ( $failed['connector_slot'] ?? '' )
+	&& 'ready' === (string) ( $failed['credential_slot_readiness'] ?? '' )
+	&& 'ready' === (string) ( $failed['service_liveness_status'] ?? '' )
+	&& 'failed' === (string) ( $failed['signed_transport_status'] ?? '' )
+	&& 'npcink_cloud_runtime' === (string) ( $failed_support_facts['connector_slot'] ?? '' )
+	&& 'failed' === (string) ( $failed_support_facts['signed_transport_status'] ?? '' )
 	&& 'yes' === (string) ( $failed_support_facts['site_id_present'] ?? '' )
 	&& 'yes' === (string) ( $failed_support_facts['key_id_present'] ?? '' )
+	&& 'yes' === (string) ( $failed_support_facts['signing_secret_slot_present'] ?? '' )
 	&& 'yes' === (string) ( $failed_support_facts['signing_credentials_complete'] ?? '' )
 	&& false === strpos( (string) $failed_json, 'secret_test' )
 	&& false === strpos( (string) $failed_json, 'mak1_sensitive' )

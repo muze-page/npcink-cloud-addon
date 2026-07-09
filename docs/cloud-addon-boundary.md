@@ -24,6 +24,7 @@ index, freshness, and collection lifecycle owner.
 - Internal `site_id`, `key_id`, and `secret` storage for server-side signing.
 - HMAC signatures, trace headers, idempotency headers, and request nonce headers.
 - Health and signed connectivity checks.
+- Bounded manual connector readiness/test results with non-secret support facts.
 - Runtime request dispatch and run/result reads.
 - Bounded Nightly Inspection runtime run detail: recent runs, one-run status,
   one-run result, and nonce-protected Cloud-owned retry requests.

@@ -62,6 +62,7 @@ npcink_cloud_addon_is_configured(): bool
 npcink_cloud_addon_get_settings(): array
 npcink_cloud_addon_runtime_client(): ?Npcink_Cloud_Runtime_Client
 npcink_cloud_addon_verified_runtime_client(): ?Npcink_Cloud_Runtime_Client
+npcink_cloud_addon_get_manual_readiness_result(): array
 npcink_cloud_addon_dispatch_media_derivative_cloud_request(array $ability_response, array $source_artifact, string $trace_id = '', string $idempotency_key = '')
 npcink_cloud_addon_request_image_context_evidence(array $image_context_evidence_request, string $trace_id = '', string $idempotency_key = '')
 npcink_cloud_addon_execute_wordpress_ai_connector_runtime(array $request, string $trace_id = '', string $idempotency_key = '')
@@ -81,6 +82,7 @@ npcink_cloud_addon_site_knowledge_change_bridge_health(): array
 
 ```php
 probe_connectivity(): array
+manual_readiness_test(): array
 execute_runtime(array $payload, string $trace_id = '', string $idempotency_key = '')
 execute_wordpress_ai_connector_runtime(array $request, string $trace_id = '', string $idempotency_key = '')
 execute_wordpress_ai_image_generation_runtime(array $request, string $trace_id = '', string $idempotency_key = '')
@@ -108,6 +110,17 @@ get_observability_summary(int $window_hours = 24, string $trace_id = '')
 The low-level signed request method is private and endpoint-allowlisted. New
 callers should use the named methods above instead of sending arbitrary Cloud
 paths through the addon.
+
+`manual_readiness_test()` reuses the existing `/health/live` plus signed
+`GET /v1/entitlements/current` probe and returns
+`cloud_addon_readiness_result.v1` with `status`, `bounded_status`,
+`owner_label`, `blocked_reason`, `next_safe_action`, `copyable_support_facts`,
+`write_posture=read_only`, and `tested_at`. The result is non-secret support
+detail for connector/readiness status only. It does not create runtime work,
+queues, registries, approvals, provider logs, billing truth, or WordPress
+writes. The admin Diagnostics page runs this test only from the explicit
+administrator `Run readiness test` action; rendering the page does not perform
+a live probe or signed Cloud read.
 
 ## Image Context Evidence Transport
 

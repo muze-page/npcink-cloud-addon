@@ -78,6 +78,23 @@ if ( ! function_exists( 'npcink_cloud_addon_verified_runtime_client' ) ) {
 	}
 }
 
+if ( ! function_exists( 'npcink_cloud_addon_get_manual_readiness_result' ) ) {
+	/**
+	 * Runs the bounded manual connector readiness test.
+	 *
+	 * The result is non-secret, read-only, and suitable for local status
+	 * projection. It does not create runtime work, queues, registries,
+	 * approvals, provider logs, or WordPress writes.
+	 *
+	 * @return array<string,mixed>
+	 */
+	function npcink_cloud_addon_get_manual_readiness_result(): array {
+		$client = new Npcink_Cloud_Runtime_Client( Npcink_Cloud_Addon_Settings::get_settings() );
+
+		return $client->manual_readiness_test();
+	}
+}
+
 if ( ! function_exists( 'npcink_cloud_addon_dispatch_media_derivative_cloud_request' ) ) {
 	/**
 	 * Dispatches a media derivative Cloud job from a local ability response.

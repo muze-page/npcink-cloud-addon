@@ -28,6 +28,7 @@ if ( ! class_exists( 'Npcink_Cloud_Settings_Page' ) ) {
 		private const ACTION_UPDATE_SITE_KNOWLEDGE_DELIVERY = 'npcink_cloud_addon_update_site_knowledge_delivery';
 		private const ACTION_MANAGE_SITE_KNOWLEDGE_INDEX = 'npcink_cloud_addon_manage_site_knowledge_index';
 		private const ACTION_RETRY_RUNTIME_RUN = 'npcink_cloud_addon_retry_runtime_run';
+		private const ACTION_RUN_MANUAL_READINESS_TEST = 'npcink_cloud_addon_run_manual_readiness_test';
 		private const DATETIME_DISPLAY_FORMAT = 'Y-m-d H:i:s';
 		private const AUTH_STATE_TTL_SECONDS = 600;
 
@@ -48,6 +49,7 @@ if ( ! class_exists( 'Npcink_Cloud_Settings_Page' ) ) {
 			add_action( 'admin_post_' . self::ACTION_UPDATE_SITE_KNOWLEDGE_DELIVERY, array( __CLASS__, 'handle_update_site_knowledge_delivery' ) );
 			add_action( 'admin_post_' . self::ACTION_MANAGE_SITE_KNOWLEDGE_INDEX, array( __CLASS__, 'handle_manage_site_knowledge_index' ) );
 			add_action( 'admin_post_' . self::ACTION_RETRY_RUNTIME_RUN, array( __CLASS__, 'handle_retry_runtime_run' ) );
+			add_action( 'admin_post_' . self::ACTION_RUN_MANUAL_READINESS_TEST, array( __CLASS__, 'handle_run_manual_readiness_test' ) );
 		}
 
 		/**
@@ -579,6 +581,32 @@ if ( ! class_exists( 'Npcink_Cloud_Settings_Page' ) ) {
 
 				self::set_admin_notice( 'success', $message );
 				self::redirect_to_page( 'site_knowledge' );
+			}
+
+			/**
+			 * Handles an explicit administrator-triggered connector readiness test.
+			 *
+			 * @return void
+			 */
+			public static function handle_run_manual_readiness_test(): void {
+				if ( ! current_user_can( 'manage_options' ) ) {
+					wp_die( esc_html__( 'You do not have permission to manage Npcink Cloud settings.', 'npcink-cloud-addon' ) );
+				}
+
+				check_admin_referer( self::ACTION_RUN_MANUAL_READINESS_TEST );
+
+				$settings = Npcink_Cloud_Addon_Settings::get_settings();
+				$result = ( new Npcink_Cloud_Runtime_Client( $settings ) )->manual_readiness_test();
+				self::set_manual_readiness_result( $result );
+
+				$status = sanitize_key( (string) ( $result['bounded_status'] ?? $result['status'] ?? '' ) );
+				if ( 'ready' === $status ) {
+					self::set_admin_notice( 'success', __( 'Manual readiness test completed. Connector is ready.', 'npcink-cloud-addon' ) );
+				} else {
+					self::set_admin_notice( 'warning', self::format_readiness_detail( $result ) );
+				}
+
+				self::redirect_to_page( 'diagnostics' );
 			}
 
 			/**
@@ -1749,10 +1777,14 @@ if ( ! class_exists( 'Npcink_Cloud_Settings_Page' ) ) {
 			$credit_detail = is_array( $entitlement['credit_usage_detail'] ?? null ) ? $entitlement['credit_usage_detail'] : array();
 			$links = is_array( $entitlement['links'] ?? null ) ? $entitlement['links'] : array();
 			$usage_url = esc_url( (string) ( $links['usage_url'] ?? '' ) );
+			$readiness = self::get_manual_readiness_result();
 			?>
 			<div class="npcink-cloud-section-heading">
 				<h3><?php esc_html_e( 'Checks', 'npcink-cloud-addon' ); ?></h3>
-				<a class="button button-secondary" href="<?php echo esc_url( untrailingslashit( Npcink_Cloud_Addon_Settings::get_effective_base_url( $settings ) ) . '/portal/sites' ); ?>" target="_blank" rel="noopener noreferrer"><?php esc_html_e( 'Open Cloud status detail', 'npcink-cloud-addon' ); ?></a>
+				<div class="npcink-cloud-summary__actions">
+					<?php self::render_manual_readiness_test_form(); ?>
+					<a class="button button-secondary" href="<?php echo esc_url( untrailingslashit( Npcink_Cloud_Addon_Settings::get_effective_base_url( $settings ) ) . '/portal/sites' ); ?>" target="_blank" rel="noopener noreferrer"><?php esc_html_e( 'Open Cloud status detail', 'npcink-cloud-addon' ); ?></a>
+				</div>
 			</div>
 			<p class="description"><?php esc_html_e( 'Read-only connection and service status. Product actions, approvals, and WordPress writes stay outside this addon.', 'npcink-cloud-addon' ); ?></p>
 			<table class="widefat striped" style="max-width: 980px;">
@@ -1767,6 +1799,8 @@ if ( ! class_exists( 'Npcink_Cloud_Settings_Page' ) ) {
 					<?php self::render_diagnostic_row( __( 'Cloud Base URL', 'npcink-cloud-addon' ), self::diagnostic_status( '' !== (string) ( $settings['base_url'] ?? '' ), __( 'saved', 'npcink-cloud-addon' ), __( 'missing', 'npcink-cloud-addon' ) ), self::format_setting_value( (string) ( $settings['base_url'] ?? '' ), __( 'Not set', 'npcink-cloud-addon' ) ) ); ?>
 					<?php self::render_diagnostic_row( __( 'Cloud API Key', 'npcink-cloud-addon' ), self::diagnostic_status( ! empty( $state['configured'] ), __( 'saved', 'npcink-cloud-addon' ), __( 'missing', 'npcink-cloud-addon' ) ), __( 'Stored server-side only. Split signing credentials are not displayed.', 'npcink-cloud-addon' ) ); ?>
 					<?php self::render_diagnostic_row( __( 'Cloud liveness', 'npcink-cloud-addon' ), self::diagnostic_status( ! empty( $state['verified'] ), __( 'verified', 'npcink-cloud-addon' ), __( 'not verified', 'npcink-cloud-addon' ) ), sprintf( /* translators: %s: last verification time. */ __( 'Last checked: %s', 'npcink-cloud-addon' ), self::format_datetime_value( (string) ( $settings['verified_at'] ?? '' ), __( 'Never', 'npcink-cloud-addon' ) ) ) ); ?>
+					<?php self::render_diagnostic_row( __( 'Manual readiness test', 'npcink-cloud-addon' ), self::format_readiness_status( $readiness ), self::format_readiness_detail( $readiness ) ); ?>
+					<?php self::render_diagnostic_row( __( 'Readiness support facts', 'npcink-cloud-addon' ), (string) ( $readiness['write_posture'] ?? 'read_only' ), self::format_readiness_support_facts( $readiness ) ); ?>
 					<?php self::render_diagnostic_row( __( 'Signed Cloud read', 'npcink-cloud-addon' ), self::format_entitlement_availability( $entitlement, $is_verified ), self::format_empty( (string) ( $entitlement['message'] ?? '' ) ) ); ?>
 					<?php self::render_diagnostic_row( __( 'Entitlement and quota', 'npcink-cloud-addon' ), self::diagnostic_status( ! empty( $entitlement['available'] ), __( 'available', 'npcink-cloud-addon' ), __( 'not refreshed', 'npcink-cloud-addon' ) ), self::format_package_label( $entitlement, $is_verified ) ); ?>
 					<?php self::render_diagnostic_row( __( 'Hosted Runtime', 'npcink-cloud-addon' ), self::diagnostic_status( ! empty( $runtime['feature_id'] ), __( 'reported', 'npcink-cloud-addon' ), __( 'not returned', 'npcink-cloud-addon' ) ), self::format_hosted_runtime_diagnostic_detail( $runtime ) ); ?>
@@ -1826,6 +1860,21 @@ if ( ! class_exists( 'Npcink_Cloud_Settings_Page' ) ) {
 		}
 
 		/**
+		 * Renders the explicit manual readiness test action.
+		 *
+		 * @return void
+		 */
+		private static function render_manual_readiness_test_form(): void {
+			?>
+			<form class="npcink-cloud-verify-form" method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>">
+				<?php wp_nonce_field( self::ACTION_RUN_MANUAL_READINESS_TEST ); ?>
+				<input type="hidden" name="action" value="<?php echo esc_attr( self::ACTION_RUN_MANUAL_READINESS_TEST ); ?>" />
+				<button type="submit" class="button button-secondary"><?php esc_html_e( 'Run readiness test', 'npcink-cloud-addon' ); ?></button>
+			</form>
+			<?php
+		}
+
+		/**
 		 * Renders one lightweight capability note.
 		 *
 		 * @param string $label Capability label.
@@ -1858,6 +1907,76 @@ if ( ! class_exists( 'Npcink_Cloud_Settings_Page' ) ) {
 		 */
 		private static function diagnostic_status( bool $ok, string $ok_label, string $fail_label ): string {
 			return $ok ? $ok_label : $fail_label;
+		}
+
+		/**
+		 * Formats the bounded readiness status.
+		 *
+		 * @param array<string,mixed> $readiness Readiness result.
+		 * @return string
+		 */
+		private static function format_readiness_status( array $readiness ): string {
+			if ( empty( $readiness ) ) {
+				return __( 'not run', 'npcink-cloud-addon' );
+			}
+
+			return sanitize_key( (string) ( $readiness['bounded_status'] ?? $readiness['status'] ?? 'unavailable' ) );
+		}
+
+		/**
+		 * Formats the bounded readiness owner and next action.
+		 *
+		 * @param array<string,mixed> $readiness Readiness result.
+		 * @return string
+		 */
+		private static function format_readiness_detail( array $readiness ): string {
+			if ( empty( $readiness ) ) {
+				return __( 'Use Run readiness test to execute the liveness and signed-read checks.', 'npcink-cloud-addon' );
+			}
+
+			$owner = sanitize_key( (string) ( $readiness['owner_label'] ?? 'cloud_addon' ) );
+			$next_action = sanitize_key( (string) ( $readiness['next_safe_action'] ?? $readiness['next_action'] ?? 'retry_test' ) );
+			$blocked = sanitize_text_field( (string) ( $readiness['blocked_reason'] ?? '' ) );
+
+			if ( '' !== $blocked ) {
+				return sprintf(
+					/* translators: 1: owner label, 2: next action, 3: blocked reason. */
+					__( 'Owner: %1$s. Next safe action: %2$s. Blocked reason: %3$s', 'npcink-cloud-addon' ),
+					$owner,
+					$next_action,
+					$blocked
+				);
+			}
+
+			return sprintf(
+				/* translators: 1: owner label, 2: next action. */
+				__( 'Owner: %1$s. Next safe action: %2$s.', 'npcink-cloud-addon' ),
+				$owner,
+				$next_action
+			);
+		}
+
+		/**
+		 * Formats copyable non-secret readiness support facts.
+		 *
+		 * @param array<string,mixed> $readiness Readiness result.
+		 * @return string
+		 */
+		private static function format_readiness_support_facts( array $readiness ): string {
+			if ( empty( $readiness ) ) {
+				return __( 'No manual readiness result has been captured for this admin session.', 'npcink-cloud-addon' );
+			}
+
+			$facts = is_array( $readiness['copyable_support_facts'] ?? null ) ? $readiness['copyable_support_facts'] : array();
+			$parts = array();
+			foreach ( $facts as $key => $value ) {
+				if ( ! is_scalar( $value ) ) {
+					continue;
+				}
+				$parts[] = sanitize_key( (string) $key ) . '=' . sanitize_text_field( (string) $value );
+			}
+
+			return self::format_empty( implode( '; ', $parts ) );
 		}
 
 		/**
@@ -3222,6 +3341,31 @@ if ( ! class_exists( 'Npcink_Cloud_Settings_Page' ) ) {
 		}
 
 		/**
+		 * Stores the latest manual readiness result for this administrator.
+		 *
+		 * @param array<string,mixed> $result Readiness result.
+		 * @return void
+		 */
+		private static function set_manual_readiness_result( array $result ): void {
+			set_transient(
+				self::manual_readiness_transient_key(),
+				$result,
+				10 * MINUTE_IN_SECONDS
+			);
+		}
+
+		/**
+		 * Returns the latest manual readiness result for this administrator.
+		 *
+		 * @return array<string,mixed>
+		 */
+		private static function get_manual_readiness_result(): array {
+			$result = get_transient( self::manual_readiness_transient_key() );
+
+			return is_array( $result ) ? $result : array();
+		}
+
+		/**
 		 * Renders and clears the saved admin notice.
 		 *
 		 * @return void
@@ -3251,6 +3395,15 @@ if ( ! class_exists( 'Npcink_Cloud_Settings_Page' ) ) {
 		 */
 		private static function notice_transient_key(): string {
 			return 'npcink_cloud_notice_' . absint( get_current_user_id() );
+		}
+
+		/**
+		 * Returns a manual readiness result transient key for the current user.
+		 *
+		 * @return string
+		 */
+		private static function manual_readiness_transient_key(): string {
+			return 'npcink_cloud_readiness_' . absint( get_current_user_id() );
 		}
 
 		/**

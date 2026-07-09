@@ -24,6 +24,19 @@ Cloud Base URL must use HTTPS except for local development hosts (`localhost`,
 entry belong in `Connection Management > Manual fallback` as a recovery
 fallback for local debugging or authorization outages.
 
+The default `Connect` view may expose one folded `Advanced connection /
+Self-hosted Cloud endpoint` entry. That entry only changes the authorization target for a
+compatible Npcink Cloud deployment; it must not save partial credentials before
+authorization completes and must not manage Cloud sites, keys, billing, models,
+router, workflows, or runtime policy.
+Cloud authorization entries should open in a new browser tab so the WordPress
+admin page remains available while Cloud creates or activates the site
+connection.
+
+See `docs/connect-ui-and-zh-cn-localization-closeout-2026-07-09.md` for the
+closeout rationale behind the folded endpoint entry, new-tab authorization
+behavior, and zh_CN fixed-string maintenance boundary.
+
 When verified, the default page should prioritize:
 
 - `Local permissions` as the first working tab for WordPress AI connector

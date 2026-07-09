@@ -276,6 +276,114 @@
 	margin: 12px 0 0;
 }
 
+.npcink-cloud-connect-context {
+	background: #f6f7f7;
+	border: 1px solid #dcdcde;
+	box-sizing: border-box;
+	display: grid;
+	grid-template-columns: minmax(120px, 0.75fr) minmax(180px, 1fr) minmax(220px, 1.25fr);
+	margin-top: 10px;
+	max-width: 860px;
+}
+
+.npcink-cloud-connect-context__item {
+	border-right: 1px solid #dcdcde;
+	min-width: 0;
+	padding: 10px 12px;
+}
+
+.npcink-cloud-connect-context__item:last-child {
+	border-right: 0;
+}
+
+.npcink-cloud-connect-context__label {
+	color: #646970;
+	display: block;
+	font-size: 12px;
+	line-height: 1.3;
+	margin-bottom: 4px;
+}
+
+.npcink-cloud-connect-context__value {
+	display: block;
+	font-size: 14px;
+	line-height: 1.45;
+	overflow-wrap: anywhere;
+}
+
+.npcink-cloud-connect-actions {
+	align-items: center;
+	display: flex;
+	flex-wrap: wrap;
+	gap: 10px 14px;
+	margin-top: 14px;
+	max-width: 860px;
+}
+
+.npcink-cloud-connect-actions .description {
+	flex: 1 1 320px;
+	margin: 0;
+}
+
+.npcink-cloud-endpoint-advanced {
+	border-top: 1px solid #dcdcde;
+	margin-top: 14px;
+	max-width: 720px;
+	padding-top: 10px;
+}
+
+.npcink-cloud-endpoint-advanced > summary {
+	align-items: baseline;
+	color: #1d2327;
+	cursor: pointer;
+	display: flex;
+	gap: 8px;
+	font-weight: 600;
+	width: max-content;
+}
+
+.npcink-cloud-endpoint-advanced > summary:hover,
+.npcink-cloud-endpoint-advanced > summary:focus {
+	color: #1d35b4;
+}
+
+.npcink-cloud-endpoint-advanced > summary small {
+	color: #646970;
+	font-size: 12px;
+	font-weight: 400;
+}
+
+.npcink-cloud-endpoint-advanced__body {
+	border-left: 3px solid #dcdcde;
+	box-sizing: border-box;
+	margin-top: 8px;
+	padding: 6px 0 0 12px;
+}
+
+.npcink-cloud-endpoint-advanced__body label {
+	display: block;
+	font-weight: 600;
+	margin-bottom: 6px;
+}
+
+.npcink-cloud-endpoint-advanced__controls {
+	align-items: center;
+	display: flex;
+	flex-wrap: wrap;
+	gap: 8px;
+}
+
+.npcink-cloud-endpoint-advanced__controls input[type="url"] {
+	flex: 1 1 300px;
+	max-width: 360px;
+}
+
+.npcink-cloud-endpoint-advanced__body .description {
+	font-size: 12px;
+	margin: 6px 0 0;
+	max-width: 640px;
+}
+
 .npcink-cloud-section-heading {
 	align-items: center;
 	display: flex;
@@ -696,6 +804,41 @@
 
 	.npcink-cloud-summary__grid {
 		grid-template-columns: 1fr;
+	}
+
+	.npcink-cloud-connect-context {
+		grid-template-columns: 1fr;
+	}
+
+	.npcink-cloud-connect-context__item {
+		border-bottom: 1px solid #dcdcde;
+		border-right: 0;
+	}
+
+	.npcink-cloud-connect-context__item:last-child {
+		border-bottom: 0;
+	}
+
+	.npcink-cloud-connect-actions {
+		align-items: flex-start;
+		flex-direction: column;
+	}
+
+	.npcink-cloud-endpoint-advanced > summary {
+		align-items: flex-start;
+		flex-direction: column;
+		gap: 2px;
+		width: auto;
+	}
+
+	.npcink-cloud-endpoint-advanced__controls {
+		align-items: stretch;
+		flex-direction: column;
+	}
+
+	.npcink-cloud-endpoint-advanced__controls input[type="url"] {
+		max-width: none;
+		width: 100%;
 	}
 
 	.npcink-cloud-verify-form {

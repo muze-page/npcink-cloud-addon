@@ -106,6 +106,9 @@ The bounded manual readiness result contract is
 `manual_test_action`, `status`, `bounded_status`, `owner_label`,
 `blocked_reason`, `next_action`, `next_safe_action`, `support_facts`,
 `copyable_support_facts`, `write_posture=read_only`, and `tested_at`.
+The local Diagnostics page must trigger this test only through an explicit
+administrator action and may display the latest bounded result; page render
+must not automatically run `/health/live` or the signed entitlement read.
 Support facts may include booleans such as whether credential slots are
 present, the Cloud host, timeout, liveness status, signed-read status, and the
 signed read endpoint. They must not include the stored secret, raw provider

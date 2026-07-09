@@ -118,7 +118,9 @@ paths through the addon.
 `write_posture=read_only`, and `tested_at`. The result is non-secret support
 detail for connector/readiness status only. It does not create runtime work,
 queues, registries, approvals, provider logs, billing truth, or WordPress
-writes.
+writes. The admin Diagnostics page runs this test only from the explicit
+administrator `Run readiness test` action; rendering the page does not perform
+a live probe or signed Cloud read.
 
 ## Image Context Evidence Transport
 

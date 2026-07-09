@@ -128,10 +128,16 @@ maca_assert(
 	&& false !== strpos( $runtime_client, "'next_safe_action' => \$next_action" )
 	&& false !== strpos( $runtime_client, "'copyable_support_facts' => \$support_facts" )
 	&& false !== strpos( $runtime_client, "'write_posture' => 'read_only'" )
+	&& false !== strpos( $settings_page, "ACTION_RUN_MANUAL_READINESS_TEST = 'npcink_cloud_addon_run_manual_readiness_test'" )
+	&& false !== strpos( $settings_page, "admin_post_' . self::ACTION_RUN_MANUAL_READINESS_TEST" )
+	&& false !== strpos( $settings_page, 'handle_run_manual_readiness_test' )
+	&& false !== strpos( $settings_page, 'render_manual_readiness_test_form' )
+	&& false !== strpos( $settings_page, 'get_manual_readiness_result' )
 	&& false !== strpos( $settings_page, 'Manual readiness test' )
 	&& false !== strpos( $settings_page, 'Readiness support facts' )
+	&& false === strpos( $settings_page, '$readiness = ( new Npcink_Cloud_Runtime_Client( $settings ) )->manual_readiness_test();' )
 	&& false === strpos( $runtime_client, "'secret' => (string) ( \$this->config['secret']" ),
-	'Manual readiness test exposes a bounded non-secret result shape through existing connector diagnostics without queue, registry, approval, or WordPress write ownership.'
+	'Manual readiness test exposes a bounded non-secret result shape through an explicit admin action without queue, registry, approval, or WordPress write ownership.'
 );
 
 maca_assert(

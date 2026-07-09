@@ -133,6 +133,8 @@ $GLOBALS['maca_http_response_queue'][] = array(
 $client = new Npcink_Cloud_Runtime_Client( Npcink_Cloud_Addon_Settings::get_settings() );
 $probe  = $client->probe_connectivity();
 $readiness = is_array( $probe['readiness_result'] ?? null ) ? $probe['readiness_result'] : array();
+$probe_live_request = $GLOBALS['maca_http_requests'][0] ?? array();
+$probe_signed_request = $GLOBALS['maca_http_requests'][1] ?? array();
 
 maca_assert(
 	! empty( $probe['ok'] )
@@ -145,8 +147,10 @@ maca_assert(
 	&& 'continue' === (string) ( $readiness['next_safe_action'] ?? '' )
 	&& 'read_only' === (string) ( $readiness['write_posture'] ?? '' )
 	&& 'Pro' === (string) ( $probe['entitlement_response']['data']['package'] ?? '' )
-	&& 1 === count( $GLOBALS['maca_http_requests'] ),
-	'Behavior: connectivity verification exposes the signed entitlement response and bounded ready result for cache reuse.'
+	&& 2 === count( $GLOBALS['maca_http_requests'] )
+	&& false !== strpos( (string) ( $probe_live_request['url'] ?? '' ), '/health/live' )
+	&& false !== strpos( (string) ( $probe_signed_request['url'] ?? '' ), '/v1/entitlements/current' ),
+	'Behavior: connectivity verification runs liveness plus signed entitlement read and exposes a bounded ready result for cache reuse.'
 );
 
 maca_reset_test_state();
@@ -180,6 +184,8 @@ $failed_client = new Npcink_Cloud_Runtime_Client( Npcink_Cloud_Addon_Settings::g
 $failed = $failed_client->manual_readiness_test();
 $failed_json = wp_json_encode( $failed );
 $failed_support_facts = is_array( $failed['copyable_support_facts'] ?? null ) ? $failed['copyable_support_facts'] : array();
+$failed_live_request = $GLOBALS['maca_http_requests'][0] ?? array();
+$failed_signed_request = $GLOBALS['maca_http_requests'][1] ?? array();
 
 maca_assert(
 	'failed' === (string) ( $failed['status'] ?? '' )
@@ -193,8 +199,10 @@ maca_assert(
 	&& false === strpos( (string) $failed_json, 'secret_test' )
 	&& false === strpos( (string) $failed_json, 'mak1_sensitive' )
 	&& false === strpos( (string) $failed_json, 'Bearer secret' )
-	&& 1 === count( $GLOBALS['maca_http_requests'] ),
-	'Behavior: manual readiness test returns failed support facts without exposing stored secrets or provider-style tokens.'
+	&& 2 === count( $GLOBALS['maca_http_requests'] )
+	&& false !== strpos( (string) ( $failed_live_request['url'] ?? '' ), '/health/live' )
+	&& false !== strpos( (string) ( $failed_signed_request['url'] ?? '' ), '/v1/entitlements/current' ),
+	'Behavior: manual readiness test explicitly runs liveness plus signed entitlement read and returns failed support facts without exposing secrets.'
 );
 
 maca_reset_test_state();
@@ -212,8 +220,8 @@ $post_verify_summary = Npcink_Cloud_Entitlement_Summary::get_cached_summary();
 
 maca_assert(
 	Npcink_Cloud_Addon_Settings::is_verified()
-	&& 1 === count( $GLOBALS['maca_http_requests'] )
+	&& 2 === count( $GLOBALS['maca_http_requests'] )
 	&& ! empty( $post_verify_summary['available'] )
 	&& 'Pro' === (string) ( $post_verify_summary['package_label'] ?? '' ),
-	'Behavior: re-verify and refresh reuses the verification entitlement response without a second Cloud read.'
+	'Behavior: re-verify and refresh reuses the verification entitlement response without an extra signed Cloud read.'
 );

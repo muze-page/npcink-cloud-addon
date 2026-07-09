@@ -60,6 +60,10 @@ if ( ! defined( 'HOUR_IN_SECONDS' ) ) {
 	define( 'HOUR_IN_SECONDS', 3600 );
 }
 
+if ( ! defined( 'MINUTE_IN_SECONDS' ) ) {
+	define( 'MINUTE_IN_SECONDS', 60 );
+}
+
 if ( ! defined( 'DAY_IN_SECONDS' ) ) {
 	define( 'DAY_IN_SECONDS', 86400 );
 }
@@ -325,6 +329,11 @@ if ( ! function_exists( 'wp_unslash' ) ) {
 
 if ( ! function_exists( 'wp_remote_get' ) ) {
 	function wp_remote_get( string $url, array $args = array() ): array {
+		$GLOBALS['maca_http_requests'][] = array(
+			'url'  => $url,
+			'args' => $args,
+		);
+
 		return array(
 			'response' => array( 'code' => 200 ),
 			'body'     => wp_json_encode( array( 'message' => 'ok' ) ),

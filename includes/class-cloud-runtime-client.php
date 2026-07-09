@@ -958,6 +958,12 @@ if ( ! class_exists( 'Npcink_Cloud_Runtime_Client' ) ) {
 					$signed_transport_status = 'failed';
 				}
 			}
+			$connector_diagnostic_category = $this->classify_connector_diagnostic_category(
+				$base_url_present,
+				$credential_slot_readiness,
+				$service_liveness_status,
+				$signed_transport_status
+			);
 
 			if ( ! $this->is_configured() ) {
 				$status = 'not_configured';
@@ -989,6 +995,7 @@ if ( ! class_exists( 'Npcink_Cloud_Runtime_Client' ) ) {
 			$support_facts = array(
 				'contract_version' => 'cloud_addon_readiness_result.v1',
 				'connector_slot' => 'npcink_cloud_runtime',
+				'connector_diagnostic_category' => $connector_diagnostic_category,
 				'credential_slot_readiness' => $credential_slot_readiness,
 				'signed_transport_status' => $signed_transport_status,
 				'service_liveness_status' => $service_liveness_status,
@@ -1009,6 +1016,7 @@ if ( ! class_exists( 'Npcink_Cloud_Runtime_Client' ) ) {
 				'contract_version' => 'cloud_addon_readiness_result.v1',
 				'manual_test_action' => 'probe_connectivity',
 				'connector_slot' => 'npcink_cloud_runtime',
+				'connector_diagnostic_category' => $connector_diagnostic_category,
 				'credential_slot_readiness' => $credential_slot_readiness,
 				'signed_transport_status' => $signed_transport_status,
 				'service_liveness_status' => $service_liveness_status,
@@ -1023,6 +1031,44 @@ if ( ! class_exists( 'Npcink_Cloud_Runtime_Client' ) ) {
 				'write_posture' => 'read_only',
 				'tested_at' => gmdate( 'c' ),
 			);
+		}
+
+		/**
+		 * Classifies connector readiness into one bounded operator diagnostic bucket.
+		 *
+		 * @param bool   $base_url_present Whether the Cloud Base URL slot is present.
+		 * @param string $credential_slot_readiness Credential-slot readiness.
+		 * @param string $service_liveness_status Service liveness status.
+		 * @param string $signed_transport_status Signed-read transport status.
+		 * @return string
+		 */
+		private function classify_connector_diagnostic_category(
+			bool $base_url_present,
+			string $credential_slot_readiness,
+			string $service_liveness_status,
+			string $signed_transport_status
+		): string {
+			if ( ! $base_url_present && 'not_configured' === $credential_slot_readiness ) {
+				return 'not_configured';
+			}
+
+			if ( in_array( $credential_slot_readiness, array( 'partial', 'not_configured' ), true ) ) {
+				return 'credential_missing';
+			}
+
+			if ( 'unavailable' === $service_liveness_status || 'unavailable' === $signed_transport_status ) {
+				return 'cloud_unavailable';
+			}
+
+			if ( 'failed' === $signed_transport_status ) {
+				return 'signed_transport_failed';
+			}
+
+			if ( 'ready' === $service_liveness_status && 'ready' === $signed_transport_status ) {
+				return 'ready';
+			}
+
+			return 'unknown';
 		}
 
 		/**

@@ -148,9 +148,11 @@ maca_assert(
 	&& 'continue' === (string) ( $readiness['next_safe_action'] ?? '' )
 	&& 'read_only' === (string) ( $readiness['write_posture'] ?? '' )
 	&& 'npcink_cloud_runtime' === (string) ( $readiness['connector_slot'] ?? '' )
+	&& 'ready' === (string) ( $readiness['connector_diagnostic_category'] ?? '' )
 	&& 'ready' === (string) ( $readiness['credential_slot_readiness'] ?? '' )
 	&& 'ready' === (string) ( $readiness['service_liveness_status'] ?? '' )
 	&& 'ready' === (string) ( $readiness['signed_transport_status'] ?? '' )
+	&& 'ready' === (string) ( $readiness_support_facts['connector_diagnostic_category'] ?? '' )
 	&& 'ready' === (string) ( $readiness_support_facts['credential_slot_readiness'] ?? '' )
 	&& 'yes' === (string) ( $readiness_support_facts['base_url_present'] ?? '' )
 	&& 'yes' === (string) ( $readiness_support_facts['signing_secret_slot_present'] ?? '' )
@@ -174,13 +176,38 @@ maca_assert(
 	&& 'open_settings' === (string) ( $not_configured['next_safe_action'] ?? '' )
 	&& 'read_only' === (string) ( $not_configured['write_posture'] ?? '' )
 	&& 'npcink_cloud_runtime' === (string) ( $not_configured['connector_slot'] ?? '' )
+	&& 'not_configured' === (string) ( $not_configured['connector_diagnostic_category'] ?? '' )
 	&& 'not_configured' === (string) ( $not_configured['credential_slot_readiness'] ?? '' )
 	&& 'not_configured' === (string) ( $not_configured['service_liveness_status'] ?? '' )
 	&& 'not_configured' === (string) ( $not_configured['signed_transport_status'] ?? '' )
+	&& 'not_configured' === (string) ( $not_configured_support_facts['connector_diagnostic_category'] ?? '' )
 	&& 'no' === (string) ( $not_configured_support_facts['base_url_present'] ?? '' )
 	&& 'no' === (string) ( $not_configured_support_facts['signing_secret_slot_present'] ?? '' )
 	&& 0 === count( $GLOBALS['maca_http_requests'] ),
 	'Behavior: manual readiness test returns a bounded not_configured result without a signed Cloud request.'
+);
+
+maca_reset_test_state();
+$partial_client = new Npcink_Cloud_Runtime_Client(
+	array(
+		'base_url' => 'https://cloud.example.test',
+	)
+);
+$partial = $partial_client->manual_readiness_test();
+$partial_support_facts = is_array( $partial['copyable_support_facts'] ?? null ) ? $partial['copyable_support_facts'] : array();
+
+maca_assert(
+	'not_configured' === (string) ( $partial['status'] ?? '' )
+	&& 'operator' === (string) ( $partial['owner_label'] ?? '' )
+	&& 'credential_missing' === (string) ( $partial['connector_diagnostic_category'] ?? '' )
+	&& 'partial' === (string) ( $partial['credential_slot_readiness'] ?? '' )
+	&& 'ready' === (string) ( $partial['service_liveness_status'] ?? '' )
+	&& 'not_configured' === (string) ( $partial['signed_transport_status'] ?? '' )
+	&& 'credential_missing' === (string) ( $partial_support_facts['connector_diagnostic_category'] ?? '' )
+	&& 'yes' === (string) ( $partial_support_facts['base_url_present'] ?? '' )
+	&& 'no' === (string) ( $partial_support_facts['signing_credentials_complete'] ?? '' )
+	&& 1 === count( $GLOBALS['maca_http_requests'] ),
+	'Behavior: manual readiness test classifies partial connector credentials as credential_missing without a signed Cloud request.'
 );
 
 maca_reset_test_state();
@@ -209,10 +236,12 @@ maca_assert(
 	&& 'retry_test' === (string) ( $failed['next_safe_action'] ?? '' )
 	&& 'read_only' === (string) ( $failed['write_posture'] ?? '' )
 	&& 'npcink_cloud_runtime' === (string) ( $failed['connector_slot'] ?? '' )
+	&& 'signed_transport_failed' === (string) ( $failed['connector_diagnostic_category'] ?? '' )
 	&& 'ready' === (string) ( $failed['credential_slot_readiness'] ?? '' )
 	&& 'ready' === (string) ( $failed['service_liveness_status'] ?? '' )
 	&& 'failed' === (string) ( $failed['signed_transport_status'] ?? '' )
 	&& 'npcink_cloud_runtime' === (string) ( $failed_support_facts['connector_slot'] ?? '' )
+	&& 'signed_transport_failed' === (string) ( $failed_support_facts['connector_diagnostic_category'] ?? '' )
 	&& 'failed' === (string) ( $failed_support_facts['signed_transport_status'] ?? '' )
 	&& 'yes' === (string) ( $failed_support_facts['site_id_present'] ?? '' )
 	&& 'yes' === (string) ( $failed_support_facts['key_id_present'] ?? '' )

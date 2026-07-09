@@ -125,6 +125,8 @@ maca_assert(
 	&& false !== strpos( $runtime_client, "'cloud_addon_readiness_result.v1'" )
 	&& false !== strpos( $runtime_client, "'manual_test_action' => 'probe_connectivity'" )
 	&& false !== strpos( $runtime_client, "'connector_slot' => 'npcink_cloud_runtime'" )
+	&& false !== strpos( $runtime_client, 'classify_connector_diagnostic_category' )
+	&& false !== strpos( $runtime_client, "'connector_diagnostic_category' => \$connector_diagnostic_category" )
 	&& false !== strpos( $runtime_client, "'credential_slot_readiness' => \$credential_slot_readiness" )
 	&& false !== strpos( $runtime_client, "'signed_transport_status' => \$signed_transport_status" )
 	&& false !== strpos( $runtime_client, "'service_liveness_status' => \$service_liveness_status" )

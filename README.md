@@ -114,7 +114,8 @@ paths through the addon.
 `manual_readiness_test()` reuses the existing `/health/live` plus signed
 `GET /v1/entitlements/current` probe and returns
 `cloud_addon_readiness_result.v1` with `status`, `bounded_status`,
-`connector_slot`, `credential_slot_readiness`, `signed_transport_status`,
+`connector_slot`, `connector_diagnostic_category`,
+`credential_slot_readiness`, `signed_transport_status`,
 `service_liveness_status`, `owner_label`, `blocked_reason`,
 `next_safe_action`, `copyable_support_facts`, `write_posture=read_only`, and
 `tested_at`. The slot statuses are non-secret support detail for the local

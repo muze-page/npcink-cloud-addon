@@ -103,11 +103,15 @@ register a Developer diagnostics route, or add ad hoc Cloud service endpoints.
 
 The bounded manual readiness result contract is
 `cloud_addon_readiness_result.v1`. It may expose only non-secret fields:
-`manual_test_action`, `connector_slot`, `credential_slot_readiness`,
-`signed_transport_status`, `service_liveness_status`, `status`,
-`bounded_status`, `owner_label`, `blocked_reason`, `next_action`,
-`next_safe_action`, `support_facts`, `copyable_support_facts`,
-`write_posture=read_only`, and `tested_at`.
+`manual_test_action`, `connector_slot`, `connector_diagnostic_category`,
+`credential_slot_readiness`, `signed_transport_status`,
+`service_liveness_status`, `status`, `bounded_status`, `owner_label`,
+`blocked_reason`, `next_action`, `next_safe_action`, `support_facts`,
+`copyable_support_facts`, `write_posture=read_only`, and `tested_at`.
+`connector_diagnostic_category` is a bounded operator bucket derived from the
+existing local slot, liveness, and signed-read statuses, such as
+`not_configured`, `credential_missing`, `cloud_unavailable`,
+`signed_transport_failed`, `ready`, or `unknown`.
 The local Diagnostics page must trigger this test only through an explicit
 administrator action and may display the latest bounded result; page render
 must not automatically run `/health/live` or the signed entitlement read.

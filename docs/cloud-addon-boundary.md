@@ -25,6 +25,8 @@ index, freshness, and collection lifecycle owner.
 - HMAC signatures, trace headers, idempotency headers, and request nonce headers.
 - Health and signed connectivity checks.
 - Bounded manual connector readiness/test results with non-secret support facts.
+- Table-native diagnostic grouping for existing local configuration,
+  connectivity, signed transport, entitlement readiness, and support facts.
 - Runtime request dispatch and run/result reads.
 - Bounded Nightly Inspection runtime run detail: recent runs, one-run status,
   one-run result, and nonce-protected Cloud-owned retry requests.
@@ -261,6 +263,11 @@ The local UI stays shallow:
 - entitlement summary
 - opt-in monitoring status and read-only Cloud observability / Agent feedback summaries
 - a bounded `Troubleshooting > Runtime runs` section for Cloud-owned Nightly Inspection entitlement/quota, batch, retention, recent/status/result, and retry request detail
+
+The Troubleshooting checks table may group these existing facts for operator
+scanability. Grouping is a read-only presentation projection only; it must not
+add live checks on page render, durable diagnostic history, raw request or
+response capture, or another service-status truth source.
 
 It must not become a second control plane.
 

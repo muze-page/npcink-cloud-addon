@@ -134,6 +134,8 @@ $client = new Npcink_Cloud_Runtime_Client( Npcink_Cloud_Addon_Settings::get_sett
 $probe  = $client->probe_connectivity();
 $readiness = is_array( $probe['readiness_result'] ?? null ) ? $probe['readiness_result'] : array();
 $readiness_support_facts = is_array( $readiness['copyable_support_facts'] ?? null ) ? $readiness['copyable_support_facts'] : array();
+$readiness_groups = is_array( $readiness['diagnostic_panel_groups'] ?? null ) ? $readiness['diagnostic_panel_groups'] : array();
+$readiness_groups_by_id = array_column( $readiness_groups, null, 'diagnostic_panel_group' );
 $probe_live_request = $GLOBALS['maca_http_requests'][0] ?? array();
 $probe_signed_request = $GLOBALS['maca_http_requests'][1] ?? array();
 
@@ -156,6 +158,12 @@ maca_assert(
 	&& 'ready' === (string) ( $readiness_support_facts['credential_slot_readiness'] ?? '' )
 	&& 'yes' === (string) ( $readiness_support_facts['base_url_present'] ?? '' )
 	&& 'yes' === (string) ( $readiness_support_facts['signing_secret_slot_present'] ?? '' )
+	&& 5 === count( $readiness_groups )
+	&& 'ok' === (string) ( $readiness_groups_by_id['local_configuration']['severity'] ?? '' )
+	&& 'cloud_addon' === (string) ( $readiness_groups_by_id['signed_transport']['owner_label'] ?? '' )
+	&& 'ready' === (string) ( $readiness_groups_by_id['entitlement_readiness']['bounded_status'] ?? '' )
+	&& 'administrator_only' === (string) ( $readiness_groups_by_id['support_facts']['visibility'] ?? '' )
+	&& 'read_only' === (string) ( $readiness_groups_by_id['support_facts']['write_posture'] ?? '' )
 	&& 'Pro' === (string) ( $probe['entitlement_response']['data']['package'] ?? '' )
 	&& 2 === count( $GLOBALS['maca_http_requests'] )
 	&& false !== strpos( (string) ( $probe_live_request['url'] ?? '' ), '/health/live' )
@@ -167,6 +175,7 @@ maca_reset_test_state();
 $not_configured_client = new Npcink_Cloud_Runtime_Client( array() );
 $not_configured = $not_configured_client->manual_readiness_test();
 $not_configured_support_facts = is_array( $not_configured['copyable_support_facts'] ?? null ) ? $not_configured['copyable_support_facts'] : array();
+$not_configured_groups = is_array( $not_configured['diagnostic_panel_groups'] ?? null ) ? array_column( $not_configured['diagnostic_panel_groups'], null, 'diagnostic_panel_group' ) : array();
 
 maca_assert(
 	'cloud_addon_readiness_result.v1' === (string) ( $not_configured['contract_version'] ?? '' )
@@ -183,6 +192,9 @@ maca_assert(
 	&& 'not_configured' === (string) ( $not_configured_support_facts['connector_diagnostic_category'] ?? '' )
 	&& 'no' === (string) ( $not_configured_support_facts['base_url_present'] ?? '' )
 	&& 'no' === (string) ( $not_configured_support_facts['signing_secret_slot_present'] ?? '' )
+	&& 'inactive' === (string) ( $not_configured_groups['local_configuration']['severity'] ?? '' )
+	&& 'open_settings' === (string) ( $not_configured_groups['signed_transport']['next_safe_action'] ?? '' )
+	&& '' !== (string) ( $not_configured_groups['signed_transport']['blocked_reason'] ?? '' )
 	&& 0 === count( $GLOBALS['maca_http_requests'] ),
 	'Behavior: manual readiness test returns a bounded not_configured result without a signed Cloud request.'
 );
@@ -195,6 +207,7 @@ $partial_client = new Npcink_Cloud_Runtime_Client(
 );
 $partial = $partial_client->manual_readiness_test();
 $partial_support_facts = is_array( $partial['copyable_support_facts'] ?? null ) ? $partial['copyable_support_facts'] : array();
+$partial_groups = is_array( $partial['diagnostic_panel_groups'] ?? null ) ? array_column( $partial['diagnostic_panel_groups'], null, 'diagnostic_panel_group' ) : array();
 
 maca_assert(
 	'not_configured' === (string) ( $partial['status'] ?? '' )
@@ -206,6 +219,8 @@ maca_assert(
 	&& 'credential_missing' === (string) ( $partial_support_facts['connector_diagnostic_category'] ?? '' )
 	&& 'yes' === (string) ( $partial_support_facts['base_url_present'] ?? '' )
 	&& 'no' === (string) ( $partial_support_facts['signing_credentials_complete'] ?? '' )
+	&& 'not_configured' === (string) ( $partial_groups['local_configuration']['bounded_status'] ?? '' )
+	&& 'ready' === (string) ( $partial_groups['cloud_connectivity']['bounded_status'] ?? '' )
 	&& 1 === count( $GLOBALS['maca_http_requests'] ),
 	'Behavior: manual readiness test classifies partial connector credentials as credential_missing without a signed Cloud request.'
 );
@@ -226,6 +241,7 @@ $failed_client = new Npcink_Cloud_Runtime_Client( Npcink_Cloud_Addon_Settings::g
 $failed = $failed_client->manual_readiness_test();
 $failed_json = wp_json_encode( $failed );
 $failed_support_facts = is_array( $failed['copyable_support_facts'] ?? null ) ? $failed['copyable_support_facts'] : array();
+$failed_groups = is_array( $failed['diagnostic_panel_groups'] ?? null ) ? array_column( $failed['diagnostic_panel_groups'], null, 'diagnostic_panel_group' ) : array();
 $failed_live_request = $GLOBALS['maca_http_requests'][0] ?? array();
 $failed_signed_request = $GLOBALS['maca_http_requests'][1] ?? array();
 
@@ -247,6 +263,8 @@ maca_assert(
 	&& 'yes' === (string) ( $failed_support_facts['key_id_present'] ?? '' )
 	&& 'yes' === (string) ( $failed_support_facts['signing_secret_slot_present'] ?? '' )
 	&& 'yes' === (string) ( $failed_support_facts['signing_credentials_complete'] ?? '' )
+	&& 'error' === (string) ( $failed_groups['signed_transport']['severity'] ?? '' )
+	&& 'retry_test' === (string) ( $failed_groups['entitlement_readiness']['next_safe_action'] ?? '' )
 	&& false === strpos( (string) $failed_json, 'secret_test' )
 	&& false === strpos( (string) $failed_json, 'mak1_sensitive' )
 	&& false === strpos( (string) $failed_json, 'Bearer secret' )

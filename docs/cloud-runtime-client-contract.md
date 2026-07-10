@@ -107,7 +107,8 @@ The bounded manual readiness result contract is
 `credential_slot_readiness`, `signed_transport_status`,
 `service_liveness_status`, `status`, `bounded_status`, `owner_label`,
 `blocked_reason`, `next_action`, `next_safe_action`, `support_facts`,
-`copyable_support_facts`, `write_posture=read_only`, and `tested_at`.
+`copyable_support_facts`, `diagnostic_panel_groups`,
+`write_posture=read_only`, and `tested_at`.
 `connector_diagnostic_category` is a bounded operator bucket derived from the
 existing local slot, liveness, and signed-read statuses, such as
 `not_configured`, `credential_missing`, `cloud_unavailable`,
@@ -121,6 +122,15 @@ signed read endpoint. They must not include the stored secret, raw provider
 logs, raw prompts, raw outputs, Authorization headers, cookies, nonces,
 billing/quota detail, queues, registries, approval records, or WordPress write
 targets.
+
+`diagnostic_panel_groups` is an additive read-only projection over the same
+manual result. Its fixed initial groups are `local_configuration`,
+`cloud_connectivity`, `signed_transport`, `entitlement_readiness`, and
+`support_facts`. Every group exposes `diagnostic_panel_group`,
+`diagnostic_category`, `severity`, `owner_label`, `bounded_status`,
+`blocked_reason`, `safe_support_facts`, `next_safe_action`,
+`visibility=administrator_only`, and `write_posture=read_only`. It adds no
+request, endpoint, option, queue, registry, durable history, or provider log.
 
 Capability rows such as Platform Models, provider readiness, Cloud web search,
 image source search, image generation, and Site Knowledge bridge must only show

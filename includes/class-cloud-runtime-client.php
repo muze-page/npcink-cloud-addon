@@ -1011,6 +1011,13 @@ if ( ! class_exists( 'Npcink_Cloud_Runtime_Client' ) ) {
 				'signed_read_endpoint' => 'GET /v1/entitlements/current',
 				'write_posture' => 'read_only',
 			);
+			$diagnostic_panel_groups = $this->build_diagnostic_panel_groups(
+				$probe,
+				$support_facts,
+				$credential_slot_readiness,
+				$service_liveness_status,
+				$signed_transport_status
+			);
 
 			return array(
 				'contract_version' => 'cloud_addon_readiness_result.v1',
@@ -1028,9 +1035,176 @@ if ( ! class_exists( 'Npcink_Cloud_Runtime_Client' ) ) {
 				'next_safe_action' => $next_action,
 				'support_facts' => $support_facts,
 				'copyable_support_facts' => $support_facts,
+				'diagnostic_panel_groups' => $diagnostic_panel_groups,
 				'write_posture' => 'read_only',
 				'tested_at' => gmdate( 'c' ),
 			);
+		}
+
+		/**
+		 * Projects one readiness result into bounded operator diagnostic groups.
+		 *
+		 * @param array<string,mixed> $probe Connectivity probe result.
+		 * @param array<string,string> $support_facts Bounded support facts.
+		 * @param string               $credential_status Credential-slot status.
+		 * @param string               $liveness_status Service liveness status.
+		 * @param string               $signed_status Signed transport status.
+		 * @return array<int,array<string,mixed>>
+		 */
+		private function build_diagnostic_panel_groups(
+			array $probe,
+			array $support_facts,
+			string $credential_status,
+			string $liveness_status,
+			string $signed_status
+		): array {
+			$configuration_status = 'ready' === $credential_status ? 'ready' : 'not_configured';
+			$configuration_reason = 'ready' === $configuration_status ? '' : __( 'Cloud settings are incomplete.', 'npcink-cloud-addon' );
+			$liveness_reason = 'ready' === $liveness_status ? '' : $this->redact_support_text( (string) ( $probe['live_message'] ?? '' ) );
+			$signed_reason = 'ready' === $signed_status ? '' : $this->redact_support_text( (string) ( $probe['auth_message'] ?? $probe['live_message'] ?? '' ) );
+
+			return array(
+				$this->build_diagnostic_panel_group(
+					'local_configuration',
+					'credential_slot_readiness',
+					$configuration_status,
+					'operator',
+					$configuration_reason,
+					array(
+						'base_url_host' => $support_facts['base_url_host'],
+						'base_url_present' => $support_facts['base_url_present'],
+						'site_id_present' => $support_facts['site_id_present'],
+						'key_id_present' => $support_facts['key_id_present'],
+						'signing_secret_slot_present' => $support_facts['signing_secret_slot_present'],
+						'signing_credentials_complete' => $support_facts['signing_credentials_complete'],
+					),
+					'ready' === $configuration_status ? 'continue' : 'open_settings'
+				),
+				$this->build_diagnostic_panel_group(
+					'cloud_connectivity',
+					'service_liveness',
+					$liveness_status,
+					'cloud',
+					$liveness_reason,
+					array(
+						'base_url_host' => $support_facts['base_url_host'],
+						'service_liveness_status' => $support_facts['service_liveness_status'],
+						'live_ok' => $support_facts['live_ok'],
+					),
+					$this->diagnostic_next_safe_action( $liveness_status )
+				),
+				$this->build_diagnostic_panel_group(
+					'signed_transport',
+					'signed_entitlement_read',
+					$signed_status,
+					'cloud_addon',
+					$signed_reason,
+					array(
+						'connector_slot' => $support_facts['connector_slot'],
+						'signed_transport_status' => $support_facts['signed_transport_status'],
+						'signed_read_ok' => $support_facts['signed_read_ok'],
+						'signed_read_endpoint' => $support_facts['signed_read_endpoint'],
+					),
+					$this->diagnostic_next_safe_action( $signed_status )
+				),
+				$this->build_diagnostic_panel_group(
+					'entitlement_readiness',
+					'entitlement_readiness',
+					$signed_status,
+					'cloud',
+					$signed_reason,
+					array(
+						'signed_read_endpoint' => $support_facts['signed_read_endpoint'],
+						'signed_read_ok' => $support_facts['signed_read_ok'],
+						'write_posture' => $support_facts['write_posture'],
+					),
+					$this->diagnostic_next_safe_action( $signed_status )
+				),
+				$this->build_diagnostic_panel_group(
+					'support_facts',
+					'bounded_support_facts',
+					'ready',
+					'cloud_addon',
+					'',
+					$support_facts,
+					'continue'
+				),
+			);
+		}
+
+		/**
+		 * Builds one bounded diagnostic group.
+		 *
+		 * @param string               $group Group identifier.
+		 * @param string               $category Diagnostic category.
+		 * @param string               $status Bounded status.
+		 * @param string               $owner_label Owning system or operator.
+		 * @param string               $blocked_reason Bounded blocked reason.
+		 * @param array<string,string> $safe_support_facts Non-secret support facts.
+		 * @param string               $next_safe_action Next safe operator action.
+		 * @return array<string,mixed>
+		 */
+		private function build_diagnostic_panel_group(
+			string $group,
+			string $category,
+			string $status,
+			string $owner_label,
+			string $blocked_reason,
+			array $safe_support_facts,
+			string $next_safe_action
+		): array {
+			if ( 'ready' !== $status && '' === $blocked_reason ) {
+				$blocked_reason = __( 'Connector readiness could not be verified.', 'npcink-cloud-addon' );
+			}
+
+			return array(
+				'diagnostic_panel_group' => $group,
+				'diagnostic_category' => $category,
+				'severity' => $this->diagnostic_severity( $status ),
+				'owner_label' => $owner_label,
+				'bounded_status' => $status,
+				'blocked_reason' => sanitize_text_field( $blocked_reason ),
+				'safe_support_facts' => $safe_support_facts,
+				'next_safe_action' => $next_safe_action,
+				'visibility' => 'administrator_only',
+				'write_posture' => 'read_only',
+			);
+		}
+
+		/**
+		 * Maps one bounded status to the small admin severity vocabulary.
+		 *
+		 * @param string $status Bounded status.
+		 * @return string
+		 */
+		private function diagnostic_severity( string $status ): string {
+			if ( 'ready' === $status ) {
+				return 'ok';
+			}
+
+			if ( 'failed' === $status ) {
+				return 'error';
+			}
+
+			return 'not_configured' === $status ? 'inactive' : 'warning';
+		}
+
+		/**
+		 * Returns the bounded next action for signed-read-derived groups.
+		 *
+		 * @param string $status Bounded status.
+		 * @return string
+		 */
+		private function diagnostic_next_safe_action( string $status ): string {
+			if ( 'ready' === $status ) {
+				return 'continue';
+			}
+
+			if ( 'not_configured' === $status ) {
+				return 'open_settings';
+			}
+
+			return 'unavailable' === $status ? 'check_cloud_status' : 'retry_test';
 		}
 
 		/**

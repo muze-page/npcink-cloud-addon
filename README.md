@@ -118,7 +118,11 @@ paths through the addon.
 `credential_slot_readiness`, `signed_transport_status`,
 `service_liveness_status`, `owner_label`, `blocked_reason`,
 `next_safe_action`, `copyable_support_facts`, `write_posture=read_only`, and
-`tested_at`. The slot statuses are non-secret support detail for the local
+`tested_at`. It also includes `diagnostic_panel_groups`, a five-group read-only
+projection for local configuration, Cloud connectivity, signed transport,
+entitlement readiness, and bounded support facts. Each group carries only a
+bounded status, severity, owner label, blocked reason, next safe action, and
+non-secret support facts. The slot statuses are non-secret support detail for the local
 connector slot, credential-slot completeness, public service liveness, and the
 signed entitlement read only. They do not create runtime work, queues,
 registries, approvals, provider logs, billing truth, or WordPress writes. The

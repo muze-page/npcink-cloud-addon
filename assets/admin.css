@@ -53,6 +53,19 @@
 	margin: 0;
 }
 
+.npcink-cloud-diagnostic-group th {
+	background: #f0f0f1;
+	border-top: 1px solid #c3c4c7;
+	color: #1d2327;
+	font-size: 12px;
+	font-weight: 600;
+	padding: 8px 10px;
+}
+
+.npcink-cloud-diagnostic-group:first-child th {
+	border-top: 0;
+}
+
 .npcink-cloud-badge {
 	border-radius: 999px;
 	display: inline-block;

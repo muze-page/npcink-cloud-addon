@@ -1848,14 +1848,19 @@ if ( ! class_exists( 'Npcink_Cloud_Settings_Page' ) ) {
 					</tr>
 				</thead>
 				<tbody>
+					<?php self::render_diagnostic_group_heading( 'local_configuration', __( 'Connection Management', 'npcink-cloud-addon' ) ); ?>
 					<?php self::render_diagnostic_row( __( 'Cloud Base URL', 'npcink-cloud-addon' ), self::diagnostic_status( '' !== (string) ( $settings['base_url'] ?? '' ), __( 'saved', 'npcink-cloud-addon' ), __( 'missing', 'npcink-cloud-addon' ) ), self::format_setting_value( (string) ( $settings['base_url'] ?? '' ), __( 'Not set', 'npcink-cloud-addon' ) ) ); ?>
 					<?php self::render_diagnostic_row( __( 'Cloud API Key', 'npcink-cloud-addon' ), self::diagnostic_status( ! empty( $state['configured'] ), __( 'saved', 'npcink-cloud-addon' ), __( 'missing', 'npcink-cloud-addon' ) ), __( 'Stored server-side only. Split signing credentials are not displayed.', 'npcink-cloud-addon' ) ); ?>
+					<?php self::render_diagnostic_group_heading( 'cloud_connectivity', __( 'Cloud status', 'npcink-cloud-addon' ) ); ?>
 					<?php self::render_diagnostic_row( __( 'Cloud liveness', 'npcink-cloud-addon' ), self::diagnostic_status( ! empty( $state['verified'] ), __( 'verified', 'npcink-cloud-addon' ), __( 'not verified', 'npcink-cloud-addon' ) ), sprintf( /* translators: %s: last verification time. */ __( 'Last checked: %s', 'npcink-cloud-addon' ), self::format_datetime_value( (string) ( $settings['verified_at'] ?? '' ), __( 'Never', 'npcink-cloud-addon' ) ) ) ); ?>
 					<?php self::render_diagnostic_row( __( 'Manual readiness test', 'npcink-cloud-addon' ), self::format_readiness_status( $readiness ), self::format_readiness_detail( $readiness ) ); ?>
-					<?php self::render_diagnostic_row( __( 'Readiness support facts', 'npcink-cloud-addon' ), (string) ( $readiness['write_posture'] ?? 'read_only' ), self::format_readiness_support_facts( $readiness ) ); ?>
+					<?php self::render_diagnostic_group_heading( 'signed_transport', __( 'Signed Cloud read', 'npcink-cloud-addon' ) ); ?>
 					<?php self::render_diagnostic_row( __( 'Signed Cloud read', 'npcink-cloud-addon' ), self::format_entitlement_availability( $entitlement, $is_verified ), self::format_empty( (string) ( $entitlement['message'] ?? '' ) ) ); ?>
+					<?php self::render_diagnostic_group_heading( 'entitlement_readiness', __( 'Entitlement and quota', 'npcink-cloud-addon' ) ); ?>
 					<?php self::render_diagnostic_row( __( 'Entitlement and quota', 'npcink-cloud-addon' ), self::diagnostic_status( ! empty( $entitlement['available'] ), __( 'available', 'npcink-cloud-addon' ), __( 'not refreshed', 'npcink-cloud-addon' ) ), self::format_package_label( $entitlement, $is_verified ) ); ?>
 					<?php self::render_diagnostic_row( __( 'Hosted Runtime', 'npcink-cloud-addon' ), self::diagnostic_status( ! empty( $runtime['feature_id'] ), __( 'reported', 'npcink-cloud-addon' ), __( 'not returned', 'npcink-cloud-addon' ) ), self::format_hosted_runtime_diagnostic_detail( $runtime ) ); ?>
+					<?php self::render_diagnostic_group_heading( 'support_facts', __( 'Readiness support facts', 'npcink-cloud-addon' ) ); ?>
+					<?php self::render_diagnostic_row( __( 'Readiness support facts', 'npcink-cloud-addon' ), (string) ( $readiness['write_posture'] ?? 'read_only' ), self::format_readiness_support_facts( $readiness ) ); ?>
 					<?php self::render_diagnostic_row( __( 'Site Knowledge bridge', 'npcink-cloud-addon' ), self::format_site_knowledge_overview( $site_knowledge ), self::format_site_knowledge_diagnostic_detail( $site_knowledge ) ); ?>
 					<?php self::render_diagnostic_row( __( 'Monitoring detail', 'npcink-cloud-addon' ), self::format_monitoring_overview( $monitoring ), __( 'Metadata-only upload and read-only aggregate summaries; not Core audit or approval truth.', 'npcink-cloud-addon' ) ); ?>
 				</tbody>
@@ -1907,6 +1912,21 @@ if ( ! class_exists( 'Npcink_Cloud_Settings_Page' ) ) {
 				<th scope="row"><?php echo esc_html( $label ); ?></th>
 				<td><?php echo esc_html( self::format_empty( $status ) ); ?></td>
 				<td><?php echo esc_html( self::format_empty( $detail ) ); ?></td>
+			</tr>
+			<?php
+		}
+
+		/**
+		 * Renders one table-native diagnostic group heading.
+		 *
+		 * @param string $group Group identifier.
+		 * @param string $label Operator-facing group label.
+		 * @return void
+		 */
+		private static function render_diagnostic_group_heading( string $group, string $label ): void {
+			?>
+			<tr class="npcink-cloud-diagnostic-group" data-diagnostic-panel-group="<?php echo esc_attr( $group ); ?>">
+				<th colspan="3" scope="colgroup"><?php echo esc_html( $label ); ?></th>
 			</tr>
 			<?php
 		}

@@ -384,6 +384,13 @@ wrapper adds the task-bound hint automatically; callers cannot provide source
 texts, taxonomy terms, chunks, scores, URLs, or other reference payloads. Cloud
 may use hidden Site Knowledge style or existing taxonomy history, while the
 addon and WordPress AI plugin continue to receive only the ordinary task result.
+Cloud may translate this hint into its internal `generation_context.v1` runtime
+pack with task-specific relevance, dedupe, self-match exclusion,
+reference-count, and character-budget policies. That internal pack is not a
+caller field or an Addon-owned contract. The Addon must continue rejecting
+caller-supplied source texts, chunks, scores, URLs, taxonomy terms, retrieval
+limits, and context budgets, and must not expose relevance or reference detail
+in the WordPress AI user interface.
 
 Image generation input must use
 `contract_version=image_generation_request.v1`, `task=image_generation`, and a

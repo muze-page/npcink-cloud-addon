@@ -170,6 +170,43 @@ function npcink_wp_ai_eval_length( string $text ): int {
 }
 
 /**
+ * Truncates local evaluation context without breaking multibyte text.
+ *
+ * @param string $text Text.
+ * @param int    $max_chars Maximum characters.
+ * @return string
+ */
+function npcink_wp_ai_eval_truncate( string $text, int $max_chars ): string {
+	$text = trim( preg_replace( '/\s+/u', ' ', $text ) ?? $text );
+	if ( npcink_wp_ai_eval_length( $text ) <= $max_chars ) {
+		return $text;
+	}
+	return function_exists( 'mb_substr' ) ? mb_substr( $text, 0, $max_chars, 'UTF-8' ) : substr( $text, 0, $max_chars );
+}
+
+/**
+ * Builds bounded source context used only by the explicit local evaluator.
+ *
+ * @param WP_Post $post Post.
+ * @return array<string,mixed>
+ */
+function npcink_wp_ai_eval_source_context( $post ): array {
+	$taxonomies = array();
+	foreach ( array( 'category', 'post_tag' ) as $taxonomy ) {
+		$terms = wp_get_post_terms( (int) $post->ID, $taxonomy, array( 'fields' => 'names' ) );
+		$taxonomies[ $taxonomy ] = is_wp_error( $terms ) || ! is_array( $terms )
+			? array()
+			: array_slice( array_values( array_unique( array_map( 'strval', $terms ) ) ), 0, 20 );
+	}
+	return array(
+		'title'      => npcink_wp_ai_eval_truncate( wp_strip_all_tags( (string) $post->post_title ), 300 ),
+		'excerpt'    => npcink_wp_ai_eval_truncate( wp_strip_all_tags( (string) $post->post_excerpt ), 1000 ),
+		'content'    => npcink_wp_ai_eval_truncate( wp_strip_all_tags( strip_shortcodes( (string) $post->post_content ) ), 6000 ),
+		'taxonomies' => $taxonomies,
+	);
+}
+
+/**
  * Returns a numeric median.
  *
  * @param array<int,int> $values Values.
@@ -346,6 +383,7 @@ try {
 		$pairs[] = array(
 			'post_id'  => $post_id,
 			'post_title_length' => npcink_wp_ai_eval_length( (string) $post->post_title ),
+			'source_context' => npcink_wp_ai_eval_source_context( $post ),
 			'variants' => $variants,
 		);
 	}
@@ -415,7 +453,7 @@ unset( $aggregate['classification_reuse_lift_sum'], $aggregate['classification_r
 
 echo wp_json_encode(
 	array(
-		'contract_version' => 'wp_ai_generation_reference_eval.v1',
+		'contract_version' => 'wp_ai_generation_reference_eval.v2',
 		'generated_at'     => gmdate( 'c' ),
 		'write_posture'    => 'read_only_evaluation',
 		'request_delay_ms' => max( 0, min( 10000, absint( getenv( 'WP_AI_EVAL_DELAY_MS' ) ?: 3200 ) ) ),

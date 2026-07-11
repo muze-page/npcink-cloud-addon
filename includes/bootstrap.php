@@ -554,11 +554,16 @@ if ( ! function_exists( 'npcink_cloud_addon_filter_plugin_action_links' ) ) {
 	 * @return array<int|string,string>
 	 */
 	function npcink_cloud_addon_filter_plugin_action_links( array $links ): array {
+		$settings_url = menu_page_url( 'npcink-cloud-addon', false );
+		if ( '' === $settings_url ) {
+			$settings_url = admin_url( 'options-general.php?page=npcink-cloud-addon' );
+		}
+
 		array_unshift(
 			$links,
 			sprintf(
 				'<a href="%1$s">%2$s</a>',
-				esc_url( admin_url( 'admin.php?page=npcink-cloud-addon' ) ),
+				esc_url( $settings_url ),
 				esc_html__( 'Settings', 'npcink-cloud-addon' )
 			)
 		);

@@ -526,7 +526,7 @@ if ( ! class_exists( 'Npcink_Cloud_WordPress_AI_Connector' ) ) {
 				Npcink_Cloud_WordPress_AI_Connector::CONNECTOR_ID,
 				Npcink_Cloud_WordPress_AI_Connector::CONNECTOR_NAME,
 				\WordPress\AiClient\Providers\Enums\ProviderTypeEnum::cloud(),
-				function_exists( 'admin_url' ) ? admin_url( 'admin.php?page=npcink-cloud-addon' ) : null,
+				function_exists( 'admin_url' ) ? admin_url( ( defined( 'NPCINK_TOOLBOX_VERSION' ) ? 'admin.php' : 'options-general.php' ) . '?page=npcink-cloud-addon' ) : null,
 				\WordPress\AiClient\Providers\Http\Enums\RequestAuthenticationMethod::apiKey(),
 				__( 'Bounded WordPress AI scene tasks through verified Npcink Cloud settings.', 'npcink-cloud-addon' )
 			);

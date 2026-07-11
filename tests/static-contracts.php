@@ -101,6 +101,15 @@ maca_assert(
 );
 
 maca_assert(
+	false !== strpos( $settings_page, 'add_submenu_page' )
+	&& false !== strpos( $settings_page, 'add_options_page' )
+	&& false === strpos( $settings_page, 'ensure_parent_menu' )
+	&& false === strpos( $settings_page, 'dashicons-superhero' )
+	&& false === strpos( $settings_page, 'render_overview' ),
+	'Cloud Addon attaches to Toolbox navigation or falls back to Settings without creating a suite overview.'
+);
+
+maca_assert(
 	false !== strpos( $settings_page, 'npcink-ai-tabs npcink-cloud-tabs' )
 	&& false !== strpos( $settings_page, 'npcink-ai-tab-active' )
 	&& false !== strpos( $settings_page, 'aria-current="page"' )
@@ -114,8 +123,9 @@ maca_assert(
 maca_assert(
 	false !== strpos( $bootstrap, 'plugin_action_links_' )
 	&& false !== strpos( $bootstrap, 'npcink_cloud_addon_filter_plugin_action_links' )
-	&& false !== strpos( $bootstrap, 'admin.php?page=npcink-cloud-addon' ),
-	'Plugin screen exposes a Settings shortcut to the Cloud Addon admin page.'
+	&& false !== strpos( $bootstrap, 'menu_page_url' )
+	&& false !== strpos( $bootstrap, 'options-general.php?page=npcink-cloud-addon' ),
+	'Plugin screen exposes a Settings shortcut to the registered Cloud Addon page or standalone Settings fallback.'
 );
 
 maca_assert(

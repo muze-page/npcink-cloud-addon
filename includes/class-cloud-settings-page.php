@@ -80,47 +80,25 @@ if ( ! class_exists( 'Npcink_Cloud_Settings_Page' ) ) {
 		 * @return void
 		 */
 		public static function add_menu_page(): void {
-			self::ensure_parent_menu();
-
-			add_submenu_page(
-				self::PARENT_MENU_SLUG,
-				__( 'Npcink Cloud Addon', 'npcink-cloud-addon' ),
-				__( 'Cloud Addon', 'npcink-cloud-addon' ),
-				self::MENU_CAPABILITY,
-				self::PAGE_SLUG,
-				array( __CLASS__, 'render' ),
-				50
-			);
-		}
-
-		/**
-		 * Ensures the shared Npcink parent menu exists.
-		 *
-		 * @return void
-		 */
-		private static function ensure_parent_menu(): void {
 			if ( self::has_parent_menu() ) {
+				add_submenu_page(
+					self::PARENT_MENU_SLUG,
+					__( 'Npcink Cloud Addon', 'npcink-cloud-addon' ),
+					__( 'Cloud Addon', 'npcink-cloud-addon' ),
+					self::MENU_CAPABILITY,
+					self::PAGE_SLUG,
+					array( __CLASS__, 'render' ),
+					50
+				);
 				return;
 			}
 
-			add_menu_page(
-				__( 'Npcink', 'npcink-cloud-addon' ),
-				__( 'Npcink', 'npcink-cloud-addon' ),
+			add_options_page(
+				__( 'Npcink Cloud Addon', 'npcink-cloud-addon' ),
+				__( 'Npcink Cloud Addon', 'npcink-cloud-addon' ),
 				self::MENU_CAPABILITY,
-				self::PARENT_MENU_SLUG,
-				array( __CLASS__, 'render_overview' ),
-				'dashicons-superhero',
-				58
-			);
-
-			add_submenu_page(
-				self::PARENT_MENU_SLUG,
-				__( 'Npcink Overview', 'npcink-cloud-addon' ),
-				__( 'Overview', 'npcink-cloud-addon' ),
-				self::MENU_CAPABILITY,
-				self::PARENT_MENU_SLUG,
-				array( __CLASS__, 'render_overview' ),
-				0
+				self::PAGE_SLUG,
+				array( __CLASS__, 'render' )
 			);
 		}
 
@@ -134,76 +112,6 @@ if ( ! class_exists( 'Npcink_Cloud_Settings_Page' ) ) {
 
 			foreach ( (array) $menu as $item ) {
 				if ( isset( $item[2] ) && self::PARENT_MENU_SLUG === $item[2] ) {
-					return true;
-				}
-			}
-
-			return false;
-		}
-
-		/**
-		 * Renders the shared Npcink overview page.
-		 *
-		 * @return void
-		 */
-		public static function render_overview(): void {
-			if ( ! current_user_can( self::MENU_CAPABILITY ) ) {
-				wp_die( esc_html__( 'You do not have permission to manage Npcink settings.', 'npcink-cloud-addon' ) );
-			}
-			?>
-			<div class="wrap">
-				<h1><?php esc_html_e( 'Npcink', 'npcink-cloud-addon' ); ?></h1>
-				<p><?php esc_html_e( 'Local WordPress entry points for Npcink governance, connections, cloud access, and ability packages.', 'npcink-cloud-addon' ); ?></p>
-				<h2><?php esc_html_e( 'Installed Surfaces', 'npcink-cloud-addon' ); ?></h2>
-				<table class="widefat striped" style="max-width: 860px;">
-					<tbody>
-						<?php
-						self::render_overview_row( __( 'Core', 'npcink-cloud-addon' ), __( 'Review proposals, approval decisions, commit preflight, audit, and Core app keys.', 'npcink-cloud-addon' ), 'npcink-governance-core' );
-						self::render_overview_row( __( 'Adapter', 'npcink-cloud-addon' ), __( 'Connect OpenClaw through the Adapter surface.', 'npcink-cloud-addon' ), 'npcink-openclaw-adapter' );
-						self::render_overview_row( __( 'Abilities', 'npcink-cloud-addon' ), __( 'Verify WordPress Abilities API packages and demo ability controls.', 'npcink-cloud-addon' ), 'npcink-abilities-toolkit' );
-						self::render_overview_row( __( 'Cloud Addon', 'npcink-cloud-addon' ), __( 'Connect this site to Npcink Cloud without moving local control-plane truth.', 'npcink-cloud-addon' ), self::PAGE_SLUG );
-						?>
-					</tbody>
-				</table>
-			</div>
-			<?php
-		}
-
-		/**
-		 * Renders one overview row.
-		 *
-		 * @param string $label       Row label.
-		 * @param string $description Row description.
-		 * @param string $slug        Menu page slug.
-		 * @return void
-		 */
-		private static function render_overview_row( string $label, string $description, string $slug ): void {
-			?>
-			<tr>
-				<th scope="row"><?php echo esc_html( $label ); ?></th>
-				<td><?php echo esc_html( $description ); ?></td>
-				<td>
-					<?php if ( self::is_submenu_registered( $slug ) ) : ?>
-						<a class="button" href="<?php echo esc_url( admin_url( 'admin.php?page=' . $slug ) ); ?>"><?php esc_html_e( 'Open', 'npcink-cloud-addon' ); ?></a>
-					<?php else : ?>
-						<span style="color: #646970;"><?php esc_html_e( 'Not installed', 'npcink-cloud-addon' ); ?></span>
-					<?php endif; ?>
-				</td>
-			</tr>
-			<?php
-		}
-
-		/**
-		 * Returns whether a Npcink submenu has been registered.
-		 *
-		 * @param string $slug Menu page slug.
-		 * @return bool
-		 */
-		private static function is_submenu_registered( string $slug ): bool {
-			global $submenu;
-
-			foreach ( (array) ( $submenu[ self::PARENT_MENU_SLUG ] ?? array() ) as $item ) {
-				if ( isset( $item[2] ) && $slug === $item[2] ) {
 					return true;
 				}
 			}
@@ -719,7 +627,7 @@ if ( ! class_exists( 'Npcink_Cloud_Settings_Page' ) ) {
 							'runtime_run_id'   => $new_run_id,
 						)
 					),
-					admin_url( 'admin.php?page=' . self::PAGE_SLUG )
+					self::page_url()
 				);
 				wp_safe_redirect( $url );
 				exit;
@@ -3522,13 +3430,23 @@ if ( ! class_exists( 'Npcink_Cloud_Settings_Page' ) ) {
 		 * @return void
 		 */
 		private static function redirect_to_page( string $tab = '' ): void {
-			$url = admin_url( 'admin.php?page=' . self::PAGE_SLUG );
+			$url = self::page_url();
 			if ( '' !== $tab ) {
 				$url = add_query_arg( 'tab', sanitize_key( $tab ), $url );
 			}
 
 			wp_safe_redirect( $url );
 			exit;
+		}
+
+		/**
+		 * Returns the active Cloud Addon page URL.
+		 *
+		 * @return string
+		 */
+		private static function page_url(): string {
+			$parent = defined( 'NPCINK_TOOLBOX_VERSION' ) ? 'admin.php' : 'options-general.php';
+			return admin_url( $parent . '?page=' . self::PAGE_SLUG );
 		}
 
 		/**

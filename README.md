@@ -39,7 +39,8 @@ The addon owns:
 - A `Troubleshooting > Runtime runs` section for read-only Nightly Inspection recent/status/result detail and nonce-protected Cloud-owned retry requests.
 - Bounded image context evidence transport through `POST /v1/runtime/execute`.
 - Bounded WordPress AI connector scene runtime through `POST /v1/runtime/execute`.
-- `Npcink > Cloud Addon`.
+- `Npcink AI > Cloud Addon` when Workflow Toolbox is active, or
+  `Settings > Npcink Cloud Addon` when installed standalone.
 
 The addon does not own approval truth, proposal truth, WordPress writes,
 workflow/task queue control, scheduler truth, billing truth, prompt ownership,
@@ -351,7 +352,7 @@ belong in Cloud Site Knowledge. See
 
 Admin path:
 
-`Npcink > Cloud Addon`
+`Npcink AI > Cloud Addon` (or `Settings > Npcink Cloud Addon` standalone)
 
 The default flow opens Cloud Portal site authorization with a `return_url` and
 state token. After Cloud returns a code, the addon exchanges it at

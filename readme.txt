@@ -78,7 +78,7 @@ Npcink Cloud service information:
 
 1. Place this directory in `wp-content/plugins/npcink-cloud-addon`.
 2. Activate `Npcink Cloud Addon`.
-3. Open `Npcink > Cloud Addon`.
+3. Open `Npcink AI > Cloud Addon`, or `Settings > Npcink Cloud Addon` when the addon is installed standalone.
 4. Enter Cloud Base URL and Cloud API Key.
 5. Click `Save and Verify`.
 

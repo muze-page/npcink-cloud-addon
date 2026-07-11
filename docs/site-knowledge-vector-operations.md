@@ -76,7 +76,8 @@ Refresh payloads may contain only public site content:
 - published posts and pages;
 - bounded article documents using the Cloud contract fields `post_id`,
   `post_type`, `post_status`, `title`, `url`, `modified_gmt`, `excerpt`, and
-  `content_excerpt`;
+  `content_excerpt`, plus bounded existing term-name metadata under
+  `taxonomies.category` and `taxonomies.post_tag`;
 - changes to approved comments may trigger a refresh of the public parent post,
   but comment bodies are not nested inside article documents;
 - truncation and payload-limit metadata.

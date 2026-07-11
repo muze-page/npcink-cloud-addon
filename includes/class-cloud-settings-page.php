@@ -1302,7 +1302,7 @@ if ( ! class_exists( 'Npcink_Cloud_Settings_Page' ) ) {
 				),
 				'site_knowledge_generation_reference_enabled' => array(
 					'label'       => __( 'Reference site content during generation', 'npcink-cloud-addon' ),
-					'description' => __( 'Allow Npcink Cloud to reference indexed public articles during WordPress AI title generation so suggestions better match this site\'s writing style. WordPress content is not changed.', 'npcink-cloud-addon' ),
+					'description' => __( 'Allow Npcink Cloud to reference indexed public articles during supported WordPress AI generation tasks so suggestions better match this site\'s writing style and taxonomy. WordPress content is not changed.', 'npcink-cloud-addon' ),
 				),
 				'monitoring_enabled' => array(
 					'label'       => __( 'Monitoring', 'npcink-cloud-addon' ),
@@ -2314,7 +2314,7 @@ if ( ! class_exists( 'Npcink_Cloud_Settings_Page' ) ) {
 							</tr>
 							<tr>
 								<th scope="row"><?php esc_html_e( 'AI generation reference', 'npcink-cloud-addon' ); ?></th>
-								<td><?php echo $generation_reference_enabled ? esc_html__( 'enabled for title generation', 'npcink-cloud-addon' ) : esc_html__( 'disabled', 'npcink-cloud-addon' ); ?></td>
+								<td><?php echo $generation_reference_enabled ? esc_html__( 'enabled for supported editor tasks', 'npcink-cloud-addon' ) : esc_html__( 'disabled', 'npcink-cloud-addon' ); ?></td>
 							</tr>
 							<tr>
 								<th scope="row"><?php esc_html_e( 'Last index action', 'npcink-cloud-addon' ); ?></th>

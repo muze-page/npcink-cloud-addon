@@ -32,6 +32,7 @@ if ( ! class_exists( 'Npcink_Cloud_Site_Knowledge_Change_Bridge' ) ) {
 			private const RECONCILE_POSTS = 50;
 			private const MANUAL_INDEX_POSTS = 50;
 			private const MAX_DOCUMENT_CHARS = 12000;
+			private const MAX_TAXONOMY_TERMS = 20;
 
 		/**
 		 * Registers content change hooks and delivery cron hooks.
@@ -587,7 +588,45 @@ if ( ! class_exists( 'Npcink_Cloud_Site_Knowledge_Change_Bridge' ) ) {
 				'modified_gmt' => sanitize_text_field( (string) ( $post->post_modified_gmt ?? '' ) ),
 				'excerpt' => self::bounded_text( (string) ( $post->post_excerpt ?? '' ), 1000 ),
 				'content_excerpt' => $content,
+				'taxonomies' => self::post_taxonomies( $post_id ),
 			);
+		}
+
+		/**
+		 * Collects bounded existing WordPress category and tag names for index metadata.
+		 *
+		 * @param int $post_id Post id.
+		 * @return array<string,array<int,string>>
+		 */
+		private static function post_taxonomies( int $post_id ): array {
+			$taxonomies = array(
+				'category' => array(),
+				'post_tag' => array(),
+			);
+			if ( ! function_exists( 'wp_get_post_terms' ) ) {
+				return $taxonomies;
+			}
+
+			foreach ( array_keys( $taxonomies ) as $taxonomy ) {
+				$terms = wp_get_post_terms( $post_id, $taxonomy, array( 'fields' => 'names' ) );
+				if ( is_wp_error( $terms ) || ! is_array( $terms ) ) {
+					continue;
+				}
+				$names = array();
+				foreach ( $terms as $term_name ) {
+					$name = self::bounded_text( (string) $term_name, 80 );
+					if ( '' === $name || in_array( $name, $names, true ) ) {
+						continue;
+					}
+					$names[] = $name;
+					if ( count( $names ) >= self::MAX_TAXONOMY_TERMS ) {
+						break;
+					}
+				}
+				$taxonomies[ $taxonomy ] = $names;
+			}
+
+			return $taxonomies;
 		}
 
 		/**

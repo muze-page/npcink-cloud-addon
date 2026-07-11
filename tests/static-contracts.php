@@ -69,6 +69,8 @@ maca_assert(
 
 maca_assert(
 	false !== strpos( $composer, '"smoke:wp-ai-editor":' )
+	&& false !== strpos( $wp_ai_editor_smoke, '/wp-abilities/v1/abilities/ai/title-generation/run' )
+	&& false !== strpos( $wp_ai_editor_smoke, '/wp-abilities/v1/abilities/ai/excerpt-generation/run' )
 	&& false !== strpos( $wp_ai_editor_smoke, '/wp-abilities/v1/abilities/ai/summarization/run' )
 	&& false !== strpos( $wp_ai_editor_smoke, '/wp-abilities/v1/abilities/ai/meta-description/run' )
 	&& false !== strpos( $wp_ai_editor_smoke, '/wp-abilities/v1/abilities/ai/content-classification/run' )
@@ -78,7 +80,7 @@ maca_assert(
 	&& false === strpos( $wp_ai_editor_smoke, "'status'  => 'publish'" )
 	&& false === strpos( $wp_ai_editor_smoke, '"status":"publish"' )
 	&& false === strpos( $wp_ai_editor_smoke, 'trash' ),
-	'WordPress AI editor smoke covers draft-only summary, SEO, and classification suggestion paths without publish or cleanup side effects.'
+	'WordPress AI editor smoke covers draft-only title, excerpt, summary, SEO, and classification suggestion paths without publish or cleanup side effects.'
 );
 
 maca_assert(
@@ -996,6 +998,10 @@ maca_assert(
 	&& false !== strpos( $settings, "'site_knowledge_generation_reference_enabled'" )
 	&& false !== strpos( $wordpress_ai_connector, "'site_knowledge_reference'" )
 	&& false !== strpos( $wordpress_ai_connector, "'site_title_style'" )
+	&& false !== strpos( $wordpress_ai_connector, "'site_excerpt_style'" )
+	&& false !== strpos( $wordpress_ai_connector, "'site_meta_style'" )
+	&& false !== strpos( $wordpress_ai_connector, "'site_summary_style'" )
+	&& false !== strpos( $wordpress_ai_connector, "'site_taxonomy_history'" )
 	&& false !== strpos( $runtime_client, 'normalize_wordpress_ai_site_knowledge_reference' )
 	&& false !== strpos( $settings_page, "ACTION_UPDATE_LOCAL_PERMISSION = 'npcink_cloud_addon_update_local_permission'" )
 	&& false !== strpos( $settings_page, "admin_post_' . self::ACTION_UPDATE_LOCAL_PERMISSION" )
@@ -1010,7 +1016,7 @@ maca_assert(
 	&& false !== strpos( $settings_page, 'Allow public content-change delivery and explicit administrator delivery intents for Cloud-owned Site Knowledge indexing.' )
 	&& false !== strpos( $settings_page, 'Reference site content during generation' )
 	&& false !== strpos( $settings_page, 'AI generation reference' )
-	&& false !== strpos( $settings_page, 'enabled for title generation' )
+	&& false !== strpos( $settings_page, 'enabled for supported editor tasks' )
 	&& false !== strpos( $settings_page, 'Upload metadata-only plugin monitoring events. Prompts, content, results, secrets, and raw request payloads are not collected.' )
 	&& false !== strpos( $settings_page, 'onchange="this.form.submit();"' )
 	&& false !== strpos( $settings_page, 'Npcink_Cloud_WordPress_AI_Connector::sync_connected_marker()' )

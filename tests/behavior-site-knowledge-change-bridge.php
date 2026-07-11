@@ -15,6 +15,14 @@ require_once MACA_TEST_ROOT . '/includes/class-cloud-site-knowledge-change-bridg
 $GLOBALS['maca_comments'] = array();
 $GLOBALS['maca_posts'] = array();
 $GLOBALS['maca_scheduled_events'] = array();
+$GLOBALS['maca_post_terms'] = array();
+
+if ( ! function_exists( 'wp_get_post_terms' ) ) {
+	function wp_get_post_terms( int $post_id, string $taxonomy, array $args = array() ): array {
+		unset( $args );
+		return $GLOBALS['maca_post_terms'][ $post_id ][ $taxonomy ] ?? array();
+	}
+}
 
 if ( ! function_exists( 'get_posts' ) ) {
 	/**
@@ -133,6 +141,7 @@ function maca_reset_site_knowledge_bridge_state(): void {
 	$GLOBALS['maca_comments'] = array();
 	$GLOBALS['maca_posts'] = array();
 	$GLOBALS['maca_scheduled_events'] = array();
+	$GLOBALS['maca_post_terms'] = array();
 }
 
 /**
@@ -370,6 +379,10 @@ maca_reset_site_knowledge_bridge_state();
 maca_seed_settings( true );
 maca_add_public_post_fixture( 801 );
 maca_add_public_post_fixture( 802, 'page' );
+$GLOBALS['maca_post_terms'][801] = array(
+	'category' => array( 'Cloud Runtime', 'WordPress AI' ),
+	'post_tag' => array( 'Site Knowledge', 'Writing' ),
+);
 $start_status = Npcink_Cloud_Site_Knowledge_Change_Bridge::request_manual_index_operation( 'start' );
 $start_request = $GLOBALS['maca_http_requests'][0] ?? array();
 $start_body = json_decode( (string) ( $start_request['args']['body'] ?? '' ), true );
@@ -384,6 +397,8 @@ maca_assert(
 	&& 2 === count( $start_documents )
 	&& 'publish' === (string) ( $first_start_document['post_status'] ?? '' )
 	&& 'Public content for Site Knowledge 801' === (string) ( $first_start_document['content_excerpt'] ?? '' )
+	&& array( 'Cloud Runtime', 'WordPress AI' ) === (array) ( $first_start_document['taxonomies']['category'] ?? array() )
+	&& array( 'Site Knowledge', 'Writing' ) === (array) ( $first_start_document['taxonomies']['post_tag'] ?? array() )
 	&& ! array_key_exists( 'status', $first_start_document )
 	&& ! array_key_exists( 'body', $first_start_document )
 	&& ! array_key_exists( 'comments', $first_start_document )

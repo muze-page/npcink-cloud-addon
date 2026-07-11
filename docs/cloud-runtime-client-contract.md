@@ -373,14 +373,17 @@ The method rejects generic chat or provider-control fields such as `messages`,
 headers. It also bounds prompt/body size and clamps timeout to 60 seconds,
 retention, and retry values.
 
-For `title_generation` only, the scene request may carry the optional bounded
-shape `site_knowledge_reference={enabled:boolean,mode:site_title_style}`. The
+For supported editor tasks, the scene request may carry the optional bounded
+shape `site_knowledge_reference={enabled:boolean,mode:string}`. The task-bound
+modes are `site_title_style`, `site_excerpt_style`, `site_meta_style`,
+`site_summary_style`, and `site_taxonomy_history` for title, excerpt, meta
+description, summary, and classification respectively. The
 local `site_knowledge_generation_reference_enabled` permission is the only
 preference truth and defaults to off. When enabled, the WordPress AI scene
-wrapper adds the hint automatically; callers cannot provide source titles,
-chunks, scores, URLs, or other reference payloads. Cloud may use the hint for
-hidden Site Knowledge title-style context, while the addon and WordPress AI
-plugin continue to receive only the ordinary title result.
+wrapper adds the task-bound hint automatically; callers cannot provide source
+texts, taxonomy terms, chunks, scores, URLs, or other reference payloads. Cloud
+may use hidden Site Knowledge style or existing taxonomy history, while the
+addon and WordPress AI plugin continue to receive only the ordinary task result.
 
 Image generation input must use
 `contract_version=image_generation_request.v1`, `task=image_generation`, and a

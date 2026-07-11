@@ -99,6 +99,78 @@ maca_assert(
 	'Behavior: WordPress AI connector runtime rejects caller-supplied Site Knowledge titles.'
 );
 
+$reference_modes = array(
+	'excerpt_generation'     => 'site_excerpt_style',
+	'meta_description'       => 'site_meta_style',
+	'content_summary'        => 'site_summary_style',
+	'content_classification' => 'site_taxonomy_history',
+);
+foreach ( $reference_modes as $reference_task => $reference_mode ) {
+	$GLOBALS['maca_http_response_queue'][] = array(
+		'response' => array( 'code' => 200 ),
+		'body'     => wp_json_encode( array( 'status' => 'ok', 'run_id' => 'run_' . $reference_task ) ),
+	);
+	$reference_result = $client->execute_wordpress_ai_connector_runtime(
+		array(
+			'contract_version' => 'wp_ai_connector_runtime.v1',
+			'task'             => $reference_task,
+			'prompt'           => 'Run the bounded editor task.',
+			'input'            => array(
+				'site_knowledge_reference' => array(
+					'enabled' => true,
+					'mode'    => $reference_mode,
+				),
+			),
+		)
+	);
+	$reference_request = end( $GLOBALS['maca_http_requests'] );
+	$reference_body = json_decode( (string) ( $reference_request['args']['body'] ?? '' ), true );
+	maca_assert(
+		is_array( $reference_result )
+		&& $reference_task === (string) ( $reference_body['input']['task'] ?? '' )
+		&& $reference_mode === (string) ( $reference_body['input']['request']['site_knowledge_reference']['mode'] ?? '' ),
+		'Behavior: WordPress AI connector runtime accepts the task-bound Site Knowledge reference mode for ' . $reference_task . '.'
+	);
+}
+
+$mismatched_reference = $client->execute_wordpress_ai_connector_runtime(
+	array(
+		'contract_version' => 'wp_ai_connector_runtime.v1',
+		'task'             => 'content_summary',
+		'prompt'           => 'Summarize this article.',
+		'input'            => array(
+			'site_knowledge_reference' => array(
+				'enabled' => true,
+				'mode'    => 'site_title_style',
+			),
+		),
+	)
+);
+maca_assert(
+	is_wp_error( $mismatched_reference )
+	&& 'cloud_wp_ai_connector_site_knowledge_reference_mode_invalid' === $mismatched_reference->get_error_code(),
+	'Behavior: WordPress AI connector runtime rejects a Site Knowledge reference mode that does not match the editor task.'
+);
+
+$unsupported_reference = $client->execute_wordpress_ai_connector_runtime(
+	array(
+		'contract_version' => 'wp_ai_connector_runtime.v1',
+		'task'             => 'content_rewrite',
+		'prompt'           => 'Rewrite this paragraph.',
+		'input'            => array(
+			'site_knowledge_reference' => array(
+				'enabled' => true,
+				'mode'    => 'site_title_style',
+			),
+		),
+	)
+);
+maca_assert(
+	is_wp_error( $unsupported_reference )
+	&& 'cloud_wp_ai_connector_site_knowledge_reference_task_not_allowed' === $unsupported_reference->get_error_code(),
+	'Behavior: WordPress AI connector runtime preserves the task-not-allowed error for unsupported reference tasks.'
+);
+
 $chat_shape = $client->execute_wordpress_ai_connector_runtime(
 	array(
 		'contract_version' => 'wp_ai_connector_runtime.v1',

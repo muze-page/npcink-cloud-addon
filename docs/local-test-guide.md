@@ -80,13 +80,14 @@ The command uses WP-CLI against `WP_PATH`, defaulting to
 differs.
 
 This smoke creates one local draft post, runs the same WordPress AI ability
-surfaces used by the editor for summarization, SEO description, and content
-classification, applies only the summary block and SEO description to the draft,
-and reads the draft back through REST.
+surfaces used by the editor for title, excerpt, summarization, SEO description,
+and content classification, applies only the summary block and SEO description
+to the draft, and reads the draft back through REST.
 
 Expected:
 
 - the created post remains `draft`;
+- title and excerpt return direct suggestion text;
 - the content contains an `ai-summarization-summary` block;
 - `wpai_meta_description` contains direct suggestion text;
 - classification returns labels but the smoke does not accept or create terms;

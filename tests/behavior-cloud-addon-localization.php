@@ -65,9 +65,9 @@ maca_assert(
 		'Reference site content during generation',
 		'npcink-cloud-addon'
 	)
-	&& '已为标题生成启用' === Npcink_Cloud_Addon_Localization::filter_gettext(
-		'enabled for title generation',
-		'enabled for title generation',
+	&& '已为支持的编辑器任务启用' === Npcink_Cloud_Addon_Localization::filter_gettext(
+		'enabled for supported editor tasks',
+		'enabled for supported editor tasks',
 		'npcink-cloud-addon'
 	),
 	'Addon localization fallback covers verified local permissions admin copy.'

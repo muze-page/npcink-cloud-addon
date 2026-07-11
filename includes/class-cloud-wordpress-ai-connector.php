@@ -845,10 +845,11 @@ if ( ! class_exists( 'Npcink_Cloud_WordPress_AI_Connector' ) ) {
 					'task'   => $task,
 				),
 			);
-			if ( 'title_generation' === $task && Npcink_Cloud_Addon_Settings::is_site_knowledge_generation_reference_enabled() ) {
+			$site_knowledge_reference_mode = $this->site_knowledge_reference_mode( $task );
+			if ( '' !== $site_knowledge_reference_mode && Npcink_Cloud_Addon_Settings::is_site_knowledge_generation_reference_enabled() ) {
 				$scene_input['site_knowledge_reference'] = array(
 					'enabled' => true,
-					'mode'    => 'site_title_style',
+					'mode'    => $site_knowledge_reference_mode,
 				);
 			}
 
@@ -941,6 +942,24 @@ if ( ! class_exists( 'Npcink_Cloud_WordPress_AI_Connector' ) ) {
 		 */
 		private function response_format_hint( string $task ): string {
 			return in_array( $task, array( 'content_classification', 'comment_moderation' ), true ) ? 'json' : 'text';
+		}
+
+		/**
+		 * Returns the bounded Site Knowledge reference mode for one editor task.
+		 *
+		 * @param string $task WordPress AI scene task.
+		 * @return string
+		 */
+		private function site_knowledge_reference_mode( string $task ): string {
+			$modes = array(
+				'title_generation'       => 'site_title_style',
+				'excerpt_generation'     => 'site_excerpt_style',
+				'meta_description'       => 'site_meta_style',
+				'content_summary'        => 'site_summary_style',
+				'content_classification' => 'site_taxonomy_history',
+			);
+
+			return (string) ( $modes[ $task ] ?? '' );
 		}
 
 		/**

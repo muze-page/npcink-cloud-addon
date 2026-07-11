@@ -1770,7 +1770,7 @@ if ( ! class_exists( 'Npcink_Cloud_Runtime_Client' ) ) {
 		}
 
 		/**
-		 * Normalizes the optional Site Knowledge style reference for WordPress AI titles.
+		 * Normalizes the optional Site Knowledge reference for supported WordPress AI tasks.
 		 *
 		 * @param mixed  $reference Raw reference value.
 		 * @param string $task WordPress AI scene task.
@@ -1805,22 +1805,29 @@ if ( ! class_exists( 'Npcink_Cloud_Runtime_Client' ) ) {
 					array( 'status' => 400 )
 				);
 			}
-			$mode = sanitize_key( (string) ( $reference['mode'] ?? 'site_title_style' ) );
-			if ( 'site_title_style' !== $mode ) {
+			$task_modes = array(
+				'title_generation'       => 'site_title_style',
+				'excerpt_generation'     => 'site_excerpt_style',
+				'meta_description'       => 'site_meta_style',
+				'content_summary'        => 'site_summary_style',
+				'content_classification' => 'site_taxonomy_history',
+			);
+			$expected_mode = (string) ( $task_modes[ $task ] ?? '' );
+			$mode = sanitize_key( (string) ( $reference['mode'] ?? ( '' !== $expected_mode ? $expected_mode : 'site_title_style' ) ) );
+			if ( $enabled && '' === $expected_mode ) {
+				return new WP_Error(
+					'cloud_wp_ai_connector_site_knowledge_reference_task_not_allowed',
+					__( 'WordPress AI Site Knowledge reference is not supported for this task.', 'npcink-cloud-addon' ),
+					array( 'status' => 400 )
+				);
+			}
+			if ( ( '' !== $expected_mode && $mode !== $expected_mode ) || ( '' === $expected_mode && 'site_title_style' !== $mode ) ) {
 				return new WP_Error(
 					'cloud_wp_ai_connector_site_knowledge_reference_mode_invalid',
 					__( 'WordPress AI Site Knowledge reference mode is not supported.', 'npcink-cloud-addon' ),
 					array( 'status' => 400 )
 				);
 			}
-			if ( $enabled && 'title_generation' !== $task ) {
-				return new WP_Error(
-					'cloud_wp_ai_connector_site_knowledge_reference_task_not_allowed',
-					__( 'WordPress AI Site Knowledge reference currently supports title generation only.', 'npcink-cloud-addon' ),
-					array( 'status' => 400 )
-				);
-			}
-
 			return array(
 				'enabled' => $enabled,
 				'mode'    => $mode,

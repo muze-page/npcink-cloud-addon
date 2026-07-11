@@ -158,15 +158,39 @@ $status_result = Npcink_Cloud_Site_Knowledge_Runtime_Bridge::dispatch_runtime(
 	'npcink-cloud/site-knowledge-status',
 	'site_knowledge_status.v1'
 );
+$first_status_request = $GLOBALS['maca_http_requests'][0] ?? array();
+$first_status_key = (string) ( $first_status_request['args']['headers']['Idempotency-Key'] ?? '' );
+$GLOBALS['maca_http_response_queue'][] = array(
+	'response' => array( 'code' => 200 ),
+	'body' => wp_json_encode(
+		array(
+			'status' => 'ok',
+			'data' => array(
+				'contract_version' => 'site_knowledge_status.v1',
+			),
+		)
+	),
+);
+$second_status_result = Npcink_Cloud_Site_Knowledge_Runtime_Bridge::dispatch_runtime(
+	$status_payload,
+	'npcink-cloud/site-knowledge-status',
+	'site_knowledge_status.v1'
+);
+$second_status_request = $GLOBALS['maca_http_requests'][1] ?? array();
+$second_status_key = (string) ( $second_status_request['args']['headers']['Idempotency-Key'] ?? '' );
 maca_assert(
 	is_array( $status_result )
+	&& is_array( $second_status_result )
+	&& '' !== $first_status_key
+	&& '' !== $second_status_key
+	&& $first_status_key !== $second_status_key
 	&& 'site_knowledge_status.v1' === (string) ( $status_result['site_knowledge_cloud_boundary']['contract_version'] ?? '' )
 	&& 'cloud_service' === (string) ( $status_result['site_knowledge_cloud_boundary']['ownership']['index_execution_owner'] ?? '' )
 	&& 'local_wordpress_host' === (string) ( $status_result['site_knowledge_cloud_boundary']['ownership']['final_write_owner'] ?? '' )
 	&& true === (bool) ( $status_result['site_knowledge_cloud_boundary']['truth_boundaries']['cloud_is_index_truth'] ?? false )
 	&& false === (bool) ( $status_result['site_knowledge_cloud_boundary']['truth_boundaries']['cloud_is_wordpress_control_plane'] ?? true )
 	&& false === (bool) ( $status_result['site_knowledge_cloud_boundary']['truth_boundaries']['cloud_creates_wordpress_writes'] ?? true ),
-	'Behavior: Site Knowledge runtime bridge preserves Cloud status owner and truth boundary fields as read-only projection.'
+	'Behavior: Site Knowledge runtime bridge preserves read-only Cloud boundary detail and uses fresh status idempotency keys.'
 );
 
 maca_reset_test_state();

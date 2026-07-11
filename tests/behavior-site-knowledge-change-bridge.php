@@ -374,15 +374,22 @@ $start_status = Npcink_Cloud_Site_Knowledge_Change_Bridge::request_manual_index_
 $start_request = $GLOBALS['maca_http_requests'][0] ?? array();
 $start_body = json_decode( (string) ( $start_request['args']['body'] ?? '' ), true );
 $start_body = is_array( $start_body ) ? $start_body : array();
+$start_documents = (array) ( $start_body['input']['documents'] ?? array() );
+$first_start_document = is_array( $start_documents[0] ?? null ) ? $start_documents[0] : array();
 maca_assert(
 	is_array( $start_status )
 	&& false !== strpos( (string) ( $start_request['url'] ?? '' ), '/v1/runtime/execute' )
 	&& 'refresh' === (string) ( $start_body['input']['sync_mode'] ?? '' )
 	&& 'admin_start' === (string) ( $start_body['input']['operation_source'] ?? '' )
-	&& 2 === count( (array) ( $start_body['input']['documents'] ?? array() ) )
+	&& 2 === count( $start_documents )
+	&& 'publish' === (string) ( $first_start_document['post_status'] ?? '' )
+	&& 'Public content for Site Knowledge 801' === (string) ( $first_start_document['content_excerpt'] ?? '' )
+	&& ! array_key_exists( 'status', $first_start_document )
+	&& ! array_key_exists( 'body', $first_start_document )
+	&& ! array_key_exists( 'comments', $first_start_document )
 	&& 'start' === (string) ( $start_status['last_index_action'] ?? '' )
 	&& 2 === absint( $start_status['last_index_action_sent_count'] ?? 0 ),
-	'Behavior: administrator can start Site Knowledge indexing from bounded public WordPress content.'
+	'Behavior: administrator can start Site Knowledge indexing with the canonical Cloud public document contract.'
 );
 
 maca_reset_site_knowledge_bridge_state();

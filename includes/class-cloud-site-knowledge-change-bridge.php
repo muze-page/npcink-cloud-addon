@@ -581,57 +581,13 @@ if ( ! class_exists( 'Npcink_Cloud_Site_Knowledge_Change_Bridge' ) ) {
 				'kind' => 'post',
 				'post_id' => $post_id,
 				'post_type' => sanitize_key( (string) ( $post->post_type ?? '' ) ),
-				'status' => sanitize_key( (string) ( $post->post_status ?? '' ) ),
+				'post_status' => sanitize_key( (string) ( $post->post_status ?? '' ) ),
 				'title' => self::post_title( $post ),
 				'url' => self::post_url( $post_id ),
 				'modified_gmt' => sanitize_text_field( (string) ( $post->post_modified_gmt ?? '' ) ),
 				'excerpt' => self::bounded_text( (string) ( $post->post_excerpt ?? '' ), 1000 ),
-				'body' => $content,
-				'comments' => self::approved_comment_documents( $post_id ),
+				'content_excerpt' => $content,
 			);
-		}
-
-		/**
-		 * Collects bounded approved comment manifests.
-		 *
-		 * @param int $post_id Post id.
-		 * @return array<int,array<string,mixed>>
-		 */
-		private static function approved_comment_documents( int $post_id ): array {
-			if ( ! function_exists( 'get_comments' ) ) {
-				return array();
-			}
-
-			$comments = get_comments(
-				array(
-					'post_id' => $post_id,
-					'status' => 'approve',
-					'number' => 20,
-					'orderby' => 'comment_date_gmt',
-					'order' => 'ASC',
-				)
-			);
-			if ( ! is_array( $comments ) ) {
-				return array();
-			}
-
-			$documents = array();
-			foreach ( $comments as $comment ) {
-				$comment_id = absint( $comment->comment_ID ?? 0 );
-				if ( $comment_id <= 0 ) {
-					continue;
-				}
-
-				$documents[] = array(
-					'id' => 'wp_comment_' . $comment_id,
-					'comment_id' => $comment_id,
-					'post_id' => $post_id,
-					'date_gmt' => sanitize_text_field( (string) ( $comment->comment_date_gmt ?? '' ) ),
-					'body' => self::bounded_text( (string) ( $comment->comment_content ?? '' ), 2000 ),
-				);
-			}
-
-			return $documents;
 		}
 
 		/**

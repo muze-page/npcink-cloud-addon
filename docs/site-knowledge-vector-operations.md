@@ -74,10 +74,22 @@ The addon must reject or omit:
 Refresh payloads may contain only public site content:
 
 - published posts and pages;
-- bounded title, excerpt/content, permalink, modified time, post id, and post
-  type fields;
-- approved comments attached to public posts or pages;
+- bounded article documents using the Cloud contract fields `post_id`,
+  `post_type`, `post_status`, `title`, `url`, `modified_gmt`, `excerpt`, and
+  `content_excerpt`;
+- changes to approved comments may trigger a refresh of the public parent post,
+  but comment bodies are not nested inside article documents;
 - truncation and payload-limit metadata.
+
+The bridge must not send the retired article aliases `status` or `body`.
+Dedicated Cloud comment admission, when explicitly enabled by a future bounded
+contract, must use a separate top-level `comments[]` shape rather than nesting
+comment content inside `documents[]`.
+
+Each Site Knowledge search, status, or refresh dispatch uses one fresh operation
+id for its trace and idempotency key. This prevents a later user action from
+replaying stale index state or an older queued refresh while preserving stable
+identity inside that single signed dispatch.
 
 Refresh payloads must not contain:
 

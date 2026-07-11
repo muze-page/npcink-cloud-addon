@@ -281,6 +281,7 @@ maca_assert(
 	&& false !== strpos( $runtime_client, "'channel'             => 'toolbox_web_search'" )
 	&& false !== strpos( $runtime_client, "'ability_name'        => 'npcink-cloud/web-search'" )
 	&& false !== strpos( $runtime_client, "'execution_kind'      => 'web_search'" )
+	&& false !== strpos( $runtime_client, "'source_extraction_preview'" )
 	&& false !== strpos( $runtime_client, "'write_posture']          = 'suggestion_only'" )
 	&& false !== strpos( $runtime_client, "'direct_wordpress_write'] = false" )
 	&& false !== strpos( $runtime_client, "'allow_fallback' => true" ),

@@ -50,7 +50,7 @@ if ( ! class_exists( 'Npcink_Cloud_Runtime_Client' ) ) {
 		private const TOOLBOX_WEB_SEARCH_MAX_QUERY_CHARS = 1000;
 		private const TOOLBOX_WEB_SEARCH_MAX_TIMEOUT_SECONDS = 60;
 		private const TOOLBOX_WEB_SEARCH_MAX_RETENTION_TTL = 86400;
-		private const TOOLBOX_WEB_SEARCH_ALLOWED_INTENTS = array( 'general_research', 'article_background', 'fact_check', 'news', 'writing_context', 'competitor_research', 'pricing_snapshot', 'product_comparison', 'source_discovery', 'external_links', 'zhihu_global_search', 'zhihu_research', 'zhihu_hot_topics', 'zhida_simple', 'zhida_deep', 'zhida_deepsearch' );
+		private const TOOLBOX_WEB_SEARCH_ALLOWED_INTENTS = array( 'general_research', 'article_background', 'fact_check', 'news', 'writing_context', 'competitor_research', 'pricing_snapshot', 'product_comparison', 'source_discovery', 'source_extraction_preview', 'external_links', 'zhihu_global_search', 'zhihu_research', 'zhihu_hot_topics', 'zhida_simple', 'zhida_deep', 'zhida_deepsearch' );
 		private const TOOLBOX_IMAGE_SOURCE_CONTRACT = 'image_source_cloud_request.v1';
 		private const TOOLBOX_IMAGE_SOURCE_MAX_REQUEST_BYTES = 120000;
 		private const TOOLBOX_IMAGE_SOURCE_MAX_QUERY_CHARS = 1000;

@@ -314,7 +314,10 @@ dispatch, and Cloud error mapping.
 `execute_toolbox_web_search_runtime()` is the bounded transport seam for
 Toolbox managed web search evidence. It accepts `web_search.v1` request packets
 and projects them to `channel=toolbox_web_search` for Cloud
-`npcink-cloud/web-search`. It does not expose local provider keys, create
+`npcink-cloud/web-search`. The allowlist includes the exact-URL
+`source_extraction_preview` intent and preserves its bounded `source_url` field;
+the Addon remains a validating signed transport and does not fetch that URL.
+It does not expose local provider keys, create
 proposals, or write WordPress content.
 
 `execute_toolbox_image_source_runtime()` is the bounded transport seam for

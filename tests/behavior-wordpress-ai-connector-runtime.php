@@ -703,6 +703,54 @@ maca_assert(
 	'Behavior: Toolbox web search runtime projects transport-only search evidence without WordPress writes.'
 );
 
+$source_url = 'https://developer.wordpress.org/news/2026/04/whats-new-for-developers-april-2026/';
+$GLOBALS['maca_http_response_queue'][] = array(
+	'response' => array( 'code' => 200 ),
+	'body'     => wp_json_encode(
+		array(
+			'status' => 'ok',
+			'run_id' => 'run_toolbox_source_extraction_1',
+			'data'   => array(
+				'result' => array(
+					'artifact_type'          => 'source_extraction_preview',
+					'contract_version'       => 'source_extraction_preview.v1',
+					'requested_url'          => $source_url,
+					'resolved_url'           => $source_url,
+					'url_match'              => 'matched',
+					'direct_wordpress_write' => false,
+				),
+			),
+		)
+	),
+);
+
+$toolbox_source_extraction_result = $client->execute_toolbox_web_search_runtime(
+	array(
+		'contract_version' => 'web_search.v1',
+		'query'            => $source_url,
+		'source_url'       => $source_url,
+		'intent'           => 'source_extraction_preview',
+		'max_results'      => 1,
+		'recency_days'     => 0,
+	),
+	'trace-toolbox-source-extraction',
+	'toolbox-source-extraction-idempotency'
+);
+$toolbox_source_extraction_request      = end( $GLOBALS['maca_http_requests'] );
+$toolbox_source_extraction_request_body = json_decode( (string) ( $toolbox_source_extraction_request['args']['body'] ?? '' ), true );
+
+maca_assert(
+	is_array( $toolbox_source_extraction_result )
+	&& 'run_toolbox_source_extraction_1' === (string) ( $toolbox_source_extraction_result['run_id'] ?? '' )
+	&& 'source_extraction_preview' === (string) ( $toolbox_source_extraction_request_body['input']['intent'] ?? '' )
+	&& $source_url === (string) ( $toolbox_source_extraction_request_body['input']['query'] ?? '' )
+	&& $source_url === (string) ( $toolbox_source_extraction_request_body['input']['source_url'] ?? '' )
+	&& 1 === (int) ( $toolbox_source_extraction_request_body['input']['max_results'] ?? 0 )
+	&& 0 === (int) ( $toolbox_source_extraction_request_body['input']['recency_days'] ?? -1 )
+	&& false === (bool) ( $toolbox_source_extraction_request_body['input']['direct_wordpress_write'] ?? true ),
+	'Behavior: Toolbox exact source extraction intent and source URL survive Addon normalization without WordPress writes.'
+);
+
 $web_search_chat_shape = $client->execute_toolbox_web_search_runtime(
 	array(
 		'contract_version' => 'web_search.v1',

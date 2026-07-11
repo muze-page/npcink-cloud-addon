@@ -228,6 +228,7 @@ if ( ! class_exists( 'Npcink_Cloud_Settings_Page' ) ) {
 			$timeout  = isset( $_POST['timeout'] ) ? absint( wp_unslash( $_POST['timeout'] ) ) : 8;
 			$monitoring_enabled = ! empty( $_POST['monitoring_enabled'] );
 			$site_knowledge_delivery_enabled = ! empty( $_POST['site_knowledge_delivery_enabled'] );
+			$site_knowledge_generation_reference_enabled = ! empty( $_POST['site_knowledge_generation_reference_enabled'] );
 			$wordpress_ai_connector_enabled = ! empty( $_POST['wordpress_ai_connector_enabled'] );
 
 			$payload = array(
@@ -236,6 +237,7 @@ if ( ! class_exists( 'Npcink_Cloud_Settings_Page' ) ) {
 				'timeout'            => $timeout,
 				'monitoring_enabled' => $monitoring_enabled,
 				'site_knowledge_delivery_enabled' => $site_knowledge_delivery_enabled,
+				'site_knowledge_generation_reference_enabled' => $site_knowledge_generation_reference_enabled,
 				'wordpress_ai_connector_enabled' => $wordpress_ai_connector_enabled,
 			);
 
@@ -1390,6 +1392,10 @@ if ( ! class_exists( 'Npcink_Cloud_Settings_Page' ) ) {
 					'label'       => __( 'Site Knowledge delivery', 'npcink-cloud-addon' ),
 					'description' => __( 'Allow public content-change delivery and explicit administrator delivery intents for Cloud-owned Site Knowledge indexing.', 'npcink-cloud-addon' ),
 				),
+				'site_knowledge_generation_reference_enabled' => array(
+					'label'       => __( 'Reference site content during generation', 'npcink-cloud-addon' ),
+					'description' => __( 'Allow Npcink Cloud to reference indexed public articles during WordPress AI title generation so suggestions better match this site\'s writing style. WordPress content is not changed.', 'npcink-cloud-addon' ),
+				),
 				'monitoring_enabled' => array(
 					'label'       => __( 'Monitoring', 'npcink-cloud-addon' ),
 					'description' => __( 'Upload metadata-only plugin monitoring events. Prompts, content, results, secrets, and raw request payloads are not collected.', 'npcink-cloud-addon' ),
@@ -1592,6 +1598,7 @@ if ( ! class_exists( 'Npcink_Cloud_Settings_Page' ) ) {
 				<input type="hidden" name="timeout" value="<?php echo esc_attr( (string) $settings['timeout'] ); ?>" />
 				<input type="hidden" name="monitoring_enabled" value="<?php echo esc_attr( ! empty( $settings['monitoring_enabled'] ) ? '1' : '0' ); ?>" />
 				<input type="hidden" name="site_knowledge_delivery_enabled" value="<?php echo esc_attr( ! empty( $settings['site_knowledge_delivery_enabled'] ) ? '1' : '0' ); ?>" />
+				<input type="hidden" name="site_knowledge_generation_reference_enabled" value="<?php echo esc_attr( ! empty( $settings['site_knowledge_generation_reference_enabled'] ) ? '1' : '0' ); ?>" />
 				<input type="hidden" name="wordpress_ai_connector_enabled" value="<?php echo esc_attr( ! empty( $settings['wordpress_ai_connector_enabled'] ) ? '1' : '0' ); ?>" />
 				<button type="submit" class="button button-secondary"><?php esc_html_e( 'Re-verify and refresh', 'npcink-cloud-addon' ); ?></button>
 			</form>
@@ -1633,6 +1640,7 @@ if ( ! class_exists( 'Npcink_Cloud_Settings_Page' ) ) {
 				<input type="hidden" name="action" value="<?php echo esc_attr( self::ACTION_SAVE ); ?>" />
 				<input type="hidden" name="monitoring_enabled" value="<?php echo esc_attr( ! empty( $settings['monitoring_enabled'] ) ? '1' : '0' ); ?>" />
 				<input type="hidden" name="site_knowledge_delivery_enabled" value="<?php echo esc_attr( ! empty( $settings['site_knowledge_delivery_enabled'] ) ? '1' : '0' ); ?>" />
+				<input type="hidden" name="site_knowledge_generation_reference_enabled" value="<?php echo esc_attr( ! empty( $settings['site_knowledge_generation_reference_enabled'] ) ? '1' : '0' ); ?>" />
 				<input type="hidden" name="wordpress_ai_connector_enabled" value="<?php echo esc_attr( ! empty( $settings['wordpress_ai_connector_enabled'] ) ? '1' : '0' ); ?>" />
 				<table class="form-table" role="presentation">
 					<tbody>
@@ -2329,6 +2337,7 @@ if ( ! class_exists( 'Npcink_Cloud_Settings_Page' ) ) {
 
 			$base_url = untrailingslashit( Npcink_Cloud_Addon_Settings::get_effective_base_url( $settings ) );
 			$delivery_enabled = ! empty( $site_knowledge['delivery_enabled'] );
+			$generation_reference_enabled = ! empty( $settings['site_knowledge_generation_reference_enabled'] );
 			$active_view = self::site_knowledge_view_from_request();
 			?>
 					<div class="npcink-cloud-site-knowledge-consent npcink-cloud-site-knowledge-consent--readonly">
@@ -2394,6 +2403,10 @@ if ( ! class_exists( 'Npcink_Cloud_Settings_Page' ) ) {
 							<tr>
 								<th scope="row"><?php esc_html_e( 'Delivery', 'npcink-cloud-addon' ); ?></th>
 								<td><?php echo $delivery_enabled ? esc_html__( 'enabled', 'npcink-cloud-addon' ) : esc_html__( 'disabled locally', 'npcink-cloud-addon' ); ?></td>
+							</tr>
+							<tr>
+								<th scope="row"><?php esc_html_e( 'AI generation reference', 'npcink-cloud-addon' ); ?></th>
+								<td><?php echo $generation_reference_enabled ? esc_html__( 'enabled for title generation', 'npcink-cloud-addon' ) : esc_html__( 'disabled', 'npcink-cloud-addon' ); ?></td>
 							</tr>
 							<tr>
 								<th scope="row"><?php esc_html_e( 'Last index action', 'npcink-cloud-addon' ); ?></th>

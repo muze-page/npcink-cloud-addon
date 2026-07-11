@@ -1724,6 +1724,16 @@ if ( ! class_exists( 'Npcink_Cloud_Runtime_Client' ) ) {
 			$retry_max       = absint( $request['retry_max'] ?? 0 );
 			$profile_id      = $this->normalize_identifier( (string) ( $request['profile_id'] ?? 'text.balanced' ) );
 			$input           = is_array( $request['input'] ?? null ) ? $request['input'] : array();
+			$site_knowledge_reference = $this->normalize_wordpress_ai_site_knowledge_reference(
+				$input['site_knowledge_reference'] ?? null,
+				$task
+			);
+			if ( is_wp_error( $site_knowledge_reference ) ) {
+				return $site_knowledge_reference;
+			}
+			if ( null !== $site_knowledge_reference ) {
+				$input['site_knowledge_reference'] = $site_knowledge_reference;
+			}
 
 			if ( '' !== $prompt ) {
 				$input['prompt'] = $prompt;
@@ -1756,6 +1766,64 @@ if ( ! class_exists( 'Npcink_Cloud_Runtime_Client' ) ) {
 				'policy'              => array(
 					'allow_fallback' => false,
 				),
+			);
+		}
+
+		/**
+		 * Normalizes the optional Site Knowledge style reference for WordPress AI titles.
+		 *
+		 * @param mixed  $reference Raw reference value.
+		 * @param string $task WordPress AI scene task.
+		 * @return array<string,mixed>|null|WP_Error
+		 */
+		private function normalize_wordpress_ai_site_knowledge_reference( $reference, string $task ) {
+			if ( null === $reference ) {
+				return null;
+			}
+			if ( ! is_array( $reference ) ) {
+				return new WP_Error(
+					'cloud_wp_ai_connector_site_knowledge_reference_invalid',
+					__( 'WordPress AI Site Knowledge reference must be a bounded object.', 'npcink-cloud-addon' ),
+					array( 'status' => 400 )
+				);
+			}
+
+			$unknown_fields = array_diff( array_keys( $reference ), array( 'enabled', 'mode' ) );
+			if ( ! empty( $unknown_fields ) ) {
+				return new WP_Error(
+					'cloud_wp_ai_connector_site_knowledge_reference_fields_not_allowed',
+					__( 'WordPress AI Site Knowledge reference accepts only enabled and mode.', 'npcink-cloud-addon' ),
+					array( 'status' => 400 )
+				);
+			}
+
+			$enabled = $reference['enabled'] ?? null;
+			if ( ! is_bool( $enabled ) ) {
+				return new WP_Error(
+					'cloud_wp_ai_connector_site_knowledge_reference_enabled_invalid',
+					__( 'WordPress AI Site Knowledge reference enabled value must be boolean.', 'npcink-cloud-addon' ),
+					array( 'status' => 400 )
+				);
+			}
+			$mode = sanitize_key( (string) ( $reference['mode'] ?? 'site_title_style' ) );
+			if ( 'site_title_style' !== $mode ) {
+				return new WP_Error(
+					'cloud_wp_ai_connector_site_knowledge_reference_mode_invalid',
+					__( 'WordPress AI Site Knowledge reference mode is not supported.', 'npcink-cloud-addon' ),
+					array( 'status' => 400 )
+				);
+			}
+			if ( $enabled && 'title_generation' !== $task ) {
+				return new WP_Error(
+					'cloud_wp_ai_connector_site_knowledge_reference_task_not_allowed',
+					__( 'WordPress AI Site Knowledge reference currently supports title generation only.', 'npcink-cloud-addon' ),
+					array( 'status' => 400 )
+				);
+			}
+
+			return array(
+				'enabled' => $enabled,
+				'mode'    => $mode,
 			);
 		}
 

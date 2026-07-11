@@ -35,6 +35,10 @@ $result = $client->execute_wordpress_ai_connector_runtime(
 		'input'            => array(
 			'post_title'   => 'Old title',
 			'post_excerpt' => 'A short public excerpt.',
+			'site_knowledge_reference' => array(
+				'enabled' => true,
+				'mode'    => 'site_title_style',
+			),
 		),
 		'timeout_seconds'  => 120,
 		'retention_ttl'    => 999999,
@@ -67,10 +71,32 @@ maca_assert(
 	&& 'wordpress_ai_connector' === (string) ( $request_body['input']['source_surface'] ?? '' )
 	&& 'npcink-cloud' === (string) ( $request_body['input']['connector_id'] ?? '' )
 	&& 'title_generation' === (string) ( $request_body['input']['task'] ?? '' )
+	&& true === (bool) ( $request_body['input']['request']['site_knowledge_reference']['enabled'] ?? false )
+	&& 'site_title_style' === (string) ( $request_body['input']['request']['site_knowledge_reference']['mode'] ?? '' )
 	&& 'suggestion_only' === (string) ( $request_body['input']['write_posture'] ?? '' )
 	&& false === (bool) ( $request_body['input']['direct_wordpress_write'] ?? true )
 	&& true === (bool) ( $request_body['input']['no_conversation'] ?? false ),
 	'Behavior: WordPress AI connector runtime projects a scene-bound no-chat no-write Cloud payload.'
+);
+
+$injected_reference = $client->execute_wordpress_ai_connector_runtime(
+	array(
+		'contract_version' => 'wp_ai_connector_runtime.v1',
+		'task'             => 'title_generation',
+		'prompt'           => 'Suggest a title.',
+		'input'            => array(
+			'site_knowledge_reference' => array(
+				'enabled' => true,
+				'mode'    => 'site_title_style',
+				'titles'  => array( 'Injected title' ),
+			),
+		),
+	)
+);
+maca_assert(
+	is_wp_error( $injected_reference )
+	&& 'cloud_wp_ai_connector_site_knowledge_reference_fields_not_allowed' === $injected_reference->get_error_code(),
+	'Behavior: WordPress AI connector runtime rejects caller-supplied Site Knowledge titles.'
 );
 
 $chat_shape = $client->execute_wordpress_ai_connector_runtime(

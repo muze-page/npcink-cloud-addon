@@ -386,6 +386,7 @@ function maca_seed_settings( bool $verified, string $base_url = 'https://cloud.e
 		'last_verification_error' => '',
 		'monitoring_enabled' => false,
 		'site_knowledge_delivery_enabled' => true,
+		'site_knowledge_generation_reference_enabled' => false,
 		'wordpress_ai_connector_enabled' => true,
 	);
 }
@@ -411,6 +412,18 @@ function maca_set_monitoring_enabled( bool $enabled ): void {
 function maca_set_site_knowledge_delivery_enabled( bool $enabled ): void {
 	$settings = Npcink_Cloud_Addon_Settings::get_settings();
 	$settings['site_knowledge_delivery_enabled'] = $enabled;
+	$GLOBALS['maca_options'][ Npcink_Cloud_Addon_Settings::option_name() ] = $settings;
+}
+
+/**
+ * Enables or disables Site Knowledge references for WordPress AI generation.
+ *
+ * @param bool $enabled Whether generation references are enabled.
+ * @return void
+ */
+function maca_set_site_knowledge_generation_reference_enabled( bool $enabled ): void {
+	$settings = Npcink_Cloud_Addon_Settings::get_settings();
+	$settings['site_knowledge_generation_reference_enabled'] = $enabled;
 	$GLOBALS['maca_options'][ Npcink_Cloud_Addon_Settings::option_name() ] = $settings;
 }
 

@@ -833,22 +833,30 @@ if ( ! class_exists( 'Npcink_Cloud_WordPress_AI_Connector' ) ) {
 				throw new \WordPress\AiClient\Common\Exception\RuntimeException( 'Npcink Cloud AI connector requires text scene input.' );
 			}
 
+			$scene_input = array(
+				'prompt'             => $text,
+				'system_instruction' => (string) ( $this->config->getSystemInstruction() ?? '' ),
+				'response_format'    => $this->response_format_hint( $task ),
+				'candidate_count'    => $this->config->getCandidateCount(),
+				'max_tokens'         => $this->config->getMaxTokens(),
+				'temperature'        => $this->config->getTemperature(),
+				'scene_gate'         => array(
+					'source' => 'wordpress_ai_plugin_ability',
+					'task'   => $task,
+				),
+			);
+			if ( 'title_generation' === $task && Npcink_Cloud_Addon_Settings::is_site_knowledge_generation_reference_enabled() ) {
+				$scene_input['site_knowledge_reference'] = array(
+					'enabled' => true,
+					'mode'    => 'site_title_style',
+				);
+			}
+
 			$request = array(
 				'contract_version' => 'wp_ai_connector_runtime.v1',
 				'task'             => $task,
 				'prompt'           => $text,
-				'input'            => array(
-					'prompt'             => $text,
-					'system_instruction' => (string) ( $this->config->getSystemInstruction() ?? '' ),
-					'response_format'    => $this->response_format_hint( $task ),
-					'candidate_count'    => $this->config->getCandidateCount(),
-					'max_tokens'         => $this->config->getMaxTokens(),
-					'temperature'        => $this->config->getTemperature(),
-					'scene_gate'         => array(
-						'source' => 'wordpress_ai_plugin_ability',
-						'task'   => $task,
-					),
-				),
+				'input'            => $scene_input,
 				'timeout_seconds'  => 60,
 				'retention_ttl'    => 86400,
 				'retry_max'        => 0,

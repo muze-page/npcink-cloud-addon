@@ -373,6 +373,15 @@ The method rejects generic chat or provider-control fields such as `messages`,
 headers. It also bounds prompt/body size and clamps timeout to 60 seconds,
 retention, and retry values.
 
+For `title_generation` only, the scene request may carry the optional bounded
+shape `site_knowledge_reference={enabled:boolean,mode:site_title_style}`. The
+local `site_knowledge_generation_reference_enabled` permission is the only
+preference truth and defaults to off. When enabled, the WordPress AI scene
+wrapper adds the hint automatically; callers cannot provide source titles,
+chunks, scores, URLs, or other reference payloads. Cloud may use the hint for
+hidden Site Knowledge title-style context, while the addon and WordPress AI
+plugin continue to receive only the ordinary title result.
+
 Image generation input must use
 `contract_version=image_generation_request.v1`, `task=image_generation`, and a
 single text prompt. The addon projects accepted requests into Cloud's existing

@@ -162,6 +162,14 @@ WordPress AI image generation feature. Both are WordPress scene runtimes, not
 generic chat APIs, image provider proxies, or OpenAI-compatible provider
 proxies.
 
+The local `Reference site content during generation` permission is off by
+default. When an administrator enables it, the scene-gated text model adds one
+bounded `site_knowledge_reference` hint to `title_generation` requests. Cloud
+may use existing Site Knowledge as hidden title-style context, while the
+WordPress AI plugin continues to receive only the ordinary title string. The
+addon does not receive or display source titles, chunks, similarity scores, or
+vector details, and it does not own the resulting title or any WordPress write.
+
 `npcink_cloud_addon_execute_toolbox_image_generation_runtime()` is the bounded
 transport seam for Toolbox AI image candidate generation. It accepts one
 reviewed text prompt and small generation options, dispatches through Cloud

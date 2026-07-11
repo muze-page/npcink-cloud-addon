@@ -8,6 +8,7 @@
  * Optional:
  * WP_AI_EVAL_POST_IDS=7520,5810,7957 composer run eval:wp-ai-generation-reference
  * WP_AI_EVAL_DELAY_MS=3200 composer run eval:wp-ai-generation-reference
+ * WP_AI_EVAL_MIN_POSTS=1 composer run eval:wp-ai-generation-reference
  *
  * @package NpcinkCloudAddon
  */
@@ -360,8 +361,9 @@ if ( ! current_user_can( 'edit_posts' ) ) {
 }
 
 $post_ids = npcink_wp_ai_eval_post_ids();
-if ( count( $post_ids ) < 3 ) {
-	fwrite( STDERR, "[fail] At least three valid published post ids are required.\n" );
+$minimum_posts = max( 1, min( 3, absint( getenv( 'WP_AI_EVAL_MIN_POSTS' ) ?: 3 ) ) );
+if ( count( $post_ids ) < $minimum_posts ) {
+	fwrite( STDERR, "[fail] The requested minimum number of valid published post ids is unavailable.\n" );
 	exit( 1 );
 }
 
@@ -458,6 +460,7 @@ echo wp_json_encode(
 		'write_posture'    => 'read_only_evaluation',
 		'request_delay_ms' => max( 0, min( 10000, absint( getenv( 'WP_AI_EVAL_DELAY_MS' ) ?: 3200 ) ) ),
 		'post_ids'         => $post_ids,
+		'minimum_posts'    => $minimum_posts,
 		'original_reference_enabled' => $original_reference_enabled,
 		'restored_reference_enabled' => Npcink_Cloud_Addon_Settings::is_site_knowledge_generation_reference_enabled(),
 		'thresholds'       => array(

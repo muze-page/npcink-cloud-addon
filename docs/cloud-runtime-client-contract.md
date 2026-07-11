@@ -404,8 +404,9 @@ The explicit local A/B evaluator emits
 `wp_ai_generation_reference_eval.v2`. Its default gate still requires at least
 three published posts across all five supported tasks. Operators may set
 `WP_AI_EVAL_MIN_POSTS=1` only for a quick post-change smoke; such a reduced run
-is not promotion evidence and the eval-lab promotion gate still requires at
-least 15 task pairs plus human validation.
+is not promotion evidence. `WP_AI_EVAL_TASKS=title` may further narrow a smoke
+to one or more comma-separated supported tasks. The eval-lab promotion gate
+still requires at least 15 task pairs plus human validation.
 
 Image generation input must use
 `contract_version=image_generation_request.v1`, `task=image_generation`, and a

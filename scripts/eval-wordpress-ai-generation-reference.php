@@ -9,6 +9,7 @@
  * WP_AI_EVAL_POST_IDS=7520,5810,7957 composer run eval:wp-ai-generation-reference
  * WP_AI_EVAL_DELAY_MS=3200 composer run eval:wp-ai-generation-reference
  * WP_AI_EVAL_MIN_POSTS=1 composer run eval:wp-ai-generation-reference
+ * WP_AI_EVAL_TASKS=title composer run eval:wp-ai-generation-reference
  *
  * @package NpcinkCloudAddon
  */
@@ -48,6 +49,19 @@ function npcink_wp_ai_eval_post_ids(): array {
 		}
 	}
 	return array_values( array_unique( $ids ) );
+}
+
+/**
+ * Returns the requested task subset for a quick local smoke.
+ *
+ * @return array<string,string>
+ */
+function npcink_wp_ai_eval_tasks(): array {
+	$requested = array_filter( array_map( 'trim', explode( ',', (string) ( getenv( 'WP_AI_EVAL_TASKS' ) ?: '' ) ) ) );
+	if ( empty( $requested ) ) {
+		return NPCINK_WP_AI_EVAL_TASKS;
+	}
+	return array_intersect_key( NPCINK_WP_AI_EVAL_TASKS, array_fill_keys( $requested, true ) );
 }
 
 /**
@@ -315,15 +329,16 @@ function npcink_wp_ai_eval_normalized_output( string $output ): string {
  *
 	 * @param WP_Post             $post Post.
 	 * @param bool                $reference_enabled Reference state.
-	 * @param array<string,mixed> $baselines Site baselines.
+ * @param array<string,mixed>  $baselines Site baselines.
+ * @param array<string,string> $tasks Task routes.
 	 * @return array<string,mixed>
  */
-function npcink_wp_ai_eval_variant( $post, bool $reference_enabled, array $baselines ): array {
+function npcink_wp_ai_eval_variant( $post, bool $reference_enabled, array $baselines, array $tasks ): array {
 	npcink_wp_ai_eval_set_reference( $reference_enabled );
 	$content = trim( wp_strip_all_tags( strip_shortcodes( (string) $post->post_content ) ) );
 	$title   = trim( wp_strip_all_tags( (string) $post->post_title ) );
 	$results = array();
-	foreach ( NPCINK_WP_AI_EVAL_TASKS as $task => $route ) {
+	foreach ( $tasks as $task => $route ) {
 		$input = in_array( $task, array( 'title', 'excerpt', 'summary' ), true )
 			? array( 'content' => $content, 'context' => (string) $post->ID )
 			: array( 'content' => $content, 'title' => $title, 'post_id' => (int) $post->ID );
@@ -362,8 +377,13 @@ if ( ! current_user_can( 'edit_posts' ) ) {
 
 $post_ids = npcink_wp_ai_eval_post_ids();
 $minimum_posts = max( 1, min( 3, absint( getenv( 'WP_AI_EVAL_MIN_POSTS' ) ?: 3 ) ) );
+$tasks         = npcink_wp_ai_eval_tasks();
 if ( count( $post_ids ) < $minimum_posts ) {
 	fwrite( STDERR, "[fail] The requested minimum number of valid published post ids is unavailable.\n" );
+	exit( 1 );
+}
+if ( empty( $tasks ) ) {
+	fwrite( STDERR, "[fail] No supported evaluation tasks were requested.\n" );
 	exit( 1 );
 }
 
@@ -380,7 +400,7 @@ try {
 		$order = 0 === $index % 2 ? array( false, true ) : array( true, false );
 		$variants = array();
 		foreach ( $order as $reference_enabled ) {
-			$variants[ $reference_enabled ? 'reference' : 'baseline' ] = npcink_wp_ai_eval_variant( $post, $reference_enabled, $baselines );
+			$variants[ $reference_enabled ? 'reference' : 'baseline' ] = npcink_wp_ai_eval_variant( $post, $reference_enabled, $baselines, $tasks );
 		}
 		$pairs[] = array(
 			'post_id'  => $post_id,
@@ -395,7 +415,7 @@ try {
 
 $aggregate = array(
 	'pairs'                    => count( $pairs ),
-	'task_pairs'               => count( $pairs ) * count( NPCINK_WP_AI_EVAL_TASKS ),
+	'task_pairs'               => count( $pairs ) * count( $tasks ),
 	'successful_outputs'       => 0,
 	'non_boilerplate_outputs'  => 0,
 	'style_wins'               => 0,
@@ -408,7 +428,7 @@ $aggregate = array(
 	'classification_reuse_comparisons' => 0,
 );
 foreach ( $pairs as $pair ) {
-	foreach ( array_keys( NPCINK_WP_AI_EVAL_TASKS ) as $task ) {
+	foreach ( array_keys( $tasks ) as $task ) {
 		$baseline  = $pair['variants']['baseline'][ $task ];
 		$reference = $pair['variants']['reference'][ $task ];
 		foreach ( array( $baseline, $reference ) as $variant ) {
@@ -461,6 +481,7 @@ echo wp_json_encode(
 		'request_delay_ms' => max( 0, min( 10000, absint( getenv( 'WP_AI_EVAL_DELAY_MS' ) ?: 3200 ) ) ),
 		'post_ids'         => $post_ids,
 		'minimum_posts'    => $minimum_posts,
+		'tasks'            => array_keys( $tasks ),
 		'original_reference_enabled' => $original_reference_enabled,
 		'restored_reference_enabled' => Npcink_Cloud_Addon_Settings::is_site_knowledge_generation_reference_enabled(),
 		'thresholds'       => array(

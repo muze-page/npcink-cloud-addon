@@ -98,6 +98,31 @@ normalization, or the local AI-plugin compatibility shim. Browser visual smoke
 is still useful before release, but this command gives a repeatable regression
 gate for the editor data path.
 
+## WordPress AI Generation Reference A/B Evaluation
+
+Run a read-only paired evaluation across real published posts:
+
+```bash
+composer run eval:wp-ai-generation-reference
+```
+
+Override the bounded sample with `WP_AI_EVAL_POST_IDS=1,2,3`. The evaluator
+alternates baseline/reference order, runs title, excerpt, summary, meta
+description, and classification abilities, and restores the original local
+reference permission in a `finally` block. It does not update posts, publish
+content, or apply taxonomy terms.
+
+The evaluator waits 3200 ms between provider calls by default to stay within
+common OpenAI-compatible provider rate limits. Override
+`WP_AI_EVAL_DELAY_MS` only when the configured provider permits a different
+request rate.
+
+The JSON result records non-empty output reliability, historical length
+distance, existing taxonomy reuse, historical-text similarity, boilerplate,
+and numbers not present in the current article. These are operational proxy
+metrics for regression detection; final product quality still requires blind
+human preference review.
+
 ## Cloud Contract Smoke Test
 
 With valid Cloud credentials:

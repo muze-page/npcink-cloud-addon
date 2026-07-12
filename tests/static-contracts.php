@@ -232,6 +232,7 @@ maca_assert(
 	&& false !== strpos( $ai_task_contract, "VERSION = 'ai_task_contract.v1'" )
 	&& false !== strpos( $ai_task_contract, 'project_registered_ability' )
 	&& false !== strpos( $ai_task_contract, "'write_posture'        => 'suggestion_only'" )
+	&& false === strpos( $ai_task_contract, 'array_is_list' )
 	&& false === strpos( $ai_task_contract, 'register_rest_route' )
 	&& false === strpos( $ai_task_contract, 'update_option' ),
 	'Registered AI task projection reuses Ability truth and the generation-reference opt-in without adding a registry, REST route, or local persistence.'

@@ -1672,8 +1672,22 @@ if ( ! class_exists( 'Npcink_Cloud_Runtime_Client' ) ) {
 				);
 			}
 
-			$task = sanitize_key( (string) ( $request['task'] ?? ( $request['feature_id'] ?? '' ) ) );
-			if ( ! in_array( $task, self::WP_AI_CONNECTOR_ALLOWED_TASKS, true ) ) {
+			$task          = sanitize_key( (string) ( $request['task'] ?? ( $request['feature_id'] ?? '' ) ) );
+			$task_contract = null;
+			if ( is_array( $request['task_contract'] ?? null ) ) {
+				$task_contract = Npcink_Cloud_AI_Task_Contract::normalize( $request['task_contract'] );
+				if ( is_wp_error( $task_contract ) ) {
+					return $task_contract;
+				}
+				if ( $task !== (string) $task_contract['task'] ) {
+					return new WP_Error(
+						'cloud_ai_task_contract_task_mismatch',
+						__( 'The AI task contract does not match the requested task.', 'npcink-cloud-addon' ),
+						array( 'status' => 400 )
+					);
+				}
+			}
+			if ( null === $task_contract && ! in_array( $task, self::WP_AI_CONNECTOR_ALLOWED_TASKS, true ) ) {
 				return new WP_Error(
 					'cloud_wp_ai_connector_task_not_allowed',
 					__( 'WordPress AI connector requests require a supported site-task surface.', 'npcink-cloud-addon' ),
@@ -1724,9 +1738,13 @@ if ( ! class_exists( 'Npcink_Cloud_Runtime_Client' ) ) {
 			$retry_max       = absint( $request['retry_max'] ?? 0 );
 			$profile_id      = $this->normalize_identifier( (string) ( $request['profile_id'] ?? 'text.balanced' ) );
 			$input           = is_array( $request['input'] ?? null ) ? $request['input'] : array();
+			if ( null !== $task_contract ) {
+				$input['task_contract'] = $task_contract;
+			}
 			$site_knowledge_reference = $this->normalize_wordpress_ai_site_knowledge_reference(
 				$input['site_knowledge_reference'] ?? null,
-				$task
+				$task,
+				is_array( $task_contract ) ? $task_contract : array()
 			);
 			if ( is_wp_error( $site_knowledge_reference ) ) {
 				return $site_knowledge_reference;
@@ -1774,9 +1792,10 @@ if ( ! class_exists( 'Npcink_Cloud_Runtime_Client' ) ) {
 		 *
 		 * @param mixed  $reference Raw reference value.
 		 * @param string $task WordPress AI scene task.
+		 * @param array<string,mixed> $task_contract Optional registered Ability projection.
 		 * @return array<string,mixed>|null|WP_Error
 		 */
-		private function normalize_wordpress_ai_site_knowledge_reference( $reference, string $task ) {
+		private function normalize_wordpress_ai_site_knowledge_reference( $reference, string $task, array $task_contract = array() ) {
 			if ( null === $reference ) {
 				return null;
 			}
@@ -1813,6 +1832,15 @@ if ( ! class_exists( 'Npcink_Cloud_Runtime_Client' ) ) {
 				'content_classification' => 'site_taxonomy_history',
 			);
 			$expected_mode = (string) ( $task_modes[ $task ] ?? '' );
+			if ( '' === $expected_mode && ! empty( $task_contract ) ) {
+				$contexts = is_array( $task_contract['context_requirements'] ?? null ) ? $task_contract['context_requirements'] : array();
+				$family   = (string) ( $task_contract['task_family'] ?? '' );
+				if ( in_array( 'taxonomy_candidates', $contexts, true ) ) {
+					$expected_mode = 'site_taxonomy_history';
+				} elseif ( in_array( 'site_style_profile', $contexts, true ) ) {
+					$expected_mode = 'generation' === $family ? 'site_title_style' : 'site_excerpt_style';
+				}
+			}
 			$mode = sanitize_key( (string) ( $reference['mode'] ?? ( '' !== $expected_mode ? $expected_mode : 'site_title_style' ) ) );
 			if ( $enabled && '' === $expected_mode ) {
 				return new WP_Error(

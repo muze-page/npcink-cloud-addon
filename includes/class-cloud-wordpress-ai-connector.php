@@ -815,10 +815,15 @@ if ( ! class_exists( 'Npcink_Cloud_WordPress_AI_Connector' ) ) {
 		 * @return \WordPress\AiClient\Results\DTO\GenerativeAiResult
 		 */
 		public function generateTextResult( array $prompt ): \WordPress\AiClient\Results\DTO\GenerativeAiResult {
-			$task = $this->detect_scene_task();
-			if ( '' === $task ) {
+			$ability_name = $this->detect_scene_ability_name();
+			if ( '' === $ability_name ) {
 				throw new \WordPress\AiClient\Common\Exception\RuntimeException( 'Npcink Cloud AI connector only accepts known WordPress AI ability scene calls.' );
 			}
+			$task_contract = npcink_cloud_addon_project_ai_task_contract( $ability_name );
+			if ( is_wp_error( $task_contract ) ) {
+				throw new \WordPress\AiClient\Common\Exception\RuntimeException( esc_html( $task_contract->get_error_message() ) );
+			}
+			$task = (string) $task_contract['task'];
 
 			if ( 1 !== count( $prompt ) ) {
 				throw new \WordPress\AiClient\Common\Exception\RuntimeException( 'Npcink Cloud AI connector does not support chat history.' );
@@ -856,6 +861,7 @@ if ( ! class_exists( 'Npcink_Cloud_WordPress_AI_Connector' ) ) {
 			$request = array(
 				'contract_version' => 'wp_ai_connector_runtime.v1',
 				'task'             => $task,
+				'task_contract'    => $task_contract,
 				'prompt'           => $text,
 				'input'            => $scene_input,
 				'timeout_seconds'  => 60,
@@ -864,7 +870,8 @@ if ( ! class_exists( 'Npcink_Cloud_WordPress_AI_Connector' ) ) {
 			);
 
 			$started  = Npcink_Cloud_WordPress_AI_Connector::runtime_timer_start();
-			$response = npcink_cloud_addon_execute_wordpress_ai_connector_runtime(
+			$response = npcink_cloud_addon_execute_registered_ai_task_runtime(
+				$ability_name,
 				$request,
 				'trace_wp_ai_connector_' . wp_generate_uuid4(),
 				'wp_ai_connector_' . wp_generate_uuid4()
@@ -963,24 +970,27 @@ if ( ! class_exists( 'Npcink_Cloud_WordPress_AI_Connector' ) ) {
 		}
 
 		/**
-		 * Detects the WordPress AI ability scene from the current call stack.
+		 * Detects the registered ai-wp-admin Ability behind a compatibility call.
+		 *
+		 * Future callers should use the explicit registered-task runtime helper and
+		 * avoid stack inspection entirely.
 		 *
 		 * @return string
 		 */
-		private function detect_scene_task(): string {
+		private function detect_scene_ability_name(): string {
 			$map = array(
-				'WordPress\\AI\\Abilities\\Content_Classification\\Content_Classification' => 'content_classification',
-				'WordPress\\AI\\Abilities\\Comment_Moderation\\Comment_Analysis'           => 'comment_moderation',
-				'WordPress\\AI\\Abilities\\Content_Resizing\\Content_Resizing'              => 'content_rewrite',
-				'WordPress\\AI\\Abilities\\Editorial_Updates\\Editorial_Updates'            => 'content_rewrite',
-				'WordPress\\AI\\Abilities\\Editorial_Notes\\Editorial_Notes'                => 'content_summary',
-				'WordPress\\AI\\Abilities\\Excerpt_Generation\\Excerpt_Generation'          => 'excerpt_generation',
-				'WordPress\\AI\\Abilities\\Meta_Description\\Meta_Description'              => 'meta_description',
-				'WordPress\\AI\\Abilities\\Title_Generation\\Title_Generation'              => 'title_generation',
-				'WordPress\\AI\\Abilities\\Summarization\\Summarization'                    => 'content_summary',
+				'WordPress\\AI\\Abilities\\Content_Classification\\Content_Classification' => 'ai/content-classification',
+				'WordPress\\AI\\Abilities\\Comment_Moderation\\Comment_Analysis'           => 'ai/comment-analysis',
+				'WordPress\\AI\\Abilities\\Content_Resizing\\Content_Resizing'              => 'ai/content-resizing',
+				'WordPress\\AI\\Abilities\\Editorial_Updates\\Editorial_Updates'            => 'ai/editorial-updates',
+				'WordPress\\AI\\Abilities\\Editorial_Notes\\Editorial_Notes'                => 'ai/editorial-notes',
+				'WordPress\\AI\\Abilities\\Excerpt_Generation\\Excerpt_Generation'          => 'ai/excerpt-generation',
+				'WordPress\\AI\\Abilities\\Meta_Description\\Meta_Description'              => 'ai/meta-description',
+				'WordPress\\AI\\Abilities\\Title_Generation\\Title_Generation'              => 'ai/title-generation',
+				'WordPress\\AI\\Abilities\\Summarization\\Summarization'                    => 'ai/summarization',
 			);
 
-			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_debug_backtrace -- Bounded stack inspection gates calls to known WordPress AI ability classes.
+			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_debug_backtrace -- Compatibility bridge for ai-wp-admin versions without explicit task metadata.
 			foreach ( debug_backtrace( DEBUG_BACKTRACE_IGNORE_ARGS, 24 ) as $frame ) {
 				$class = isset( $frame['class'] ) ? (string) $frame['class'] : '';
 				if ( isset( $map[ $class ] ) ) {

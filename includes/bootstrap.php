@@ -12,6 +12,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 require_once __DIR__ . '/class-cloud-addon-settings.php';
+require_once __DIR__ . '/class-cloud-ai-task-contract.php';
 require_once __DIR__ . '/class-cloud-runtime-client.php';
 require_once __DIR__ . '/class-cloud-media-derivative-transport.php';
 require_once __DIR__ . '/class-cloud-entitlement-summary.php';
@@ -178,6 +179,58 @@ if ( ! function_exists( 'npcink_cloud_addon_execute_wordpress_ai_connector_runti
 			$trace_id,
 			$idempotency_key
 		);
+	}
+}
+
+if ( ! function_exists( 'npcink_cloud_addon_project_ai_task_contract' ) ) {
+	/**
+	 * Returns the bounded runtime projection for one registered Ability.
+	 *
+	 * @param string $ability_name Registered WordPress Ability name.
+	 * @return array<string,mixed>|WP_Error
+	 */
+	function npcink_cloud_addon_project_ai_task_contract( string $ability_name ) {
+		return Npcink_Cloud_AI_Task_Contract::project_registered_ability( $ability_name );
+	}
+}
+
+if ( ! function_exists( 'npcink_cloud_addon_execute_registered_ai_task_runtime' ) ) {
+	/**
+	 * Executes a suggestion-only runtime request for one registered Ability.
+	 *
+	 * This transports an Ability-owned task contract. It does not execute the
+	 * Ability, bypass its permission callback, or perform a WordPress write.
+	 *
+	 * @param string              $ability_name Registered WordPress Ability name.
+	 * @param array<string,mixed> $request Bounded scene request.
+	 * @param string              $trace_id Optional trace id.
+	 * @param string              $idempotency_key Optional idempotency key.
+	 * @return array<string,mixed>|WP_Error
+	 */
+	function npcink_cloud_addon_execute_registered_ai_task_runtime( string $ability_name, array $request, string $trace_id = '', string $idempotency_key = '' ) {
+		$task_contract = npcink_cloud_addon_project_ai_task_contract( $ability_name );
+		if ( is_wp_error( $task_contract ) ) {
+			return $task_contract;
+		}
+
+		$request['contract_version'] = 'wp_ai_connector_runtime.v1';
+		$request['task']             = $task_contract['task'];
+		$request['task_contract']    = $task_contract;
+		$context_requirements        = $task_contract['context_requirements'];
+		$uses_site_knowledge         = ! empty(
+			array_intersect(
+				array( 'site_style_profile', 'taxonomy_candidates' ),
+				$context_requirements
+			)
+		);
+		if ( $uses_site_knowledge && Npcink_Cloud_Addon_Settings::is_site_knowledge_generation_reference_enabled() ) {
+			$request['input'] = is_array( $request['input'] ?? null ) ? $request['input'] : array();
+			if ( ! isset( $request['input']['site_knowledge_reference'] ) ) {
+				$request['input']['site_knowledge_reference'] = array( 'enabled' => true );
+			}
+		}
+
+		return npcink_cloud_addon_execute_wordpress_ai_connector_runtime( $request, $trace_id, $idempotency_key );
 	}
 }
 

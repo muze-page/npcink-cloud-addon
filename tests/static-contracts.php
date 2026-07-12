@@ -42,6 +42,7 @@ $eval_lab_proxy = maca_read( $root . '/scripts/eval-lab.sh' );
 $ai_i18n_audit = maca_read( $root . '/scripts/audit-ai-plugin-localization.php' );
 $wp_ai_smoke = maca_read( $root . '/scripts/smoke-wordpress-ai-abilities.php' );
 $wp_ai_editor_smoke = maca_read( $root . '/scripts/smoke-wordpress-ai-editor.php' );
+$wp_ai_generation_eval = maca_read( $root . '/scripts/eval-wordpress-ai-generation-reference.php' );
 $zh_cn_po = maca_read( $root . '/languages/npcink-cloud-addon-zh_CN.po' );
 
 maca_assert(
@@ -82,6 +83,24 @@ maca_assert(
 	&& false === strpos( $wp_ai_editor_smoke, '"status":"publish"' )
 	&& false === strpos( $wp_ai_editor_smoke, 'trash' ),
 	'WordPress AI editor smoke covers draft-only title, excerpt, summary, SEO, and classification suggestion paths without publish or cleanup side effects.'
+);
+
+maca_assert(
+	false !== strpos( $composer, '"eval:wp-ai-generation-reference": [' )
+	&& false !== strpos( $composer, 'Composer\\\\Config::disableProcessTimeout' )
+	&& false !== strpos( $wp_ai_generation_eval, "'posts_per_page' => 100" )
+	&& false !== strpos( $wp_ai_generation_eval, "getenv( 'WP_AI_EVAL_POST_LIMIT' )" )
+	&& false !== strpos( $wp_ai_generation_eval, "getenv( 'WP_AI_EVAL_OUTPUT_JSON' )" )
+	&& false !== strpos( $wp_ai_generation_eval, "'ready_for_blind_judging'" )
+	&& false !== strpos( $wp_ai_generation_eval, "'usable_pairs_gate_passed'" )
+	&& false !== strpos( $wp_ai_generation_eval, "'strategy']       = 'existing_only'" )
+	&& false !== strpos( $wp_ai_generation_eval, "'pre_option_' . Npcink_Cloud_Addon_Settings::option_name()" )
+	&& false !== strpos( $wp_ai_generation_eval, 'finally' )
+	&& false === strpos( $wp_ai_generation_eval, 'update_' . 'option' )
+	&& false === strpos( $wp_ai_generation_eval, 'wp_insert_' . 'post' )
+	&& false === strpos( $wp_ai_generation_eval, 'wp_update_' . 'post' )
+	&& false === strpos( $wp_ai_generation_eval, 'wp_set_' . 'post_terms' ),
+	'WordPress AI generation-reference collector auto-selects bounded public posts, writes an optional Eval Lab artifact, and remains suggestion-only.'
 );
 
 maca_assert(
@@ -1013,10 +1032,10 @@ maca_assert(
 	&& false !== strpos( $settings, "'site_knowledge_generation_reference_enabled'" )
 	&& false !== strpos( $wordpress_ai_connector, "'site_knowledge_reference'" )
 	&& false !== strpos( $wordpress_ai_connector, "'site_title_style'" )
-	&& false !== strpos( $wordpress_ai_connector, "'site_excerpt_style'" )
-	&& false !== strpos( $wordpress_ai_connector, "'site_meta_style'" )
 	&& false !== strpos( $wordpress_ai_connector, "'site_summary_style'" )
-	&& false !== strpos( $wordpress_ai_connector, "'site_taxonomy_history'" )
+	&& false === strpos( $wordpress_ai_connector, "'site_excerpt_style'" )
+	&& false === strpos( $wordpress_ai_connector, "'site_meta_style'" )
+	&& false === strpos( $wordpress_ai_connector, "'site_taxonomy_history'" )
 	&& false !== strpos( $runtime_client, 'normalize_wordpress_ai_site_knowledge_reference' )
 	&& false !== strpos( $settings_page, "ACTION_UPDATE_LOCAL_PERMISSION = 'npcink_cloud_addon_update_local_permission'" )
 	&& false !== strpos( $settings_page, "admin_post_' . self::ACTION_UPDATE_LOCAL_PERMISSION" )
@@ -1030,6 +1049,7 @@ maca_assert(
 	&& false !== strpos( $settings_page, 'Allow the WordPress AI plugin to select Npcink Cloud as an AI connector.' )
 	&& false !== strpos( $settings_page, 'Allow public content-change delivery and explicit administrator delivery intents for Cloud-owned Site Knowledge indexing.' )
 	&& false !== strpos( $settings_page, 'Reference site content during generation' )
+	&& false !== strpos( $settings_page, 'when generating titles and summaries' )
 	&& false !== strpos( $settings_page, 'AI generation reference' )
 	&& false !== strpos( $settings_page, 'enabled for supported editor tasks' )
 	&& false !== strpos( $settings_page, 'Upload metadata-only plugin monitoring events. Prompts, content, results, secrets, and raw request payloads are not collected.' )

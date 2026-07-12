@@ -1302,7 +1302,7 @@ if ( ! class_exists( 'Npcink_Cloud_Settings_Page' ) ) {
 				),
 				'site_knowledge_generation_reference_enabled' => array(
 					'label'       => __( 'Reference site content during generation', 'npcink-cloud-addon' ),
-					'description' => __( 'Allow Npcink Cloud to reference indexed public articles during supported WordPress AI generation tasks so suggestions better match this site\'s writing style and taxonomy. WordPress content is not changed.', 'npcink-cloud-addon' ),
+					'description' => __( 'Allow Npcink Cloud to reference indexed public articles when generating titles and summaries so suggestions better match this site\'s writing style. WordPress content is not changed.', 'npcink-cloud-addon' ),
 				),
 				'monitoring_enabled' => array(
 					'label'       => __( 'Monitoring', 'npcink-cloud-addon' ),

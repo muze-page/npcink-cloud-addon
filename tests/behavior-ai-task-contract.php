@@ -103,9 +103,7 @@ $result = $client->execute_wordpress_ai_connector_runtime(
 		'task'             => 'seo_headline',
 		'task_contract'    => $custom_contract,
 		'prompt'           => 'Write one accurate headline.',
-		'input'            => array(
-			'site_knowledge_reference' => array( 'enabled' => true ),
-		),
+		'input'            => array(),
 	)
 );
 $request      = end( $GLOBALS['maca_http_requests'] );
@@ -114,6 +112,6 @@ maca_assert(
 	is_array( $result )
 	&& 'seo_headline' === (string) ( $request_body['input']['task'] ?? '' )
 	&& 'example/seo-headline' === (string) ( $request_body['input']['request']['task_contract']['ability_name'] ?? '' )
-	&& 'site_title_style' === (string) ( $request_body['input']['request']['site_knowledge_reference']['mode'] ?? '' ),
-	'Behavior: the generic connector transports a registered task projection without adding a task-specific client method.'
+	&& ! isset( $request_body['input']['request']['site_knowledge_reference'] ),
+	'Behavior: the generic connector transports a registered task projection without adding unproven generation reference context.'
 );

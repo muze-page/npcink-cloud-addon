@@ -13,6 +13,7 @@ $root = MACA_TEST_ROOT;
 $bootstrap = maca_read( $root . '/includes/bootstrap.php' );
 $transport = maca_read( $root . '/includes/class-cloud-media-derivative-transport.php' );
 $runtime_client = maca_read( $root . '/includes/class-cloud-runtime-client.php' );
+$ai_task_contract = maca_read( $root . '/includes/class-cloud-ai-task-contract.php' );
 $wordpress_ai_connector = maca_read( $root . '/includes/class-cloud-wordpress-ai-connector.php' );
 $cloud_addon_localization = maca_read( $root . '/includes/class-cloud-addon-localization.php' );
 $ai_plugin_localization = maca_read( $root . '/includes/class-ai-plugin-localization.php' );
@@ -225,6 +226,19 @@ maca_assert(
 );
 
 maca_assert(
+	false !== strpos( $bootstrap, 'npcink_cloud_addon_project_ai_task_contract' )
+	&& false !== strpos( $bootstrap, 'npcink_cloud_addon_execute_registered_ai_task_runtime' )
+	&& false !== strpos( $bootstrap, 'is_site_knowledge_generation_reference_enabled' )
+	&& false !== strpos( $ai_task_contract, "VERSION = 'ai_task_contract.v1'" )
+	&& false !== strpos( $ai_task_contract, 'project_registered_ability' )
+	&& false !== strpos( $ai_task_contract, "'write_posture'        => 'suggestion_only'" )
+	&& false === strpos( $ai_task_contract, 'array_is_list' )
+	&& false === strpos( $ai_task_contract, 'register_rest_route' )
+	&& false === strpos( $ai_task_contract, 'update_option' ),
+	'Registered AI task projection reuses Ability truth and the generation-reference opt-in without adding a registry, REST route, or local persistence.'
+);
+
+maca_assert(
 	false !== strpos( $bootstrap, 'class-cloud-wordpress-ai-connector.php' )
 	&& false !== strpos( $bootstrap, 'Npcink_Cloud_WordPress_AI_Connector::register()' )
 	&& false !== strpos( $bootstrap, 'npcink_cloud_addon_execute_wordpress_ai_image_generation_runtime' )
@@ -354,7 +368,7 @@ maca_assert(
 	&& false !== strpos( $wordpress_ai_connector, "'task'             => 'alt_text_suggest'" )
 	&& false !== strpos( $wordpress_ai_connector, 'npcink_cloud_addon_execute_wordpress_ai_image_generation_runtime' )
 	&& false !== strpos( $wordpress_ai_connector, 'does not support reference image refinement yet' )
-	&& false !== strpos( $wordpress_ai_connector, 'detect_scene_task' )
+	&& false !== strpos( $wordpress_ai_connector, 'detect_scene_ability_name' )
 	&& false !== strpos( $wordpress_ai_connector, 'WordPress\\\\AI\\\\Abilities\\\\Title_Generation\\\\Title_Generation' )
 	&& false !== strpos( $wordpress_ai_connector, 'Npcink Cloud AI connector only accepts known WordPress AI ability scene calls' )
 	&& false !== strpos( $wordpress_ai_connector, 'does not support chat history' )

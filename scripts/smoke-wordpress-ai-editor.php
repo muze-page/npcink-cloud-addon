@@ -234,6 +234,46 @@ if ( $post_id <= 0 ) {
 }
 npcink_cloud_addon_wp_ai_editor_smoke_ok( 'Created local draft ' . $post_id . ' for editor smoke.' );
 
+$title_suggestion = npcink_cloud_addon_wp_ai_editor_smoke_text(
+	npcink_cloud_addon_wp_ai_editor_smoke_data(
+		npcink_cloud_addon_wp_ai_editor_smoke_rest_request(
+			'POST',
+			'/wp-abilities/v1/abilities/ai/title-generation/run',
+			array(
+				'input' => array(
+					'content' => $source_content,
+					'context' => (string) $post_id,
+				),
+			)
+		),
+		'Editor title generation ability'
+	)
+);
+if ( '' === $title_suggestion || preg_match( '/以下是|下面是|here are/i', $title_suggestion ) ) {
+	npcink_cloud_addon_wp_ai_editor_smoke_fail( 'Editor title generation ability returned empty or boilerplate text.' );
+}
+npcink_cloud_addon_wp_ai_editor_smoke_ok( 'Editor title generation returned one direct suggestion.' );
+
+$excerpt_suggestion = npcink_cloud_addon_wp_ai_editor_smoke_text(
+	npcink_cloud_addon_wp_ai_editor_smoke_data(
+		npcink_cloud_addon_wp_ai_editor_smoke_rest_request(
+			'POST',
+			'/wp-abilities/v1/abilities/ai/excerpt-generation/run',
+			array(
+				'input' => array(
+					'content' => $source_content,
+					'context' => (string) $post_id,
+				),
+			)
+		),
+		'Editor excerpt generation ability'
+	)
+);
+if ( '' === $excerpt_suggestion || preg_match( '/以下是|下面是|here are/i', $excerpt_suggestion ) ) {
+	npcink_cloud_addon_wp_ai_editor_smoke_fail( 'Editor excerpt generation ability returned empty or boilerplate text.' );
+}
+npcink_cloud_addon_wp_ai_editor_smoke_ok( 'Editor excerpt generation returned direct suggestion text.' );
+
 $summary = npcink_cloud_addon_wp_ai_editor_smoke_text(
 	npcink_cloud_addon_wp_ai_editor_smoke_data(
 		npcink_cloud_addon_wp_ai_editor_smoke_rest_request(

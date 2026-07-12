@@ -15,6 +15,14 @@ require_once MACA_TEST_ROOT . '/includes/class-cloud-site-knowledge-change-bridg
 $GLOBALS['maca_comments'] = array();
 $GLOBALS['maca_posts'] = array();
 $GLOBALS['maca_scheduled_events'] = array();
+$GLOBALS['maca_post_terms'] = array();
+
+if ( ! function_exists( 'wp_get_post_terms' ) ) {
+	function wp_get_post_terms( int $post_id, string $taxonomy, array $args = array() ): array {
+		unset( $args );
+		return $GLOBALS['maca_post_terms'][ $post_id ][ $taxonomy ] ?? array();
+	}
+}
 
 if ( ! function_exists( 'get_posts' ) ) {
 	/**
@@ -133,6 +141,7 @@ function maca_reset_site_knowledge_bridge_state(): void {
 	$GLOBALS['maca_comments'] = array();
 	$GLOBALS['maca_posts'] = array();
 	$GLOBALS['maca_scheduled_events'] = array();
+	$GLOBALS['maca_post_terms'] = array();
 }
 
 /**
@@ -370,19 +379,32 @@ maca_reset_site_knowledge_bridge_state();
 maca_seed_settings( true );
 maca_add_public_post_fixture( 801 );
 maca_add_public_post_fixture( 802, 'page' );
+$GLOBALS['maca_post_terms'][801] = array(
+	'category' => array( 'Cloud Runtime', 'WordPress AI' ),
+	'post_tag' => array( 'Site Knowledge', 'Writing' ),
+);
 $start_status = Npcink_Cloud_Site_Knowledge_Change_Bridge::request_manual_index_operation( 'start' );
 $start_request = $GLOBALS['maca_http_requests'][0] ?? array();
 $start_body = json_decode( (string) ( $start_request['args']['body'] ?? '' ), true );
 $start_body = is_array( $start_body ) ? $start_body : array();
+$start_documents = (array) ( $start_body['input']['documents'] ?? array() );
+$first_start_document = is_array( $start_documents[0] ?? null ) ? $start_documents[0] : array();
 maca_assert(
 	is_array( $start_status )
 	&& false !== strpos( (string) ( $start_request['url'] ?? '' ), '/v1/runtime/execute' )
 	&& 'refresh' === (string) ( $start_body['input']['sync_mode'] ?? '' )
 	&& 'admin_start' === (string) ( $start_body['input']['operation_source'] ?? '' )
-	&& 2 === count( (array) ( $start_body['input']['documents'] ?? array() ) )
+	&& 2 === count( $start_documents )
+	&& 'publish' === (string) ( $first_start_document['post_status'] ?? '' )
+	&& 'Public content for Site Knowledge 801' === (string) ( $first_start_document['content_excerpt'] ?? '' )
+	&& array( 'Cloud Runtime', 'WordPress AI' ) === (array) ( $first_start_document['taxonomies']['category'] ?? array() )
+	&& array( 'Site Knowledge', 'Writing' ) === (array) ( $first_start_document['taxonomies']['post_tag'] ?? array() )
+	&& ! array_key_exists( 'status', $first_start_document )
+	&& ! array_key_exists( 'body', $first_start_document )
+	&& ! array_key_exists( 'comments', $first_start_document )
 	&& 'start' === (string) ( $start_status['last_index_action'] ?? '' )
 	&& 2 === absint( $start_status['last_index_action_sent_count'] ?? 0 ),
-	'Behavior: administrator can start Site Knowledge indexing from bounded public WordPress content.'
+	'Behavior: administrator can start Site Knowledge indexing with the canonical Cloud public document contract.'
 );
 
 maca_reset_site_knowledge_bridge_state();

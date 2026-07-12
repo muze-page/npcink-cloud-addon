@@ -101,8 +101,9 @@ if ( ! class_exists( 'Npcink_Cloud_Site_Knowledge_Runtime_Bridge' ) ) {
 				);
 			}
 
-			$trace_id = 'trace_site_knowledge_toolbox_' . wp_generate_uuid4();
-			$idempotency_key = 'site_knowledge_' . str_replace( '.', '_', $contract_version ) . '_' . substr( md5( (string) wp_json_encode( $payload['input'] ?? array() ) ), 0, 16 );
+			$operation_id = wp_generate_uuid4();
+			$trace_id = 'trace_site_knowledge_toolbox_' . $operation_id;
+			$idempotency_key = 'site_knowledge_' . str_replace( '.', '_', $contract_version ) . '_' . $operation_id;
 
 			$result = $client->execute_runtime( $payload, $trace_id, $idempotency_key );
 			if ( is_wp_error( $result ) || ! is_array( $result ) ) {

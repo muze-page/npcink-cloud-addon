@@ -59,6 +59,16 @@ maca_assert(
 		'Choose which verified Cloud connector services this WordPress site may expose locally. Changes save immediately.',
 		'Choose which verified Cloud connector services this WordPress site may expose locally. Changes save immediately.',
 		'npcink-cloud-addon'
+	)
+	&& '生成时参考站点内容' === Npcink_Cloud_Addon_Localization::filter_gettext(
+		'Reference site content during generation',
+		'Reference site content during generation',
+		'npcink-cloud-addon'
+	)
+	&& '已为支持的编辑器任务启用' === Npcink_Cloud_Addon_Localization::filter_gettext(
+		'enabled for supported editor tasks',
+		'enabled for supported editor tasks',
+		'npcink-cloud-addon'
 	),
 	'Addon localization fallback covers verified local permissions admin copy.'
 );

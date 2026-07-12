@@ -526,7 +526,7 @@ if ( ! class_exists( 'Npcink_Cloud_WordPress_AI_Connector' ) ) {
 				Npcink_Cloud_WordPress_AI_Connector::CONNECTOR_ID,
 				Npcink_Cloud_WordPress_AI_Connector::CONNECTOR_NAME,
 				\WordPress\AiClient\Providers\Enums\ProviderTypeEnum::cloud(),
-				function_exists( 'admin_url' ) ? admin_url( 'admin.php?page=npcink-cloud-addon' ) : null,
+				function_exists( 'admin_url' ) ? admin_url( ( defined( 'NPCINK_TOOLBOX_VERSION' ) ? 'admin.php' : 'options-general.php' ) . '?page=npcink-cloud-addon' ) : null,
 				\WordPress\AiClient\Providers\Http\Enums\RequestAuthenticationMethod::apiKey(),
 				__( 'Bounded WordPress AI scene tasks through verified Npcink Cloud settings.', 'npcink-cloud-addon' )
 			);
@@ -833,22 +833,31 @@ if ( ! class_exists( 'Npcink_Cloud_WordPress_AI_Connector' ) ) {
 				throw new \WordPress\AiClient\Common\Exception\RuntimeException( 'Npcink Cloud AI connector requires text scene input.' );
 			}
 
+			$scene_input = array(
+				'prompt'             => $text,
+				'system_instruction' => (string) ( $this->config->getSystemInstruction() ?? '' ),
+				'response_format'    => $this->response_format_hint( $task ),
+				'candidate_count'    => $this->config->getCandidateCount(),
+				'max_tokens'         => $this->config->getMaxTokens(),
+				'temperature'        => $this->config->getTemperature(),
+				'scene_gate'         => array(
+					'source' => 'wordpress_ai_plugin_ability',
+					'task'   => $task,
+				),
+			);
+			$site_knowledge_reference_mode = $this->site_knowledge_reference_mode( $task );
+			if ( '' !== $site_knowledge_reference_mode && Npcink_Cloud_Addon_Settings::is_site_knowledge_generation_reference_enabled() ) {
+				$scene_input['site_knowledge_reference'] = array(
+					'enabled' => true,
+					'mode'    => $site_knowledge_reference_mode,
+				);
+			}
+
 			$request = array(
 				'contract_version' => 'wp_ai_connector_runtime.v1',
 				'task'             => $task,
 				'prompt'           => $text,
-				'input'            => array(
-					'prompt'             => $text,
-					'system_instruction' => (string) ( $this->config->getSystemInstruction() ?? '' ),
-					'response_format'    => $this->response_format_hint( $task ),
-					'candidate_count'    => $this->config->getCandidateCount(),
-					'max_tokens'         => $this->config->getMaxTokens(),
-					'temperature'        => $this->config->getTemperature(),
-					'scene_gate'         => array(
-						'source' => 'wordpress_ai_plugin_ability',
-						'task'   => $task,
-					),
-				),
+				'input'            => $scene_input,
 				'timeout_seconds'  => 60,
 				'retention_ttl'    => 86400,
 				'retry_max'        => 0,
@@ -933,6 +942,24 @@ if ( ! class_exists( 'Npcink_Cloud_WordPress_AI_Connector' ) ) {
 		 */
 		private function response_format_hint( string $task ): string {
 			return in_array( $task, array( 'content_classification', 'comment_moderation' ), true ) ? 'json' : 'text';
+		}
+
+		/**
+		 * Returns the bounded Site Knowledge reference mode for one editor task.
+		 *
+		 * @param string $task WordPress AI scene task.
+		 * @return string
+		 */
+		private function site_knowledge_reference_mode( string $task ): string {
+			$modes = array(
+				'title_generation'       => 'site_title_style',
+				'excerpt_generation'     => 'site_excerpt_style',
+				'meta_description'       => 'site_meta_style',
+				'content_summary'        => 'site_summary_style',
+				'content_classification' => 'site_taxonomy_history',
+			);
+
+			return (string) ( $modes[ $task ] ?? '' );
 		}
 
 		/**

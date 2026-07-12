@@ -44,7 +44,8 @@ index, freshness, and collection lifecycle owner.
   failures before upload.
 - A bounded Site Knowledge public content-change buffer used only to survive
   temporary delivery failures before Cloud refresh transport.
-- A light `Npcink -> Cloud Addon` page.
+- A light `Npcink AI -> Cloud Addon` page when Toolbox is active, with a
+  standalone `Settings -> Npcink Cloud Addon` fallback.
 
 ## Addon Does Not Own
 

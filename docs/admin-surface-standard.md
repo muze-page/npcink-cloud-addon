@@ -1,6 +1,7 @@
 # Cloud Addon Admin Surface Standard
 
-Status: active for `Npcink -> Cloud Addon`.
+Status: active for `Npcink AI -> Cloud Addon` when Toolbox is active, with
+`Settings -> Npcink Cloud Addon` as the standalone fallback.
 
 ## Purpose
 

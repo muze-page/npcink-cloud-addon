@@ -180,6 +180,17 @@ if ( ! class_exists( 'Npcink_Cloud_Addon_Settings' ) ) {
 			}
 
 			/**
+			 * Returns whether WordPress AI title generation may use Site Knowledge style context.
+			 *
+			 * @return bool
+			 */
+			public static function is_site_knowledge_generation_reference_enabled(): bool {
+				$settings = self::get_settings();
+
+				return self::is_verified() && ! empty( $settings['site_knowledge_generation_reference_enabled'] );
+			}
+
+			/**
 			 * Returns whether verified Cloud settings may be exposed to the WordPress AI plugin.
 			 *
 			 * @return bool
@@ -280,6 +291,10 @@ if ( ! class_exists( 'Npcink_Cloud_Addon_Settings' ) ) {
 				$next['site_knowledge_delivery_enabled'] = ! empty( $payload['site_knowledge_delivery_enabled'] );
 			}
 
+			if ( array_key_exists( 'site_knowledge_generation_reference_enabled', $payload ) ) {
+				$next['site_knowledge_generation_reference_enabled'] = ! empty( $payload['site_knowledge_generation_reference_enabled'] );
+			}
+
 			if ( array_key_exists( 'wordpress_ai_connector_enabled', $payload ) ) {
 				$next['wordpress_ai_connector_enabled'] = ! empty( $payload['wordpress_ai_connector_enabled'] );
 			}
@@ -357,6 +372,7 @@ if ( ! class_exists( 'Npcink_Cloud_Addon_Settings' ) ) {
 				'site_knowledge_delivery_enabled' => array_key_exists( 'site_knowledge_delivery_enabled', $settings )
 					? ! empty( $settings['site_knowledge_delivery_enabled'] )
 					: true,
+				'site_knowledge_generation_reference_enabled' => ! empty( $settings['site_knowledge_generation_reference_enabled'] ),
 				'wordpress_ai_connector_enabled' => array_key_exists( 'wordpress_ai_connector_enabled', $settings )
 					? ! empty( $settings['wordpress_ai_connector_enabled'] )
 					: true,
@@ -389,6 +405,7 @@ if ( ! class_exists( 'Npcink_Cloud_Addon_Settings' ) ) {
 				'last_verification_error' => '',
 				'monitoring_enabled' => false,
 				'site_knowledge_delivery_enabled' => true,
+				'site_knowledge_generation_reference_enabled' => false,
 				'wordpress_ai_connector_enabled' => true,
 			);
 		}

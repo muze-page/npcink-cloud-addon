@@ -314,7 +314,10 @@ dispatch, and Cloud error mapping.
 `execute_toolbox_web_search_runtime()` is the bounded transport seam for
 Toolbox managed web search evidence. It accepts `web_search.v1` request packets
 and projects them to `channel=toolbox_web_search` for Cloud
-`npcink-cloud/web-search`. It does not expose local provider keys, create
+`npcink-cloud/web-search`. The allowlist includes the exact-URL
+`source_extraction_preview` intent and preserves its bounded `source_url` field;
+the Addon remains a validating signed transport and does not fetch that URL.
+It does not expose local provider keys, create
 proposals, or write WordPress content.
 
 `execute_toolbox_image_source_runtime()` is the bounded transport seam for
@@ -372,6 +375,41 @@ The method rejects generic chat or provider-control fields such as `messages`,
 `functions`, `function_call`, `stream`, credentials, cookies, nonces, and signed
 headers. It also bounds prompt/body size and clamps timeout to 60 seconds,
 retention, and retry values.
+
+For supported editor tasks, the scene request may carry the optional bounded
+shape `site_knowledge_reference={enabled:boolean,mode:string}`. The task-bound
+modes are `site_title_style`, `site_excerpt_style`, `site_meta_style`,
+`site_summary_style`, and `site_taxonomy_history` for title, excerpt, meta
+description, summary, and classification respectively. The
+local `site_knowledge_generation_reference_enabled` permission is the only
+preference truth and defaults to off. When enabled, the WordPress AI scene
+wrapper adds the task-bound hint automatically; callers cannot provide source
+texts, taxonomy terms, chunks, scores, URLs, or other reference payloads. Cloud
+may use hidden Site Knowledge style or existing taxonomy history, while the
+addon and WordPress AI plugin continue to receive only the ordinary task result.
+Cloud may translate this hint into its internal `generation_context.v1` runtime
+pack with task-specific relevance, dedupe, self-match exclusion,
+reference-count, and character-budget policies. That internal pack is not a
+caller field or an Addon-owned contract. The Addon must continue rejecting
+caller-supplied source texts, chunks, scores, URLs, taxonomy terms, retrieval
+limits, and context budgets, and must not expose relevance or reference detail
+in the WordPress AI user interface.
+
+Runtime support is quality-gated per task rather than implied by transport
+acceptance. Current Cloud policy uses aggregate, fact-free style profiles for
+title and excerpt tasks and existing taxonomy names for classification. Meta
+description and summary hints remain accepted for forward compatibility but
+silently skip retrieval until Site Knowledge has dedicated accepted-output
+sources for those tasks. The Addon must not emulate those missing sources with
+ordinary article excerpts.
+
+The explicit local A/B evaluator emits
+`wp_ai_generation_reference_eval.v2`. Its default gate still requires at least
+three published posts across all five supported tasks. Operators may set
+`WP_AI_EVAL_MIN_POSTS=1` only for a quick post-change smoke; such a reduced run
+is not promotion evidence. `WP_AI_EVAL_TASKS=title` may further narrow a smoke
+to one or more comma-separated supported tasks. The eval-lab promotion gate
+still requires at least 15 task pairs plus human validation.
 
 Image generation input must use
 `contract_version=image_generation_request.v1`, `task=image_generation`, and a

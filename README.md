@@ -39,7 +39,8 @@ The addon owns:
 - A `Troubleshooting > Runtime runs` section for read-only Nightly Inspection recent/status/result detail and nonce-protected Cloud-owned retry requests.
 - Bounded image context evidence transport through `POST /v1/runtime/execute`.
 - Bounded WordPress AI connector scene runtime through `POST /v1/runtime/execute`.
-- `Npcink > Cloud Addon`.
+- `Npcink AI > Cloud Addon` when Workflow Toolbox is active, or
+  `Settings > Npcink Cloud Addon` when installed standalone.
 
 The addon does not own approval truth, proposal truth, WordPress writes,
 workflow/task queue control, scheduler truth, billing truth, prompt ownership,
@@ -161,6 +162,15 @@ for text connector/provider calls, plus
 WordPress AI image generation feature. Both are WordPress scene runtimes, not
 generic chat APIs, image provider proxies, or OpenAI-compatible provider
 proxies.
+
+The local `Reference site content during generation` permission is off by
+default. When an administrator enables it, the scene-gated text model adds one
+task-bound `site_knowledge_reference` hint to title, excerpt, meta description,
+summary, and classification requests. Cloud may use existing Site Knowledge as
+hidden style context or existing taxonomy vocabulary, while the WordPress AI
+plugin continues to receive only the ordinary task result. The addon does not
+receive or display source text, taxonomy evidence, chunks, similarity scores,
+or vector details, and it does not own the result or any WordPress write.
 
 `npcink_cloud_addon_execute_toolbox_image_generation_runtime()` is the bounded
 transport seam for Toolbox AI image candidate generation. It accepts one
@@ -343,7 +353,7 @@ belong in Cloud Site Knowledge. See
 
 Admin path:
 
-`Npcink > Cloud Addon`
+`Npcink AI > Cloud Addon` (or `Settings > Npcink Cloud Addon` standalone)
 
 The default flow opens Cloud Portal site authorization with a `return_url` and
 state token. After Cloud returns a code, the addon exchanges it at

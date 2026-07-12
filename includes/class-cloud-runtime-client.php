@@ -50,7 +50,7 @@ if ( ! class_exists( 'Npcink_Cloud_Runtime_Client' ) ) {
 		private const TOOLBOX_WEB_SEARCH_MAX_QUERY_CHARS = 1000;
 		private const TOOLBOX_WEB_SEARCH_MAX_TIMEOUT_SECONDS = 60;
 		private const TOOLBOX_WEB_SEARCH_MAX_RETENTION_TTL = 86400;
-		private const TOOLBOX_WEB_SEARCH_ALLOWED_INTENTS = array( 'general_research', 'article_background', 'fact_check', 'news', 'writing_context', 'competitor_research', 'pricing_snapshot', 'product_comparison', 'source_discovery', 'external_links', 'zhihu_global_search', 'zhihu_research', 'zhihu_hot_topics', 'zhida_simple', 'zhida_deep', 'zhida_deepsearch' );
+		private const TOOLBOX_WEB_SEARCH_ALLOWED_INTENTS = array( 'general_research', 'article_background', 'fact_check', 'news', 'writing_context', 'competitor_research', 'pricing_snapshot', 'product_comparison', 'source_discovery', 'source_extraction_preview', 'external_links', 'zhihu_global_search', 'zhihu_research', 'zhihu_hot_topics', 'zhida_simple', 'zhida_deep', 'zhida_deepsearch' );
 		private const TOOLBOX_IMAGE_SOURCE_CONTRACT = 'image_source_cloud_request.v1';
 		private const TOOLBOX_IMAGE_SOURCE_MAX_REQUEST_BYTES = 120000;
 		private const TOOLBOX_IMAGE_SOURCE_MAX_QUERY_CHARS = 1000;
@@ -1724,6 +1724,16 @@ if ( ! class_exists( 'Npcink_Cloud_Runtime_Client' ) ) {
 			$retry_max       = absint( $request['retry_max'] ?? 0 );
 			$profile_id      = $this->normalize_identifier( (string) ( $request['profile_id'] ?? 'text.balanced' ) );
 			$input           = is_array( $request['input'] ?? null ) ? $request['input'] : array();
+			$site_knowledge_reference = $this->normalize_wordpress_ai_site_knowledge_reference(
+				$input['site_knowledge_reference'] ?? null,
+				$task
+			);
+			if ( is_wp_error( $site_knowledge_reference ) ) {
+				return $site_knowledge_reference;
+			}
+			if ( null !== $site_knowledge_reference ) {
+				$input['site_knowledge_reference'] = $site_knowledge_reference;
+			}
 
 			if ( '' !== $prompt ) {
 				$input['prompt'] = $prompt;
@@ -1756,6 +1766,71 @@ if ( ! class_exists( 'Npcink_Cloud_Runtime_Client' ) ) {
 				'policy'              => array(
 					'allow_fallback' => false,
 				),
+			);
+		}
+
+		/**
+		 * Normalizes the optional Site Knowledge reference for supported WordPress AI tasks.
+		 *
+		 * @param mixed  $reference Raw reference value.
+		 * @param string $task WordPress AI scene task.
+		 * @return array<string,mixed>|null|WP_Error
+		 */
+		private function normalize_wordpress_ai_site_knowledge_reference( $reference, string $task ) {
+			if ( null === $reference ) {
+				return null;
+			}
+			if ( ! is_array( $reference ) ) {
+				return new WP_Error(
+					'cloud_wp_ai_connector_site_knowledge_reference_invalid',
+					__( 'WordPress AI Site Knowledge reference must be a bounded object.', 'npcink-cloud-addon' ),
+					array( 'status' => 400 )
+				);
+			}
+
+			$unknown_fields = array_diff( array_keys( $reference ), array( 'enabled', 'mode' ) );
+			if ( ! empty( $unknown_fields ) ) {
+				return new WP_Error(
+					'cloud_wp_ai_connector_site_knowledge_reference_fields_not_allowed',
+					__( 'WordPress AI Site Knowledge reference accepts only enabled and mode.', 'npcink-cloud-addon' ),
+					array( 'status' => 400 )
+				);
+			}
+
+			$enabled = $reference['enabled'] ?? null;
+			if ( ! is_bool( $enabled ) ) {
+				return new WP_Error(
+					'cloud_wp_ai_connector_site_knowledge_reference_enabled_invalid',
+					__( 'WordPress AI Site Knowledge reference enabled value must be boolean.', 'npcink-cloud-addon' ),
+					array( 'status' => 400 )
+				);
+			}
+			$task_modes = array(
+				'title_generation'       => 'site_title_style',
+				'excerpt_generation'     => 'site_excerpt_style',
+				'meta_description'       => 'site_meta_style',
+				'content_summary'        => 'site_summary_style',
+				'content_classification' => 'site_taxonomy_history',
+			);
+			$expected_mode = (string) ( $task_modes[ $task ] ?? '' );
+			$mode = sanitize_key( (string) ( $reference['mode'] ?? ( '' !== $expected_mode ? $expected_mode : 'site_title_style' ) ) );
+			if ( $enabled && '' === $expected_mode ) {
+				return new WP_Error(
+					'cloud_wp_ai_connector_site_knowledge_reference_task_not_allowed',
+					__( 'WordPress AI Site Knowledge reference is not supported for this task.', 'npcink-cloud-addon' ),
+					array( 'status' => 400 )
+				);
+			}
+			if ( ( '' !== $expected_mode && $mode !== $expected_mode ) || ( '' === $expected_mode && 'site_title_style' !== $mode ) ) {
+				return new WP_Error(
+					'cloud_wp_ai_connector_site_knowledge_reference_mode_invalid',
+					__( 'WordPress AI Site Knowledge reference mode is not supported.', 'npcink-cloud-addon' ),
+					array( 'status' => 400 )
+				);
+			}
+			return array(
+				'enabled' => $enabled,
+				'mode'    => $mode,
 			);
 		}
 

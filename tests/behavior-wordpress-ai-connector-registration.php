@@ -94,6 +94,17 @@ if ( ! class_exists( 'Maca_Ability_Stub' ) ) {
 maca_reset_test_state();
 maca_seed_settings( true );
 
+maca_assert(
+	false === Npcink_Cloud_Addon_Settings::is_site_knowledge_generation_reference_enabled(),
+	'WordPress AI Site Knowledge generation reference remains opt-in by default.'
+);
+maca_set_site_knowledge_generation_reference_enabled( true );
+maca_assert(
+	true === Npcink_Cloud_Addon_Settings::is_site_knowledge_generation_reference_enabled(),
+	'Verified local settings can enable Site Knowledge title-style reference.'
+);
+maca_set_site_knowledge_generation_reference_enabled( false );
+
 $registry = new Maca_Connector_Registry_Stub();
 Npcink_Cloud_WordPress_AI_Connector::register_connector( $registry );
 $connector = $registry->connectors[ Npcink_Cloud_WordPress_AI_Connector::CONNECTOR_ID ] ?? array();

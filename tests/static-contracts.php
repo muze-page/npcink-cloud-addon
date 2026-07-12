@@ -69,6 +69,8 @@ maca_assert(
 
 maca_assert(
 	false !== strpos( $composer, '"smoke:wp-ai-editor":' )
+	&& false !== strpos( $wp_ai_editor_smoke, '/wp-abilities/v1/abilities/ai/title-generation/run' )
+	&& false !== strpos( $wp_ai_editor_smoke, '/wp-abilities/v1/abilities/ai/excerpt-generation/run' )
 	&& false !== strpos( $wp_ai_editor_smoke, '/wp-abilities/v1/abilities/ai/summarization/run' )
 	&& false !== strpos( $wp_ai_editor_smoke, '/wp-abilities/v1/abilities/ai/meta-description/run' )
 	&& false !== strpos( $wp_ai_editor_smoke, '/wp-abilities/v1/abilities/ai/content-classification/run' )
@@ -78,7 +80,7 @@ maca_assert(
 	&& false === strpos( $wp_ai_editor_smoke, "'status'  => 'publish'" )
 	&& false === strpos( $wp_ai_editor_smoke, '"status":"publish"' )
 	&& false === strpos( $wp_ai_editor_smoke, 'trash' ),
-	'WordPress AI editor smoke covers draft-only summary, SEO, and classification suggestion paths without publish or cleanup side effects.'
+	'WordPress AI editor smoke covers draft-only title, excerpt, summary, SEO, and classification suggestion paths without publish or cleanup side effects.'
 );
 
 maca_assert(
@@ -101,6 +103,15 @@ maca_assert(
 );
 
 maca_assert(
+	false !== strpos( $settings_page, 'add_submenu_page' )
+	&& false !== strpos( $settings_page, 'add_options_page' )
+	&& false === strpos( $settings_page, 'ensure_parent_menu' )
+	&& false === strpos( $settings_page, 'dashicons-superhero' )
+	&& false === strpos( $settings_page, 'render_overview' ),
+	'Cloud Addon attaches to Toolbox navigation or falls back to Settings without creating a suite overview.'
+);
+
+maca_assert(
 	false !== strpos( $settings_page, 'npcink-ai-tabs npcink-cloud-tabs' )
 	&& false !== strpos( $settings_page, 'npcink-ai-tab-active' )
 	&& false !== strpos( $settings_page, 'aria-current="page"' )
@@ -114,8 +125,9 @@ maca_assert(
 maca_assert(
 	false !== strpos( $bootstrap, 'plugin_action_links_' )
 	&& false !== strpos( $bootstrap, 'npcink_cloud_addon_filter_plugin_action_links' )
-	&& false !== strpos( $bootstrap, 'admin.php?page=npcink-cloud-addon' ),
-	'Plugin screen exposes a Settings shortcut to the Cloud Addon admin page.'
+	&& false !== strpos( $bootstrap, 'menu_page_url' )
+	&& false !== strpos( $bootstrap, 'options-general.php?page=npcink-cloud-addon' ),
+	'Plugin screen exposes a Settings shortcut to the registered Cloud Addon page or standalone Settings fallback.'
 );
 
 maca_assert(
@@ -269,6 +281,7 @@ maca_assert(
 	&& false !== strpos( $runtime_client, "'channel'             => 'toolbox_web_search'" )
 	&& false !== strpos( $runtime_client, "'ability_name'        => 'npcink-cloud/web-search'" )
 	&& false !== strpos( $runtime_client, "'execution_kind'      => 'web_search'" )
+	&& false !== strpos( $runtime_client, "'source_extraction_preview'" )
 	&& false !== strpos( $runtime_client, "'write_posture']          = 'suggestion_only'" )
 	&& false !== strpos( $runtime_client, "'direct_wordpress_write'] = false" )
 	&& false !== strpos( $runtime_client, "'allow_fallback' => true" ),
@@ -982,6 +995,15 @@ maca_assert(
 	&& false !== strpos( $settings_page, 'Provider readiness and product tools stay outside this local connector.' )
 	&& false !== strpos( $settings, 'is_wordpress_ai_connector_enabled' )
 	&& false !== strpos( $settings, "'wordpress_ai_connector_enabled'" )
+	&& false !== strpos( $settings, 'is_site_knowledge_generation_reference_enabled' )
+	&& false !== strpos( $settings, "'site_knowledge_generation_reference_enabled'" )
+	&& false !== strpos( $wordpress_ai_connector, "'site_knowledge_reference'" )
+	&& false !== strpos( $wordpress_ai_connector, "'site_title_style'" )
+	&& false !== strpos( $wordpress_ai_connector, "'site_excerpt_style'" )
+	&& false !== strpos( $wordpress_ai_connector, "'site_meta_style'" )
+	&& false !== strpos( $wordpress_ai_connector, "'site_summary_style'" )
+	&& false !== strpos( $wordpress_ai_connector, "'site_taxonomy_history'" )
+	&& false !== strpos( $runtime_client, 'normalize_wordpress_ai_site_knowledge_reference' )
 	&& false !== strpos( $settings_page, "ACTION_UPDATE_LOCAL_PERMISSION = 'npcink_cloud_addon_update_local_permission'" )
 	&& false !== strpos( $settings_page, "admin_post_' . self::ACTION_UPDATE_LOCAL_PERMISSION" )
 	&& false !== strpos( $settings_page, 'function handle_update_local_permission' )
@@ -993,6 +1015,9 @@ maca_assert(
 	&& false !== strpos( $settings_page, 'WordPress AI connector' )
 	&& false !== strpos( $settings_page, 'Allow the WordPress AI plugin to select Npcink Cloud as an AI connector.' )
 	&& false !== strpos( $settings_page, 'Allow public content-change delivery and explicit administrator delivery intents for Cloud-owned Site Knowledge indexing.' )
+	&& false !== strpos( $settings_page, 'Reference site content during generation' )
+	&& false !== strpos( $settings_page, 'AI generation reference' )
+	&& false !== strpos( $settings_page, 'enabled for supported editor tasks' )
 	&& false !== strpos( $settings_page, 'Upload metadata-only plugin monitoring events. Prompts, content, results, secrets, and raw request payloads are not collected.' )
 	&& false !== strpos( $settings_page, 'onchange="this.form.submit();"' )
 	&& false !== strpos( $settings_page, 'Npcink_Cloud_WordPress_AI_Connector::sync_connected_marker()' )

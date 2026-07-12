@@ -80,13 +80,14 @@ The command uses WP-CLI against `WP_PATH`, defaulting to
 differs.
 
 This smoke creates one local draft post, runs the same WordPress AI ability
-surfaces used by the editor for summarization, SEO description, and content
-classification, applies only the summary block and SEO description to the draft,
-and reads the draft back through REST.
+surfaces used by the editor for title, excerpt, summarization, SEO description,
+and content classification, applies only the summary block and SEO description
+to the draft, and reads the draft back through REST.
 
 Expected:
 
 - the created post remains `draft`;
+- title and excerpt return direct suggestion text;
 - the content contains an `ai-summarization-summary` block;
 - `wpai_meta_description` contains direct suggestion text;
 - classification returns labels but the smoke does not accept or create terms;
@@ -96,6 +97,31 @@ Use this after changing the Cloud WordPress AI connector, runtime output
 normalization, or the local AI-plugin compatibility shim. Browser visual smoke
 is still useful before release, but this command gives a repeatable regression
 gate for the editor data path.
+
+## WordPress AI Generation Reference A/B Evaluation
+
+Run a read-only paired evaluation across real published posts:
+
+```bash
+composer run eval:wp-ai-generation-reference
+```
+
+Override the bounded sample with `WP_AI_EVAL_POST_IDS=1,2,3`. The evaluator
+alternates baseline/reference order, runs title, excerpt, summary, meta
+description, and classification abilities, and restores the original local
+reference permission in a `finally` block. It does not update posts, publish
+content, or apply taxonomy terms.
+
+The evaluator waits 3200 ms between provider calls by default to stay within
+common OpenAI-compatible provider rate limits. Override
+`WP_AI_EVAL_DELAY_MS` only when the configured provider permits a different
+request rate.
+
+The JSON result records non-empty output reliability, historical length
+distance, existing taxonomy reuse, historical-text similarity, boilerplate,
+and numbers not present in the current article. These are operational proxy
+metrics for regression detection; final product quality still requires blind
+human preference review.
 
 ## Cloud Contract Smoke Test
 

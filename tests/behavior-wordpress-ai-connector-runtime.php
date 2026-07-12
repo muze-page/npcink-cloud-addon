@@ -35,6 +35,10 @@ $result = $client->execute_wordpress_ai_connector_runtime(
 		'input'            => array(
 			'post_title'   => 'Old title',
 			'post_excerpt' => 'A short public excerpt.',
+			'site_knowledge_reference' => array(
+				'enabled' => true,
+				'mode'    => 'site_title_style',
+			),
 		),
 		'timeout_seconds'  => 120,
 		'retention_ttl'    => 999999,
@@ -67,10 +71,104 @@ maca_assert(
 	&& 'wordpress_ai_connector' === (string) ( $request_body['input']['source_surface'] ?? '' )
 	&& 'npcink-cloud' === (string) ( $request_body['input']['connector_id'] ?? '' )
 	&& 'title_generation' === (string) ( $request_body['input']['task'] ?? '' )
+	&& true === (bool) ( $request_body['input']['request']['site_knowledge_reference']['enabled'] ?? false )
+	&& 'site_title_style' === (string) ( $request_body['input']['request']['site_knowledge_reference']['mode'] ?? '' )
 	&& 'suggestion_only' === (string) ( $request_body['input']['write_posture'] ?? '' )
 	&& false === (bool) ( $request_body['input']['direct_wordpress_write'] ?? true )
 	&& true === (bool) ( $request_body['input']['no_conversation'] ?? false ),
 	'Behavior: WordPress AI connector runtime projects a scene-bound no-chat no-write Cloud payload.'
+);
+
+$injected_reference = $client->execute_wordpress_ai_connector_runtime(
+	array(
+		'contract_version' => 'wp_ai_connector_runtime.v1',
+		'task'             => 'title_generation',
+		'prompt'           => 'Suggest a title.',
+		'input'            => array(
+			'site_knowledge_reference' => array(
+				'enabled' => true,
+				'mode'    => 'site_title_style',
+				'titles'  => array( 'Injected title' ),
+			),
+		),
+	)
+);
+maca_assert(
+	is_wp_error( $injected_reference )
+	&& 'cloud_wp_ai_connector_site_knowledge_reference_fields_not_allowed' === $injected_reference->get_error_code(),
+	'Behavior: WordPress AI connector runtime rejects caller-supplied Site Knowledge titles.'
+);
+
+$reference_modes = array(
+	'excerpt_generation'     => 'site_excerpt_style',
+	'meta_description'       => 'site_meta_style',
+	'content_summary'        => 'site_summary_style',
+	'content_classification' => 'site_taxonomy_history',
+);
+foreach ( $reference_modes as $reference_task => $reference_mode ) {
+	$GLOBALS['maca_http_response_queue'][] = array(
+		'response' => array( 'code' => 200 ),
+		'body'     => wp_json_encode( array( 'status' => 'ok', 'run_id' => 'run_' . $reference_task ) ),
+	);
+	$reference_result = $client->execute_wordpress_ai_connector_runtime(
+		array(
+			'contract_version' => 'wp_ai_connector_runtime.v1',
+			'task'             => $reference_task,
+			'prompt'           => 'Run the bounded editor task.',
+			'input'            => array(
+				'site_knowledge_reference' => array(
+					'enabled' => true,
+					'mode'    => $reference_mode,
+				),
+			),
+		)
+	);
+	$reference_request = end( $GLOBALS['maca_http_requests'] );
+	$reference_body = json_decode( (string) ( $reference_request['args']['body'] ?? '' ), true );
+	maca_assert(
+		is_array( $reference_result )
+		&& $reference_task === (string) ( $reference_body['input']['task'] ?? '' )
+		&& $reference_mode === (string) ( $reference_body['input']['request']['site_knowledge_reference']['mode'] ?? '' ),
+		'Behavior: WordPress AI connector runtime accepts the task-bound Site Knowledge reference mode for ' . $reference_task . '.'
+	);
+}
+
+$mismatched_reference = $client->execute_wordpress_ai_connector_runtime(
+	array(
+		'contract_version' => 'wp_ai_connector_runtime.v1',
+		'task'             => 'content_summary',
+		'prompt'           => 'Summarize this article.',
+		'input'            => array(
+			'site_knowledge_reference' => array(
+				'enabled' => true,
+				'mode'    => 'site_title_style',
+			),
+		),
+	)
+);
+maca_assert(
+	is_wp_error( $mismatched_reference )
+	&& 'cloud_wp_ai_connector_site_knowledge_reference_mode_invalid' === $mismatched_reference->get_error_code(),
+	'Behavior: WordPress AI connector runtime rejects a Site Knowledge reference mode that does not match the editor task.'
+);
+
+$unsupported_reference = $client->execute_wordpress_ai_connector_runtime(
+	array(
+		'contract_version' => 'wp_ai_connector_runtime.v1',
+		'task'             => 'content_rewrite',
+		'prompt'           => 'Rewrite this paragraph.',
+		'input'            => array(
+			'site_knowledge_reference' => array(
+				'enabled' => true,
+				'mode'    => 'site_title_style',
+			),
+		),
+	)
+);
+maca_assert(
+	is_wp_error( $unsupported_reference )
+	&& 'cloud_wp_ai_connector_site_knowledge_reference_task_not_allowed' === $unsupported_reference->get_error_code(),
+	'Behavior: WordPress AI connector runtime preserves the task-not-allowed error for unsupported reference tasks.'
 );
 
 $chat_shape = $client->execute_wordpress_ai_connector_runtime(
@@ -603,6 +701,54 @@ maca_assert(
 	&& 'suggestion_only' === (string) ( $toolbox_web_search_request_body['input']['write_posture'] ?? '' )
 	&& false === (bool) ( $toolbox_web_search_request_body['input']['direct_wordpress_write'] ?? true ),
 	'Behavior: Toolbox web search runtime projects transport-only search evidence without WordPress writes.'
+);
+
+$source_url = 'https://developer.wordpress.org/news/2026/04/whats-new-for-developers-april-2026/';
+$GLOBALS['maca_http_response_queue'][] = array(
+	'response' => array( 'code' => 200 ),
+	'body'     => wp_json_encode(
+		array(
+			'status' => 'ok',
+			'run_id' => 'run_toolbox_source_extraction_1',
+			'data'   => array(
+				'result' => array(
+					'artifact_type'          => 'source_extraction_preview',
+					'contract_version'       => 'source_extraction_preview.v1',
+					'requested_url'          => $source_url,
+					'resolved_url'           => $source_url,
+					'url_match'              => 'matched',
+					'direct_wordpress_write' => false,
+				),
+			),
+		)
+	),
+);
+
+$toolbox_source_extraction_result = $client->execute_toolbox_web_search_runtime(
+	array(
+		'contract_version' => 'web_search.v1',
+		'query'            => $source_url,
+		'source_url'       => $source_url,
+		'intent'           => 'source_extraction_preview',
+		'max_results'      => 1,
+		'recency_days'     => 0,
+	),
+	'trace-toolbox-source-extraction',
+	'toolbox-source-extraction-idempotency'
+);
+$toolbox_source_extraction_request      = end( $GLOBALS['maca_http_requests'] );
+$toolbox_source_extraction_request_body = json_decode( (string) ( $toolbox_source_extraction_request['args']['body'] ?? '' ), true );
+
+maca_assert(
+	is_array( $toolbox_source_extraction_result )
+	&& 'run_toolbox_source_extraction_1' === (string) ( $toolbox_source_extraction_result['run_id'] ?? '' )
+	&& 'source_extraction_preview' === (string) ( $toolbox_source_extraction_request_body['input']['intent'] ?? '' )
+	&& $source_url === (string) ( $toolbox_source_extraction_request_body['input']['query'] ?? '' )
+	&& $source_url === (string) ( $toolbox_source_extraction_request_body['input']['source_url'] ?? '' )
+	&& 1 === (int) ( $toolbox_source_extraction_request_body['input']['max_results'] ?? 0 )
+	&& 0 === (int) ( $toolbox_source_extraction_request_body['input']['recency_days'] ?? -1 )
+	&& false === (bool) ( $toolbox_source_extraction_request_body['input']['direct_wordpress_write'] ?? true ),
+	'Behavior: Toolbox exact source extraction intent and source URL survive Addon normalization without WordPress writes.'
 );
 
 $web_search_chat_shape = $client->execute_toolbox_web_search_runtime(

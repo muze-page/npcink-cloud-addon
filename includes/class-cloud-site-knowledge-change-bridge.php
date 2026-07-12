@@ -32,6 +32,7 @@ if ( ! class_exists( 'Npcink_Cloud_Site_Knowledge_Change_Bridge' ) ) {
 			private const RECONCILE_POSTS = 50;
 			private const MANUAL_INDEX_POSTS = 50;
 			private const MAX_DOCUMENT_CHARS = 12000;
+			private const MAX_TAXONOMY_TERMS = 20;
 
 		/**
 		 * Registers content change hooks and delivery cron hooks.
@@ -581,57 +582,51 @@ if ( ! class_exists( 'Npcink_Cloud_Site_Knowledge_Change_Bridge' ) ) {
 				'kind' => 'post',
 				'post_id' => $post_id,
 				'post_type' => sanitize_key( (string) ( $post->post_type ?? '' ) ),
-				'status' => sanitize_key( (string) ( $post->post_status ?? '' ) ),
+				'post_status' => sanitize_key( (string) ( $post->post_status ?? '' ) ),
 				'title' => self::post_title( $post ),
 				'url' => self::post_url( $post_id ),
 				'modified_gmt' => sanitize_text_field( (string) ( $post->post_modified_gmt ?? '' ) ),
 				'excerpt' => self::bounded_text( (string) ( $post->post_excerpt ?? '' ), 1000 ),
-				'body' => $content,
-				'comments' => self::approved_comment_documents( $post_id ),
+				'content_excerpt' => $content,
+				'taxonomies' => self::post_taxonomies( $post_id ),
 			);
 		}
 
 		/**
-		 * Collects bounded approved comment manifests.
+		 * Collects bounded existing WordPress category and tag names for index metadata.
 		 *
 		 * @param int $post_id Post id.
-		 * @return array<int,array<string,mixed>>
+		 * @return array<string,array<int,string>>
 		 */
-		private static function approved_comment_documents( int $post_id ): array {
-			if ( ! function_exists( 'get_comments' ) ) {
-				return array();
-			}
-
-			$comments = get_comments(
-				array(
-					'post_id' => $post_id,
-					'status' => 'approve',
-					'number' => 20,
-					'orderby' => 'comment_date_gmt',
-					'order' => 'ASC',
-				)
+		private static function post_taxonomies( int $post_id ): array {
+			$taxonomies = array(
+				'category' => array(),
+				'post_tag' => array(),
 			);
-			if ( ! is_array( $comments ) ) {
-				return array();
+			if ( ! function_exists( 'wp_get_post_terms' ) ) {
+				return $taxonomies;
 			}
 
-			$documents = array();
-			foreach ( $comments as $comment ) {
-				$comment_id = absint( $comment->comment_ID ?? 0 );
-				if ( $comment_id <= 0 ) {
+			foreach ( array_keys( $taxonomies ) as $taxonomy ) {
+				$terms = wp_get_post_terms( $post_id, $taxonomy, array( 'fields' => 'names' ) );
+				if ( is_wp_error( $terms ) || ! is_array( $terms ) ) {
 					continue;
 				}
-
-				$documents[] = array(
-					'id' => 'wp_comment_' . $comment_id,
-					'comment_id' => $comment_id,
-					'post_id' => $post_id,
-					'date_gmt' => sanitize_text_field( (string) ( $comment->comment_date_gmt ?? '' ) ),
-					'body' => self::bounded_text( (string) ( $comment->comment_content ?? '' ), 2000 ),
-				);
+				$names = array();
+				foreach ( $terms as $term_name ) {
+					$name = self::bounded_text( (string) $term_name, 80 );
+					if ( '' === $name || in_array( $name, $names, true ) ) {
+						continue;
+					}
+					$names[] = $name;
+					if ( count( $names ) >= self::MAX_TAXONOMY_TERMS ) {
+						break;
+					}
+				}
+				$taxonomies[ $taxonomy ] = $names;
 			}
 
-			return $documents;
+			return $taxonomies;
 		}
 
 		/**

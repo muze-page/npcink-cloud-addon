@@ -22,6 +22,7 @@ $admin_css = maca_read( $root . '/assets/admin.css' );
 $entitlement_summary = maca_read( $root . '/includes/class-cloud-entitlement-summary.php' );
 $observability = maca_read( $root . '/includes/class-cloud-observability-collector.php' );
 $site_knowledge_bridge = maca_read( $root . '/includes/class-cloud-site-knowledge-change-bridge.php' );
+$site_knowledge_full_index_doc = maca_read( $root . '/docs/site-knowledge-full-index-delivery.md' );
 $site_knowledge_runtime_bridge = maca_read( $root . '/includes/class-cloud-site-knowledge-runtime-bridge.php' );
 $settings = maca_read( $root . '/includes/class-cloud-addon-settings.php' );
 $settings_page = maca_read( $root . '/includes/class-cloud-settings-page.php' );
@@ -875,7 +876,9 @@ maca_assert(
 	false !== strpos( $site_knowledge_bridge, 'request_site_knowledge_sync' )
 	&& false !== strpos( $site_knowledge_bridge, 'request_manual_index_operation' )
 	&& false !== strpos( $site_knowledge_bridge, "'site_knowledge_sync.v1'" )
-	&& false !== strpos( $site_knowledge_bridge, "\$sync_mode = 'start' === \$operation ? 'refresh' : \$operation;" )
+	&& false !== strpos( $site_knowledge_bridge, 'array_chunk( $post_ids, self::MANUAL_INDEX_POSTS )' )
+	&& false !== strpos( $site_knowledge_bridge, "\$is_first_rebuild_batch = 'rebuild' === \$operation && 0 === \$batch_index;" )
+	&& false !== strpos( $site_knowledge_bridge, "\$request_post_ids = \$is_first_rebuild_batch ? array() : \$batch;" )
 	&& false !== strpos( $site_knowledge_bridge, "'sync_mode' => \$sync_mode" )
 	&& false !== strpos( $site_knowledge_bridge, "array( 'refresh', 'rebuild', 'delete' )" )
 	&& false !== strpos( $site_knowledge_bridge, "'delete' !== \$operation && ! self::is_enabled()" )
@@ -885,7 +888,9 @@ maca_assert(
 	&& false !== strpos( $site_knowledge_bridge, 'execute_runtime' )
 	&& false !== strpos( $boundary_doc, 'Cloud remains the' )
 	&& false !== strpos( $boundary_doc, 'executor and index lifecycle owner' )
-	&& false !== strpos( $boundary_doc, 'verified administrator intent' ),
+	&& false !== strpos( $boundary_doc, 'verified administrator intent' )
+	&& false !== strpos( $site_knowledge_full_index_doc, 'does not create a local index job, queue,' )
+	&& false !== strpos( $site_knowledge_full_index_doc, 'Cloud continues to own queued execution, index lifecycle, vector storage,' ),
 	'Site Knowledge change bridge forwards bounded public refresh and administrator delivery intents to Cloud runtime only.'
 );
 

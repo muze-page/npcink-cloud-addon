@@ -426,6 +426,66 @@ maca_assert(
 
 maca_reset_site_knowledge_bridge_state();
 maca_seed_settings( true );
+for ( $post_id = 10000; $post_id < 10605; $post_id++ ) {
+	maca_add_public_post_fixture( $post_id );
+	$GLOBALS['maca_posts'][ $post_id ]->post_content = str_repeat( '中', 2000 );
+}
+$full_rebuild_status = Npcink_Cloud_Site_Knowledge_Change_Bridge::request_manual_index_operation( 'rebuild' );
+$full_rebuild_bodies = array_map(
+	static function ( array $request ): array {
+		$body = json_decode( (string) ( $request['args']['body'] ?? '' ), true );
+		return is_array( $body ) ? $body : array();
+	},
+	$GLOBALS['maca_http_requests']
+);
+$full_rebuild_document_ids = array();
+$full_rebuild_body_sizes = array();
+foreach ( $full_rebuild_bodies as $body ) {
+	$full_rebuild_body_sizes[] = strlen( (string) wp_json_encode( $body ) );
+	foreach ( (array) ( $body['input']['documents'] ?? array() ) as $document ) {
+		$full_rebuild_document_ids[] = absint( $document['post_id'] ?? 0 );
+	}
+}
+maca_assert(
+	is_array( $full_rebuild_status )
+	&& 4 === count( $full_rebuild_bodies )
+	&& 'rebuild' === (string) ( $full_rebuild_bodies[0]['input']['sync_mode'] ?? '' )
+	&& array() === (array) ( $full_rebuild_bodies[0]['input']['post_ids'] ?? array() )
+	&& 200 === count( (array) ( $full_rebuild_bodies[0]['input']['documents'] ?? array() ) )
+	&& 'refresh' === (string) ( $full_rebuild_bodies[1]['input']['sync_mode'] ?? '' )
+	&& 200 === count( (array) ( $full_rebuild_bodies[1]['input']['post_ids'] ?? array() ) )
+	&& 'refresh' === (string) ( $full_rebuild_bodies[2]['input']['sync_mode'] ?? '' )
+	&& 200 === count( (array) ( $full_rebuild_bodies[2]['input']['post_ids'] ?? array() ) )
+	&& 'refresh' === (string) ( $full_rebuild_bodies[3]['input']['sync_mode'] ?? '' )
+	&& 5 === count( (array) ( $full_rebuild_bodies[3]['input']['post_ids'] ?? array() ) )
+	&& 605 === count( $full_rebuild_document_ids )
+	&& 605 === count( array_unique( $full_rebuild_document_ids ) )
+	&& max( $full_rebuild_body_sizes ) < 900000
+	&& 605 === absint( $full_rebuild_status['last_index_action_sent_count'] ?? 0 )
+	&& 4 === absint( $full_rebuild_status['last_index_action_batch_count'] ?? 0 ),
+	'Behavior: administrator rebuild covers the bounded full public corpus across Cloud-owned rebuild plus refresh batches.'
+);
+
+maca_reset_site_knowledge_bridge_state();
+maca_seed_settings( true );
+maca_add_public_post_fixture( 10901 );
+$GLOBALS['maca_posts'][10901]->post_title = 'Contact editor@example.test or 138 0013 8000';
+$GLOBALS['maca_posts'][10901]->post_content = 'Public guide https://example.test/private-path email editor@example.test phone 138 0013 8000 useful ending.';
+Npcink_Cloud_Site_Knowledge_Change_Bridge::request_manual_index_operation( 'start' );
+$redacted_request = $GLOBALS['maca_http_requests'][0] ?? array();
+$redacted_body = json_decode( (string) ( $redacted_request['args']['body'] ?? '' ), true );
+$redacted_document = (array) ( $redacted_body['input']['documents'][0] ?? array() );
+maca_assert(
+	false === strpos( (string) ( $redacted_document['title'] ?? '' ), '@' )
+	&& false === strpos( (string) ( $redacted_document['content_excerpt'] ?? '' ), 'https://' )
+	&& false === strpos( (string) ( $redacted_document['content_excerpt'] ?? '' ), '@' )
+	&& false === strpos( (string) ( $redacted_document['content_excerpt'] ?? '' ), '138 0013 8000' )
+	&& 'https://example.test/?p=10901' === (string) ( $redacted_document['url'] ?? '' ),
+	'Behavior: public Site Knowledge manifests remove incidental contact data while preserving the canonical public post URL.'
+);
+
+maca_reset_site_knowledge_bridge_state();
+maca_seed_settings( true );
 $delete_status = Npcink_Cloud_Site_Knowledge_Change_Bridge::request_manual_index_operation( 'delete' );
 $delete_request = $GLOBALS['maca_http_requests'][0] ?? array();
 $delete_body = json_decode( (string) ( $delete_request['args']['body'] ?? '' ), true );

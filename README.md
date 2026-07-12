@@ -2,7 +2,7 @@
 
 Standalone WordPress plugin for connecting a local Npcink installation to `npcink-cloud`.
 
-The addon is a thin Cloud connector. It stores the Cloud Base URL and Cloud API Key returned by Cloud site authorization, parses the key into signing credentials, sends signed runtime requests, reads health and entitlement status, transports opt-in metadata-only plugin observability events, shows read-only Agent feedback quality summaries, bridges public Site Knowledge change hints to Cloud, and exposes a minimal PHP interface for local plugins.
+The addon is a thin Cloud connector. It stores the Cloud Base URL and Cloud API Key returned by Cloud site authorization, parses the key into signing credentials, sends signed runtime requests, reads health and entitlement status, transports opt-in metadata-only plugin observability and Agent feedback data, bridges public Site Knowledge change hints to Cloud, and exposes a minimal PHP interface for local plugins.
 
 Cross-project platform coordination starts from
 `/Users/muze/gitee/npcink-workflow-toolbox/docs/platform/README.md`. This
@@ -36,7 +36,7 @@ The addon owns:
   - `GET /v1/agent-feedback/summary`
 - Site Knowledge public content change bridge through `POST /v1/runtime/execute`, including a bounded settings-page status and manual public refresh transport.
 - Toolbox Site Knowledge runtime bridge through `POST /v1/runtime/execute`.
-- A `Troubleshooting > Runtime runs` section for read-only Nightly Inspection recent/status/result detail and nonce-protected Cloud-owned retry requests.
+- An `Advanced and troubleshooting > Runtime runs` section for read-only Nightly Inspection recent/status/result detail and nonce-protected Cloud-owned retry requests.
 - Bounded image context evidence transport through `POST /v1/runtime/execute`.
 - Bounded WordPress AI connector scene runtime through `POST /v1/runtime/execute`.
 - `Npcink AI > Cloud Addon` when Workflow Toolbox is active, or
@@ -288,15 +288,10 @@ persist the artifact, create an artifact registry, or write WordPress media.
 
 Administrators may enable Cloud monitoring after Cloud settings verify. When
 enabled, the addon listens for local `npcink_observability_event` metadata,
-stores a bounded local observability buffer, flushes buffered metadata to
-Cloud, and reads aggregate Cloud summaries for the local monitoring view.
-The local monitoring status distinguishes sent events, Cloud-stored events, and
-Cloud-reported duplicates so operators do not confuse upload attempts with
-durable Cloud storage.
-The Monitoring view may also read the Cloud Agent feedback quality summary even
-when monitoring upload is disabled. That summary is aggregate eval metadata
-only; it is not approval, proposal, preflight, workflow, billing, prompt,
-router, preset, or WordPress write truth.
+stores a bounded local observability buffer, and flushes buffered metadata to
+Cloud. wp-admin shows only local buffer or upload errors when action is needed;
+Cloud observability aggregates and Agent feedback quality detail remain
+Cloud-owned data surfaces and are not copied into the local settings page.
 
 Allowed uploaded fields are limited to operational metadata such as plugin
 slug/version, event kind, status, timing, error code, route, proposal id,
@@ -365,19 +360,20 @@ such as `localhost`, `127.0.0.1`, or `::1`. Timeout and manual recovery key
 entry are kept in `Connection Management > Manual fallback` for local debugging
 or authorization outages.
 
-When verified, the page opens `Local permissions` first, where WordPress AI
-connector exposure, Site Knowledge delivery, and metadata-only monitoring
-consent can be toggled immediately. `Status > Overview` shows Cloud status,
-last verification time, read-only entitlement availability, and entitlement
-summary freshness. The `Troubleshooting` tab is the Cloud Addon-side
+When verified, the page opens `Overview` first. It shows plan/entitlement and
+only surfaces monitoring or Site Knowledge summaries when local action is
+needed. WordPress AI connector exposure and Site Knowledge delivery remain the
+primary immediate-save permissions; generation reference is shown only when
+delivery is enabled, and metadata-only monitoring consent is folded under
+`More local permissions`. The
+`Advanced and troubleshooting` entry is the Cloud Addon-side
 replacement for the old Toolbox Cloud Checks / Troubleshooting Checks entry:
-it shows connection, liveness, signed Cloud read, entitlement/quota, hosted
-runtime entitlement detail, capability readiness notes, Site Knowledge bridge
-status, monitoring status, and `Runtime runs` detail. It does not recreate
+it shows compact connection checks, account/usage projection, attention-only
+local monitoring upload state, connection recovery, and `Runtime runs` detail. It does not recreate
 Toolbox product tools for Cloud search, image source search, provider
 operations, or task execution.
 
-`Troubleshooting > Runtime runs` is the low-frequency home for Nightly Inspection Cloud run detail that used to crowd Toolbox advanced surfaces. It shows the read-only runtime entitlement projection, including run quota, batch limit, result retention, and quota-exhausted state. It can read recent runs, inspect one run status, inspect one run result, and request a bounded Cloud retry for a known run. It does not submit scheduled reviews, build local snapshots, create Core proposals, own retry queues, or write WordPress data.
+`Advanced and troubleshooting > Runtime runs` is the low-frequency home for Nightly Inspection Cloud run detail that used to crowd Toolbox advanced surfaces. Its default entitlement projection is limited to nightly-run availability and retention. Manual run-ID lookup stays folded; recent runs, one-run status/result reads, and bounded Cloud retry remain available. It does not submit scheduled reviews, build local snapshots, create Core proposals, own retry queues, or write WordPress data.
 
 The Pro Cloud Runtime projection also exposes contract reuse detail: Cloud owns
 runtime/detail, Toolbox owns product buttons, Core owns proposal handoff,
@@ -385,12 +381,12 @@ Adapter owns execution profiles, and Toolkit owns ability contracts. The addon
 is signed transport and read-only detail only; it adds no registry, scheduler
 truth, approval store, queue, or write executor.
 
-The Site Knowledge tab includes connector state, buffered public changes, last
-delivery, local delivery consent, a read-only bridge health detail table,
-manual public content refresh transport, and explicit administrator delivery
-intents for Cloud-owned index operations. The health detail is local transport
-observability only: Cloud owns index execution, rebuild/delete handling,
-freshness policy, collection lifecycle, and deep diagnostics. Toolbox consumes
+The Site Knowledge tab keeps delivery, buffered public changes, last delivery,
+and manual public content refresh visible. Errors appear only when present.
+Index operations use an explicit `Manage index` entry, while local error and
+WP-Cron recovery facts appear under `Technical delivery details` only when
+action is needed. Cloud owns index execution, rebuild/delete
+handling, freshness policy, collection lifecycle, and deep diagnostics. Toolbox consumes
 Site Knowledge results in fixed best-practice buttons instead of owning index
 management UI.
 

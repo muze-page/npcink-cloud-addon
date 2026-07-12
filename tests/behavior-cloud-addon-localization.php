@@ -45,19 +45,29 @@ maca_assert(
 		'Site Knowledge',
 		'Site Knowledge',
 		'npcink-cloud-addon'
+	)
+	&& '高级与排查' === Npcink_Cloud_Addon_Localization::filter_gettext(
+		'Advanced and troubleshooting',
+		'Advanced and troubleshooting',
+		'npcink-cloud-addon'
+	)
+	&& '技术投递详情' === Npcink_Cloud_Addon_Localization::filter_gettext(
+		'Technical delivery details',
+		'Technical delivery details',
+		'npcink-cloud-addon'
 	),
 	'Addon localization fallback translates fixed npcink-cloud-addon strings in zh_CN admin.'
 );
 
 maca_assert(
-	'允许 WordPress AI 插件选择 Npcink Cloud 作为 AI 连接器。' === Npcink_Cloud_Addon_Localization::filter_gettext(
-		'Allow the WordPress AI plugin to select Npcink Cloud as an AI connector.',
-		'Allow the WordPress AI plugin to select Npcink Cloud as an AI connector.',
+	'允许 WordPress AI 使用 Npcink Cloud。' === Npcink_Cloud_Addon_Localization::filter_gettext(
+		'Allow WordPress AI to use Npcink Cloud.',
+		'Allow WordPress AI to use Npcink Cloud.',
 		'npcink-cloud-addon'
 	)
-	&& '选择此 WordPress 站点可在本地公开哪些已验证的 Cloud 连接器服务。更改会立即保存。' === Npcink_Cloud_Addon_Localization::filter_gettext(
-		'Choose which verified Cloud connector services this WordPress site may expose locally. Changes save immediately.',
-		'Choose which verified Cloud connector services this WordPress site may expose locally. Changes save immediately.',
+	&& 'Cloud 连接' === Npcink_Cloud_Addon_Localization::filter_gettext(
+		'Cloud connection',
+		'Cloud connection',
 		'npcink-cloud-addon'
 	)
 	&& '生成时参考站点内容' === Npcink_Cloud_Addon_Localization::filter_gettext(
@@ -65,9 +75,9 @@ maca_assert(
 		'Reference site content during generation',
 		'npcink-cloud-addon'
 	)
-	&& '已为支持的编辑器任务启用' === Npcink_Cloud_Addon_Localization::filter_gettext(
-		'enabled for supported editor tasks',
-		'enabled for supported editor tasks',
+	&& '更多本地授权' === Npcink_Cloud_Addon_Localization::filter_gettext(
+		'More local permissions',
+		'More local permissions',
 		'npcink-cloud-addon'
 	),
 	'Addon localization fallback covers verified local permissions admin copy.'
@@ -84,12 +94,12 @@ maca_assert(
 		'Manual flush command',
 		'npcink-cloud-addon'
 	)
-	&& '此详情仅表示本地连接器健康状态；Cloud 仍拥有索引、新鲜度策略、集合生命周期和诊断。' === Npcink_Cloud_Addon_Localization::filter_gettext(
-		'This detail is local connector health only; Cloud remains the owner of indexing, freshness policy, collection lifecycle, and diagnostics.',
-		'This detail is local connector health only; Cloud remains the owner of indexing, freshness policy, collection lifecycle, and diagnostics.',
+	&& '额度' === Npcink_Cloud_Addon_Localization::filter_gettext(
+		'Credits',
+		'Credits',
 		'npcink-cloud-addon'
 	),
-	'Addon localization fallback covers Site Knowledge bridge health detail copy.'
+	'Addon localization fallback covers compact Site Knowledge and credit detail copy.'
 );
 
 maca_assert(

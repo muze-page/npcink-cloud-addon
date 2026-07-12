@@ -96,9 +96,9 @@ It returns `null` until the addon settings have passed Save and Verify.
 
 ## Diagnostics Surface
 
-The Cloud Addon Diagnostics tab reuses the existing connection state,
-`probe_connectivity()` result cache, entitlement summary, monitoring summary,
-and Cloud Portal links. It does not expose the private `request()` helper,
+The Cloud Addon `Advanced and troubleshooting > Checks` section reuses the existing connection state,
+`probe_connectivity()` result cache, entitlement summary, and Cloud Portal
+links. Liveness and signed-read state share one compact connection row. It does not expose the private `request()` helper,
 register a Developer diagnostics route, or add ad hoc Cloud service endpoints.
 
 The bounded manual readiness result contract is
@@ -140,13 +140,14 @@ fabricating a check.
 
 ## Runtime Runs Surface
 
-The Cloud Addon `Troubleshooting > Runtime runs` section may use the existing
+The Cloud Addon `Advanced and troubleshooting > Runtime runs` section may use the existing
 run endpoints for Nightly Inspection detail: recent runs, one-run status,
 one-run result, and a nonce-protected retry request for a known run. It is a
 low-frequency
-Cloud-owned recovery/detail surface. It may also show the read-only
-`pro_cloud_runtime` projection for run quota, batch limit, result retention,
-and quota-exhausted state.
+Cloud-owned recovery/detail surface. Its local default projection is limited to
+nightly-run availability and result retention; batch, quota-exhaustion, and
+contract-reuse internals remain in the Cloud-owned detail/data contract rather
+than the WordPress settings UI.
 
 The tab must not submit scheduled reviews, rebuild Toolbox local snapshots,
 create Core proposals, approve changes, create a local retry queue, or write

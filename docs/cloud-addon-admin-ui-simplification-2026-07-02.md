@@ -4,6 +4,9 @@ Status: accepted
 
 Date: 2026-07-02
 
+Historical note: the navigation described here was further simplified on
+2026-07-12. The active model is defined in `docs/admin-surface-standard.md`.
+
 Scope: `npcink-cloud-addon` WordPress admin page.
 
 ## Context

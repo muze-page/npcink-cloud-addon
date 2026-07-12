@@ -8,7 +8,7 @@ Status: active for `Npcink AI -> Cloud Addon` when Toolbox is active, with
 The Cloud Addon admin page is a thin connector surface. It opens the Cloud
 Portal authorization flow by default, stores the returned Cloud Base URL and
 Cloud API Key, verifies signed connectivity, and shows read-only connection,
-entitlement, opt-in monitoring state, and Agent feedback quality summary.
+entitlement and opt-in connector state.
 
 ## Default View
 
@@ -40,48 +40,45 @@ behavior, and zh_CN fixed-string maintenance boundary.
 
 When verified, the default page should prioritize:
 
-- `Local permissions` as the first working tab for WordPress AI connector
-  exposure, Site Knowledge delivery, and metadata-only monitoring consent;
-- compact Cloud status, last verification time, read-only entitlement
-  availability, and entitlement summary freshness in `Status > Overview`;
+- `Overview` as the first working tab, showing plan/entitlement plus
+  attention-only monitoring or Site Knowledge rows. It also contains the
+  immediate-save local permissions; generation reference is dependent on Site
+  Knowledge delivery and metadata-only monitoring consent stays folded under
+  `More local permissions`;
 - a dedicated Site Knowledge tab for local delivery consent, bounded public
   content refresh transport, explicit administrator delivery intents, and
   shallow bridge state while Cloud owns index execution, rebuild/delete
   handling, lifecycle, and freshness policy;
-- a bounded Troubleshooting tab for connection, liveness, signed Cloud read, entitlement/quota, hosted runtime entitlement detail, capability readiness notes, Site Knowledge bridge status, monitoring status, and low-frequency `Runtime runs` detail, including entitlement/quota detail, batch limit, result retention, recent runs, one-run status/result reads, and bounded retry requests;
-- a Connection Management tab for connection recovery, local disconnect,
-  manual fallback, timeout, last verification failure, and other low-frequency
-  connector details;
-- opt-in monitoring state and read-only Cloud observability / Agent feedback
-  quality summaries;
+- one `Advanced and troubleshooting` entry for compact account/usage
+  projections, local monitoring upload state, connection checks, runtime runs,
+  and connection recovery;
 - a clear path to update/re-verify settings.
 
 Toolbox no longer owns Cloud Checks or Troubleshooting Checks for basic AI
 connection, Hosted Runtime, Cloud search, Cloud image/source, quota,
-entitlement, or service health. The Cloud Addon Troubleshooting tab is the local
+entitlement, or service health. `Advanced and troubleshooting` is the local
 entry for those Cloud connection and service-status details, but it must remain
 a summary/detail surface rather than a Toolbox product workflow or operations
 console.
 
 ## Tab Model
 
-Verified admin navigation should stay shallow:
+Verified admin navigation should stay at three top-level entries:
 
-- `Local permissions`: immediate-save switches for locally exposed Cloud
-  connector services.
-- `Status`: compact local connector summaries, account/usage, monitoring
-  quality, and monitoring diagnostics as secondary tabs.
-- `Site Knowledge`: read-only local delivery state, public content refresh
-  transport, index operations, and shallow bridge health detail as secondary
-  tabs.
-- `Troubleshooting`: read-only checks, runtime run detail, Cloud-owned
-  capability notes, and direct Cloud detail links as secondary tabs.
-- `Connection Management`: connection status, Cloud-side connection change,
-  local disconnect, and manual fallback as secondary tabs.
+- `Overview`: compact plan plus attention-only connector rows, followed by the
+  two primary local permission switches and folded secondary consent.
+- `Site Knowledge`: delivery, buffered public changes, and last delivery plus
+  the common refresh action. Errors appear only when present. Index operations
+  use an explicit `Manage index` entry; local error or WP-Cron recovery facts
+  appear under `Technical delivery details` only when action is needed.
+- `Advanced and troubleshooting`: service detail, checks, runtime runs, and
+  connection recovery as secondary tabs. Manual credentials stay inside a
+  collapsed recovery disclosure.
 
-Do not reintroduce separate `Details`, `Runtime Runs`, or `Advanced` product
-tabs when the content is low-frequency detail that fits one of the entries
-above. Old `details` and `runtime_runs` URLs may redirect to the current tab
+Do not reintroduce separate `Status`, `Troubleshooting`, `Connection
+Management`, `Details`, or `Runtime Runs` top-level tabs when the content fits
+one of the three entries above. Old `details`, `status`, `diagnostics`, and
+`runtime_runs` URLs may redirect to the current tab
 owners for compatibility.
 
 ## Advanced / Low-Frequency Details
@@ -89,18 +86,20 @@ owners for compatibility.
 Low-frequency details may include:
 
 - manual Cloud Base URL and Cloud API Key wrapper recovery entry;
-- timeout setting;
-- read-only entitlement fields;
+- a last connection failure and sanitized Cloud error classification, when present;
+- compact package and availability fields plus one combined credit usage row;
 - Cloud-owned runtime recent/status/result detail and retry request entry;
 - sanitized diagnostics rows and Cloud detail links;
-- metadata-only monitoring upload status;
-- aggregate Cloud observability counters;
-- aggregate Agent feedback quality counters;
+- metadata-only monitoring buffer/error status only when action is needed;
 - last verification failure text.
 
-These details should move into a clear secondary tab or explicit inline detail
-entry unless they are blocking the current task. Do not surface internal enum fields such as credit policy or runtime local truth in the default admin UI;
+These details should move into `Advanced and troubleshooting` or an explicit
+collapsed technical-detail entry unless they are blocking the current task.
+Do not surface internal enum fields such as credit policy or runtime local truth in the default admin UI;
 keep those in tests and boundary documentation.
+Do not copy Cloud observability aggregates, Agent quality breakdowns, contract
+reuse matrices, worker phases, retryability flags, or Site Knowledge ownership
+matrices into this local connector UI. Link to Cloud when that detail is useful.
 
 ## Layout and Copy Rules
 
@@ -150,10 +149,14 @@ Cloud Addon admin must not add:
   controls.
 
 The admin page may expose a monitoring toggle, Site Knowledge local delivery
-consent toggle, read-only observability summary, and read-only Agent feedback
-quality summary only when those surfaces remain metadata-only or transport-only
-and clearly separate from Core audit, proposal, approval, execution, billing,
-index lifecycle, and workflow truth.
+consent toggle, and attention-only local monitoring upload state. Cloud
+observability and Agent feedback aggregates remain transport/data contracts and
+Cloud-owned detail; wp-admin does not render or manually refresh those views.
+
+Healthy verified connections do not repeat `Last verified`, entitlement sync
+timestamps, or successful monitoring upload timestamps. Those values may
+remain in machine contracts and explicit support checks, but default UI should
+surface them only when they explain a blocker.
 
 ## Verification
 

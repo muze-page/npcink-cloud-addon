@@ -53,19 +53,6 @@
 	margin: 0;
 }
 
-.npcink-cloud-diagnostic-group th {
-	background: #f0f0f1;
-	border-top: 1px solid #c3c4c7;
-	color: #1d2327;
-	font-size: 12px;
-	font-weight: 600;
-	padding: 8px 10px;
-}
-
-.npcink-cloud-diagnostic-group:first-child th {
-	border-top: 0;
-}
-
 .npcink-cloud-badge {
 	border-radius: 999px;
 	display: inline-block;
@@ -141,12 +128,6 @@
 	margin: 0;
 }
 
-.npcink-cloud-local-permissions__header p {
-	color: #646970;
-	margin: 0;
-	max-width: 640px;
-}
-
 .npcink-cloud-local-permissions__list {
 	border-top: 1px solid #f0f0f1;
 }
@@ -158,6 +139,21 @@
 
 .npcink-cloud-local-permission:last-child {
 	border-bottom: 0;
+}
+
+.npcink-cloud-local-permission--dependent {
+	border-left: 3px solid #dcdcde;
+	padding-left: 16px;
+}
+
+.npcink-cloud-local-permissions__more {
+	border-top: 1px solid #f0f0f1;
+	padding-top: 12px;
+}
+
+.npcink-cloud-local-permissions__more > summary {
+	cursor: pointer;
+	font-weight: 600;
 }
 
 .npcink-cloud-local-permission__control {
@@ -397,6 +393,36 @@
 	max-width: 640px;
 }
 
+.npcink-cloud-advanced-detail {
+	border-top: 1px solid #dcdcde;
+	margin-top: 18px;
+	max-width: 980px;
+	padding-top: 12px;
+}
+
+.npcink-cloud-advanced-detail > summary {
+	color: #1d2327;
+	cursor: pointer;
+	font-weight: 600;
+	width: max-content;
+}
+
+.npcink-cloud-advanced-detail > summary:hover,
+.npcink-cloud-advanced-detail > summary:focus {
+	color: #1d35b4;
+}
+
+.npcink-cloud-advanced-detail__body {
+	border-left: 3px solid #dcdcde;
+	box-sizing: border-box;
+	margin-top: 10px;
+	padding: 2px 0 0 14px;
+}
+
+.npcink-cloud-overview-status {
+	max-width: 860px;
+}
+
 .npcink-cloud-section-heading {
 	align-items: center;
 	display: flex;
@@ -488,108 +514,6 @@
 
 .npcink-cloud-tab-panel > h2:first-child {
 	margin-top: 0;
-}
-
-.npcink-cloud-capability-list {
-	margin: 0 14px 14px;
-}
-
-.npcink-cloud-capability-header,
-.npcink-cloud-capability-item {
-	align-items: start;
-	display: grid;
-	gap: 8px 14px;
-	grid-template-columns: minmax(220px, 1.2fr) minmax(120px, .6fr) minmax(48px, max-content);
-}
-
-.npcink-cloud-capability-header {
-	border-bottom: 1px solid #dcdcde;
-	color: #50575e;
-	font-weight: 600;
-	padding: 0 0 8px;
-}
-
-.npcink-cloud-capability-item {
-	border-top: 1px solid #f0f0f1;
-	padding: 10px 0;
-}
-
-.npcink-cloud-capability-item:first-child {
-	border-top: 0;
-}
-
-.npcink-cloud-capability-name,
-.npcink-cloud-capability-state {
-	overflow-wrap: anywhere;
-}
-
-.npcink-cloud-capability-state {
-	color: #50575e;
-}
-
-.npcink-cloud-capability-detail {
-	display: inline-flex;
-	position: relative;
-	width: max-content;
-}
-
-.npcink-cloud-capability-detail:focus {
-	outline: none;
-}
-
-.npcink-cloud-capability-detail:focus .npcink-cloud-capability-icon {
-	border-color: #3858e9;
-	box-shadow: 0 0 0 1px #3858e9;
-	color: #3858e9;
-}
-
-.npcink-cloud-capability-detail:hover .npcink-cloud-capability-icon {
-	border-color: #3858e9;
-	color: #3858e9;
-}
-
-.npcink-cloud-capability-detail[tabindex] {
-	cursor: pointer;
-}
-
-.npcink-cloud-capability-icon {
-	align-items: center;
-	border: 1px solid #8c8f94;
-	border-radius: 999px;
-	color: #50575e;
-	display: inline-flex;
-	font-size: 12px;
-	font-weight: 700;
-	height: 20px;
-	justify-content: center;
-	line-height: 1;
-	width: 20px;
-}
-
-.npcink-cloud-capability-popover {
-	background: #fff;
-	border: 1px solid #c3c4c7;
-	box-shadow: 0 3px 8px rgba(0, 0, 0, .08);
-	color: #50575e;
-	display: none;
-	font-weight: 400;
-	line-height: 1.5;
-	margin-top: 6px;
-	max-width: 760px;
-	min-width: 260px;
-	overflow-wrap: anywhere;
-	padding: 10px 12px;
-	position: absolute;
-	right: 0;
-	top: 100%;
-	width: max-content;
-	z-index: 5;
-}
-
-.npcink-cloud-capability-detail:hover .npcink-cloud-capability-popover,
-.npcink-cloud-capability-detail:focus .npcink-cloud-capability-popover,
-.npcink-cloud-capability-detail:focus-within .npcink-cloud-capability-popover {
-	display: block;
 }
 
 .npcink-cloud-error-detail {
@@ -870,10 +794,6 @@
 		gap: 10px;
 	}
 
-	.npcink-cloud-local-permissions__header p {
-		margin-top: 6px;
-	}
-
 	.npcink-cloud-local-permission__control {
 		grid-template-columns: 54px minmax(0, 1fr);
 	}
@@ -898,18 +818,6 @@
 	.npcink-cloud-inline-info__content {
 		margin-top: 8px;
 		position: static;
-		width: auto;
-	}
-
-	.npcink-cloud-capability-header,
-	.npcink-cloud-capability-item {
-		grid-template-columns: 1fr;
-	}
-
-	.npcink-cloud-capability-popover {
-		left: 0;
-		max-width: calc(100vw - 64px);
-		right: auto;
 		width: auto;
 	}
 

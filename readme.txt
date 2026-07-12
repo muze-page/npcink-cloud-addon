@@ -133,7 +133,7 @@ Data Retention: https://cloud.npc.ink/terms/en/data-retention.html
 1. Entitlement summary and read-only Pro Cloud Runtime detail.
 2. Cloud settings screen with Cloud Base URL, API key replacement, timeout, and monitoring opt-in.
 3. Monitoring and quality summaries showing metadata-only collection and read-only Cloud projections.
-4. Connection management sections for status, Cloud-side connection changes, local disconnect, and manual fallback.
+4. Advanced and troubleshooting entry for service detail, checks, runtime runs, and connection recovery.
 
 == Changelog ==
 

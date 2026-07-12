@@ -32,9 +32,8 @@ index, freshness, and collection lifecycle owner.
   one-run result, and nonce-protected Cloud-owned retry requests.
 - Verified dispatch helpers for host-owned media derivative Cloud jobs.
 - Stats and entitlement read projections.
-- Bounded Cloud Diagnostics rows for connection, liveness, signed Cloud read,
-  entitlement/quota, hosted runtime entitlement detail, capability readiness
-  notes, Site Knowledge bridge status, and monitoring status.
+- Bounded Cloud checks for credentials, combined connection/signed-read state,
+  hosted runtime availability, and an explicitly requested readiness result.
 - Bounded Site Knowledge settings details for connector state, buffered public
   changes, last delivery, local delivery consent, manual public refresh
   transport, and explicit administrator delivery intents for Cloud-owned index
@@ -166,14 +165,14 @@ The bridge must send only public content manifests, affected post ids, and
 perform re-index policy decisions, own stale-index detection, become a workflow
 engine, become scheduler truth, or perform WordPress writes.
 
-The settings page may expose a dedicated Site Knowledge tab, show shallow bridge
-health detail such as delivery attempts, bounded buffer limits, last local
-delivery outcome, and WP-Cron scheduling, update local delivery consent, and
+The settings page may expose a dedicated Site Knowledge tab, show delivery,
+bounded buffered public changes, and the last local delivery outcome, update local delivery consent, and
 send bounded public refresh plus explicit administrator delivery intents for
 Cloud-owned index operations. Cloud remains responsible for index execution,
 rebuild/delete handling, freshness policy, and lifecycle. The addon must not
 expose collection management, stale-index policy controls, embedding/vector
 provider settings, or Cloud operations-console actions.
+Local error and WP-Cron recovery detail should appear only when action is needed.
 
 The public PHP health seam
 `npcink_cloud_addon_site_knowledge_change_bridge_health()` returns
@@ -262,13 +261,13 @@ The local UI stays shallow:
 - validation feedback
 - last verification time
 - entitlement summary
-- opt-in monitoring status and read-only Cloud observability / Agent feedback summaries
-- a bounded `Troubleshooting > Runtime runs` section for Cloud-owned Nightly Inspection entitlement/quota, batch, retention, recent/status/result, and retry request detail
+- opt-in monitoring consent and attention-only local buffer/error status; Cloud observability and Agent feedback aggregates stay in Cloud
+- a bounded `Advanced and troubleshooting > Runtime runs` section with compact Nightly Inspection availability/retention plus recent/status/result and retry request detail
 
-The Troubleshooting checks table may group these existing facts for operator
-scanability. Grouping is a read-only presentation projection only; it must not
-add live checks on page render, durable diagnostic history, raw request or
-response capture, or another service-status truth source.
+The advanced checks table stays compact and may show credentials, one combined
+connection/signed-read row, hosted-runtime, and an explicitly requested readiness result. It
+must not add live checks on page render, durable diagnostic history, raw request
+or response capture, or another service-status truth source.
 
 It must not become a second control plane.
 

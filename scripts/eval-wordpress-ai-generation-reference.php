@@ -8,6 +8,8 @@
  * Optional:
  * WP_AI_EVAL_POST_IDS=7520,5810,7957 composer run eval:wp-ai-generation-reference
  * WP_AI_EVAL_DELAY_MS=3200 composer run eval:wp-ai-generation-reference
+ * WP_AI_EVAL_MIN_POSTS=1 composer run eval:wp-ai-generation-reference
+ * WP_AI_EVAL_TASKS=title composer run eval:wp-ai-generation-reference
  *
  * @package NpcinkCloudAddon
  */
@@ -47,6 +49,19 @@ function npcink_wp_ai_eval_post_ids(): array {
 		}
 	}
 	return array_values( array_unique( $ids ) );
+}
+
+/**
+ * Returns the requested task subset for a quick local smoke.
+ *
+ * @return array<string,string>
+ */
+function npcink_wp_ai_eval_tasks(): array {
+	$requested = array_filter( array_map( 'trim', explode( ',', (string) ( getenv( 'WP_AI_EVAL_TASKS' ) ?: '' ) ) ) );
+	if ( empty( $requested ) ) {
+		return NPCINK_WP_AI_EVAL_TASKS;
+	}
+	return array_intersect_key( NPCINK_WP_AI_EVAL_TASKS, array_fill_keys( $requested, true ) );
 }
 
 /**
@@ -170,6 +185,43 @@ function npcink_wp_ai_eval_length( string $text ): int {
 }
 
 /**
+ * Truncates local evaluation context without breaking multibyte text.
+ *
+ * @param string $text Text.
+ * @param int    $max_chars Maximum characters.
+ * @return string
+ */
+function npcink_wp_ai_eval_truncate( string $text, int $max_chars ): string {
+	$text = trim( preg_replace( '/\s+/u', ' ', $text ) ?? $text );
+	if ( npcink_wp_ai_eval_length( $text ) <= $max_chars ) {
+		return $text;
+	}
+	return function_exists( 'mb_substr' ) ? mb_substr( $text, 0, $max_chars, 'UTF-8' ) : substr( $text, 0, $max_chars );
+}
+
+/**
+ * Builds bounded source context used only by the explicit local evaluator.
+ *
+ * @param WP_Post $post Post.
+ * @return array<string,mixed>
+ */
+function npcink_wp_ai_eval_source_context( $post ): array {
+	$taxonomies = array();
+	foreach ( array( 'category', 'post_tag' ) as $taxonomy ) {
+		$terms = wp_get_post_terms( (int) $post->ID, $taxonomy, array( 'fields' => 'names' ) );
+		$taxonomies[ $taxonomy ] = is_wp_error( $terms ) || ! is_array( $terms )
+			? array()
+			: array_slice( array_values( array_unique( array_map( 'strval', $terms ) ) ), 0, 20 );
+	}
+	return array(
+		'title'      => npcink_wp_ai_eval_truncate( wp_strip_all_tags( (string) $post->post_title ), 300 ),
+		'excerpt'    => npcink_wp_ai_eval_truncate( wp_strip_all_tags( (string) $post->post_excerpt ), 1000 ),
+		'content'    => npcink_wp_ai_eval_truncate( wp_strip_all_tags( strip_shortcodes( (string) $post->post_content ) ), 6000 ),
+		'taxonomies' => $taxonomies,
+	);
+}
+
+/**
  * Returns a numeric median.
  *
  * @param array<int,int> $values Values.
@@ -277,15 +329,16 @@ function npcink_wp_ai_eval_normalized_output( string $output ): string {
  *
 	 * @param WP_Post             $post Post.
 	 * @param bool                $reference_enabled Reference state.
-	 * @param array<string,mixed> $baselines Site baselines.
+ * @param array<string,mixed>  $baselines Site baselines.
+ * @param array<string,string> $tasks Task routes.
 	 * @return array<string,mixed>
  */
-function npcink_wp_ai_eval_variant( $post, bool $reference_enabled, array $baselines ): array {
+function npcink_wp_ai_eval_variant( $post, bool $reference_enabled, array $baselines, array $tasks ): array {
 	npcink_wp_ai_eval_set_reference( $reference_enabled );
 	$content = trim( wp_strip_all_tags( strip_shortcodes( (string) $post->post_content ) ) );
 	$title   = trim( wp_strip_all_tags( (string) $post->post_title ) );
 	$results = array();
-	foreach ( NPCINK_WP_AI_EVAL_TASKS as $task => $route ) {
+	foreach ( $tasks as $task => $route ) {
 		$input = in_array( $task, array( 'title', 'excerpt', 'summary' ), true )
 			? array( 'content' => $content, 'context' => (string) $post->ID )
 			: array( 'content' => $content, 'title' => $title, 'post_id' => (int) $post->ID );
@@ -323,8 +376,14 @@ if ( ! current_user_can( 'edit_posts' ) ) {
 }
 
 $post_ids = npcink_wp_ai_eval_post_ids();
-if ( count( $post_ids ) < 3 ) {
-	fwrite( STDERR, "[fail] At least three valid published post ids are required.\n" );
+$minimum_posts = max( 1, min( 3, absint( getenv( 'WP_AI_EVAL_MIN_POSTS' ) ?: 3 ) ) );
+$tasks         = npcink_wp_ai_eval_tasks();
+if ( count( $post_ids ) < $minimum_posts ) {
+	fwrite( STDERR, "[fail] The requested minimum number of valid published post ids is unavailable.\n" );
+	exit( 1 );
+}
+if ( empty( $tasks ) ) {
+	fwrite( STDERR, "[fail] No supported evaluation tasks were requested.\n" );
 	exit( 1 );
 }
 
@@ -341,11 +400,12 @@ try {
 		$order = 0 === $index % 2 ? array( false, true ) : array( true, false );
 		$variants = array();
 		foreach ( $order as $reference_enabled ) {
-			$variants[ $reference_enabled ? 'reference' : 'baseline' ] = npcink_wp_ai_eval_variant( $post, $reference_enabled, $baselines );
+			$variants[ $reference_enabled ? 'reference' : 'baseline' ] = npcink_wp_ai_eval_variant( $post, $reference_enabled, $baselines, $tasks );
 		}
 		$pairs[] = array(
 			'post_id'  => $post_id,
 			'post_title_length' => npcink_wp_ai_eval_length( (string) $post->post_title ),
+			'source_context' => npcink_wp_ai_eval_source_context( $post ),
 			'variants' => $variants,
 		);
 	}
@@ -355,7 +415,7 @@ try {
 
 $aggregate = array(
 	'pairs'                    => count( $pairs ),
-	'task_pairs'               => count( $pairs ) * count( NPCINK_WP_AI_EVAL_TASKS ),
+	'task_pairs'               => count( $pairs ) * count( $tasks ),
 	'successful_outputs'       => 0,
 	'non_boilerplate_outputs'  => 0,
 	'style_wins'               => 0,
@@ -368,7 +428,7 @@ $aggregate = array(
 	'classification_reuse_comparisons' => 0,
 );
 foreach ( $pairs as $pair ) {
-	foreach ( array_keys( NPCINK_WP_AI_EVAL_TASKS ) as $task ) {
+	foreach ( array_keys( $tasks ) as $task ) {
 		$baseline  = $pair['variants']['baseline'][ $task ];
 		$reference = $pair['variants']['reference'][ $task ];
 		foreach ( array( $baseline, $reference ) as $variant ) {
@@ -415,11 +475,13 @@ unset( $aggregate['classification_reuse_lift_sum'], $aggregate['classification_r
 
 echo wp_json_encode(
 	array(
-		'contract_version' => 'wp_ai_generation_reference_eval.v1',
+		'contract_version' => 'wp_ai_generation_reference_eval.v2',
 		'generated_at'     => gmdate( 'c' ),
 		'write_posture'    => 'read_only_evaluation',
 		'request_delay_ms' => max( 0, min( 10000, absint( getenv( 'WP_AI_EVAL_DELAY_MS' ) ?: 3200 ) ) ),
 		'post_ids'         => $post_ids,
+		'minimum_posts'    => $minimum_posts,
+		'tasks'            => array_keys( $tasks ),
 		'original_reference_enabled' => $original_reference_enabled,
 		'restored_reference_enabled' => Npcink_Cloud_Addon_Settings::is_site_knowledge_generation_reference_enabled(),
 		'thresholds'       => array(

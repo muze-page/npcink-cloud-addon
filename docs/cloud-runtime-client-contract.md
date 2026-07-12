@@ -387,6 +387,29 @@ wrapper adds the task-bound hint automatically; callers cannot provide source
 texts, taxonomy terms, chunks, scores, URLs, or other reference payloads. Cloud
 may use hidden Site Knowledge style or existing taxonomy history, while the
 addon and WordPress AI plugin continue to receive only the ordinary task result.
+Cloud may translate this hint into its internal `generation_context.v1` runtime
+pack with task-specific relevance, dedupe, self-match exclusion,
+reference-count, and character-budget policies. That internal pack is not a
+caller field or an Addon-owned contract. The Addon must continue rejecting
+caller-supplied source texts, chunks, scores, URLs, taxonomy terms, retrieval
+limits, and context budgets, and must not expose relevance or reference detail
+in the WordPress AI user interface.
+
+Runtime support is quality-gated per task rather than implied by transport
+acceptance. Current Cloud policy uses aggregate, fact-free style profiles for
+title and excerpt tasks and existing taxonomy names for classification. Meta
+description and summary hints remain accepted for forward compatibility but
+silently skip retrieval until Site Knowledge has dedicated accepted-output
+sources for those tasks. The Addon must not emulate those missing sources with
+ordinary article excerpts.
+
+The explicit local A/B evaluator emits
+`wp_ai_generation_reference_eval.v2`. Its default gate still requires at least
+three published posts across all five supported tasks. Operators may set
+`WP_AI_EVAL_MIN_POSTS=1` only for a quick post-change smoke; such a reduced run
+is not promotion evidence. `WP_AI_EVAL_TASKS=title` may further narrow a smoke
+to one or more comma-separated supported tasks. The eval-lab promotion gate
+still requires at least 15 task pairs plus human validation.
 
 Image generation input must use
 `contract_version=image_generation_request.v1`, `task=image_generation`, and a

@@ -376,11 +376,12 @@ The method rejects generic chat or provider-control fields such as `messages`,
 headers. It also bounds prompt/body size and clamps timeout to 60 seconds,
 retention, and retry values.
 
-For supported editor tasks, the scene request may carry the optional bounded
-shape `site_knowledge_reference={enabled:boolean,mode:string}`. The task-bound
-modes are `site_title_style`, `site_excerpt_style`, `site_meta_style`,
-`site_summary_style`, and `site_taxonomy_history` for title, excerpt, meta
-description, summary, and classification respectively. The
+For quality-accepted editor tasks, the scene request may carry the optional
+bounded shape `site_knowledge_reference={enabled:boolean,mode:string}`. The
+task-bound modes are currently `site_title_style` and `site_summary_style` for
+title and summary respectively. Excerpt, meta description, classification, and
+custom registered tasks continue through the ordinary Cloud runtime without
+Site Knowledge generation reference. The
 local `site_knowledge_generation_reference_enabled` permission is the only
 preference truth and defaults to off. When enabled, the WordPress AI scene
 wrapper adds the task-bound hint automatically; callers cannot provide source
@@ -396,12 +397,9 @@ limits, and context budgets, and must not expose relevance or reference detail
 in the WordPress AI user interface.
 
 Runtime support is quality-gated per task rather than implied by transport
-acceptance. Current Cloud policy uses aggregate, fact-free style profiles for
-title and excerpt tasks and existing taxonomy names for classification. Meta
-description and summary hints remain accepted for forward compatibility but
-silently skip retrieval until Site Knowledge has dedicated accepted-output
-sources for those tasks. The Addon must not emulate those missing sources with
-ordinary article excerpts.
+acceptance. Current local evidence keeps generation reference limited to title
+and summary. Other task families remain available without reference and may be
+reconsidered only after task-specific quality evidence exists.
 
 The explicit local A/B evaluator emits
 `wp_ai_generation_reference_eval.v2`. Its default gate still requires at least

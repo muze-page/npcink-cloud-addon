@@ -100,10 +100,7 @@ maca_assert(
 );
 
 $reference_modes = array(
-	'excerpt_generation'     => 'site_excerpt_style',
-	'meta_description'       => 'site_meta_style',
-	'content_summary'        => 'site_summary_style',
-	'content_classification' => 'site_taxonomy_history',
+	'content_summary' => 'site_summary_style',
 );
 foreach ( $reference_modes as $reference_task => $reference_mode ) {
 	$GLOBALS['maca_http_response_queue'][] = array(
@@ -130,6 +127,24 @@ foreach ( $reference_modes as $reference_task => $reference_mode ) {
 		&& $reference_task === (string) ( $reference_body['input']['task'] ?? '' )
 		&& $reference_mode === (string) ( $reference_body['input']['request']['site_knowledge_reference']['mode'] ?? '' ),
 		'Behavior: WordPress AI connector runtime accepts the task-bound Site Knowledge reference mode for ' . $reference_task . '.'
+	);
+}
+
+foreach ( array( 'excerpt_generation', 'meta_description', 'content_classification' ) as $unsupported_reference_task ) {
+	$unsupported_task_reference = $client->execute_wordpress_ai_connector_runtime(
+		array(
+			'contract_version' => 'wp_ai_connector_runtime.v1',
+			'task'             => $unsupported_reference_task,
+			'prompt'           => 'Run the bounded editor task.',
+			'input'            => array(
+				'site_knowledge_reference' => array( 'enabled' => true ),
+			),
+		)
+	);
+	maca_assert(
+		is_wp_error( $unsupported_task_reference )
+		&& 'cloud_wp_ai_connector_site_knowledge_reference_task_not_allowed' === $unsupported_task_reference->get_error_code(),
+		'Behavior: WordPress AI generation reference stays disabled for ' . $unsupported_reference_task . ' until quality evidence exists.'
 	);
 }
 

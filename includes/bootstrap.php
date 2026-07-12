@@ -216,14 +216,12 @@ if ( ! function_exists( 'npcink_cloud_addon_execute_registered_ai_task_runtime' 
 		$request['contract_version'] = 'wp_ai_connector_runtime.v1';
 		$request['task']             = $task_contract['task'];
 		$request['task_contract']    = $task_contract;
-		$context_requirements        = $task_contract['context_requirements'];
-		$uses_site_knowledge         = ! empty(
-			array_intersect(
-				array( 'site_style_profile', 'taxonomy_candidates' ),
-				$context_requirements
-			)
+		$supports_generation_reference = in_array(
+			(string) $task_contract['task'],
+			array( 'title_generation', 'content_summary' ),
+			true
 		);
-		if ( $uses_site_knowledge && Npcink_Cloud_Addon_Settings::is_site_knowledge_generation_reference_enabled() ) {
+		if ( $supports_generation_reference && Npcink_Cloud_Addon_Settings::is_site_knowledge_generation_reference_enabled() ) {
 			$request['input'] = is_array( $request['input'] ?? null ) ? $request['input'] : array();
 			if ( ! isset( $request['input']['site_knowledge_reference'] ) ) {
 				$request['input']['site_knowledge_reference'] = array( 'enabled' => true );

@@ -91,7 +91,24 @@ $format_overview_entitlement = new ReflectionMethod( Npcink_Cloud_Settings_Page:
 $format_overview_entitlement->setAccessible( true );
 $overview_metrics_method = new ReflectionMethod( Npcink_Cloud_Settings_Page::class, 'get_overview_entitlement_metrics' );
 $overview_metrics_method->setAccessible( true );
+$site_knowledge_usage_method = new ReflectionMethod( Npcink_Cloud_Settings_Page::class, 'get_site_knowledge_usage_projection' );
+$site_knowledge_usage_method->setAccessible( true );
+$runtime_status_method = new ReflectionMethod( Npcink_Cloud_Settings_Page::class, 'format_runtime_status_label' );
+$runtime_status_method->setAccessible( true );
 $overview_metrics = $overview_metrics_method->invoke( null, $read_summary );
+$site_knowledge_usage = $site_knowledge_usage_method->invoke(
+	null,
+	array(
+		'state' => 'fresh',
+		'available' => true,
+		'quota_status' => 'ok',
+		'indexed_documents' => 599,
+		'max_documents' => 10000,
+		'remaining_documents' => 9401,
+		'document_percent' => 6,
+		'warning_ratio' => 0.85,
+	)
+);
 $missing_overview_metrics = $overview_metrics_method->invoke(
 	null,
 	array(
@@ -108,12 +125,26 @@ maca_assert(
 		),
 		true
 	)
-	&& 'Pro · available' === $format_overview_entitlement->invoke( null, $read_summary, true )
+	&& 'Pro plan · available' === $format_overview_entitlement->invoke( null, $read_summary, true )
+	&& 'Free plan · available' === $format_overview_entitlement->invoke( null, array( 'available' => true, 'package_label' => 'Free' ), true )
+	&& 'Enterprise · available' === $format_overview_entitlement->invoke( null, array( 'available' => true, 'package_label' => 'Enterprise' ), true )
+	&& 'Enterprise · available' === $format_overview_entitlement->invoke( null, array( 'available' => true, 'package_label' => 'Enterprise', 'package_tier' => 'pro' ), true )
 	&& ! empty( $overview_metrics['credits']['available'] )
 	&& 88 === (int) ( $overview_metrics['credits']['percent'] ?? -1 )
-	&& '87.50 credit / 100.00 credit · 88% remaining' === (string) ( $overview_metrics['credits']['label'] ?? '' )
+	&& '87.5 / 100' === (string) ( $overview_metrics['credits']['value_label'] ?? '' )
+	&& '88% remaining' === (string) ( $overview_metrics['credits']['status_label'] ?? '' )
+	&& '87.5 / 100 · 88% remaining' === (string) ( $overview_metrics['credits']['label'] ?? '' )
+	&& 'Used 12.5 credits; remaining 87.5 credits; limit 100 credits.' === (string) ( $overview_metrics['credits']['tooltip'] ?? '' )
+	&& ! empty( $site_knowledge_usage['available'] )
+	&& '9,401 / 10,000' === (string) ( $site_knowledge_usage['value_label'] ?? '' )
+	&& '94% remaining' === (string) ( $site_knowledge_usage['status_label'] ?? '' )
+	&& 94 === (int) ( $site_knowledge_usage['percent'] ?? -1 )
+	&& 'Indexed 599 documents; remaining 9,401 documents; limit 10,000 documents.' === (string) ( $site_knowledge_usage['tooltip'] ?? '' )
 	&& ! empty( $overview_metrics['runtime']['available'] )
 	&& '8 of 10 runs remaining' === (string) ( $overview_metrics['runtime']['label'] ?? '' )
+	&& 'Queued' === $runtime_status_method->invoke( null, 'queued' )
+	&& 'Succeeded' === $runtime_status_method->invoke( null, 'success' )
+	&& 'custom_state' === $runtime_status_method->invoke( null, 'custom_state' )
 	&& empty( $missing_overview_metrics['credits']['available'] )
 	&& empty( $missing_overview_metrics['runtime']['available'] ),
 	'Behavior: overview entitlement copy uses one loading state and never duplicates missing fallbacks.'

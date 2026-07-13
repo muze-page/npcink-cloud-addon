@@ -2,31 +2,39 @@
 	'use strict';
 
 	const config = window.npcinkCloudSiteKnowledge || {};
-	const container = document.querySelector( '[data-npcink-site-knowledge-usage]' );
+	const usageContainer = document.querySelector( '[data-npcink-site-knowledge-usage]' );
+	const refreshController = usageContainer || document.querySelector( '[data-npcink-site-knowledge-refresh]' );
 
-	if ( ! container || ! config.ajaxUrl || ! config.action || ! config.nonce ) {
+	if ( ! refreshController || ! config.ajaxUrl || ! config.action || ! config.nonce ) {
 		return;
 	}
 
-	const label = container.querySelector( '[data-npcink-site-knowledge-usage-label]' );
-	const progress = container.querySelector( '[data-npcink-site-knowledge-progress]' );
-	const retry = container.querySelector( '[data-npcink-site-knowledge-retry]' );
-	const spinner = container.querySelector( '.npcink-cloud-site-knowledge-usage__spinner' );
+	const valueLabel = usageContainer ? usageContainer.querySelector( '[data-npcink-site-knowledge-usage-value]' ) : null;
+	const statusLabel = usageContainer ? usageContainer.querySelector( '[data-npcink-site-knowledge-usage-status]' ) : null;
+	const progress = usageContainer ? usageContainer.querySelector( '[data-npcink-site-knowledge-progress]' ) : null;
+	const retry = usageContainer ? usageContainer.querySelector( '[data-npcink-site-knowledge-retry]' ) : null;
+	const spinner = usageContainer ? usageContainer.querySelector( '.npcink-cloud-site-knowledge-usage__spinner' ) : null;
+	const actions = usageContainer ? usageContainer.querySelector( '[data-npcink-site-knowledge-actions]' ) : null;
 	const detailRows = document.querySelectorAll( '[data-npcink-site-knowledge-detail]' );
-	const initialState = container.dataset.npcinkSiteKnowledgeState || '';
-	const initialLabel = label ? label.textContent : '';
+	const initialState = refreshController.dataset.npcinkSiteKnowledgeState || '';
+	const initialValueLabel = valueLabel ? valueLabel.textContent : '';
 	let requestInFlight = false;
 
-	if ( ! label || ! retry ) {
+	if ( ! valueLabel && 0 === detailRows.length ) {
 		return;
 	}
 
 	const setLoading = ( loading ) => {
 		requestInFlight = loading;
-		container.setAttribute( 'aria-busy', loading ? 'true' : 'false' );
-		retry.disabled = loading;
+		refreshController.setAttribute( 'aria-busy', loading ? 'true' : 'false' );
+		if ( retry ) {
+			retry.disabled = loading;
+		}
 		if ( spinner ) {
 			spinner.classList.toggle( 'is-active', loading );
+		}
+		if ( actions ) {
+			actions.hidden = ! loading && ( ! retry || retry.hidden );
 		}
 	};
 
@@ -48,9 +56,17 @@
 	};
 
 	const updateUsage = ( usage ) => {
-		label.textContent = usage.label || config.failedLabel || '';
-		container.dataset.npcinkSiteKnowledgeState = usage.state || 'fresh';
-		container.title = usage.tooltip || '';
+		refreshController.dataset.npcinkSiteKnowledgeState = usage.state || 'fresh';
+		if ( valueLabel ) {
+			valueLabel.textContent = usage.value_label || usage.label || config.failedLabel || '';
+		}
+		if ( statusLabel ) {
+			statusLabel.textContent = usage.status_label || '';
+			statusLabel.hidden = '' === statusLabel.textContent;
+		}
+		if ( usageContainer ) {
+			usageContainer.title = usage.tooltip || '';
+		}
 
 		if ( progress ) {
 			const hasPercent = null !== usage.percent && '' !== usage.percent && Number.isFinite( Number( usage.percent ) );
@@ -62,7 +78,9 @@
 			);
 			progress.classList.add( 'npcink-cloud-site-knowledge-progress--' + ( usage.severity || 'ok' ) );
 			if ( hasPercent ) {
-				progress.value = Math.max( 0, Math.min( 100, Number( usage.percent ) ) );
+				const percent = Math.max( 0, Math.min( 100, Number( usage.percent ) ) );
+				progress.style.setProperty( '--npcink-cloud-progress', percent + '%' );
+				progress.setAttribute( 'aria-valuenow', String( percent ) );
 			}
 		}
 
@@ -75,7 +93,7 @@
 		}
 
 		setLoading( true );
-		if ( 'not_refreshed' === initialState ) {
+		if ( retry && 'not_refreshed' === initialState ) {
 			retry.hidden = true;
 		}
 
@@ -100,20 +118,32 @@
 			}
 
 			updateUsage( payload.data );
-			retry.hidden = true;
+			if ( retry ) {
+				retry.hidden = true;
+			}
 		} catch ( error ) {
-			const hasRetainedUsage = 'stale' === initialState && '' !== initialLabel;
-			label.textContent = hasRetainedUsage
-				? initialLabel + ' · ' + ( config.updateFailedLabel || 'Update failed' )
-				: ( config.failedLabel || 'Site Knowledge usage is temporarily unavailable.' );
-			container.dataset.npcinkSiteKnowledgeState = 'unavailable';
-			retry.hidden = false;
+			const hasRetainedUsage = 'stale' === initialState && '' !== initialValueLabel;
+			if ( valueLabel ) {
+				valueLabel.textContent = hasRetainedUsage
+					? initialValueLabel
+					: ( config.failedLabel || 'Site Knowledge usage is temporarily unavailable.' );
+			}
+			if ( statusLabel ) {
+				statusLabel.textContent = hasRetainedUsage ? ( config.updateFailedLabel || 'Update failed' ) : '';
+				statusLabel.hidden = '' === statusLabel.textContent;
+			}
+			refreshController.dataset.npcinkSiteKnowledgeState = 'unavailable';
+			if ( retry ) {
+				retry.hidden = false;
+			}
 		} finally {
 			setLoading( false );
 		}
 	};
 
-	retry.addEventListener( 'click', refresh );
+	if ( retry ) {
+		retry.addEventListener( 'click', refresh );
+	}
 
 	if ( 'not_refreshed' === initialState || 'stale' === initialState ) {
 		refresh();

@@ -141,11 +141,6 @@
 	border-bottom: 0;
 }
 
-.npcink-cloud-local-permission--dependent {
-	border-left: 3px solid #dcdcde;
-	padding-left: 16px;
-}
-
 .npcink-cloud-local-permissions__more {
 	border-top: 1px solid #f0f0f1;
 	padding-top: 12px;
@@ -423,6 +418,11 @@
 	max-width: 860px;
 }
 
+.npcink-cloud-overview-status th {
+	white-space: normal;
+	width: 180px;
+}
+
 .npcink-cloud-entitlement {
 	align-items: center;
 	display: flex;
@@ -444,25 +444,54 @@
 	display: none;
 }
 
-.npcink-cloud-entitlement-metric {
-	align-items: center;
-	display: flex;
-	flex-wrap: wrap;
-	gap: 10px;
-}
-
-.npcink-cloud-entitlement-progress {
-	accent-color: #3858e9;
-	height: 8px;
-	max-width: 180px;
-	width: 28%;
-}
-
+.npcink-cloud-entitlement-metric,
 .npcink-cloud-site-knowledge-usage__main {
 	align-items: center;
-	display: flex;
-	flex-wrap: wrap;
+	display: grid;
 	gap: 10px;
+	grid-template-columns: minmax(0, 1fr) 112px minmax(140px, 180px) 64px;
+}
+
+.npcink-cloud-metric-value,
+.npcink-cloud-metric-status {
+	font-variant-numeric: tabular-nums;
+	white-space: nowrap;
+}
+
+.npcink-cloud-metric-status {
+	color: #50575e;
+}
+
+.npcink-cloud-metric-status[hidden] {
+	display: none;
+}
+
+.npcink-cloud-segmented-progress {
+	--npcink-cloud-progress: 0%;
+	--npcink-cloud-progress-color: #3858e9;
+	background: linear-gradient(
+		to right,
+		var(--npcink-cloud-progress-color) 0 var(--npcink-cloud-progress),
+		#c3c4c7 var(--npcink-cloud-progress) 100%
+	);
+	display: block;
+	height: 10px;
+	-webkit-mask: repeating-linear-gradient(to right, #000 0 calc(10% - 3px), transparent calc(10% - 3px) 10%);
+	mask: repeating-linear-gradient(to right, #000 0 calc(10% - 3px), transparent calc(10% - 3px) 10%);
+	max-width: 100%;
+	width: 100%;
+}
+
+.npcink-cloud-metric-actions {
+	align-items: center;
+	display: flex;
+	gap: 6px;
+	min-height: 20px;
+	min-width: 64px;
+}
+
+.npcink-cloud-metric-actions[hidden] {
+	display: none;
 }
 
 .npcink-cloud-site-knowledge-usage__spinner.spinner {
@@ -476,19 +505,12 @@
 	display: none;
 }
 
-.npcink-cloud-site-knowledge-progress {
-	accent-color: #3858e9;
-	height: 8px;
-	max-width: 180px;
-	width: 28%;
-}
-
 .npcink-cloud-site-knowledge-progress--warning {
-	accent-color: #dba617;
+	--npcink-cloud-progress-color: #996800;
 }
 
 .npcink-cloud-site-knowledge-progress--error {
-	accent-color: #d63638;
+	--npcink-cloud-progress-color: #d63638;
 }
 
 .npcink-cloud-section-heading {
@@ -860,6 +882,28 @@
 		display: flex;
 		flex-direction: column;
 		gap: 10px;
+	}
+
+	.npcink-cloud-overview-status th {
+		width: auto;
+	}
+
+	.npcink-cloud-entitlement-metric,
+	.npcink-cloud-site-knowledge-usage__main {
+		grid-template-columns: minmax(0, 1fr) auto;
+	}
+
+	.npcink-cloud-segmented-progress {
+		grid-column: 1 / -1;
+		width: min(180px, 100%);
+	}
+
+	.npcink-cloud-metric-actions {
+		grid-column: 1 / -1;
+	}
+
+	.npcink-cloud-metric-actions--empty {
+		display: none;
 	}
 
 	.npcink-cloud-local-permission__control {

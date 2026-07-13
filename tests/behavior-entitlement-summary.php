@@ -37,6 +37,13 @@ $entitlement_response = array(
 				'max_batch_items'  => 10,
 				'execution_tiers'  => array( 'cloud' ),
 			),
+			'pro_cloud_runtime' => array(
+				'feature_id' => 'nightly_site_inspection',
+				'max_nightly_inspection_runs_per_period' => 10,
+				'used_nightly_inspection_runs' => 2,
+				'remaining_nightly_inspection_runs' => 8,
+				'result_retention_days' => 14,
+			),
 		),
 		'quota_summary'    => array(
 			'credit_usage_detail' => array(
@@ -68,8 +75,86 @@ maca_assert(
 	'Behavior: verification entitlement response can populate the short local summary cache.'
 );
 
+$entitlement_cache_key = (string) array_key_first( $GLOBALS['maca_transients'] );
+$GLOBALS['maca_transients'][ $entitlement_cache_key ]['fresh_until'] = '2000-01-01 00:00:00 UTC';
+$stale_summary = Npcink_Cloud_Entitlement_Summary::get_cached_summary();
+
+maca_assert(
+	'stale' === (string) ( $stale_summary['state'] ?? '' )
+	&& ! empty( $stale_summary['available'] )
+	&& ! empty( $stale_summary['stale'] )
+	&& 'Pro' === (string) ( $stale_summary['package_label'] ?? '' ),
+	'Behavior: an expired entitlement projection remains available for immediate stale-while-refresh display.'
+);
+
+$format_overview_entitlement = new ReflectionMethod( Npcink_Cloud_Settings_Page::class, 'format_overview_entitlement' );
+$format_overview_entitlement->setAccessible( true );
+$overview_metrics_method = new ReflectionMethod( Npcink_Cloud_Settings_Page::class, 'get_overview_entitlement_metrics' );
+$overview_metrics_method->setAccessible( true );
+$overview_metrics = $overview_metrics_method->invoke( null, $read_summary );
+$missing_overview_metrics = $overview_metrics_method->invoke(
+	null,
+	array(
+		'credit_usage_detail' => array( 'available' => false ),
+		'pro_cloud_runtime' => array( 'reported' => false ),
+	)
+);
+maca_assert(
+	'Loading plan and entitlement…' === $format_overview_entitlement->invoke(
+		null,
+		array(
+			'state' => 'not_refreshed',
+			'available' => false,
+		),
+		true
+	)
+	&& 'Pro · available' === $format_overview_entitlement->invoke( null, $read_summary, true )
+	&& ! empty( $overview_metrics['credits']['available'] )
+	&& 88 === (int) ( $overview_metrics['credits']['percent'] ?? -1 )
+	&& '87.50 credit / 100.00 credit · 88% remaining' === (string) ( $overview_metrics['credits']['label'] ?? '' )
+	&& ! empty( $overview_metrics['runtime']['available'] )
+	&& '8 of 10 runs remaining' === (string) ( $overview_metrics['runtime']['label'] ?? '' )
+	&& empty( $missing_overview_metrics['credits']['available'] )
+	&& empty( $missing_overview_metrics['runtime']['available'] ),
+	'Behavior: overview entitlement copy uses one loading state and never duplicates missing fallbacks.'
+);
+
+maca_reset_test_state();
+maca_seed_settings( true );
+$cache_key_method = new ReflectionMethod( Npcink_Cloud_Entitlement_Summary::class, 'cache_key' );
+$cache_key_method->setAccessible( true );
+$refresh_lock_key = $cache_key_method->invoke( null, Npcink_Cloud_Addon_Settings::get_settings() ) . '_refresh_lock';
+$GLOBALS['maca_options'][ $refresh_lock_key ] = time();
+$locked_refresh = Npcink_Cloud_Entitlement_Summary::refresh( false );
+
+maca_assert(
+	'refreshing' === (string) ( $locked_refresh['state'] ?? '' )
+	&& 0 === count( $GLOBALS['maca_http_requests'] ),
+	'Behavior: concurrent entitlement refreshes share one short cross-request lock.'
+);
+
+delete_option( $refresh_lock_key );
+$GLOBALS['maca_http_response_queue'][] = new WP_Error( 'cloud_unavailable', 'Cloud unavailable.' );
+$failed_refresh = Npcink_Cloud_Entitlement_Summary::refresh( true );
+$backed_off_refresh = Npcink_Cloud_Entitlement_Summary::refresh( true );
+$GLOBALS['maca_http_response_queue'][] = array(
+	'response' => array( 'code' => 200 ),
+	'body' => wp_json_encode( $entitlement_response ),
+);
+$manual_retry = Npcink_Cloud_Entitlement_Summary::refresh( false );
+
+maca_assert(
+	empty( $failed_refresh['available'] )
+	&& empty( $backed_off_refresh['available'] )
+	&& 2 === count( $GLOBALS['maca_http_requests'] )
+	&& ! empty( $manual_retry['available'] )
+	&& 'Pro' === (string) ( $manual_retry['package_label'] ?? '' ),
+	'Behavior: automatic entitlement refresh backs off after failure while an explicit retry may recover immediately.'
+);
+
 $runtime_normalizer = new ReflectionMethod( Npcink_Cloud_Entitlement_Summary::class, 'normalize_pro_cloud_runtime' );
 $runtime_normalizer->setAccessible( true );
+$runtime_not_reported = $runtime_normalizer->invoke( null, array() );
 $runtime_without_optional_fields = $runtime_normalizer->invoke(
 	null,
 	array(
@@ -88,17 +173,13 @@ $runtime_with_optional_fields = $runtime_normalizer->invoke(
 	)
 );
 
-$format_runtime_integer = new ReflectionMethod( Npcink_Cloud_Settings_Page::class, 'format_runtime_integer_projection' );
-$format_runtime_integer->setAccessible( true );
 $format_runtime_days = new ReflectionMethod( Npcink_Cloud_Settings_Page::class, 'format_runtime_days_projection' );
 $format_runtime_days->setAccessible( true );
-$format_runtime_boolean = new ReflectionMethod( Npcink_Cloud_Settings_Page::class, 'format_runtime_boolean_projection' );
-$format_runtime_boolean->setAccessible( true );
-$format_runtime_quota = new ReflectionMethod( Npcink_Cloud_Settings_Page::class, 'format_runtime_quota_projection' );
-$format_runtime_quota->setAccessible( true );
 
 maca_assert(
 	is_array( $runtime_without_optional_fields )
+	&& empty( $runtime_not_reported['reported'] )
+	&& ! empty( $runtime_without_optional_fields['reported'] )
 	&& null === ( $runtime_without_optional_fields['max_batch_items'] ?? null )
 	&& null === ( $runtime_without_optional_fields['result_retention_days'] ?? null )
 	&& false === (bool) ( $runtime_without_optional_fields['quota_exhausted'] ?? true )
@@ -112,13 +193,9 @@ maca_assert(
 	&& false === (bool) ( $runtime_without_optional_fields['contract_reuse']['adds_approval_store'] ?? true )
 	&& false === (bool) ( $runtime_without_optional_fields['contract_reuse']['adds_queue'] ?? true )
 	&& false === (bool) ( $runtime_without_optional_fields['contract_reuse']['adds_write_executor'] ?? true )
-	&& 'unavailable' === $format_runtime_integer->invoke( null, $runtime_without_optional_fields, 'max_batch_items' )
 	&& 'unavailable' === $format_runtime_days->invoke( null, $runtime_without_optional_fields, 'result_retention_days' )
-	&& 'no' === $format_runtime_boolean->invoke( null, $runtime_without_optional_fields, 'quota_exhausted' )
-	&& '2 used / 10 limit / 8 remaining' === $format_runtime_quota->invoke( null, $runtime_without_optional_fields )
 	&& is_array( $runtime_with_optional_fields )
 	&& true === (bool) ( $runtime_with_optional_fields['quota_exhausted'] ?? false )
-	&& '25' === $format_runtime_integer->invoke( null, $runtime_with_optional_fields, 'max_batch_items' )
 	&& '14 days' === $format_runtime_days->invoke( null, $runtime_with_optional_fields, 'result_retention_days' ),
 	'Behavior: Pro Cloud Runtime projection preserves unavailable optional fields, contract reuse boundaries, and quota exhaustion strictly.'
 );

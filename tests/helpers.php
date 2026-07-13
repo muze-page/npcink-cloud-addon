@@ -223,6 +223,17 @@ if ( ! function_exists( 'update_option' ) ) {
 	}
 }
 
+if ( ! function_exists( 'add_option' ) ) {
+	function add_option( string $name, $value = '', string $deprecated = '', $autoload = null ): bool {
+		if ( array_key_exists( $name, $GLOBALS['maca_options'] ) ) {
+			return false;
+		}
+
+		$GLOBALS['maca_options'][ $name ] = $value;
+		return true;
+	}
+}
+
 if ( ! function_exists( 'delete_option' ) ) {
 	function delete_option( string $name ): void {
 		unset( $GLOBALS['maca_options'][ $name ] );

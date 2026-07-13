@@ -4,6 +4,10 @@ Status: accepted
 
 Date: 2026-07-03
 
+Historical note: the five-tab model documented here was superseded on
+2026-07-12 by the three-entry progressive-disclosure model in
+`docs/admin-surface-standard.md`.
+
 ## Context
 
 The Cloud Addon settings page had accumulated several important controls and

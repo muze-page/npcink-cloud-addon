@@ -30,9 +30,10 @@ if ( ! class_exists( 'Npcink_Cloud_Site_Knowledge_Change_Bridge' ) ) {
 		private const RETRY_SECONDS = 300;
 			private const MAX_DELIVERY_ATTEMPTS = 3;
 			private const RECONCILE_POSTS = 50;
-			private const MANUAL_INDEX_POSTS = 50;
-			private const MAX_DOCUMENT_CHARS = 12000;
-			private const MAX_TAXONOMY_TERMS = 20;
+			private const MANUAL_INDEX_POSTS = 200;
+			private const MANUAL_MAX_POSTS = 10000;
+			private const MAX_DOCUMENT_CHARS = 1800;
+			private const MAX_TAXONOMY_TERMS = 10;
 
 		/**
 		 * Registers content change hooks and delivery cron hooks.
@@ -115,6 +116,7 @@ if ( ! class_exists( 'Npcink_Cloud_Site_Knowledge_Change_Bridge' ) ) {
 				'last_index_action' => sanitize_key( (string) ( $status['last_index_action'] ?? '' ) ),
 				'last_index_action_at' => sanitize_text_field( (string) ( $status['last_index_action_at'] ?? '' ) ),
 				'last_index_action_sent_count' => absint( $status['last_index_action_sent_count'] ?? 0 ),
+				'last_index_action_batch_count' => absint( $status['last_index_action_batch_count'] ?? 0 ),
 				'next_flush_at' => false === $next_flush ? '' : gmdate( 'c', (int) $next_flush ),
 				'next_reconcile_at' => false === $next_reconcile ? '' : gmdate( 'c', (int) $next_reconcile ),
 				'wp_cron_disabled' => defined( 'DISABLE_WP_CRON' ) && DISABLE_WP_CRON,
@@ -382,9 +384,18 @@ if ( ! class_exists( 'Npcink_Cloud_Site_Knowledge_Change_Bridge' ) ) {
 						);
 					}
 
-				$sync_mode = 'start' === $operation ? 'refresh' : $operation;
-				$post_ids  = 'delete' === $operation ? array() : self::recent_public_post_ids( self::MANUAL_INDEX_POSTS );
-				if ( 'start' === $operation && empty( $post_ids ) ) {
+				if ( 'delete' === $operation ) {
+					$result = self::request_site_knowledge_sync( 'delete', array(), 'admin_delete' );
+					if ( is_wp_error( $result ) ) {
+						self::record_manual_operation_result( $operation, false, 0, $result->get_error_message(), $result->get_error_code() );
+						return $result;
+					}
+
+					return self::record_manual_operation_result( $operation, true, 0, '', '', 1 );
+				}
+
+				$post_ids = self::all_public_post_ids();
+				if ( empty( $post_ids ) ) {
 					return new WP_Error(
 						'cloud_site_knowledge_no_public_content',
 						__( 'No public posts or pages were found for Site Knowledge indexing.', 'npcink-cloud-addon' ),
@@ -392,13 +403,28 @@ if ( ! class_exists( 'Npcink_Cloud_Site_Knowledge_Change_Bridge' ) ) {
 					);
 				}
 
-				$result = self::request_site_knowledge_sync( $sync_mode, $post_ids, 'admin_' . $operation );
-				if ( is_wp_error( $result ) ) {
-					self::record_manual_operation_result( $operation, false, 0, $result->get_error_message(), $result->get_error_code() );
-					return $result;
+				$batches = array_chunk( $post_ids, self::MANUAL_INDEX_POSTS );
+				$operation_id = sanitize_key( wp_generate_uuid4() );
+				$sent = 0;
+				foreach ( $batches as $batch_index => $batch ) {
+					$is_first_rebuild_batch = 'rebuild' === $operation && 0 === $batch_index;
+					$sync_mode = $is_first_rebuild_batch ? 'rebuild' : 'refresh';
+					$request_post_ids = $is_first_rebuild_batch ? array() : $batch;
+					$result = self::request_site_knowledge_sync(
+						$sync_mode,
+						$request_post_ids,
+						'admin_' . $operation,
+						$batch,
+						'site_knowledge_admin_' . $operation_id . '_' . $batch_index
+					);
+					if ( is_wp_error( $result ) ) {
+						self::record_manual_operation_result( $operation, false, $sent, $result->get_error_message(), $result->get_error_code(), count( $batches ) );
+						return $result;
+					}
+					$sent += count( $batch );
 				}
 
-				return self::record_manual_operation_result( $operation, true, count( $post_ids ), '' );
+				return self::record_manual_operation_result( $operation, true, $sent, '', '', count( $batches ) );
 			}
 
 		/**
@@ -469,10 +495,13 @@ if ( ! class_exists( 'Npcink_Cloud_Site_Knowledge_Change_Bridge' ) ) {
 		/**
 		 * Requests a Cloud Site Knowledge refresh for changed posts.
 		 *
-		 * @param array<int,int> $post_ids Changed post ids.
+			 * @param array<int,int>      $post_ids Cloud delete/refresh post ids.
+			 * @param string              $operation_source Bounded delivery source.
+			 * @param array<int,int>|null $document_post_ids Public documents to include.
+			 * @param string              $idempotency_key Stable batch idempotency key.
 		 * @return array<string,mixed>|WP_Error
 		 */
-			private static function request_site_knowledge_sync( string $sync_mode, array $post_ids, string $operation_source = 'change_bridge' ) {
+			private static function request_site_knowledge_sync( string $sync_mode, array $post_ids, string $operation_source = 'change_bridge', ?array $document_post_ids = null, string $idempotency_key = '' ) {
 				$sync_mode = sanitize_key( $sync_mode );
 				if ( ! in_array( $sync_mode, array( 'refresh', 'rebuild', 'delete' ), true ) ) {
 					return new WP_Error(
@@ -483,6 +512,8 @@ if ( ! class_exists( 'Npcink_Cloud_Site_Knowledge_Change_Bridge' ) ) {
 				}
 
 				$post_ids = array_values( array_unique( array_filter( array_map( 'absint', $post_ids ) ) ) );
+				$document_post_ids = is_array( $document_post_ids ) ? $document_post_ids : $post_ids;
+				$document_post_ids = array_values( array_unique( array_filter( array_map( 'absint', $document_post_ids ) ) ) );
 				$limit    = 'change_bridge' === $operation_source ? self::MAX_BATCH_ITEMS : self::MANUAL_INDEX_POSTS;
 				$client  = new Npcink_Cloud_Runtime_Client();
 				$payload = array(
@@ -495,7 +526,7 @@ if ( ! class_exists( 'Npcink_Cloud_Site_Knowledge_Change_Bridge' ) ) {
 						'operation_source' => sanitize_key( $operation_source ),
 						'post_ids' => $post_ids,
 						'max_posts' => $limit,
-						'documents' => 'delete' === $sync_mode ? array() : self::collect_documents( $post_ids, $limit ),
+						'documents' => 'delete' === $sync_mode ? array() : self::collect_documents( $document_post_ids, $limit ),
 						'write_posture' => 'suggestion_only',
 						'direct_wordpress_write' => false,
 					),
@@ -512,7 +543,7 @@ if ( ! class_exists( 'Npcink_Cloud_Site_Knowledge_Change_Bridge' ) ) {
 				return $client->execute_runtime(
 					$payload,
 					'trace_site_knowledge_' . sanitize_key( $operation_source ) . '_' . wp_generate_uuid4(),
-					'site_knowledge_' . sanitize_key( $operation_source ) . '_' . wp_generate_uuid4()
+					'' !== $idempotency_key ? sanitize_key( $idempotency_key ) : 'site_knowledge_' . sanitize_key( $operation_source ) . '_' . wp_generate_uuid4()
 				);
 			}
 
@@ -541,12 +572,11 @@ if ( ! class_exists( 'Npcink_Cloud_Site_Knowledge_Change_Bridge' ) ) {
 			}
 
 			/**
-			 * Returns recent public post/page ids for manual index operations.
+			 * Returns bounded public post/page ids for manual index operations.
 			 *
-			 * @param int $limit Max ids.
 			 * @return array<int,int>
 			 */
-			private static function recent_public_post_ids( int $limit ): array {
+			private static function all_public_post_ids(): array {
 				if ( ! function_exists( 'get_posts' ) ) {
 					return array();
 				}
@@ -555,7 +585,7 @@ if ( ! class_exists( 'Npcink_Cloud_Site_Knowledge_Change_Bridge' ) ) {
 					array(
 						'post_type' => self::post_types(),
 						'post_status' => 'publish',
-						'posts_per_page' => max( 1, min( self::MANUAL_INDEX_POSTS, $limit ) ),
+						'posts_per_page' => self::MANUAL_MAX_POSTS,
 						'orderby' => 'modified',
 						'order' => 'DESC',
 						'fields' => 'ids',
@@ -563,7 +593,9 @@ if ( ! class_exists( 'Npcink_Cloud_Site_Knowledge_Change_Bridge' ) ) {
 					)
 				);
 
-				return is_array( $posts ) ? array_values( array_filter( array_map( 'absint', $posts ) ) ) : array();
+				return is_array( $posts )
+					? array_slice( array_values( array_unique( array_filter( array_map( 'absint', $posts ) ) ) ), 0, self::MANUAL_MAX_POSTS )
+					: array();
 			}
 
 		/**
@@ -586,7 +618,7 @@ if ( ! class_exists( 'Npcink_Cloud_Site_Knowledge_Change_Bridge' ) ) {
 				'title' => self::post_title( $post ),
 				'url' => self::post_url( $post_id ),
 				'modified_gmt' => sanitize_text_field( (string) ( $post->post_modified_gmt ?? '' ) ),
-				'excerpt' => self::bounded_text( (string) ( $post->post_excerpt ?? '' ), 1000 ),
+				'excerpt' => self::bounded_text( (string) ( $post->post_excerpt ?? '' ), 300 ),
 				'content_excerpt' => $content,
 				'taxonomies' => self::post_taxonomies( $post_id ),
 			);
@@ -614,7 +646,7 @@ if ( ! class_exists( 'Npcink_Cloud_Site_Knowledge_Change_Bridge' ) ) {
 				}
 				$names = array();
 				foreach ( $terms as $term_name ) {
-					$name = self::bounded_text( (string) $term_name, 80 );
+					$name = self::bounded_text( (string) $term_name, 50 );
 					if ( '' === $name || in_array( $name, $names, true ) ) {
 						continue;
 					}
@@ -701,9 +733,10 @@ if ( ! class_exists( 'Npcink_Cloud_Site_Knowledge_Change_Bridge' ) ) {
 			 * @param int    $sent Public post count sent.
 			 * @param string $error Error message.
 			 * @param string $error_code Error code.
+			 * @param int    $batch_count Number of bounded Cloud delivery batches.
 			 * @return array<string,mixed>
 			 */
-			private static function record_manual_operation_result( string $operation, bool $ok, int $sent, string $error, string $error_code = '' ): array {
+			private static function record_manual_operation_result( string $operation, bool $ok, int $sent, string $error, string $error_code = '', int $batch_count = 1 ): array {
 				$status = self::record_delivery_result( $ok, $sent, $error, $error_code );
 				$status = array_merge(
 					$status,
@@ -711,6 +744,7 @@ if ( ! class_exists( 'Npcink_Cloud_Site_Knowledge_Change_Bridge' ) ) {
 						'last_index_action' => sanitize_key( $operation ),
 						'last_index_action_at' => gmdate( 'c' ),
 						'last_index_action_sent_count' => max( 0, $sent ),
+						'last_index_action_batch_count' => max( 0, $batch_count ),
 					)
 				);
 				update_option( self::STATUS_OPTION, $status, false );
@@ -836,15 +870,27 @@ if ( ! class_exists( 'Npcink_Cloud_Site_Knowledge_Change_Bridge' ) ) {
 		 * @return string
 		 */
 		private static function bounded_text( string $value, int $limit ): string {
+			if ( function_exists( 'strip_shortcodes' ) ) {
+				$value = strip_shortcodes( $value );
+			}
 			$value = wp_strip_all_tags( $value );
-			$value = preg_replace( '/\s+/', ' ', $value );
+			$value = html_entity_decode( $value, ENT_QUOTES | ENT_HTML5, 'UTF-8' );
+			$value = preg_replace( '~(?:https?://|www\.)\S+~iu', ' ', $value );
+			$value = preg_replace( '/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/iu', ' ', is_string( $value ) ? $value : '' );
+			$value = preg_replace( '/(?:\+?\d[\s().-]*){7,}/u', ' ', is_string( $value ) ? $value : '' );
+			$value = preg_replace( '/\s+/u', ' ', is_string( $value ) ? $value : '' );
 			$value = trim( is_string( $value ) ? $value : '' );
 
 			if ( strlen( $value ) <= $limit ) {
 				return $value;
 			}
 
-			return substr( $value, 0, $limit );
+			$value = substr( $value, 0, $limit );
+			while ( '' !== $value && 1 !== preg_match( '//u', $value ) ) {
+				$value = substr( $value, 0, -1 );
+			}
+
+			return $value;
 		}
 
 		/**
@@ -855,10 +901,10 @@ if ( ! class_exists( 'Npcink_Cloud_Site_Knowledge_Change_Bridge' ) ) {
 		 */
 		private static function post_title( $post ): string {
 			if ( function_exists( 'get_the_title' ) ) {
-				return sanitize_text_field( (string) get_the_title( self::post_id_from_value( $post ) ) );
+				return self::bounded_text( (string) get_the_title( self::post_id_from_value( $post ) ), 200 );
 			}
 
-			return sanitize_text_field( (string) ( $post->post_title ?? '' ) );
+			return self::bounded_text( (string) ( $post->post_title ?? '' ), 200 );
 		}
 
 		/**

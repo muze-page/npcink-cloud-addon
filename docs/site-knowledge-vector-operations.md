@@ -36,6 +36,9 @@ collection lifecycle switch.
   unchanged.
 - Forward known Toolbox Site Knowledge search, status, and refresh contracts
   through `POST /v1/runtime/execute`.
+- Cache and show a short-lived, read-only article-usage summary from Cloud's
+  `site_knowledge_status.v1` quota projection while local delivery is enabled.
+  Cloud remains the only source of index counts, limits, and quota state.
 - Show shallow connector state, buffered public changes, last delivery, last
   error, next flush, last local index action, and a link to Cloud Site
   Knowledge detail.

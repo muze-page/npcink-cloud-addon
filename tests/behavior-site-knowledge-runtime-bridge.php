@@ -195,6 +195,77 @@ maca_assert(
 
 maca_reset_test_state();
 maca_seed_settings( true );
+$GLOBALS['maca_http_response_queue'][] = array(
+	'response' => array( 'code' => 200 ),
+	'body' => wp_json_encode(
+		array(
+			'status' => 'ok',
+			'data' => array(
+				'result' => array(
+					'contract_version' => 'site_knowledge_status.v1',
+					'coverage' => array(
+						'indexed_posts' => 2340,
+						'indexed_chunks' => 15200,
+						'truncated_documents' => 4,
+						'last_sync_at' => '2026-07-13 03:04:05 UTC',
+						'quota' => array(
+							'status' => 'ok',
+							'indexed_documents' => 2340,
+							'indexed_chunks' => 15200,
+							'max_indexed_documents_per_site' => 10000,
+							'max_indexed_chunks_per_site' => 60000,
+							'max_sync_documents_per_run' => 500,
+							'max_sync_chunks_per_run' => 4000,
+							'warning_ratio' => 0.85,
+							'document_utilization' => 0.234,
+							'skipped_documents' => 3,
+							'skipped_due_to_quota' => 1,
+						),
+					),
+				),
+			),
+		)
+	),
+);
+$quota_summary = Npcink_Cloud_Site_Knowledge_Runtime_Bridge::refresh_status_summary();
+$quota_request = $GLOBALS['maca_http_requests'][0] ?? array();
+$quota_body = json_decode( (string) ( $quota_request['args']['body'] ?? '' ), true );
+$quota_body = is_array( $quota_body ) ? $quota_body : array();
+$request_count_before_cache_read = count( $GLOBALS['maca_http_requests'] );
+$cached_quota_summary = Npcink_Cloud_Site_Knowledge_Runtime_Bridge::get_cached_status_summary();
+maca_assert(
+	! empty( $quota_summary['available'] )
+	&& 2340 === (int) ( $quota_summary['indexed_documents'] ?? 0 )
+	&& 10000 === (int) ( $quota_summary['max_documents'] ?? 0 )
+	&& 7660 === (int) ( $quota_summary['remaining_documents'] ?? 0 )
+	&& 23 === (int) ( $quota_summary['document_percent'] ?? 0 )
+	&& 60000 === (int) ( $quota_summary['max_chunks'] ?? 0 )
+	&& 500 === (int) ( $quota_summary['max_sync_documents'] ?? 0 )
+	&& 4000 === (int) ( $quota_summary['max_sync_chunks'] ?? 0 )
+	&& 4 === (int) ( $quota_summary['truncated_documents'] ?? 0 )
+	&& 1 === (int) ( $quota_summary['skipped_due_to_quota'] ?? 0 )
+	&& 'npcink-cloud/site-knowledge-status' === (string) ( $quota_body['ability_name'] ?? '' )
+	&& 'site_knowledge_status.v1' === (string) ( $quota_body['contract_version'] ?? '' )
+	&& 'suggestion_only' === (string) ( $quota_body['input']['write_posture'] ?? '' )
+	&& false === (bool) ( $quota_body['input']['direct_wordpress_write'] ?? true )
+	&& ! empty( $cached_quota_summary['available'] )
+	&& $request_count_before_cache_read === count( $GLOBALS['maca_http_requests'] ),
+	'Behavior: Site Knowledge quota refresh reads bounded Cloud truth, caches it, and never fetches Cloud during the cached page projection.'
+);
+
+maca_reset_test_state();
+maca_seed_settings( true );
+maca_set_site_knowledge_delivery_enabled( false );
+$disabled_quota_summary = Npcink_Cloud_Site_Knowledge_Runtime_Bridge::refresh_status_summary();
+maca_assert(
+	empty( $disabled_quota_summary['available'] )
+	&& 'disabled' === (string) ( $disabled_quota_summary['state'] ?? '' )
+	&& array() === $GLOBALS['maca_http_requests'],
+	'Behavior: Site Knowledge quota projection fails closed without Cloud traffic when local delivery is disabled.'
+);
+
+maca_reset_test_state();
+maca_seed_settings( true );
 Npcink_Cloud_Site_Knowledge_Runtime_Bridge::register();
 $ignored = apply_filters(
 	'npcink_toolbox_site_knowledge_cloud_request',

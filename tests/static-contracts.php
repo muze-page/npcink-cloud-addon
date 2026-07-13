@@ -10,6 +10,9 @@ declare(strict_types=1);
 require_once __DIR__ . '/helpers.php';
 
 $root = MACA_TEST_ROOT;
+$plugin_file = maca_read( $root . '/npcink-cloud-addon.php' );
+$wordpress_org_readme = maca_read( $root . '/readme.txt' );
+$pot = maca_read( $root . '/languages/npcink-cloud-addon.pot' );
 $bootstrap = maca_read( $root . '/includes/bootstrap.php' );
 $transport = maca_read( $root . '/includes/class-cloud-media-derivative-transport.php' );
 $runtime_client = maca_read( $root . '/includes/class-cloud-runtime-client.php' );
@@ -47,6 +50,21 @@ $wp_ai_smoke = maca_read( $root . '/scripts/smoke-wordpress-ai-abilities.php' );
 $wp_ai_editor_smoke = maca_read( $root . '/scripts/smoke-wordpress-ai-editor.php' );
 $wp_ai_generation_eval = maca_read( $root . '/scripts/eval-wordpress-ai-generation-reference.php' );
 $zh_cn_po = maca_read( $root . '/languages/npcink-cloud-addon-zh_CN.po' );
+
+$plugin_header_version = array();
+$plugin_constant_version = array();
+$stable_tag_version = array();
+
+maca_assert(
+	1 === preg_match( '/^ \* Version:\s+([0-9.]+)$/m', $plugin_file, $plugin_header_version )
+	&& 1 === preg_match( "/define\\( 'NPCINK_CLOUD_ADDON_VERSION', '([0-9.]+)' \\);/", $plugin_file, $plugin_constant_version )
+	&& 1 === preg_match( '/^Stable tag:\s+([0-9.]+)$/m', $wordpress_org_readme, $stable_tag_version )
+	&& $plugin_header_version[1] === $plugin_constant_version[1]
+	&& $plugin_header_version[1] === $stable_tag_version[1]
+	&& false !== strpos( $pot, 'Project-Id-Version: Npcink Cloud Addon ' . $plugin_header_version[1] . '\\n' )
+	&& false !== strpos( $zh_cn_po, 'Project-Id-Version: Npcink Cloud Addon ' . $plugin_header_version[1] . '\\n' ),
+	'Plugin header, version constant, stable tag, POT, and zh_CN PO stay on the same release version.'
+);
 
 maca_assert(
 	false !== strpos( $composer, '"eval:project:quality": "sh scripts/eval-lab.sh task=project_quality_gate' )
@@ -189,9 +207,9 @@ maca_assert(
 );
 
 maca_assert(
-	false !== strpos( maca_read( $root . '/npcink-cloud-addon.php' ), 'Text Domain:       npcink-cloud-addon' )
-	&& false !== strpos( maca_read( $root . '/npcink-cloud-addon.php' ), 'Domain Path:       /languages' )
-	&& false !== strpos( maca_read( $root . '/languages/npcink-cloud-addon.pot' ), 'X-Domain: npcink-cloud-addon' )
+	false !== strpos( $plugin_file, 'Text Domain:       npcink-cloud-addon' )
+	&& false !== strpos( $plugin_file, 'Domain Path:       /languages' )
+	&& false !== strpos( $pot, 'X-Domain: npcink-cloud-addon' )
 	&& false !== strpos( $zh_cn_po, 'Language: zh_CN' )
 	&& false === strpos( $bootstrap, 'load_plugin_textdomain' ),
 	'Plugin declares the npcink-cloud-addon text domain and ships generated language files.'
@@ -1388,7 +1406,12 @@ maca_assert(
 	&& false !== strpos( $settings_page, "current_user_can( 'manage_options' )" )
 	&& false !== strpos( $settings_page, "\$_POST['self_hosted_base_url']" )
 	&& false !== strpos( $settings_page, "build_settings_from_admin_payload(\n\t\t\t\tarray(\n\t\t\t\t\t'base_url' => \$base_url," )
-	&& false !== strpos( $settings_page, 'wp_redirect( esc_url_raw( self::build_authorization_url_for_base_url( $normalized_base_url ) ) );' )
+	&& false !== strpos( $settings_page, 'function redirect_to_cloud_authorization' )
+	&& false !== strpos( $settings_page, "wp_parse_url( \$authorization_url, PHP_URL_HOST )" )
+	&& false !== strpos( $settings_page, "add_filter( 'allowed_redirect_hosts', \$allow_cloud_host )" )
+	&& false !== strpos( $settings_page, "wp_safe_redirect( \$authorization_url, 302, 'Npcink Cloud Addon' )" )
+	&& false !== strpos( $settings_page, "remove_filter( 'allowed_redirect_hosts', \$allow_cloud_host )" )
+	&& false === strpos( $settings_page, 'wp_redirect(' )
 	&& false !== strpos( $settings_page, 'class="npcink-cloud-connect-context"' )
 	&& false !== strpos( $settings_page, 'target="_blank" rel="noopener noreferrer"' )
 	&& false !== strpos( $settings_page, '<details class="npcink-cloud-endpoint-advanced">' )

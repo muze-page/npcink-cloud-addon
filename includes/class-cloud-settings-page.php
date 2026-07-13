@@ -361,7 +361,32 @@ if ( ! class_exists( 'Npcink_Cloud_Settings_Page' ) ) {
 				self::redirect_to_page( 'connect' );
 			}
 
-			wp_redirect( esc_url_raw( self::build_authorization_url_for_base_url( $normalized_base_url ) ) );
+			self::redirect_to_cloud_authorization( $normalized_base_url );
+		}
+
+		/**
+		 * Redirects to one validated Cloud authorization host.
+		 *
+		 * @param string $base_url Normalized Cloud base URL.
+		 * @return void
+		 */
+		private static function redirect_to_cloud_authorization( string $base_url ): void {
+			$authorization_url  = esc_url_raw( self::build_authorization_url_for_base_url( $base_url ) );
+			$authorization_host = wp_parse_url( $authorization_url, PHP_URL_HOST );
+			if ( ! is_string( $authorization_host ) || '' === trim( $authorization_host ) ) {
+				self::set_admin_notice( 'error', __( 'Cloud Base URL must use HTTPS unless it points to localhost or 127.0.0.1.', 'npcink-cloud-addon' ) );
+				self::redirect_to_page( 'connect' );
+			}
+
+			$authorization_host = strtolower( $authorization_host );
+			$allow_cloud_host   = static function ( array $hosts ) use ( $authorization_host ): array {
+				$hosts[] = $authorization_host;
+				return array_values( array_unique( $hosts ) );
+			};
+
+			add_filter( 'allowed_redirect_hosts', $allow_cloud_host );
+			wp_safe_redirect( $authorization_url, 302, 'Npcink Cloud Addon' );
+			remove_filter( 'allowed_redirect_hosts', $allow_cloud_host );
 			exit;
 		}
 

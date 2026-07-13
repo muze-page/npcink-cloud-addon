@@ -11,6 +11,22 @@ require_once __DIR__ . '/helpers.php';
 maca_load_addon_classes();
 require_once MACA_TEST_ROOT . '/includes/class-cloud-settings-page.php';
 
+/**
+ * Returns a private method reflection without PHP 8.5 deprecation notices.
+ *
+ * @param class-string $class_name Class name.
+ * @param string       $method_name Method name.
+ * @return ReflectionMethod
+ */
+function maca_private_method( string $class_name, string $method_name ): ReflectionMethod {
+	$method = new ReflectionMethod( $class_name, $method_name );
+	if ( PHP_VERSION_ID < 80100 ) {
+		$method->setAccessible( true );
+	}
+
+	return $method;
+}
+
 maca_reset_test_state();
 maca_seed_settings( true );
 
@@ -87,14 +103,10 @@ maca_assert(
 	'Behavior: an expired entitlement projection remains available for immediate stale-while-refresh display.'
 );
 
-$format_overview_entitlement = new ReflectionMethod( Npcink_Cloud_Settings_Page::class, 'format_overview_entitlement' );
-$format_overview_entitlement->setAccessible( true );
-$overview_metrics_method = new ReflectionMethod( Npcink_Cloud_Settings_Page::class, 'get_overview_entitlement_metrics' );
-$overview_metrics_method->setAccessible( true );
-$site_knowledge_usage_method = new ReflectionMethod( Npcink_Cloud_Settings_Page::class, 'get_site_knowledge_usage_projection' );
-$site_knowledge_usage_method->setAccessible( true );
-$runtime_status_method = new ReflectionMethod( Npcink_Cloud_Settings_Page::class, 'format_runtime_status_label' );
-$runtime_status_method->setAccessible( true );
+$format_overview_entitlement = maca_private_method( Npcink_Cloud_Settings_Page::class, 'format_overview_entitlement' );
+$overview_metrics_method = maca_private_method( Npcink_Cloud_Settings_Page::class, 'get_overview_entitlement_metrics' );
+$site_knowledge_usage_method = maca_private_method( Npcink_Cloud_Settings_Page::class, 'get_site_knowledge_usage_projection' );
+$runtime_status_method = maca_private_method( Npcink_Cloud_Settings_Page::class, 'format_runtime_status_label' );
 $overview_metrics = $overview_metrics_method->invoke( null, $read_summary );
 $site_knowledge_usage = $site_knowledge_usage_method->invoke(
 	null,
@@ -152,8 +164,7 @@ maca_assert(
 
 maca_reset_test_state();
 maca_seed_settings( true );
-$cache_key_method = new ReflectionMethod( Npcink_Cloud_Entitlement_Summary::class, 'cache_key' );
-$cache_key_method->setAccessible( true );
+$cache_key_method = maca_private_method( Npcink_Cloud_Entitlement_Summary::class, 'cache_key' );
 $refresh_lock_key = $cache_key_method->invoke( null, Npcink_Cloud_Addon_Settings::get_settings() ) . '_refresh_lock';
 $GLOBALS['maca_options'][ $refresh_lock_key ] = time();
 $locked_refresh = Npcink_Cloud_Entitlement_Summary::refresh( false );
@@ -183,8 +194,7 @@ maca_assert(
 	'Behavior: automatic entitlement refresh backs off after failure while an explicit retry may recover immediately.'
 );
 
-$runtime_normalizer = new ReflectionMethod( Npcink_Cloud_Entitlement_Summary::class, 'normalize_pro_cloud_runtime' );
-$runtime_normalizer->setAccessible( true );
+$runtime_normalizer = maca_private_method( Npcink_Cloud_Entitlement_Summary::class, 'normalize_pro_cloud_runtime' );
 $runtime_not_reported = $runtime_normalizer->invoke( null, array() );
 $runtime_without_optional_fields = $runtime_normalizer->invoke(
 	null,
@@ -204,8 +214,7 @@ $runtime_with_optional_fields = $runtime_normalizer->invoke(
 	)
 );
 
-$format_runtime_days = new ReflectionMethod( Npcink_Cloud_Settings_Page::class, 'format_runtime_days_projection' );
-$format_runtime_days->setAccessible( true );
+$format_runtime_days = maca_private_method( Npcink_Cloud_Settings_Page::class, 'format_runtime_days_projection' );
 
 maca_assert(
 	is_array( $runtime_without_optional_fields )
@@ -390,8 +399,7 @@ $GLOBALS['maca_http_response_queue'][] = array(
 	'body'     => wp_json_encode( $entitlement_response ),
 );
 
-$method = new ReflectionMethod( Npcink_Cloud_Settings_Page::class, 'persist_and_verify_settings' );
-$method->setAccessible( true );
+$method = maca_private_method( Npcink_Cloud_Settings_Page::class, 'persist_and_verify_settings' );
 $method->invoke( null, $settings, 'Verified.' );
 $post_verify_summary = Npcink_Cloud_Entitlement_Summary::get_cached_summary();
 

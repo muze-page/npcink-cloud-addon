@@ -1825,22 +1825,10 @@ if ( ! class_exists( 'Npcink_Cloud_Runtime_Client' ) ) {
 				);
 			}
 			$task_modes = array(
-				'title_generation'       => 'site_title_style',
-				'excerpt_generation'     => 'site_excerpt_style',
-				'meta_description'       => 'site_meta_style',
-				'content_summary'        => 'site_summary_style',
-				'content_classification' => 'site_taxonomy_history',
+				'title_generation' => 'site_title_style',
+				'content_summary'  => 'site_summary_style',
 			);
 			$expected_mode = (string) ( $task_modes[ $task ] ?? '' );
-			if ( '' === $expected_mode && ! empty( $task_contract ) ) {
-				$contexts = is_array( $task_contract['context_requirements'] ?? null ) ? $task_contract['context_requirements'] : array();
-				$family   = (string) ( $task_contract['task_family'] ?? '' );
-				if ( in_array( 'taxonomy_candidates', $contexts, true ) ) {
-					$expected_mode = 'site_taxonomy_history';
-				} elseif ( in_array( 'site_style_profile', $contexts, true ) ) {
-					$expected_mode = 'generation' === $family ? 'site_title_style' : 'site_excerpt_style';
-				}
-			}
 			$mode = sanitize_key( (string) ( $reference['mode'] ?? ( '' !== $expected_mode ? $expected_mode : 'site_title_style' ) ) );
 			if ( $enabled && '' === $expected_mode ) {
 				return new WP_Error(

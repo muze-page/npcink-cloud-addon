@@ -112,6 +112,29 @@ description, and classification abilities, and restores the original local
 reference permission in a `finally` block. It does not update posts, publish
 content, or apply taxonomy terms.
 
+Without explicit ids, the evaluator deterministically selects the five most
+recent published posts whose plain-text content has at least 200 characters.
+Use `WP_AI_EVAL_POST_LIMIT=15` to collect a larger sample (maximum 30), and
+`WP_AI_EVAL_MIN_POSTS` to fail early if the site has too few eligible posts.
+For a promotion-shaped collection, keep at least four tasks, at least three
+successful A/B pairs per task, and at least 15 task pairs overall (for example,
+three posts across all five tasks). The artifact records whether it is ready
+for blind judging without claiming that the reference variant is better.
+
+Write the same clean JSON emitted on stdout directly to an Eval Lab input file:
+
+```bash
+WP_AI_EVAL_POST_LIMIT=15 \
+WP_AI_EVAL_OUTPUT_JSON=/absolute/path/to/npcink-eval-lab/generation-context/generated/wp-ai-generation-reference-eval.json \
+composer run eval:wp-ai-generation-reference
+```
+
+File output is opt-in and atomic. Progress and file-path messages go to stderr,
+so stdout remains machine-readable JSON. The A/B switch is a process-local
+WordPress option override; the evaluator never persists a settings change, and
+the Composer command disables its normal five-minute process timeout for a
+complete provider-backed run.
+
 The evaluator waits 3200 ms between provider calls by default to stay within
 common OpenAI-compatible provider rate limits. Override
 `WP_AI_EVAL_DELAY_MS` only when the configured provider permits a different

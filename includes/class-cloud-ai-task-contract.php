@@ -175,7 +175,11 @@ if ( ! class_exists( 'Npcink_Cloud_AI_Task_Contract' ) ) {
 
 		/** @return array<int,string>|WP_Error */
 		private static function normalize_list( $value, array $allowed ) {
-			if ( ! is_array( $value ) || ! array_is_list( $value ) ) {
+			if ( ! is_array( $value ) ) {
+				return self::error( 'cloud_ai_task_contract_list_invalid', 'AI task contract list fields must be arrays.' );
+			}
+			$is_list = empty( $value ) || array_keys( $value ) === range( 0, count( $value ) - 1 );
+			if ( ! $is_list ) {
 				return self::error( 'cloud_ai_task_contract_list_invalid', 'AI task contract list fields must be arrays.' );
 			}
 			foreach ( $value as $item ) {

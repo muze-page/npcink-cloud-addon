@@ -959,11 +959,8 @@ if ( ! class_exists( 'Npcink_Cloud_WordPress_AI_Connector' ) ) {
 		 */
 		private function site_knowledge_reference_mode( string $task ): string {
 			$modes = array(
-				'title_generation'       => 'site_title_style',
-				'excerpt_generation'     => 'site_excerpt_style',
-				'meta_description'       => 'site_meta_style',
-				'content_summary'        => 'site_summary_style',
-				'content_classification' => 'site_taxonomy_history',
+				'title_generation' => 'site_title_style',
+				'content_summary'  => 'site_summary_style',
 			);
 
 			return (string) ( $modes[ $task ] ?? '' );

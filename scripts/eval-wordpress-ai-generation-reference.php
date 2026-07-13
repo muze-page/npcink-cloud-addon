@@ -7,9 +7,11 @@
  *
  * Optional:
  * WP_AI_EVAL_POST_IDS=7520,5810,7957 composer run eval:wp-ai-generation-reference
+ * WP_AI_EVAL_POST_LIMIT=15 composer run eval:wp-ai-generation-reference
  * WP_AI_EVAL_DELAY_MS=3200 composer run eval:wp-ai-generation-reference
  * WP_AI_EVAL_MIN_POSTS=1 composer run eval:wp-ai-generation-reference
- * WP_AI_EVAL_TASKS=title composer run eval:wp-ai-generation-reference
+ * WP_AI_EVAL_TASKS=title,summary,meta,classification composer run eval:wp-ai-generation-reference
+ * WP_AI_EVAL_OUTPUT_JSON=/tmp/wp-ai-generation-reference-eval.json composer run eval:wp-ai-generation-reference
  *
  * @package NpcinkCloudAddon
  */
@@ -30,12 +32,37 @@ const NPCINK_WP_AI_EVAL_TASKS = array(
 );
 
 /**
- * Returns a bounded list of requested public post ids.
+ * Returns a bounded list of explicit or automatically selected public post ids.
  *
  * @return array<int,int>
  */
 function npcink_wp_ai_eval_post_ids(): array {
-	$raw = trim( (string) ( getenv( 'WP_AI_EVAL_POST_IDS' ) ?: '7520,5810,7957,7703,7683' ) );
+	$raw   = trim( (string) ( getenv( 'WP_AI_EVAL_POST_IDS' ) ?: '' ) );
+	$limit = max( 1, min( 30, absint( getenv( 'WP_AI_EVAL_POST_LIMIT' ) ?: 5 ) ) );
+	if ( '' === $raw ) {
+		$posts = get_posts(
+			array(
+				'post_type'      => 'post',
+				'post_status'    => 'publish',
+				'posts_per_page' => 100,
+				'orderby'        => 'modified',
+				'order'          => 'DESC',
+			)
+		);
+		$ids = array();
+		foreach ( is_array( $posts ) ? $posts : array() as $post ) {
+			$content = trim( wp_strip_all_tags( strip_shortcodes( (string) ( $post->post_content ?? '' ) ) ) );
+			if ( npcink_wp_ai_eval_length( $content ) < 200 ) {
+				continue;
+			}
+			$ids[] = (int) $post->ID;
+			if ( count( $ids ) >= $limit ) {
+				break;
+			}
+		}
+		return $ids;
+	}
+
 	$ids = array();
 	foreach ( explode( ',', $raw ) as $value ) {
 		$post_id = absint( trim( $value ) );
@@ -44,11 +71,37 @@ function npcink_wp_ai_eval_post_ids(): array {
 			continue;
 		}
 		$ids[] = $post_id;
-		if ( count( $ids ) >= 10 ) {
+		if ( count( $ids ) >= $limit ) {
 			break;
 		}
 	}
 	return array_values( array_unique( $ids ) );
+}
+
+/**
+ * Writes an optional Eval Lab input artifact atomically.
+ *
+ * @param string $json JSON payload.
+ * @return string Written path or an empty string when file output is disabled.
+ */
+function npcink_wp_ai_eval_write_artifact( string $json ): string {
+	$path = trim( (string) ( getenv( 'WP_AI_EVAL_OUTPUT_JSON' ) ?: '' ) );
+	if ( '' === $path ) {
+		return '';
+	}
+	if ( ! str_starts_with( $path, '/' ) ) {
+		$path = trailingslashit( getcwd() ?: ABSPATH ) . ltrim( $path, '/' );
+	}
+	$directory = dirname( $path );
+	if ( ! is_dir( $directory ) && ! wp_mkdir_p( $directory ) ) {
+		throw new RuntimeException( 'Unable to create evaluation artifact directory.' );
+	}
+	$temp = $path . '.tmp-' . wp_generate_uuid4();
+	if ( false === file_put_contents( $temp, $json . "\n", LOCK_EX ) || ! rename( $temp, $path ) ) {
+		@unlink( $temp );
+		throw new RuntimeException( 'Unable to write evaluation artifact.' );
+	}
+	return $path;
 }
 
 /**
@@ -65,17 +118,13 @@ function npcink_wp_ai_eval_tasks(): array {
 }
 
 /**
- * Sets the local generation-reference permission without changing other settings.
+ * Sets the process-local generation-reference override.
  *
  * @param bool $enabled Desired state.
  * @return void
  */
 function npcink_wp_ai_eval_set_reference( bool $enabled ): void {
-	$option_name = Npcink_Cloud_Addon_Settings::option_name();
-	$settings    = get_option( $option_name, array() );
-	$settings    = is_array( $settings ) ? $settings : array();
-	$settings['site_knowledge_generation_reference_enabled'] = $enabled;
-	update_option( $option_name, $settings, false );
+	$GLOBALS['npcink_wp_ai_eval_reference_override'] = $enabled;
 }
 
 /**
@@ -342,6 +391,11 @@ function npcink_wp_ai_eval_variant( $post, bool $reference_enabled, array $basel
 		$input = in_array( $task, array( 'title', 'excerpt', 'summary' ), true )
 			? array( 'content' => $content, 'context' => (string) $post->ID )
 			: array( 'content' => $content, 'title' => $title, 'post_id' => (int) $post->ID );
+		if ( 'classification' === $task ) {
+			$input['taxonomy']       = 'category';
+			$input['strategy']       = 'existing_only';
+			$input['max_suggestions'] = 3;
+		}
 		$response = npcink_wp_ai_eval_run_ability( $route, $input );
 		$labels   = 'classification' === $task ? npcink_wp_ai_eval_labels( $response['data'] ) : array();
 		$text     = 'classification' === $task ? implode( ', ', $labels ) : npcink_wp_ai_eval_text( $response['data'] );
@@ -355,7 +409,7 @@ function npcink_wp_ai_eval_variant( $post, bool $reference_enabled, array $basel
 		$results[ $task ] = array(
 			'status'              => $response['status'],
 			'error'               => $response['error'],
-			'output'              => substr( $text, 0, 800 ),
+			'output'              => npcink_wp_ai_eval_truncate( $text, 800 ),
 			'output_length'       => npcink_wp_ai_eval_length( $evaluated_text ),
 			'length_distance'     => $target_length > 0 ? round( abs( npcink_wp_ai_eval_length( $evaluated_text ) - $target_length ) / $target_length, 4 ) : null,
 			'copy_similarity_pct' => '' !== $evaluated_text ? npcink_wp_ai_eval_copy_similarity( $evaluated_text, (array) $baselines['corpus'] ) : 0.0,
@@ -376,7 +430,7 @@ if ( ! current_user_can( 'edit_posts' ) ) {
 }
 
 $post_ids = npcink_wp_ai_eval_post_ids();
-$minimum_posts = max( 1, min( 3, absint( getenv( 'WP_AI_EVAL_MIN_POSTS' ) ?: 3 ) ) );
+$minimum_posts = max( 1, min( 30, absint( getenv( 'WP_AI_EVAL_MIN_POSTS' ) ?: 3 ) ) );
 $tasks         = npcink_wp_ai_eval_tasks();
 if ( count( $post_ids ) < $minimum_posts ) {
 	fwrite( STDERR, "[fail] The requested minimum number of valid published post ids is unavailable.\n" );
@@ -388,6 +442,18 @@ if ( empty( $tasks ) ) {
 }
 
 $original_reference_enabled = Npcink_Cloud_Addon_Settings::is_site_knowledge_generation_reference_enabled();
+$stored_settings             = get_option( Npcink_Cloud_Addon_Settings::option_name(), array() );
+$stored_settings             = is_array( $stored_settings ) ? $stored_settings : array();
+$GLOBALS['npcink_wp_ai_eval_reference_override'] = $original_reference_enabled;
+add_filter(
+	'pre_option_' . Npcink_Cloud_Addon_Settings::option_name(),
+	static function () use ( $stored_settings ): array {
+		$settings = $stored_settings;
+		$settings['site_knowledge_generation_reference_enabled'] = ! empty( $GLOBALS['npcink_wp_ai_eval_reference_override'] );
+		return $settings;
+	},
+	PHP_INT_MAX
+);
 $baselines                  = npcink_wp_ai_eval_baselines();
 $pairs                      = array();
 
@@ -426,9 +492,17 @@ $aggregate = array(
 	'sample_outputs'           => 0,
 	'classification_reuse_lift_sum' => 0.0,
 	'classification_reuse_comparisons' => 0,
+	'by_task'                  => array(),
 );
 foreach ( $pairs as $pair ) {
 	foreach ( array_keys( $tasks ) as $task ) {
+		if ( ! isset( $aggregate['by_task'][ $task ] ) ) {
+			$aggregate['by_task'][ $task ] = array(
+				'pair_count'        => 0,
+				'successful_pairs'  => 0,
+			);
+		}
+		++$aggregate['by_task'][ $task ]['pair_count'];
 		$baseline  = $pair['variants']['baseline'][ $task ];
 		$reference = $pair['variants']['reference'][ $task ];
 		foreach ( array( $baseline, $reference ) as $variant ) {
@@ -450,6 +524,9 @@ foreach ( $pairs as $pair ) {
 			}
 		}
 		$pair_successful = 200 === $baseline['status'] && '' !== $baseline['output'] && 200 === $reference['status'] && '' !== $reference['output'];
+		if ( $pair_successful ) {
+			++$aggregate['by_task'][ $task ]['successful_pairs'];
+		}
 		if ( $pair_successful && 'classification' !== $task && null !== $baseline['length_distance'] && null !== $reference['length_distance'] ) {
 			if ( $reference['length_distance'] < $baseline['length_distance'] ) {
 				++$aggregate['style_wins'];
@@ -473,32 +550,69 @@ $aggregate['style_win_rate'] = $style_comparisons > 0 ? round( $aggregate['style
 $aggregate['classification_reuse_lift_mean'] = $aggregate['classification_reuse_comparisons'] > 0 ? round( $aggregate['classification_reuse_lift_sum'] / $aggregate['classification_reuse_comparisons'], 4 ) : null;
 unset( $aggregate['classification_reuse_lift_sum'], $aggregate['classification_reuse_comparisons'] );
 
-echo wp_json_encode(
-	array(
-		'contract_version' => 'wp_ai_generation_reference_eval.v2',
-		'generated_at'     => gmdate( 'c' ),
-		'write_posture'    => 'read_only_evaluation',
-		'request_delay_ms' => max( 0, min( 10000, absint( getenv( 'WP_AI_EVAL_DELAY_MS' ) ?: 3200 ) ) ),
-		'post_ids'         => $post_ids,
-		'minimum_posts'    => $minimum_posts,
-		'tasks'            => array_keys( $tasks ),
-		'original_reference_enabled' => $original_reference_enabled,
-		'restored_reference_enabled' => Npcink_Cloud_Addon_Settings::is_site_knowledge_generation_reference_enabled(),
-		'thresholds'       => array(
-			'style_win_rate'             => 0.6,
-			'successful_output_rate'     => 1.0,
-			'copy_similarity_pct_max'    => 80,
-			'novel_number_failures_max'  => 0,
-			'sample_outputs_max'         => 0,
-		),
-		'baselines'        => array(
-			'title_median_length'   => $baselines['title_median_length'],
-			'excerpt_median_length' => $baselines['excerpt_median_length'],
-			'taxonomy_term_count'   => count( (array) $baselines['terms'] ),
-		),
-		'aggregate'        => $aggregate,
-		'pairs'            => $pairs,
+$restored_reference_enabled = Npcink_Cloud_Addon_Settings::is_site_knowledge_generation_reference_enabled();
+$minimum_task_types          = 4;
+$minimum_cases_per_task      = 3;
+$collection_readiness        = array(
+	'minimum_task_pairs'      => 15,
+	'minimum_task_types'      => $minimum_task_types,
+	'minimum_cases_per_task'  => $minimum_cases_per_task,
+	'toggle_restored'         => $original_reference_enabled === $restored_reference_enabled,
+	'task_pairs_gate_passed'  => $aggregate['task_pairs'] >= 15,
+	'task_types_gate_passed'  => count( $tasks ) >= $minimum_task_types,
+	'per_task_gate_passed'    => empty(
+		array_filter(
+			$aggregate['by_task'],
+			static fn( array $item ): bool => (int) $item['pair_count'] < $minimum_cases_per_task
+		)
 	),
-	JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT
+	'usable_pairs_gate_passed' => empty(
+		array_filter(
+			$aggregate['by_task'],
+			static fn( array $item ): bool => (int) $item['successful_pairs'] < $minimum_cases_per_task
+		)
+	),
 );
+$collection_readiness['ready_for_blind_judging'] = $collection_readiness['toggle_restored']
+	&& $collection_readiness['task_pairs_gate_passed']
+	&& $collection_readiness['task_types_gate_passed']
+	&& $collection_readiness['per_task_gate_passed']
+	&& $collection_readiness['usable_pairs_gate_passed'];
+
+$payload = array(
+	'contract_version'             => 'wp_ai_generation_reference_eval.v2',
+	'generated_at'                 => gmdate( 'c' ),
+	'write_posture'                => 'read_only_evaluation',
+	'request_delay_ms'             => max( 0, min( 10000, absint( getenv( 'WP_AI_EVAL_DELAY_MS' ) ?: 3200 ) ) ),
+	'post_ids'                     => $post_ids,
+	'minimum_posts'                => $minimum_posts,
+	'tasks'                        => array_keys( $tasks ),
+	'original_reference_enabled'   => $original_reference_enabled,
+	'restored_reference_enabled'   => $restored_reference_enabled,
+	'collection_readiness'         => $collection_readiness,
+	'thresholds'                   => array(
+		'style_win_rate'            => 0.6,
+		'successful_output_rate'    => 1.0,
+		'copy_similarity_pct_max'   => 80,
+		'novel_number_failures_max' => 0,
+		'sample_outputs_max'        => 0,
+	),
+	'baselines'                    => array(
+		'title_median_length'   => $baselines['title_median_length'],
+		'excerpt_median_length' => $baselines['excerpt_median_length'],
+		'taxonomy_term_count'   => count( (array) $baselines['terms'] ),
+	),
+	'aggregate'                    => $aggregate,
+	'pairs'                        => $pairs,
+);
+$json = wp_json_encode( $payload, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT );
+if ( ! is_string( $json ) ) {
+	fwrite( STDERR, "[fail] Unable to encode evaluation artifact.\n" );
+	exit( 1 );
+}
+$written_path = npcink_wp_ai_eval_write_artifact( $json );
+if ( '' !== $written_path ) {
+	fwrite( STDERR, '[ok] Eval Lab input written to ' . $written_path . "\n" );
+}
+echo $json;
 echo "\n";

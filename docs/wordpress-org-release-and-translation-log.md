@@ -14,7 +14,7 @@ translation work completed for `npcink-cloud-addon`.
 - WordPress.org SVN URL: `https://plugins.svn.wordpress.org/npcink-cloud-addon/`
 - Historical local SVN working copy: `build/wporg-svn`
 - Release package: `build/npcink-cloud-addon.zip`
-- Stable tag: `0.1.2`
+- Stable tag: `0.1.3`
 
 The plugin has passed WordPress.org review and was submitted to SVN. Later asset
 updates were submitted separately.
@@ -28,6 +28,9 @@ Known SVN revisions:
 - `r3600099`: release `0.1.2` with bounded Site Knowledge Cloud transport,
   WordPress AI request-log compatibility, contract reuse documentation, and a
   clean Plugin Check release gate.
+- `r3606249`: release `0.1.3` with the simplified admin overview, aligned
+  quota summaries, hardened authorization redirect, refreshed screenshots,
+  and updated `zh_CN` catalogs.
 
 ## Release Verification
 
@@ -51,14 +54,29 @@ Composer's default `/tmp/wp-cli.phar` path is not reliable, so pass
 `WP_CLI_BIN=/opt/homebrew/bin/wp` explicitly for Plugin Check and release
 verification commands.
 
-## 2026-07-13 0.1.3 Release Candidate
+## 2026-07-13 0.1.3 Release Closeout
 
-The `0.1.3` release candidate is prepared on
-`codex/release-0.1.3`. WordPress.org remains on `0.1.2` until the GitHub pull
-request passes its current-head checks and the resulting merge commit is
-packaged and published.
+Version `0.1.3` was published to WordPress.org SVN on 2026-07-13 after GitHub
+pull request `#41` passed its required checks on exact head
+`7670cdd74983752b5e90eec6e4c62de4993f2a53` and merged as
+`c3ab9b0f2fb5297766afd16799a6880514a7a92f`:
 
-### Candidate Contents
+```text
+SVN revision: r3606249
+Author: muze233
+Tag: https://plugins.svn.wordpress.org/npcink-cloud-addon/tags/0.1.3/
+Download: https://downloads.wordpress.org/plugin/npcink-cloud-addon.0.1.3.zip
+```
+
+WordPress.org API reported after the release:
+
+```text
+version=0.1.3
+last_updated=2026-07-13 2:44pm GMT
+download_link=https://downloads.wordpress.org/plugin/npcink-cloud-addon.0.1.3.zip
+```
+
+### Release Contents
 
 - a simplified overview with compact, consistently aligned plan, point, and
   Site Knowledge quota summaries;
@@ -74,15 +92,32 @@ packaged and published.
 - a release-version contract that keeps the plugin header, version constant,
   stable tag, POT, and `zh_CN` PO metadata synchronized.
 
-The candidate does not add router, prompt, preset, proposal, approval,
+The release does not add router, prompt, preset, proposal, approval,
 workflow, scheduler, billing, runtime-truth, or WordPress-write ownership.
 
-### Candidate Verification
+### Verification Evidence
 
-The final package must pass the repository release gates, a clean Plugin Check,
-a disposable stable WordPress install-and-activate smoke test, GitHub checks for
-the exact pull-request head, and a post-publication comparison against the
-official WordPress.org `0.1.3` download.
+The repository release gates, Plugin Check, PHP 8.0.30 and 8.5.3 behavior
+suites, and a disposable WordPress 7.0.1 / PHP 8.3 package activation smoke
+test passed before publication. Plugin Check returned no errors.
+
+The package regenerated from merged `master` was:
+
+```text
+build/npcink-cloud-addon.zip
+SHA256: 909222a45cc054b1091ff23bc7a241ed6e356abed957efdff6a3a0f394e25fcf
+```
+
+The downloaded WordPress.org package was:
+
+```text
+https://downloads.wordpress.org/plugin/npcink-cloud-addon.0.1.3.zip
+SHA256: c17fb4e62726ae2dfc6227d540581dbee1f9c0131c0bde7c65a36e9311e557fd
+```
+
+ZIP container hashes differ because packaging metadata differs; extracted file
+contents were compared recursively and matched. The four `ps.w.org` screenshot
+files at revision `r3606249` also matched the Git source assets byte-for-byte.
 
 ## 2026-07-08 0.1.2 Release Closeout
 

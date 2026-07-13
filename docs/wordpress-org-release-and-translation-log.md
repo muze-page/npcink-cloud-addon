@@ -2,7 +2,7 @@
 
 Status: active operational handoff.
 
-Last updated: 2026-07-08.
+Last updated: 2026-07-13.
 
 This document records the WordPress.org release, assets, legal pages, and zh_CN
 translation work completed for `npcink-cloud-addon`.
@@ -50,6 +50,39 @@ the local WP-CLI/PHP paths configured in `composer.json`. On this machine,
 Composer's default `/tmp/wp-cli.phar` path is not reliable, so pass
 `WP_CLI_BIN=/opt/homebrew/bin/wp` explicitly for Plugin Check and release
 verification commands.
+
+## 2026-07-13 0.1.3 Release Candidate
+
+The `0.1.3` release candidate is prepared on
+`codex/release-0.1.3`. WordPress.org remains on `0.1.2` until the GitHub pull
+request passes its current-head checks and the resulting merge commit is
+packaged and published.
+
+### Candidate Contents
+
+- a simplified overview with compact, consistently aligned plan, point, and
+  Site Knowledge quota summaries;
+- Chinese quota terminology and fixed admin copy kept consistent with the
+  shipped `zh_CN` catalog;
+- an exact-host temporary allowlist around the validated Cloud authorization
+  redirect so the flow can use `wp_safe_redirect()` without broadening the
+  connector boundary;
+- PHP 8.5-compatible reflection-based behavior tests while retaining PHP 8.0
+  test support;
+- refreshed WordPress.org screenshots for the overview, local permissions,
+  Site Knowledge, and advanced troubleshooting surfaces;
+- a release-version contract that keeps the plugin header, version constant,
+  stable tag, POT, and `zh_CN` PO metadata synchronized.
+
+The candidate does not add router, prompt, preset, proposal, approval,
+workflow, scheduler, billing, runtime-truth, or WordPress-write ownership.
+
+### Candidate Verification
+
+The final package must pass the repository release gates, a clean Plugin Check,
+a disposable stable WordPress install-and-activate smoke test, GitHub checks for
+the exact pull-request head, and a post-publication comparison against the
+official WordPress.org `0.1.3` download.
 
 ## 2026-07-08 0.1.2 Release Closeout
 

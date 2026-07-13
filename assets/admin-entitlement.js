@@ -33,18 +33,33 @@
 		metricRows.forEach( ( row ) => {
 			const key = row.dataset.npcinkEntitlementMetric || '';
 			const metric = metrics && metrics[ key ] ? metrics[ key ] : {};
+			const metricContainer = row.querySelector( '.npcink-cloud-entitlement-metric' );
 			const label = row.querySelector( '[data-npcink-entitlement-metric-label]' );
+			const valueLabel = row.querySelector( '[data-npcink-entitlement-metric-value]' );
+			const statusLabel = row.querySelector( '[data-npcink-entitlement-metric-status]' );
 			const progress = row.querySelector( '[data-npcink-entitlement-progress]' );
 
 			row.hidden = ! metric.available;
+			if ( metricContainer ) {
+				metricContainer.title = metric.available && metric.tooltip ? metric.tooltip : '';
+			}
 			if ( label ) {
 				label.textContent = metric.available && metric.label ? metric.label : '';
+			}
+			if ( valueLabel ) {
+				valueLabel.textContent = metric.available ? ( metric.value_label || metric.label || '' ) : '';
+			}
+			if ( statusLabel ) {
+				statusLabel.textContent = metric.available ? ( metric.status_label || '' ) : '';
+				statusLabel.hidden = '' === statusLabel.textContent;
 			}
 			if ( progress ) {
 				const hasPercent = null !== metric.percent && '' !== metric.percent && Number.isFinite( Number( metric.percent ) );
 				progress.hidden = ! hasPercent;
 				if ( hasPercent ) {
-					progress.value = Math.max( 0, Math.min( 100, Number( metric.percent ) ) );
+					const percent = Math.max( 0, Math.min( 100, Number( metric.percent ) ) );
+					progress.style.setProperty( '--npcink-cloud-progress', percent + '%' );
+					progress.setAttribute( 'aria-valuenow', String( percent ) );
 				}
 			}
 		} );

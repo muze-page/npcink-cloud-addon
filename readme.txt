@@ -4,7 +4,7 @@ Tags: magick ai, cloud, hosted runtime
 Requires at least: 7.0
 Tested up to: 7.0
 Requires PHP: 8.0
-Stable tag: 0.1.2
+Stable tag: 0.1.3
 License: GPL-2.0-or-later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -130,12 +130,16 @@ Data Retention: https://cloud.npc.ink/terms/en/data-retention.html
 
 == Screenshots ==
 
-1. Entitlement summary and read-only Pro Cloud Runtime detail.
-2. Cloud settings screen with Cloud Base URL, API key replacement, timeout, and monitoring opt-in.
-3. Monitoring and quality summaries showing metadata-only collection and read-only Cloud projections.
-4. Advanced and troubleshooting entry for service detail, checks, runtime runs, and connection recovery.
+1. Verified connector overview with compact plan, points, and Site Knowledge article capacity.
+2. Local permissions for WordPress AI and Site Knowledge delivery.
+3. Site Knowledge delivery status and bounded Cloud-owned index actions.
+4. Advanced troubleshooting with service detail, runtime runs, and connection recovery.
 
 == Changelog ==
+
+= 0.1.3 =
+
+Simplify the admin overview and Site Knowledge quota display, align localized quota copy, harden Cloud authorization redirects, and refresh release assets.
 
 = 0.1.2 =
 

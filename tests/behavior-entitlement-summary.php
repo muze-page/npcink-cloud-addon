@@ -11,6 +11,22 @@ require_once __DIR__ . '/helpers.php';
 maca_load_addon_classes();
 require_once MACA_TEST_ROOT . '/includes/class-cloud-settings-page.php';
 
+/**
+ * Returns a private method reflection without PHP 8.5 deprecation notices.
+ *
+ * @param class-string $class_name Class name.
+ * @param string       $method_name Method name.
+ * @return ReflectionMethod
+ */
+function maca_private_method( string $class_name, string $method_name ): ReflectionMethod {
+	$method = new ReflectionMethod( $class_name, $method_name );
+	if ( PHP_VERSION_ID < 80100 ) {
+		$method->setAccessible( true );
+	}
+
+	return $method;
+}
+
 maca_reset_test_state();
 maca_seed_settings( true );
 
@@ -87,11 +103,24 @@ maca_assert(
 	'Behavior: an expired entitlement projection remains available for immediate stale-while-refresh display.'
 );
 
-$format_overview_entitlement = new ReflectionMethod( Npcink_Cloud_Settings_Page::class, 'format_overview_entitlement' );
-$format_overview_entitlement->setAccessible( true );
-$overview_metrics_method = new ReflectionMethod( Npcink_Cloud_Settings_Page::class, 'get_overview_entitlement_metrics' );
-$overview_metrics_method->setAccessible( true );
+$format_overview_entitlement = maca_private_method( Npcink_Cloud_Settings_Page::class, 'format_overview_entitlement' );
+$overview_metrics_method = maca_private_method( Npcink_Cloud_Settings_Page::class, 'get_overview_entitlement_metrics' );
+$site_knowledge_usage_method = maca_private_method( Npcink_Cloud_Settings_Page::class, 'get_site_knowledge_usage_projection' );
+$runtime_status_method = maca_private_method( Npcink_Cloud_Settings_Page::class, 'format_runtime_status_label' );
 $overview_metrics = $overview_metrics_method->invoke( null, $read_summary );
+$site_knowledge_usage = $site_knowledge_usage_method->invoke(
+	null,
+	array(
+		'state' => 'fresh',
+		'available' => true,
+		'quota_status' => 'ok',
+		'indexed_documents' => 599,
+		'max_documents' => 10000,
+		'remaining_documents' => 9401,
+		'document_percent' => 6,
+		'warning_ratio' => 0.85,
+	)
+);
 $missing_overview_metrics = $overview_metrics_method->invoke(
 	null,
 	array(
@@ -108,12 +137,26 @@ maca_assert(
 		),
 		true
 	)
-	&& 'Pro · available' === $format_overview_entitlement->invoke( null, $read_summary, true )
+	&& 'Pro plan · available' === $format_overview_entitlement->invoke( null, $read_summary, true )
+	&& 'Free plan · available' === $format_overview_entitlement->invoke( null, array( 'available' => true, 'package_label' => 'Free' ), true )
+	&& 'Enterprise · available' === $format_overview_entitlement->invoke( null, array( 'available' => true, 'package_label' => 'Enterprise' ), true )
+	&& 'Enterprise · available' === $format_overview_entitlement->invoke( null, array( 'available' => true, 'package_label' => 'Enterprise', 'package_tier' => 'pro' ), true )
 	&& ! empty( $overview_metrics['credits']['available'] )
 	&& 88 === (int) ( $overview_metrics['credits']['percent'] ?? -1 )
-	&& '87.50 credit / 100.00 credit · 88% remaining' === (string) ( $overview_metrics['credits']['label'] ?? '' )
+	&& '87.5 / 100' === (string) ( $overview_metrics['credits']['value_label'] ?? '' )
+	&& '88% remaining' === (string) ( $overview_metrics['credits']['status_label'] ?? '' )
+	&& '87.5 / 100 · 88% remaining' === (string) ( $overview_metrics['credits']['label'] ?? '' )
+	&& 'Used 12.5 credits; remaining 87.5 credits; limit 100 credits.' === (string) ( $overview_metrics['credits']['tooltip'] ?? '' )
+	&& ! empty( $site_knowledge_usage['available'] )
+	&& '9,401 / 10,000' === (string) ( $site_knowledge_usage['value_label'] ?? '' )
+	&& '94% remaining' === (string) ( $site_knowledge_usage['status_label'] ?? '' )
+	&& 94 === (int) ( $site_knowledge_usage['percent'] ?? -1 )
+	&& 'Indexed 599 documents; remaining 9,401 documents; limit 10,000 documents.' === (string) ( $site_knowledge_usage['tooltip'] ?? '' )
 	&& ! empty( $overview_metrics['runtime']['available'] )
 	&& '8 of 10 runs remaining' === (string) ( $overview_metrics['runtime']['label'] ?? '' )
+	&& 'Queued' === $runtime_status_method->invoke( null, 'queued' )
+	&& 'Succeeded' === $runtime_status_method->invoke( null, 'success' )
+	&& 'custom_state' === $runtime_status_method->invoke( null, 'custom_state' )
 	&& empty( $missing_overview_metrics['credits']['available'] )
 	&& empty( $missing_overview_metrics['runtime']['available'] ),
 	'Behavior: overview entitlement copy uses one loading state and never duplicates missing fallbacks.'
@@ -121,8 +164,7 @@ maca_assert(
 
 maca_reset_test_state();
 maca_seed_settings( true );
-$cache_key_method = new ReflectionMethod( Npcink_Cloud_Entitlement_Summary::class, 'cache_key' );
-$cache_key_method->setAccessible( true );
+$cache_key_method = maca_private_method( Npcink_Cloud_Entitlement_Summary::class, 'cache_key' );
 $refresh_lock_key = $cache_key_method->invoke( null, Npcink_Cloud_Addon_Settings::get_settings() ) . '_refresh_lock';
 $GLOBALS['maca_options'][ $refresh_lock_key ] = time();
 $locked_refresh = Npcink_Cloud_Entitlement_Summary::refresh( false );
@@ -152,8 +194,7 @@ maca_assert(
 	'Behavior: automatic entitlement refresh backs off after failure while an explicit retry may recover immediately.'
 );
 
-$runtime_normalizer = new ReflectionMethod( Npcink_Cloud_Entitlement_Summary::class, 'normalize_pro_cloud_runtime' );
-$runtime_normalizer->setAccessible( true );
+$runtime_normalizer = maca_private_method( Npcink_Cloud_Entitlement_Summary::class, 'normalize_pro_cloud_runtime' );
 $runtime_not_reported = $runtime_normalizer->invoke( null, array() );
 $runtime_without_optional_fields = $runtime_normalizer->invoke(
 	null,
@@ -173,8 +214,7 @@ $runtime_with_optional_fields = $runtime_normalizer->invoke(
 	)
 );
 
-$format_runtime_days = new ReflectionMethod( Npcink_Cloud_Settings_Page::class, 'format_runtime_days_projection' );
-$format_runtime_days->setAccessible( true );
+$format_runtime_days = maca_private_method( Npcink_Cloud_Settings_Page::class, 'format_runtime_days_projection' );
 
 maca_assert(
 	is_array( $runtime_without_optional_fields )
@@ -359,8 +399,7 @@ $GLOBALS['maca_http_response_queue'][] = array(
 	'body'     => wp_json_encode( $entitlement_response ),
 );
 
-$method = new ReflectionMethod( Npcink_Cloud_Settings_Page::class, 'persist_and_verify_settings' );
-$method->setAccessible( true );
+$method = maca_private_method( Npcink_Cloud_Settings_Page::class, 'persist_and_verify_settings' );
 $method->invoke( null, $settings, 'Verified.' );
 $post_verify_summary = Npcink_Cloud_Entitlement_Summary::get_cached_summary();
 

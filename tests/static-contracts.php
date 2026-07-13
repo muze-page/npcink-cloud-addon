@@ -10,6 +10,9 @@ declare(strict_types=1);
 require_once __DIR__ . '/helpers.php';
 
 $root = MACA_TEST_ROOT;
+$plugin_file = maca_read( $root . '/npcink-cloud-addon.php' );
+$wordpress_org_readme = maca_read( $root . '/readme.txt' );
+$pot = maca_read( $root . '/languages/npcink-cloud-addon.pot' );
 $bootstrap = maca_read( $root . '/includes/bootstrap.php' );
 $transport = maca_read( $root . '/includes/class-cloud-media-derivative-transport.php' );
 $runtime_client = maca_read( $root . '/includes/class-cloud-runtime-client.php' );
@@ -47,6 +50,21 @@ $wp_ai_smoke = maca_read( $root . '/scripts/smoke-wordpress-ai-abilities.php' );
 $wp_ai_editor_smoke = maca_read( $root . '/scripts/smoke-wordpress-ai-editor.php' );
 $wp_ai_generation_eval = maca_read( $root . '/scripts/eval-wordpress-ai-generation-reference.php' );
 $zh_cn_po = maca_read( $root . '/languages/npcink-cloud-addon-zh_CN.po' );
+
+$plugin_header_version = array();
+$plugin_constant_version = array();
+$stable_tag_version = array();
+
+maca_assert(
+	1 === preg_match( '/^ \* Version:\s+([0-9.]+)$/m', $plugin_file, $plugin_header_version )
+	&& 1 === preg_match( "/define\\( 'NPCINK_CLOUD_ADDON_VERSION', '([0-9.]+)' \\);/", $plugin_file, $plugin_constant_version )
+	&& 1 === preg_match( '/^Stable tag:\s+([0-9.]+)$/m', $wordpress_org_readme, $stable_tag_version )
+	&& $plugin_header_version[1] === $plugin_constant_version[1]
+	&& $plugin_header_version[1] === $stable_tag_version[1]
+	&& false !== strpos( $pot, 'Project-Id-Version: Npcink Cloud Addon ' . $plugin_header_version[1] . '\\n' )
+	&& false !== strpos( $zh_cn_po, 'Project-Id-Version: Npcink Cloud Addon ' . $plugin_header_version[1] . '\\n' ),
+	'Plugin header, version constant, stable tag, POT, and zh_CN PO stay on the same release version.'
+);
 
 maca_assert(
 	false !== strpos( $composer, '"eval:project:quality": "sh scripts/eval-lab.sh task=project_quality_gate' )
@@ -189,9 +207,9 @@ maca_assert(
 );
 
 maca_assert(
-	false !== strpos( maca_read( $root . '/npcink-cloud-addon.php' ), 'Text Domain:       npcink-cloud-addon' )
-	&& false !== strpos( maca_read( $root . '/npcink-cloud-addon.php' ), 'Domain Path:       /languages' )
-	&& false !== strpos( maca_read( $root . '/languages/npcink-cloud-addon.pot' ), 'X-Domain: npcink-cloud-addon' )
+	false !== strpos( $plugin_file, 'Text Domain:       npcink-cloud-addon' )
+	&& false !== strpos( $plugin_file, 'Domain Path:       /languages' )
+	&& false !== strpos( $pot, 'X-Domain: npcink-cloud-addon' )
 	&& false !== strpos( $zh_cn_po, 'Language: zh_CN' )
 	&& false === strpos( $bootstrap, 'load_plugin_textdomain' ),
 	'Plugin declares the npcink-cloud-addon text domain and ships generated language files.'
@@ -674,11 +692,26 @@ maca_assert(
 	&& false !== strpos( $entitlement_summary, "'summary_and_link_only'" )
 	&& false !== strpos( $entitlement_summary, "'credit_ledger_url'" )
 	&& false !== strpos( $settings_page, 'get_overview_entitlement_metrics' )
+	&& false !== strpos( $settings_page, 'format_overview_package_label' )
+	&& false !== strpos( $settings_page, "'Free plan'" )
 	&& false !== strpos( $settings_page, 'Available credits' )
 	&& false !== strpos( $settings_page, 'Runtime allowance' )
 	&& false !== strpos( $settings_page, 'data-npcink-entitlement-progress' )
 	&& false !== strpos( $admin_entitlement_js, 'updateMetrics' )
+	&& false !== strpos( $admin_entitlement_js, "metricContainer.title = metric.available && metric.tooltip ? metric.tooltip : ''" )
 	&& false !== strpos( $admin_css, '.npcink-cloud-entitlement-progress' )
+	&& false !== strpos( $settings_page, 'role="progressbar"' )
+	&& false !== strpos( $settings_page, 'npcink-cloud-metric-actions--empty' )
+	&& false !== strpos( $settings_page, 'data-npcink-entitlement-metric-value' )
+	&& false !== strpos( $settings_page, 'data-npcink-entitlement-metric-status' )
+	&& false !== strpos( $admin_entitlement_js, "progress.style.setProperty( '--npcink-cloud-progress', percent + '%' )" )
+	&& false !== strpos( $admin_css, 'grid-template-columns: minmax(0, 1fr) 112px minmax(140px, 180px) 64px' )
+	&& false !== strpos( $admin_css, 'font-variant-numeric: tabular-nums' )
+	&& false !== strpos( $admin_css, '.npcink-cloud-segmented-progress' )
+	&& false !== strpos( $admin_css, 'repeating-linear-gradient' )
+	&& false !== strpos( $admin_css, '.npcink-cloud-overview-status th' )
+	&& false === strpos( $settings_page, "format_credit_amount( \$remaining, \$unit )" )
+	&& false !== strpos( $settings_page, 'Used %1$s credits; remaining %2$s credits; limit %3$s credits.' )
 	&& false !== strpos( $settings_page, 'npcink-cloud-section-heading' )
 	&& false !== strpos( $settings_page, 'View credit details in Cloud' )
 	&& false !== strpos( $settings_page, 'Entitlement details' )
@@ -1089,7 +1122,8 @@ maca_assert(
 	&& false !== strpos( $settings_page, 'Use indexed public articles as generation context.' )
 	&& false !== strpos( $settings_page, 'Upload metadata-only plugin monitoring events.' )
 	&& false !== strpos( $settings_page, 'More local permissions' )
-	&& false !== strpos( $admin_css, '.npcink-cloud-local-permission--dependent' )
+	&& false === strpos( $settings_page, 'npcink-cloud-local-permission--dependent' )
+	&& false === strpos( $admin_css, '.npcink-cloud-local-permission--dependent' )
 	&& false !== strpos( $settings_page, 'onchange="this.form.submit();"' )
 	&& false !== strpos( $settings_page, 'Npcink_Cloud_WordPress_AI_Connector::sync_connected_marker()' )
 	&& false !== strpos( $settings_page, 'Npcink_Cloud_Observability_Collector::sync_schedule()' )
@@ -1204,6 +1238,8 @@ maca_assert(
 	&& false !== strpos( $settings_page, "=> __( 'idle'" )
 	&& false !== strpos( $settings_page, "'queued'" )
 	&& false !== strpos( $settings_page, "=> __( 'queued'" )
+	&& false !== strpos( $settings_page, "__( '%d public changes awaiting delivery'" )
+	&& false !== strpos( $settings_page, "in_array( \$status, array( 'pending', 'queued' ), true )" )
 	&& false !== strpos( $settings_page, 'function render_site_knowledge_error_cell' )
 	&& false !== strpos( $settings_page, 'Show original Cloud error' )
 	&& false !== strpos( $settings_page, 'data_classification=pii' )
@@ -1242,16 +1278,44 @@ maca_assert(
 	&& false !== strpos( $settings_page, "current_user_can( self::MENU_CAPABILITY )" )
 	&& false !== strpos( $settings_page, "check_ajax_referer( self::ACTION_REFRESH_SITE_KNOWLEDGE_STATUS, 'nonce' )" )
 	&& false !== strpos( $settings_page, 'Npcink_Cloud_Addon_Settings::is_site_knowledge_delivery_enabled()' )
-	&& false !== strpos( $settings_page, 'Knowledge documents' )
+	&& false !== strpos( $settings_page, 'Available knowledge documents' )
 	&& false !== strpos( $settings_page, 'data-npcink-site-knowledge-progress' )
-	&& false !== strpos( $settings_page, '%1$s / %2$s · %3$d%% used' )
+	&& false !== strpos( $settings_page, 'data-npcink-site-knowledge-usage-value' )
+	&& false !== strpos( $settings_page, 'data-npcink-site-knowledge-usage-status' )
+	&& false !== strpos( $settings_page, '%1$s / %2$s · %3$d%% remaining' )
+	&& false === strpos( $settings_page, '%1$s / %2$s · %3$d%% used' )
 	&& false !== strpos( $settings_page, 'function render_site_knowledge_cloud_quota_detail' )
-	&& 1 === substr_count( $settings_page, "esc_html_e( 'Knowledge documents'" )
+	&& 1 === substr_count( $settings_page, "esc_html_e( 'Available knowledge documents'" )
 	&& false !== strpos( $admin_site_knowledge_js, "'not_refreshed' === initialState || 'stale' === initialState" )
 	&& false !== strpos( $admin_site_knowledge_js, 'data-npcink-site-knowledge-detail' )
+	&& false !== strpos( $admin_site_knowledge_js, "progress.setAttribute( 'aria-valuenow', String( percent ) )" )
+	&& false !== strpos( $settings_page, 'class="npcink-cloud-metric-actions"' )
+	&& false !== strpos( $settings_page, 'data-npcink-site-knowledge-actions' )
+	&& false !== strpos( $admin_site_knowledge_js, 'actions.hidden = ! loading' )
+	&& false !== strpos( $admin_css, '.npcink-cloud-metric-actions[hidden]' )
 	&& false !== strpos( $admin_css, '.npcink-cloud-site-knowledge-progress--warning' )
 	&& false !== strpos( $admin_css, '.npcink-cloud-site-knowledge-progress--error' ),
 	'Site Knowledge shows one auto-refreshed document quota with visible numbers and keeps lower-frequency Cloud quota fields in technical detail.'
+);
+
+$overview_method_start = strpos( $settings_page, 'private static function render_overview_page' );
+$overview_method_end = strpos( $settings_page, 'private static function render_advanced_page' );
+$site_knowledge_method_start = strpos( $settings_page, 'private static function render_site_knowledge_summary' );
+$site_knowledge_method_end = strpos( $settings_page, 'private static function render_site_knowledge_cloud_quota_detail' );
+$overview_method = false !== $overview_method_start && false !== $overview_method_end
+	? substr( $settings_page, $overview_method_start, $overview_method_end - $overview_method_start )
+	: '';
+$site_knowledge_method = false !== $site_knowledge_method_start && false !== $site_knowledge_method_end
+	? substr( $settings_page, $site_knowledge_method_start, $site_knowledge_method_end - $site_knowledge_method_start )
+	: '';
+maca_assert(
+	false !== strpos( $overview_method, "<?php if ( \$site_knowledge_delivery_enabled ) : ?>" )
+	&& false !== strpos( $overview_method, "esc_html_e( 'Available knowledge documents'" )
+	&& false !== strpos( $overview_method, 'data-npcink-site-knowledge-usage' )
+	&& false === strpos( $site_knowledge_method, "esc_html_e( 'Available knowledge documents'" )
+	&& false !== strpos( $site_knowledge_method, 'data-npcink-site-knowledge-refresh' )
+	&& false !== strpos( $site_knowledge_method, 'render_site_knowledge_cloud_quota_detail' ),
+	'Site Knowledge document usage belongs to Overview service summary when delivery is enabled, while the Site Knowledge page keeps only low-frequency Cloud index detail.'
 );
 
 maca_assert(
@@ -1342,7 +1406,12 @@ maca_assert(
 	&& false !== strpos( $settings_page, "current_user_can( 'manage_options' )" )
 	&& false !== strpos( $settings_page, "\$_POST['self_hosted_base_url']" )
 	&& false !== strpos( $settings_page, "build_settings_from_admin_payload(\n\t\t\t\tarray(\n\t\t\t\t\t'base_url' => \$base_url," )
-	&& false !== strpos( $settings_page, 'wp_redirect( esc_url_raw( self::build_authorization_url_for_base_url( $normalized_base_url ) ) );' )
+	&& false !== strpos( $settings_page, 'function redirect_to_cloud_authorization' )
+	&& false !== strpos( $settings_page, "wp_parse_url( \$authorization_url, PHP_URL_HOST )" )
+	&& false !== strpos( $settings_page, "add_filter( 'allowed_redirect_hosts', \$allow_cloud_host )" )
+	&& false !== strpos( $settings_page, "wp_safe_redirect( \$authorization_url, 302, 'Npcink Cloud Addon' )" )
+	&& false !== strpos( $settings_page, "remove_filter( 'allowed_redirect_hosts', \$allow_cloud_host )" )
+	&& false === strpos( $settings_page, 'wp_redirect(' )
 	&& false !== strpos( $settings_page, 'class="npcink-cloud-connect-context"' )
 	&& false !== strpos( $settings_page, 'target="_blank" rel="noopener noreferrer"' )
 	&& false !== strpos( $settings_page, '<details class="npcink-cloud-endpoint-advanced">' )

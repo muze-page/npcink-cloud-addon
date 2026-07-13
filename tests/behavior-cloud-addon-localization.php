@@ -81,6 +81,21 @@ maca_assert(
 		'Runtime allowance',
 		'npcink-cloud-addon'
 	)
+	&& '免费版' === Npcink_Cloud_Addon_Localization::filter_gettext(
+		'Free plan',
+		'Free plan',
+		'npcink-cloud-addon'
+	)
+	&& '已用 %1$s 点数；剩余 %2$s 点数；上限 %3$s 点数。' === Npcink_Cloud_Addon_Localization::filter_gettext(
+		'Used %1$s credits; remaining %2$s credits; limit %3$s credits.',
+		'Used %1$s credits; remaining %2$s credits; limit %3$s credits.',
+		'npcink-cloud-addon'
+	)
+	&& '剩余 %d%%' === Npcink_Cloud_Addon_Localization::filter_gettext(
+		'%d%% remaining',
+		'%d%% remaining',
+		'npcink-cloud-addon'
+	)
 	&& '权益详情' === Npcink_Cloud_Addon_Localization::filter_gettext(
 		'Entitlement details',
 		'Entitlement details',
@@ -109,6 +124,16 @@ maca_assert(
 		'More local permissions',
 		'More local permissions',
 		'npcink-cloud-addon'
+	)
+	&& '排队中' === Npcink_Cloud_Addon_Localization::filter_gettext(
+		'Queued',
+		'Queued',
+		'npcink-cloud-addon'
+	)
+	&& '运行中' === Npcink_Cloud_Addon_Localization::filter_gettext(
+		'Running',
+		'Running',
+		'npcink-cloud-addon'
 	),
 	'Addon localization fallback covers verified local permissions admin copy.'
 );
@@ -124,14 +149,24 @@ maca_assert(
 		'Manual flush command',
 		'npcink-cloud-addon'
 	)
-	&& '额度' === Npcink_Cloud_Addon_Localization::filter_gettext(
+	&& '点数' === Npcink_Cloud_Addon_Localization::filter_gettext(
 		'Credits',
 		'Credits',
 		'npcink-cloud-addon'
 	)
-	&& '知识库文章' === Npcink_Cloud_Addon_Localization::filter_gettext(
-		'Knowledge documents',
-		'Knowledge documents',
+	&& '可用文章数' === Npcink_Cloud_Addon_Localization::filter_gettext(
+		'Available knowledge documents',
+		'Available knowledge documents',
+		'npcink-cloud-addon'
+	)
+	&& '知识库文章剩余占比' === Npcink_Cloud_Addon_Localization::filter_gettext(
+		'Remaining knowledge document percentage',
+		'Remaining knowledge document percentage',
+		'npcink-cloud-addon'
+	)
+	&& '已索引 %1$s 篇；剩余 %2$s 篇；上限 %3$s 篇。' === Npcink_Cloud_Addon_Localization::filter_gettext(
+		'Indexed %1$s documents; remaining %2$s documents; limit %3$s documents.',
+		'Indexed %1$s documents; remaining %2$s documents; limit %3$s documents.',
 		'npcink-cloud-addon'
 	)
 	&& 'Cloud 索引详情' === Npcink_Cloud_Addon_Localization::filter_gettext(
@@ -143,8 +178,23 @@ maca_assert(
 		'Site Knowledge usage is temporarily unavailable.',
 		'Site Knowledge usage is temporarily unavailable.',
 		'npcink-cloud-addon'
+	)
+	&& '%d 条公开变更待投递' === Npcink_Cloud_Addon_Localization::filter_gettext(
+		'%d public changes awaiting delivery',
+		'%d public changes awaiting delivery',
+		'npcink-cloud-addon'
+	)
+	&& '待投递' === Npcink_Cloud_Addon_Localization::filter_gettext(
+		'queued',
+		'queued',
+		'npcink-cloud-addon'
+	)
+	&& '空闲' === Npcink_Cloud_Addon_Localization::filter_gettext(
+		'idle',
+		'idle',
+		'npcink-cloud-addon'
 	),
-	'Addon localization fallback covers compact Site Knowledge and credit detail copy.'
+	'Addon localization fallback covers compact Site Knowledge usage and delivery status copy.'
 );
 
 maca_assert(

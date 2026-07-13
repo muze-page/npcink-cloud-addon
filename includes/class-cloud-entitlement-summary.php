@@ -16,7 +16,10 @@ if ( ! class_exists( 'Npcink_Cloud_Entitlement_Summary' ) ) {
 	 * Reads a compact, read-only entitlement projection from Cloud.
 	 */
 	final class Npcink_Cloud_Entitlement_Summary {
-		private const CACHE_TTL_SECONDS = 300;
+		private const FRESHNESS_TTL_SECONDS = 300;
+		private const CACHE_STORAGE_TTL_SECONDS = 86400;
+		private const REFRESH_LOCK_TTL_SECONDS = 15;
+		private const REFRESH_FAILURE_BACKOFF_SECONDS = 30;
 
 		/**
 		 * Returns the entitlement summary.
@@ -44,11 +47,10 @@ if ( ! class_exists( 'Npcink_Cloud_Entitlement_Summary' ) ) {
 			if ( ! $force_refresh ) {
 				$cached = get_transient( $cache_key );
 				if ( is_array( $cached ) ) {
-					$cached['state'] = 'cached';
-					$cached['available'] = true;
-					$cached['stale'] = false;
-
-					return $cached;
+					$cached = self::decorate_cached_summary( $cached );
+					if ( empty( $cached['stale'] ) ) {
+						return $cached;
+					}
 				}
 			}
 
@@ -85,11 +87,7 @@ if ( ! class_exists( 'Npcink_Cloud_Entitlement_Summary' ) ) {
 			$settings = Npcink_Cloud_Addon_Settings::get_settings();
 			$cached = get_transient( self::cache_key( $settings ) );
 			if ( is_array( $cached ) ) {
-				$cached['state'] = 'cached';
-				$cached['available'] = true;
-				$cached['stale'] = false;
-
-				return $cached;
+				return self::decorate_cached_summary( $cached );
 			}
 
 			return self::unavailable_summary(
@@ -103,8 +101,48 @@ if ( ! class_exists( 'Npcink_Cloud_Entitlement_Summary' ) ) {
 		 *
 		 * @return array<string,mixed>
 		 */
-		public static function refresh(): array {
-			return self::get_summary( true );
+		public static function refresh( bool $respect_failure_backoff = false ): array {
+			$settings = Npcink_Cloud_Addon_Settings::get_settings();
+			$cache_key = self::cache_key( $settings );
+			$lock_key = $cache_key . '_refresh_lock';
+			$failure_key = $cache_key . '_refresh_failure';
+
+			if ( $respect_failure_backoff ) {
+				$recent_failure = get_transient( $failure_key );
+				if ( is_array( $recent_failure ) ) {
+					return self::unavailable_summary(
+						'unavailable',
+						(string) ( $recent_failure['message'] ?? __( 'Plan and entitlement are temporarily unavailable.', 'npcink-cloud-addon' ) )
+					);
+				}
+			}
+
+			if ( ! self::acquire_refresh_lock( $lock_key ) ) {
+				return self::unavailable_summary(
+					'refreshing',
+					__( 'Plan and entitlement are already being refreshed.', 'npcink-cloud-addon' )
+				);
+			}
+
+			try {
+				$summary = self::get_summary( true );
+			} finally {
+				delete_option( $lock_key );
+			}
+
+			if ( empty( $summary['available'] ) ) {
+				set_transient(
+					$failure_key,
+					array(
+						'message' => __( 'Plan and entitlement are temporarily unavailable.', 'npcink-cloud-addon' ),
+					),
+					self::REFRESH_FAILURE_BACKOFF_SECONDS
+				);
+			} else {
+				delete_transient( $failure_key );
+			}
+
+			return $summary;
 		}
 
 		/**
@@ -166,6 +204,41 @@ if ( ! class_exists( 'Npcink_Cloud_Entitlement_Summary' ) ) {
 		}
 
 		/**
+		 * Marks a retained entitlement projection as fresh or stale.
+		 *
+		 * @param array<string,mixed> $cached Cached entitlement summary.
+		 * @return array<string,mixed>
+		 */
+		private static function decorate_cached_summary( array $cached ): array {
+			$fresh_until = strtotime( (string) ( $cached['fresh_until'] ?? '' ) );
+			$is_stale = false === $fresh_until || $fresh_until <= time();
+			$cached['state'] = $is_stale ? 'stale' : 'cached';
+			$cached['available'] = true;
+			$cached['stale'] = $is_stale;
+
+			return $cached;
+		}
+
+		/**
+		 * Acquires one short database-backed refresh lock across PHP requests.
+		 *
+		 * @param string $lock_key Refresh lock option key.
+		 * @return bool
+		 */
+		private static function acquire_refresh_lock( string $lock_key ): bool {
+			$locked_at = absint( get_option( $lock_key, 0 ) );
+			if ( $locked_at > 0 && $locked_at + self::REFRESH_LOCK_TTL_SECONDS > time() ) {
+				return false;
+			}
+
+			if ( $locked_at > 0 ) {
+				delete_option( $lock_key );
+			}
+
+			return add_option( $lock_key, time(), '', false );
+		}
+
+		/**
 		 * Normalizes Cloud entitlement for local display.
 		 *
 		 * @param array<string,mixed> $data Cloud response data.
@@ -201,7 +274,7 @@ if ( ! class_exists( 'Npcink_Cloud_Entitlement_Summary' ) ) {
 				'credit_usage_detail' => $credit_usage_detail,
 				'links' => self::build_portal_links( $settings, is_array( $credit_usage_detail['portal_paths'] ?? null ) ? $credit_usage_detail['portal_paths'] : array() ),
 				'synced_at' => gmdate( 'Y-m-d H:i:s' ) . ' UTC',
-				'fresh_until' => gmdate( 'Y-m-d H:i:s', time() + self::CACHE_TTL_SECONDS ) . ' UTC',
+				'fresh_until' => gmdate( 'Y-m-d H:i:s', time() + self::FRESHNESS_TTL_SECONDS ) . ' UTC',
 			);
 		}
 
@@ -215,7 +288,7 @@ if ( ! class_exists( 'Npcink_Cloud_Entitlement_Summary' ) ) {
 		private static function cache_cloud_entitlement( array $data, array $settings ): array {
 			$settings = Npcink_Cloud_Addon_Settings::normalize_settings( $settings );
 			$summary = self::normalize_cloud_entitlement( $data, $settings );
-			set_transient( self::cache_key( $settings ), $summary, self::CACHE_TTL_SECONDS );
+			set_transient( self::cache_key( $settings ), $summary, self::CACHE_STORAGE_TTL_SECONDS );
 
 			return $summary;
 		}
@@ -275,6 +348,7 @@ if ( ! class_exists( 'Npcink_Cloud_Entitlement_Summary' ) ) {
 		 */
 		private static function normalize_pro_cloud_runtime( $runtime ): array {
 			$runtime = is_array( $runtime ) ? $runtime : array();
+			$reported = ! empty( $runtime );
 			$local_truth = is_array( $runtime['local_truth'] ?? null ) ? $runtime['local_truth'] : array();
 			$max_runs = absint( $runtime['max_nightly_inspection_runs_per_period'] ?? 0 );
 			$used_runs = absint( $runtime['used_nightly_inspection_runs'] ?? 0 );
@@ -283,6 +357,7 @@ if ( ! class_exists( 'Npcink_Cloud_Entitlement_Summary' ) ) {
 				: ( $max_runs > 0 ? max( 0, $max_runs - $used_runs ) : 0 );
 
 			return array(
+				'reported' => $reported,
 				'contract_version' => sanitize_text_field( (string) ( $runtime['contract_version'] ?? 'pro-cloud-runtime-entitlement-v1' ) ),
 				'feature_id' => sanitize_key( (string) ( $runtime['feature_id'] ?? 'nightly_site_inspection' ) ),
 				'execution_pattern' => sanitize_key( (string) ( $runtime['execution_pattern'] ?? 'whole_run_offload' ) ),

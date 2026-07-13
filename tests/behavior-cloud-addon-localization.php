@@ -55,6 +55,36 @@ maca_assert(
 		'Technical delivery details',
 		'Technical delivery details',
 		'npcink-cloud-addon'
+	)
+	&& '正在获取套餐与权益…' === Npcink_Cloud_Addon_Localization::filter_gettext(
+		'Loading plan and entitlement…',
+		'Loading plan and entitlement…',
+		'npcink-cloud-addon'
+	)
+	&& '暂时无法获取套餐与权益。' === Npcink_Cloud_Addon_Localization::filter_gettext(
+		'Plan and entitlement are temporarily unavailable.',
+		'Plan and entitlement are temporarily unavailable.',
+		'npcink-cloud-addon'
+	)
+	&& '重试' === Npcink_Cloud_Addon_Localization::filter_gettext(
+		'Retry',
+		'Retry',
+		'npcink-cloud-addon'
+	)
+	&& '可用点数' === Npcink_Cloud_Addon_Localization::filter_gettext(
+		'Available credits',
+		'Available credits',
+		'npcink-cloud-addon'
+	)
+	&& '运行额度' === Npcink_Cloud_Addon_Localization::filter_gettext(
+		'Runtime allowance',
+		'Runtime allowance',
+		'npcink-cloud-addon'
+	)
+	&& '权益详情' === Npcink_Cloud_Addon_Localization::filter_gettext(
+		'Entitlement details',
+		'Entitlement details',
+		'npcink-cloud-addon'
 	),
 	'Addon localization fallback translates fixed npcink-cloud-addon strings in zh_CN admin.'
 );
@@ -97,6 +127,21 @@ maca_assert(
 	&& '额度' === Npcink_Cloud_Addon_Localization::filter_gettext(
 		'Credits',
 		'Credits',
+		'npcink-cloud-addon'
+	)
+	&& '知识库文章' === Npcink_Cloud_Addon_Localization::filter_gettext(
+		'Knowledge documents',
+		'Knowledge documents',
+		'npcink-cloud-addon'
+	)
+	&& 'Cloud 索引详情' === Npcink_Cloud_Addon_Localization::filter_gettext(
+		'Cloud index details',
+		'Cloud index details',
+		'npcink-cloud-addon'
+	)
+	&& '暂时无法获取知识库用量。' === Npcink_Cloud_Addon_Localization::filter_gettext(
+		'Site Knowledge usage is temporarily unavailable.',
+		'Site Knowledge usage is temporarily unavailable.',
 		'npcink-cloud-addon'
 	),
 	'Addon localization fallback covers compact Site Knowledge and credit detail copy.'

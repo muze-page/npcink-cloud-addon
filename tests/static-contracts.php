@@ -18,6 +18,8 @@ $wordpress_ai_connector = maca_read( $root . '/includes/class-cloud-wordpress-ai
 $cloud_addon_localization = maca_read( $root . '/includes/class-cloud-addon-localization.php' );
 $ai_plugin_localization = maca_read( $root . '/includes/class-ai-plugin-localization.php' );
 $ai_plugin_localization_js = maca_read( $root . '/assets/ai-plugin-localization.js' );
+$admin_entitlement_js = maca_read( $root . '/assets/admin-entitlement.js' );
+$admin_site_knowledge_js = maca_read( $root . '/assets/admin-site-knowledge.js' );
 $admin_css = maca_read( $root . '/assets/admin.css' );
 $entitlement_summary = maca_read( $root . '/includes/class-cloud-entitlement-summary.php' );
 $observability = maca_read( $root . '/includes/class-cloud-observability-collector.php' );
@@ -628,7 +630,8 @@ maca_assert(
 	&& false === strpos( $settings_page, 'format_runtime_integer_projection' )
 	&& false !== strpos( $settings_page, 'format_runtime_days_projection' )
 	&& false === strpos( $settings_page, 'format_runtime_boolean_projection' )
-	&& false !== strpos( $settings_page, 'format_runtime_quota_projection' )
+	&& false === strpos( $settings_page, 'format_runtime_quota_projection' )
+	&& false !== strpos( $entitlement_summary, "'reported' => \$reported" )
 	&& false !== strpos( $entitlement_summary, 'normalize_optional_absint' )
 	&& false !== strpos( $entitlement_summary, 'normalize_runtime_boolean' )
 	&& false === strpos( $settings_page, 'Cloud-owned Nightly Inspection run status, result reads, and bounded retry requests. This troubleshooting section creates no local queue, scheduler, proposal, approval record, or WordPress write.' )
@@ -648,20 +651,45 @@ maca_assert(
 );
 
 maca_assert(
+	false !== strpos( $settings_page, "add_action( 'wp_ajax_' . self::ACTION_REFRESH_ENTITLEMENT" )
+	&& false !== strpos( $settings_page, 'check_ajax_referer( self::ACTION_REFRESH_ENTITLEMENT' )
+	&& false !== strpos( $settings_page, 'current_user_can( self::MENU_CAPABILITY )' )
+	&& false !== strpos( $settings_page, 'Npcink_Cloud_Entitlement_Summary::refresh' )
+	&& false !== strpos( $settings_page, 'format_overview_entitlement' )
+	&& false !== strpos( $settings_page, 'Loading plan and entitlement…' )
+	&& false !== strpos( $settings_page, 'data-npcink-entitlement-retry' )
+	&& false !== strpos( $entitlement_summary, 'REFRESH_LOCK_TTL_SECONDS' )
+	&& false !== strpos( $entitlement_summary, 'add_option( $lock_key' )
+	&& false !== strpos( $entitlement_summary, 'REFRESH_FAILURE_BACKOFF_SECONDS' )
+	&& false !== strpos( $entitlement_summary, 'decorate_cached_summary' )
+	&& false !== strpos( $admin_entitlement_js, "refresh( 'auto' )" )
+	&& false !== strpos( $admin_entitlement_js, "refresh( 'retry' )" )
+	&& false !== strpos( $admin_css, '.npcink-cloud-entitlement__retry[hidden]' ),
+	'Entitlement summary auto-loads through one nonce- and capability-protected read action, retains stale data, and exposes only an inline failure retry.'
+);
+
+maca_assert(
 	false !== strpos( $entitlement_summary, 'normalize_credit_usage_detail' )
 	&& false !== strpos( $entitlement_summary, "'local_addon_policy' => sanitize_key" )
 	&& false !== strpos( $entitlement_summary, "'summary_and_link_only'" )
 	&& false !== strpos( $entitlement_summary, "'credit_ledger_url'" )
-	&& false !== strpos( $settings_page, 'render_credit_usage_summary' )
-	&& false !== strpos( $settings_page, '<h3><?php esc_html_e( \'AI Credit Usage\'' )
-	&& false !== strpos( $settings_page, 'Summary-only Cloud credit projection' )
+	&& false !== strpos( $settings_page, 'get_overview_entitlement_metrics' )
+	&& false !== strpos( $settings_page, 'Available credits' )
+	&& false !== strpos( $settings_page, 'Runtime allowance' )
+	&& false !== strpos( $settings_page, 'data-npcink-entitlement-progress' )
+	&& false !== strpos( $admin_entitlement_js, 'updateMetrics' )
+	&& false !== strpos( $admin_css, '.npcink-cloud-entitlement-progress' )
 	&& false !== strpos( $settings_page, 'npcink-cloud-section-heading' )
 	&& false !== strpos( $settings_page, 'View credit details in Cloud' )
-	&& false !== strpos( $settings_page, "esc_html_e( 'Credits'" )
-	&& false !== strpos( $settings_page, '%1$s used / %2$s limit / %3$s remaining' )
+	&& false !== strpos( $settings_page, 'Entitlement details' )
+	&& false !== strpos( $settings_page, 'Credit period' )
+	&& false !== strpos( $settings_page, 'Active run limit' )
+	&& false === strpos( $settings_page, 'render_credit_usage_summary' )
+	&& false === strpos( $settings_page, '<h3><?php esc_html_e( \'AI Credit Usage\'' )
+	&& false === strpos( $settings_page, '%1$s used / %2$s limit / %3$s remaining' )
 	&& false === strpos( $settings_page, "esc_html_e( 'Used credits'" )
 	&& false === strpos( $settings_page, "'recent_items'" ),
-	'Cloud Addon displays only a summary-only AI credit projection and links detailed credit usage back to Cloud.'
+	'Cloud Addon puts common credit and runtime allowance metrics on Overview, moves low-frequency parameters to service detail, and avoids duplicate summaries.'
 );
 
 maca_assert(
@@ -826,6 +854,19 @@ maca_assert(
 	&& false !== strpos( $site_knowledge_runtime_bridge, 'execute_runtime' )
 	&& false !== strpos( $site_knowledge_runtime_bridge, 'MAX_RUNTIME_PAYLOAD_BYTES = 900000' ),
 	'Site Knowledge runtime bridge accepts only known Toolbox ability contracts and forwards suggestion-only public refresh payloads through runtime execute.'
+);
+
+maca_assert(
+	false !== strpos( $site_knowledge_runtime_bridge, 'function get_cached_status_summary' )
+	&& false !== strpos( $site_knowledge_runtime_bridge, 'function refresh_status_summary' )
+	&& false !== strpos( $site_knowledge_runtime_bridge, 'max_indexed_documents_per_site' )
+	&& false !== strpos( $site_knowledge_runtime_bridge, 'max_indexed_chunks_per_site' )
+	&& false !== strpos( $site_knowledge_runtime_bridge, "\$result['data']['result']" )
+	&& false !== strpos( $site_knowledge_runtime_bridge, 'STATUS_FRESHNESS_TTL_SECONDS' )
+	&& false !== strpos( $site_knowledge_runtime_bridge, 'get_transient' )
+	&& false !== strpos( $site_knowledge_runtime_bridge, 'set_transient' )
+	&& false === strpos( $site_knowledge_runtime_bridge, '/v1/site-knowledge' ),
+	'Site Knowledge usage reuses the existing status contract and retains only a bounded read-only cache without adding an addon-owned API.'
 );
 
 maca_assert(
@@ -1069,11 +1110,11 @@ maca_assert(
 	&& false !== strpos( $settings_page, 'function render_status_monitoring_quality' )
 	&& false === strpos( $settings_page, 'function render_status_monitoring_diagnostics' )
 	&& false === strpos( $settings_page, 'function render_monitoring_advanced_diagnostics' )
-	&& false !== strpos( $settings_page, 'Cloud account and usage projections are not available yet. Re-verify the connection or open Cloud for service detail.' )
+	&& false !== strpos( $settings_page, 'No additional entitlement parameters were returned by Cloud.' )
 	&& false === strpos( $settings_page, 'Monitoring and quality projections are not available yet.' )
 	&& false === strpos( $settings_page, 'Monitoring diagnostics are not available yet.' )
 	&& false === strpos( $settings_page, 'function render_details_panel' )
-	&& false !== strpos( $settings_page, 'function has_entitlement_detail' )
+	&& false === strpos( $settings_page, 'function has_entitlement_detail' )
 	&& false !== strpos( $settings_page, 'function render_overview_page' )
 	&& false !== strpos( $settings_page, 'format_monitoring_overview' )
 	&& false !== strpos( $settings_page, 'format_site_knowledge_overview' )
@@ -1086,7 +1127,8 @@ maca_assert(
 	&& false === strpos( $settings_page, 'Only local connector summaries are shown here.' )
 	&& false === strpos( $settings_page, 'This troubleshooting section creates no local queue, scheduler, proposal, approval record, or WordPress write.' )
 		&& false === strpos( $settings_page, 'Refresh Cloud summary' )
-		&& false !== strpos( $settings_page, '<h3><?php esc_html_e( \'Entitlement Summary\'' )
+		&& false === strpos( $settings_page, '<h3><?php esc_html_e( \'Entitlement Summary\'' )
+		&& false !== strpos( $settings_page, '<h3><?php esc_html_e( \'Entitlement details\'' )
 		&& false === strpos( $settings_page, '<h3><?php esc_html_e( \'Site Knowledge\'' )
 		&& false !== strpos( $settings_page, '<h2 class="screen-reader-text"><?php esc_html_e( \'Site Knowledge\'' )
 		&& false === strpos( $settings_page, '<h3><?php esc_html_e( \'Monitoring & Quality\'' )
@@ -1194,6 +1236,25 @@ maca_assert(
 );
 
 maca_assert(
+	false !== strpos( $settings_page, "ACTION_REFRESH_SITE_KNOWLEDGE_STATUS = 'npcink_cloud_addon_refresh_site_knowledge_status'" )
+	&& false !== strpos( $settings_page, "wp_ajax_' . self::ACTION_REFRESH_SITE_KNOWLEDGE_STATUS" )
+	&& false !== strpos( $settings_page, 'function handle_refresh_site_knowledge_status' )
+	&& false !== strpos( $settings_page, "current_user_can( self::MENU_CAPABILITY )" )
+	&& false !== strpos( $settings_page, "check_ajax_referer( self::ACTION_REFRESH_SITE_KNOWLEDGE_STATUS, 'nonce' )" )
+	&& false !== strpos( $settings_page, 'Npcink_Cloud_Addon_Settings::is_site_knowledge_delivery_enabled()' )
+	&& false !== strpos( $settings_page, 'Knowledge documents' )
+	&& false !== strpos( $settings_page, 'data-npcink-site-knowledge-progress' )
+	&& false !== strpos( $settings_page, '%1$s / %2$s · %3$d%% used' )
+	&& false !== strpos( $settings_page, 'function render_site_knowledge_cloud_quota_detail' )
+	&& 1 === substr_count( $settings_page, "esc_html_e( 'Knowledge documents'" )
+	&& false !== strpos( $admin_site_knowledge_js, "'not_refreshed' === initialState || 'stale' === initialState" )
+	&& false !== strpos( $admin_site_knowledge_js, 'data-npcink-site-knowledge-detail' )
+	&& false !== strpos( $admin_css, '.npcink-cloud-site-knowledge-progress--warning' )
+	&& false !== strpos( $admin_css, '.npcink-cloud-site-knowledge-progress--error' ),
+	'Site Knowledge shows one auto-refreshed document quota with visible numbers and keeps lower-frequency Cloud quota fields in technical detail.'
+);
+
+maca_assert(
 	false !== strpos( $site_knowledge_vector_ops_doc, 'require' )
 	&& false !== strpos( $site_knowledge_vector_ops_doc, '`manage_options`' )
 	&& false !== strpos( $site_knowledge_vector_ops_doc, 'verified Cloud settings' )
@@ -1204,6 +1265,7 @@ maca_assert(
 	&& false !== strpos( $site_knowledge_vector_ops_doc, 'Cloud deletes the site index' )
 	&& false !== strpos( $site_knowledge_vector_ops_doc, 'Delete site' )
 	&& false !== strpos( $site_knowledge_vector_ops_doc, 'index remains available as an explicit cleanup path' )
+	&& false !== strpos( $site_knowledge_vector_ops_doc, 'short-lived, read-only article-usage summary' )
 	&& false !== strpos( $site_knowledge_vector_ops_doc, 'unchanged.' ),
 	'Site Knowledge vector operations doc records permissions and local administrator delivery intent transport.'
 );

@@ -17,6 +17,9 @@ if ( ! class_exists( 'Npcink_Cloud_Site_Knowledge_Runtime_Bridge' ) ) {
 	 */
 	final class Npcink_Cloud_Site_Knowledge_Runtime_Bridge {
 		private const MAX_RUNTIME_PAYLOAD_BYTES = 900000;
+		private const STATUS_FRESHNESS_TTL_SECONDS = 300;
+		private const STATUS_CACHE_TTL_SECONDS = 86400;
+		private const STATUS_REFRESH_LOCK_TTL_SECONDS = 15;
 		private const ALLOWED_CONTRACTS = array(
 			'npcink-cloud/site-knowledge-search' => 'site_knowledge_search.v1',
 			'npcink-cloud/site-knowledge-status' => 'site_knowledge_status.v1',
@@ -111,6 +114,177 @@ if ( ! class_exists( 'Npcink_Cloud_Site_Knowledge_Runtime_Bridge' ) ) {
 			}
 
 			return self::attach_cloud_boundary_projection( $result, $contract_version );
+		}
+
+		/**
+		 * Returns the retained Cloud-owned Site Knowledge status projection.
+		 *
+		 * This never makes a Cloud request during page rendering.
+		 *
+		 * @return array<string,mixed>
+		 */
+		public static function get_cached_status_summary(): array {
+			if ( ! Npcink_Cloud_Addon_Settings::is_verified() ) {
+				return self::unavailable_status_summary( 'unverified' );
+			}
+			if ( ! Npcink_Cloud_Addon_Settings::is_site_knowledge_delivery_enabled() ) {
+				return self::unavailable_status_summary( 'disabled' );
+			}
+
+			$cached = get_transient( self::status_cache_key() );
+			if ( ! is_array( $cached ) ) {
+				return self::unavailable_status_summary( 'not_refreshed' );
+			}
+
+			$fresh_until = strtotime( (string) ( $cached['fresh_until'] ?? '' ) );
+			$cached['available'] = true;
+			$cached['stale'] = false === $fresh_until || $fresh_until <= time();
+			$cached['state'] = ! empty( $cached['stale'] ) ? 'stale' : 'cached';
+
+			return $cached;
+		}
+
+		/**
+		 * Refreshes one bounded, read-only Site Knowledge quota projection.
+		 *
+		 * @return array<string,mixed>
+		 */
+		public static function refresh_status_summary(): array {
+			if ( ! Npcink_Cloud_Addon_Settings::is_verified() ) {
+				return self::unavailable_status_summary( 'unverified' );
+			}
+			if ( ! Npcink_Cloud_Addon_Settings::is_site_knowledge_delivery_enabled() ) {
+				return self::unavailable_status_summary( 'disabled' );
+			}
+
+			$lock_key = self::status_cache_key() . '_lock';
+			$locked_at = absint( get_option( $lock_key, 0 ) );
+			if ( $locked_at > 0 && $locked_at + self::STATUS_REFRESH_LOCK_TTL_SECONDS > time() ) {
+				return self::unavailable_status_summary( 'refreshing' );
+			}
+			if ( $locked_at > 0 ) {
+				delete_option( $lock_key );
+			}
+			if ( ! add_option( $lock_key, time(), '', false ) ) {
+				return self::unavailable_status_summary( 'refreshing' );
+			}
+
+			$result = null;
+			try {
+				$result = self::dispatch_runtime(
+					array(
+						'ability_name' => 'npcink-cloud/site-knowledge-status',
+						'contract_version' => 'site_knowledge_status.v1',
+						'execution_pattern' => 'inline',
+						'input' => array(
+							'contract_version' => 'site_knowledge_status.v1',
+							'include_coverage' => false,
+							'write_posture' => 'suggestion_only',
+							'direct_wordpress_write' => false,
+						),
+						'data_classification' => 'public_site_content',
+						'storage_mode' => 'result_only',
+						'retention_ttl' => DAY_IN_SECONDS,
+						'timeout_seconds' => 20,
+						'retry_max' => 0,
+						'policy' => array( 'allow_fallback' => true ),
+					),
+					'npcink-cloud/site-knowledge-status',
+					'site_knowledge_status.v1'
+				);
+			} finally {
+				delete_option( $lock_key );
+			}
+
+			if ( is_wp_error( $result ) || ! is_array( $result ) ) {
+				return self::unavailable_status_summary( 'unavailable' );
+			}
+
+			$summary = self::normalize_status_summary( $result );
+			if ( empty( $summary['available'] ) ) {
+				return $summary;
+			}
+
+			set_transient( self::status_cache_key(), $summary, self::STATUS_CACHE_TTL_SECONDS );
+
+			return $summary;
+		}
+
+		/**
+		 * Normalizes the Cloud status response to bounded numeric quota fields.
+		 *
+		 * @param array<string,mixed> $result Cloud runtime result.
+		 * @return array<string,mixed>
+		 */
+		private static function normalize_status_summary( array $result ): array {
+			$source = self::runtime_result_payload( $result );
+			$coverage = is_array( $source['coverage'] ?? null ) ? $source['coverage'] : array();
+			$quota = is_array( $coverage['quota'] ?? null ) ? $coverage['quota'] : array();
+			$max_documents = absint( $quota['max_indexed_documents_per_site'] ?? 0 );
+			$indexed_documents = absint( $quota['indexed_documents'] ?? ( $coverage['indexed_posts'] ?? 0 ) );
+			if ( $max_documents < 1 ) {
+				return self::unavailable_status_summary( 'not_returned' );
+			}
+
+			$document_utilization = is_numeric( $quota['document_utilization'] ?? null )
+				? (float) $quota['document_utilization']
+				: $indexed_documents / $max_documents;
+
+			return array(
+				'state' => 'fresh',
+				'available' => true,
+				'stale' => false,
+				'status' => sanitize_key( (string) ( $source['status'] ?? $quota['status'] ?? '' ) ),
+				'quota_status' => sanitize_key( (string) ( $quota['status'] ?? '' ) ),
+				'indexed_documents' => $indexed_documents,
+				'max_documents' => $max_documents,
+				'remaining_documents' => max( 0, $max_documents - $indexed_documents ),
+				'document_percent' => (int) round( max( 0, min( 100, $document_utilization * 100 ) ) ),
+				'indexed_chunks' => absint( $quota['indexed_chunks'] ?? ( $coverage['indexed_chunks'] ?? 0 ) ),
+				'max_chunks' => absint( $quota['max_indexed_chunks_per_site'] ?? 0 ),
+				'max_sync_documents' => absint( $quota['max_sync_documents_per_run'] ?? 0 ),
+				'max_sync_chunks' => absint( $quota['max_sync_chunks_per_run'] ?? 0 ),
+				'truncated_documents' => absint( $coverage['truncated_documents'] ?? 0 ),
+				'skipped_documents' => absint( $quota['skipped_documents'] ?? 0 ),
+				'skipped_due_to_quota' => absint( $quota['skipped_due_to_quota'] ?? 0 ),
+				'last_sync_at' => sanitize_text_field( (string) ( $coverage['last_sync_at'] ?? '' ) ),
+				'warning_ratio' => is_numeric( $quota['warning_ratio'] ?? null ) ? (float) $quota['warning_ratio'] : 0.85,
+				'synced_at' => gmdate( 'Y-m-d H:i:s' ) . ' UTC',
+				'fresh_until' => gmdate( 'Y-m-d H:i:s', time() + self::STATUS_FRESHNESS_TTL_SECONDS ) . ' UTC',
+			);
+		}
+
+		/**
+		 * Returns an unavailable status summary without exposing Cloud errors.
+		 *
+		 * @param string $state Bounded state.
+		 * @return array<string,mixed>
+		 */
+		private static function unavailable_status_summary( string $state ): array {
+			return array(
+				'state' => sanitize_key( $state ),
+				'available' => false,
+				'stale' => false,
+			);
+		}
+
+		/**
+		 * Builds a credential-scoped cache key without including the secret.
+		 *
+		 * @return string
+		 */
+		private static function status_cache_key(): string {
+			$settings = Npcink_Cloud_Addon_Settings::get_settings();
+			$seed = implode(
+				'|',
+				array(
+					(string) ( $settings['base_url'] ?? '' ),
+					(string) ( $settings['site_id'] ?? '' ),
+					(string) ( $settings['key_id'] ?? '' ),
+				)
+			);
+
+			return 'npcink_cloud_site_knowledge_status_' . md5( $seed );
 		}
 
 		/**
@@ -220,7 +394,7 @@ if ( ! class_exists( 'Npcink_Cloud_Site_Knowledge_Runtime_Bridge' ) ) {
 		 * @return array<string,mixed>
 		 */
 		private static function attach_cloud_boundary_projection( array $result, string $contract_version ): array {
-			$source = is_array( $result['data'] ?? null ) ? $result['data'] : $result;
+			$source = self::runtime_result_payload( $result );
 
 			$ownership = self::normalize_ownership_map( is_array( $source['ownership'] ?? null ) ? $source['ownership'] : array() );
 			$truth_boundaries = self::normalize_truth_boundaries( is_array( $source['truth_boundaries'] ?? null ) ? $source['truth_boundaries'] : array() );
@@ -233,6 +407,26 @@ if ( ! class_exists( 'Npcink_Cloud_Site_Knowledge_Runtime_Bridge' ) ) {
 				'ownership' => $ownership,
 				'truth_boundaries' => $truth_boundaries,
 			);
+
+			return $result;
+		}
+
+		/**
+		 * Extracts the Site Knowledge payload from current and legacy runtime shapes.
+		 *
+		 * @param array<string,mixed> $result Cloud runtime response.
+		 * @return array<string,mixed>
+		 */
+		private static function runtime_result_payload( array $result ): array {
+			if ( is_array( $result['data']['result'] ?? null ) ) {
+				return $result['data']['result'];
+			}
+			if ( is_array( $result['result'] ?? null ) ) {
+				return $result['result'];
+			}
+			if ( is_array( $result['data'] ?? null ) ) {
+				return $result['data'];
+			}
 
 			return $result;
 		}

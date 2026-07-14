@@ -18,6 +18,7 @@ if ( ! class_exists( 'Npcink_Cloud_Site_Knowledge_Change_Bridge' ) ) {
 	final class Npcink_Cloud_Site_Knowledge_Change_Bridge {
 		public const BUFFER_OPTION = 'npcink_cloud_addon_site_knowledge_change_buffer';
 		public const STATUS_OPTION = 'npcink_cloud_addon_site_knowledge_change_status';
+		public const MAINTENANCE_OPTION = 'npcink_cloud_addon_site_knowledge_maintenance_cursor';
 		public const FLUSH_HOOK = 'npcink_cloud_addon_flush_site_knowledge_changes';
 		public const RECONCILE_HOOK = 'npcink_cloud_addon_reconcile_site_knowledge_changes';
 
@@ -52,6 +53,7 @@ if ( ! class_exists( 'Npcink_Cloud_Site_Knowledge_Change_Bridge' ) ) {
 			add_action( 'deleted_comment', array( __CLASS__, 'handle_removed_comment' ), 10, 1 );
 			add_action( self::FLUSH_HOOK, array( __CLASS__, 'flush_buffer' ) );
 			add_action( self::RECONCILE_HOOK, array( __CLASS__, 'buffer_recent_public_content' ) );
+			add_action( 'npcink_cloud_site_knowledge_status_refreshed', array( __CLASS__, 'maybe_schedule_automatic_rebuild' ) );
 
 			self::sync_schedule();
 		}
@@ -73,6 +75,7 @@ if ( ! class_exists( 'Npcink_Cloud_Site_Knowledge_Change_Bridge' ) ) {
 		public static function health_snapshot(): array {
 			$buffer = self::get_buffer();
 			$status = self::get_status();
+			$maintenance = self::get_maintenance_cursor();
 			$next_flush = function_exists( 'wp_next_scheduled' ) ? wp_next_scheduled( self::FLUSH_HOOK ) : false;
 			$next_reconcile = function_exists( 'wp_next_scheduled' ) ? wp_next_scheduled( self::RECONCILE_HOOK ) : false;
 			$configured = Npcink_Cloud_Addon_Settings::is_configured();
@@ -117,6 +120,9 @@ if ( ! class_exists( 'Npcink_Cloud_Site_Knowledge_Change_Bridge' ) ) {
 				'last_index_action_at' => sanitize_text_field( (string) ( $status['last_index_action_at'] ?? '' ) ),
 				'last_index_action_sent_count' => absint( $status['last_index_action_sent_count'] ?? 0 ),
 				'last_index_action_batch_count' => absint( $status['last_index_action_batch_count'] ?? 0 ),
+				'maintenance_status' => sanitize_key( (string) ( $maintenance['status'] ?? 'idle' ) ),
+				'maintenance_completed_batches' => absint( $maintenance['next_batch'] ?? 0 ),
+				'maintenance_total_batches' => absint( $maintenance['batch_count'] ?? 0 ),
 				'next_flush_at' => false === $next_flush ? '' : gmdate( 'c', (int) $next_flush ),
 				'next_reconcile_at' => false === $next_reconcile ? '' : gmdate( 'c', (int) $next_reconcile ),
 				'wp_cron_disabled' => defined( 'DISABLE_WP_CRON' ) && DISABLE_WP_CRON,
@@ -168,6 +174,7 @@ if ( ! class_exists( 'Npcink_Cloud_Site_Knowledge_Change_Bridge' ) ) {
 		public static function delete_data(): void {
 			delete_option( self::BUFFER_OPTION );
 			delete_option( self::STATUS_OPTION );
+			delete_option( self::MAINTENANCE_OPTION );
 			wp_clear_scheduled_hook( self::FLUSH_HOOK );
 			wp_clear_scheduled_hook( self::RECONCILE_HOOK );
 		}
@@ -302,6 +309,9 @@ if ( ! class_exists( 'Npcink_Cloud_Site_Knowledge_Change_Bridge' ) ) {
 			if ( ! self::is_enabled() || ! function_exists( 'get_posts' ) ) {
 				return;
 			}
+			if ( class_exists( 'Npcink_Cloud_Site_Knowledge_Runtime_Bridge' ) ) {
+				Npcink_Cloud_Site_Knowledge_Runtime_Bridge::refresh_status_summary();
+			}
 
 			$posts = get_posts(
 				array(
@@ -332,8 +342,13 @@ if ( ! class_exists( 'Npcink_Cloud_Site_Knowledge_Change_Bridge' ) ) {
 					return self::record_delivery_result( false, 0, __( 'Site Knowledge delivery is disabled locally.', 'npcink-cloud-addon' ), 'cloud_site_knowledge_delivery_disabled' );
 				}
 
+				$maintenance_result = self::flush_automatic_rebuild();
+				if ( null !== $maintenance_result ) {
+					return $maintenance_result;
+				}
+
 			$buffer = self::get_buffer();
-			if ( empty( $buffer ) ) {
+			if ( empty( $buffer['post_ids'] ) ) {
 				return self::record_delivery_result( true, 0, '' );
 			}
 
@@ -427,6 +442,214 @@ if ( ! class_exists( 'Npcink_Cloud_Site_Knowledge_Change_Bridge' ) ) {
 				return self::record_manual_operation_result( $operation, true, $sent, '', '', count( $batches ) );
 			}
 
+			/**
+			 * Starts or resumes a Cloud-requested full public-content delivery.
+			 *
+			 * The cursor is delivery durability only. Cloud remains the index lifecycle
+			 * truth and WordPress remains the public content source.
+			 *
+			 * @param array<string,mixed> $summary Bounded Cloud status summary.
+			 * @return void
+			 */
+			public static function maybe_schedule_automatic_rebuild( array $summary ): void {
+				if ( ! self::is_enabled() || ! Npcink_Cloud_Addon_Settings::is_verified() ) {
+					return;
+				}
+				$maintenance = is_array( $summary['maintenance'] ?? null ) ? $summary['maintenance'] : array();
+				$request_id = sanitize_key( (string) ( $maintenance['request_id'] ?? '' ) );
+				$status = sanitize_key( (string) ( $maintenance['status'] ?? '' ) );
+				if (
+					'full_sync' !== (string) ( $maintenance['action'] ?? '' )
+					|| empty( $maintenance['automatic'] )
+					|| '' === $request_id
+					|| ! in_array( $status, array( 'awaiting_site', 'delivering', 'blocked' ), true )
+				) {
+					return;
+				}
+
+				$cursor = self::get_maintenance_cursor();
+				if ( $request_id === (string) ( $cursor['request_id'] ?? '' ) ) {
+					$cursor['status'] = 'queued';
+					$cursor['attempts'] = 0;
+					update_option( self::MAINTENANCE_OPTION, $cursor, false );
+					self::schedule_flush( 1 );
+					return;
+				}
+
+				$post_ids = self::all_public_post_ids();
+				$batch_count = max( 1, (int) ceil( count( $post_ids ) / self::MANUAL_INDEX_POSTS ) );
+				update_option(
+					self::MAINTENANCE_OPTION,
+					array(
+						'status' => 'queued',
+						'request_id' => $request_id,
+						'target_embedding_space_id' => sanitize_text_field( (string) ( $maintenance['target_embedding_space_id'] ?? '' ) ),
+						'post_ids' => $post_ids,
+						'next_batch' => 0,
+						'batch_count' => $batch_count,
+						'attempts' => 0,
+						'created_at' => gmdate( 'c' ),
+					),
+					false
+				);
+				self::schedule_flush( 1 );
+			}
+
+			/**
+			 * Sends one bounded automatic full-sync batch when a cursor is active.
+			 *
+			 * @return array<string,mixed>|null
+			 */
+			private static function flush_automatic_rebuild(): ?array {
+				$cursor = self::get_maintenance_cursor();
+				$request_id = sanitize_key( (string) ( $cursor['request_id'] ?? '' ) );
+				if ( '' === $request_id ) {
+					return null;
+				}
+
+				$post_ids = is_array( $cursor['post_ids'] ?? null )
+					? array_values( array_filter( array_map( 'absint', $cursor['post_ids'] ) ) )
+					: array();
+				$batch_index = absint( $cursor['next_batch'] ?? 0 );
+				$batch_count = max( 1, absint( $cursor['batch_count'] ?? 1 ) );
+				if ( $batch_index >= $batch_count ) {
+					delete_option( self::MAINTENANCE_OPTION );
+					return self::record_delivery_result( true, 0, '' );
+				}
+
+				$batch = array_slice( $post_ids, $batch_index * self::MANUAL_INDEX_POSTS, self::MANUAL_INDEX_POSTS );
+				$pending_run_id = sanitize_key( (string) ( $cursor['pending_run_id'] ?? '' ) );
+				if ( '' !== $pending_run_id ) {
+					$client = new Npcink_Cloud_Runtime_Client();
+					$run = $client->get_run( $pending_run_id, 'trace_site_knowledge_automatic_status_' . wp_generate_uuid4() );
+					if ( is_wp_error( $run ) ) {
+						return self::record_automatic_rebuild_failure( $cursor, $run->get_error_message() );
+					}
+					$run_status = self::cloud_run_status( is_array( $run ) ? $run : array() );
+					if ( in_array( $run_status, array( 'queued', 'running', 'processing', 'pending' ), true ) ) {
+						$cursor['status'] = 'delivering';
+						update_option( self::MAINTENANCE_OPTION, $cursor, false );
+						self::schedule_flush( 30 );
+						return self::record_delivery_result( true, 0, '' );
+					}
+					if ( ! in_array( $run_status, array( 'succeeded', 'success', 'completed' ), true ) ) {
+						return self::record_automatic_rebuild_failure(
+							$cursor,
+							__( 'Cloud Site Knowledge maintenance run failed.', 'npcink-cloud-addon' )
+						);
+					}
+
+					return self::complete_automatic_rebuild_batch( $cursor, count( $batch ) );
+				}
+
+				$sync_mode = 0 === $batch_index ? 'rebuild' : 'refresh';
+				$is_final = $batch_index === $batch_count - 1;
+				$result = self::request_site_knowledge_sync(
+					$sync_mode,
+					0 === $batch_index ? array() : $batch,
+					'automatic_rebuild',
+					$batch,
+					'site_knowledge_automatic_' . $request_id . '_' . $batch_index . '_' . absint( $cursor['attempts'] ?? 0 ),
+					array(
+						'action' => 'full_sync',
+						'request_id' => $request_id,
+						'batch_index' => $batch_index,
+						'batch_count' => $batch_count,
+						'is_final' => $is_final,
+					)
+				);
+				if ( is_wp_error( $result ) ) {
+					return self::record_automatic_rebuild_failure( $cursor, $result->get_error_message() );
+				}
+
+				$run_id = self::cloud_run_id( is_array( $result ) ? $result : array() );
+				if ( '' !== $run_id ) {
+					$cursor['pending_run_id'] = $run_id;
+					$cursor['status'] = 'delivering';
+					$cursor['attempts'] = 0;
+					update_option( self::MAINTENANCE_OPTION, $cursor, false );
+					self::schedule_flush( 30 );
+					return self::record_delivery_result( true, 0, '' );
+				}
+
+				return self::complete_automatic_rebuild_batch( $cursor, count( $batch ) );
+			}
+
+			/**
+			 * Advances the local delivery cursor only after Cloud completed one run.
+			 *
+			 * @param array<string,mixed> $cursor Delivery cursor.
+			 * @param int                 $sent Sent public document count.
+			 * @return array<string,mixed>
+			 */
+			private static function complete_automatic_rebuild_batch( array $cursor, int $sent ): array {
+				$batch_index = absint( $cursor['next_batch'] ?? 0 );
+				$batch_count = max( 1, absint( $cursor['batch_count'] ?? 1 ) );
+				$is_final = $batch_index === $batch_count - 1;
+				$cursor['next_batch'] = $batch_index + 1;
+				$cursor['attempts'] = 0;
+				$cursor['status'] = $is_final ? 'completed' : 'delivering';
+				unset( $cursor['pending_run_id'] );
+				if ( $is_final ) {
+					delete_option( self::MAINTENANCE_OPTION );
+				} else {
+					update_option( self::MAINTENANCE_OPTION, $cursor, false );
+					self::schedule_flush( 1 );
+				}
+
+				return self::record_delivery_result( true, $sent, '' );
+			}
+
+			/**
+			 * Records a bounded automatic rebuild retry without dropping the cursor.
+			 *
+			 * @param array<string,mixed> $cursor Delivery cursor.
+			 * @param string              $error Error message.
+			 * @return array<string,mixed>
+			 */
+			private static function record_automatic_rebuild_failure( array $cursor, string $error ): array {
+				$attempts = absint( $cursor['attempts'] ?? 0 ) + 1;
+				$cursor['attempts'] = $attempts;
+				$cursor['status'] = $attempts >= self::MAX_DELIVERY_ATTEMPTS ? 'blocked' : 'retrying';
+				unset( $cursor['pending_run_id'] );
+				update_option( self::MAINTENANCE_OPTION, $cursor, false );
+				if ( $attempts < self::MAX_DELIVERY_ATTEMPTS ) {
+					self::schedule_flush( self::RETRY_SECONDS );
+				}
+
+				return self::record_delivery_result(
+					false,
+					0,
+					$error,
+					$attempts >= self::MAX_DELIVERY_ATTEMPTS ? 'automatic_rebuild_blocked' : 'automatic_rebuild_retry_scheduled'
+				);
+			}
+
+			/**
+			 * Reads a bounded Cloud run identifier from the standard envelope.
+			 *
+			 * @param array<string,mixed> $response Cloud response.
+			 * @return string
+			 */
+			private static function cloud_run_id( array $response ): string {
+				$data = is_array( $response['data'] ?? null ) ? $response['data'] : array();
+
+				return sanitize_key( (string) ( $data['run_id'] ?? $response['run_id'] ?? '' ) );
+			}
+
+			/**
+			 * Reads a bounded Cloud run status from the standard envelope.
+			 *
+			 * @param array<string,mixed> $response Cloud response.
+			 * @return string
+			 */
+			private static function cloud_run_status( array $response ): string {
+				$data = is_array( $response['data'] ?? null ) ? $response['data'] : array();
+				$run = is_array( $data['run'] ?? null ) ? $data['run'] : array();
+
+				return sanitize_key( (string) ( $run['status'] ?? $data['status'] ?? $response['status'] ?? '' ) );
+			}
+
 		/**
 		 * Keeps reconcile cron aligned with Cloud configuration.
 		 *
@@ -438,8 +661,18 @@ if ( ! class_exists( 'Npcink_Cloud_Site_Knowledge_Change_Bridge' ) ) {
 			}
 
 			if ( self::is_enabled() ) {
-				if ( false === wp_next_scheduled( self::RECONCILE_HOOK ) && function_exists( 'wp_schedule_event' ) ) {
-					wp_schedule_event( time() + HOUR_IN_SECONDS, 'daily', self::RECONCILE_HOOK );
+				$next_reconcile = wp_next_scheduled( self::RECONCILE_HOOK );
+				if (
+					false !== $next_reconcile
+					&& function_exists( 'wp_get_schedule' )
+					&& 'hourly' !== wp_get_schedule( self::RECONCILE_HOOK )
+					&& function_exists( 'wp_clear_scheduled_hook' )
+				) {
+					wp_clear_scheduled_hook( self::RECONCILE_HOOK );
+					$next_reconcile = false;
+				}
+				if ( false === $next_reconcile && function_exists( 'wp_schedule_event' ) ) {
+					wp_schedule_event( time() + HOUR_IN_SECONDS, 'hourly', self::RECONCILE_HOOK );
 				}
 				return;
 			}
@@ -501,7 +734,7 @@ if ( ! class_exists( 'Npcink_Cloud_Site_Knowledge_Change_Bridge' ) ) {
 			 * @param string              $idempotency_key Stable batch idempotency key.
 		 * @return array<string,mixed>|WP_Error
 		 */
-			private static function request_site_knowledge_sync( string $sync_mode, array $post_ids, string $operation_source = 'change_bridge', ?array $document_post_ids = null, string $idempotency_key = '' ) {
+			private static function request_site_knowledge_sync( string $sync_mode, array $post_ids, string $operation_source = 'change_bridge', ?array $document_post_ids = null, string $idempotency_key = '', array $maintenance = array() ) {
 				$sync_mode = sanitize_key( $sync_mode );
 				if ( ! in_array( $sync_mode, array( 'refresh', 'rebuild', 'delete' ), true ) ) {
 					return new WP_Error(
@@ -539,6 +772,9 @@ if ( ! class_exists( 'Npcink_Cloud_Site_Knowledge_Change_Bridge' ) ) {
 						'allow_fallback' => true,
 					),
 				);
+				if ( ! empty( $maintenance ) ) {
+					$payload['input']['maintenance'] = $maintenance;
+				}
 
 				return $client->execute_runtime(
 					$payload,
@@ -802,6 +1038,17 @@ if ( ! class_exists( 'Npcink_Cloud_Site_Knowledge_Change_Bridge' ) ) {
 			$status = get_option( self::STATUS_OPTION, array() );
 
 			return is_array( $status ) ? $status : array();
+		}
+
+		/**
+		 * Returns the bounded automatic rebuild delivery cursor.
+		 *
+		 * @return array<string,mixed>
+		 */
+		private static function get_maintenance_cursor(): array {
+			$cursor = get_option( self::MAINTENANCE_OPTION, array() );
+
+			return is_array( $cursor ) ? $cursor : array();
 		}
 
 		/**

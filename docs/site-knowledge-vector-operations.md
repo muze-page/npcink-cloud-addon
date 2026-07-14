@@ -22,6 +22,14 @@ collection lifecycle switch.
 - Listen for published `post` and `page` changes.
 - Listen for approved comment changes attached to public posts or pages.
 - Buffer affected public ids for bounded delivery durability.
+- Read Cloud's optional `site_knowledge_maintenance.v1` projection and
+  automatically schedule a full public-content resend when Cloud reports that
+  the active embedding space requires it.
+- Persist only a bounded local delivery cursor, submit one batch through the
+  existing runtime worker, poll that run to success, and then submit the next
+  batch. This cursor is not index lifecycle, queue, or scheduler truth.
+- Reuse the existing reconciliation hook hourly to discover Cloud maintenance
+  intent; no separate maintenance scheduler or push channel is introduced.
 - Let a present administrator enable or disable local Site Knowledge delivery
   consent from the WordPress Site Knowledge tab.
 - Send `site_knowledge_sync.v1` with `sync_mode=refresh` for ordinary public
@@ -42,6 +50,14 @@ collection lifecycle switch.
 - Show shallow connector state, buffered public changes, last delivery, last
   error, next flush, last local index action, and a link to Cloud Site
   Knowledge detail.
+
+Automatic maintenance uses the same local delivery consent. It never bypasses
+the disabled state, never lets WordPress choose a model, dimension, metric,
+vector store, or metering class, and never creates a WordPress write. The first
+batch uses `rebuild`; later batches use `refresh`; Cloud supplies and validates
+the opaque request id and owns final Zilliz publication. A platform operator
+may expedite or retry this flow from Cloud Admin, but the site administrator
+does not need to start a full sync manually.
 
 The status projection returned by
 `npcink_cloud_addon_site_knowledge_change_bridge_health()` is

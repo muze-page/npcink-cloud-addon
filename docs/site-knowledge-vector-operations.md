@@ -15,7 +15,8 @@ rebuild, delete, or collection lifecycle actions.
 The `Enable Site Knowledge delivery` setting is local delivery consent only. It
 controls whether this WordPress site sends future public content changes and
 administrator start/rebuild requests to Cloud Site Knowledge. It is not a vector
-collection lifecycle switch.
+collection lifecycle switch. The setting defaults to disabled: verifying or
+reconnecting Cloud credentials alone never grants content-delivery consent.
 
 ## Allowed Addon Operations
 

@@ -55,6 +55,18 @@ get_observability_summary(int $window_hours = 24, string $trace_id = '')
 
 The low-level signed `request()` helper is private implementation detail. It must enforce the endpoint allowlist in this contract and must not be exposed as a generic public Cloud proxy.
 
+Every runtime, liveness, artifact, and authorization-exchange request also
+passes through the shared Addon outbound policy. Non-local targets require
+HTTPS and public-only DNS results; redirects are disabled because signatures
+bind the original request path; TLS verification stays enabled; JSON calls
+require a JSON response media type. JSON runtime responses are limited to 1
+MiB, authorization responses to 64 KiB, and raw artifact previews to 25 MiB.
+Only exact loopback hosts may use the explicit local-development exception.
+The Addon does not pin the pre-dispatch DNS answer to the eventual transport
+connection. WordPress safe HTTP validation and HTTPS certificate verification
+remain mandatory, but trusted Cloud DNS is still an operational requirement
+and sub-second DNS rebinding is a residual risk rather than a solved guarantee.
+
 For Cloud jobs that move local media bytes or downloadable artifacts, host code
 should use the verified helper:
 

@@ -105,18 +105,7 @@ if ( ! class_exists( 'Npcink_Cloud_Addon_Settings' ) ) {
 		 * @return bool
 		 */
 		private static function is_local_wordpress_environment(): bool {
-			if ( function_exists( 'wp_get_environment_type' ) && 'local' === wp_get_environment_type() ) {
-				return true;
-			}
-
-			$host = function_exists( 'home_url' )
-				? strtolower( (string) wp_parse_url( home_url( '/' ), PHP_URL_HOST ) )
-				: '';
-			if ( in_array( $host, array( 'localhost', '127.0.0.1', '::1' ), true ) ) {
-				return true;
-			}
-
-			return '' !== $host && str_ends_with( $host, '.local' );
+			return Npcink_Cloud_Outbound_Policy::local_requests_allowed();
 		}
 
 		/**
@@ -430,7 +419,7 @@ if ( ! class_exists( 'Npcink_Cloud_Addon_Settings' ) ) {
 				'monitoring_enabled' => ! empty( $settings['monitoring_enabled'] ),
 				'site_knowledge_delivery_enabled' => array_key_exists( 'site_knowledge_delivery_enabled', $settings )
 					? ! empty( $settings['site_knowledge_delivery_enabled'] )
-					: true,
+					: false,
 				'site_knowledge_generation_reference_enabled' => ! empty( $settings['site_knowledge_generation_reference_enabled'] ),
 				'wordpress_ai_connector_enabled' => array_key_exists( 'wordpress_ai_connector_enabled', $settings )
 					? ! empty( $settings['wordpress_ai_connector_enabled'] )
@@ -463,7 +452,7 @@ if ( ! class_exists( 'Npcink_Cloud_Addon_Settings' ) ) {
 				'verified_at' => '',
 				'last_verification_error' => '',
 				'monitoring_enabled' => false,
-				'site_knowledge_delivery_enabled' => true,
+				'site_knowledge_delivery_enabled' => false,
 				'site_knowledge_generation_reference_enabled' => false,
 				'wordpress_ai_connector_enabled' => true,
 			);
@@ -695,32 +684,7 @@ if ( ! class_exists( 'Npcink_Cloud_Addon_Settings' ) ) {
 		 * @return string
 		 */
 		private static function normalize_base_url( string $base_url ): string {
-			$base_url = untrailingslashit( esc_url_raw( trim( $base_url ) ) );
-			if ( '' === $base_url ) {
-				return '';
-			}
-
-			$scheme = strtolower( (string) wp_parse_url( $base_url, PHP_URL_SCHEME ) );
-			if ( 'https' === $scheme ) {
-				return $base_url;
-			}
-			if ( 'http' === $scheme && self::is_local_http_base_url( $base_url ) ) {
-				return $base_url;
-			}
-
-			return '';
-		}
-
-		/**
-		 * Returns whether an HTTP URL is limited to a local development host.
-		 *
-		 * @param string $base_url Normalized base URL.
-		 * @return bool
-		 */
-		private static function is_local_http_base_url( string $base_url ): bool {
-			$host = strtolower( (string) wp_parse_url( $base_url, PHP_URL_HOST ) );
-
-			return in_array( $host, array( 'localhost', '127.0.0.1', '::1' ), true );
+			return Npcink_Cloud_Outbound_Policy::normalize_base_url( $base_url );
 		}
 
 		/**

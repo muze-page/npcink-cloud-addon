@@ -270,7 +270,7 @@ $runtime_timeout_request = end( $GLOBALS['maca_http_requests'] );
 maca_assert(
 	is_array( $runtime_timeout_result )
 	&& 60 === (int) ( $runtime_timeout_request['args']['timeout'] ?? 0 )
-	&& 1048576 === (int) ( $runtime_timeout_request['args']['limit_response_size'] ?? 0 ),
+	&& 1048577 === (int) ( $runtime_timeout_request['args']['limit_response_size'] ?? 0 ),
 	'Behavior: runtime execute honors bounded payload timeout for longer hosted image generation.'
 );
 
@@ -358,7 +358,7 @@ maca_assert(
 	&& 'derivative_artifact' === $artifact_preview['artifact_id']
 	&& $preview_bytes === $artifact_preview['contents']
 	&& false !== strpos( (string) ( $preview_request['url'] ?? '' ), '/v1/runtime/artifacts/derivative_artifact/download' )
-	&& 26214400 === (int) ( $preview_request['args']['limit_response_size'] ?? 0 )
+	&& 26214401 === (int) ( $preview_request['args']['limit_response_size'] ?? 0 )
 	&& 'image/*' === (string) ( $preview_request['args']['headers']['Accept'] ?? '' ),
 	'Behavior: derivative artifact preview downloads through the explicit signed runtime artifact endpoint.'
 );

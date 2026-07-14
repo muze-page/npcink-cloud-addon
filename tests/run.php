@@ -9,6 +9,7 @@ declare(strict_types=1);
 
 require __DIR__ . '/static-contracts.php';
 require __DIR__ . '/behavior-credential-store.php';
+require __DIR__ . '/behavior-outbound-policy.php';
 require __DIR__ . '/behavior-cloud-addon-localization.php';
 require __DIR__ . '/behavior-wordpress-ai-connector-registration.php';
 require __DIR__ . '/behavior-wordpress-ai-request-log-bridge.php';

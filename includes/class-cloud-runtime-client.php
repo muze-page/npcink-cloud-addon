@@ -799,8 +799,26 @@ if ( ! class_exists( 'Npcink_Cloud_Runtime_Client' ) ) {
 				$args['body'] = $body;
 			}
 
-			$response = wp_remote_request( $this->build_request_url( $path ), $args );
+			$response = Npcink_Cloud_Outbound_Policy::request_json(
+				$this->build_request_url( $path ),
+				$args,
+				self::MAX_JSON_RESPONSE_BYTES
+			);
 			if ( is_wp_error( $response ) ) {
+				if ( 'cloud_outbound_response_too_large' === $response->get_error_code() ) {
+					return new WP_Error(
+						'cloud_runtime_response_too_large',
+						__( 'Cloud runtime response exceeds the local size limit.', 'npcink-cloud-addon' ),
+						array( 'status' => 413 )
+					);
+				}
+				if ( 'cloud_outbound_response_type_invalid' === $response->get_error_code() ) {
+					return new WP_Error(
+						'cloud_runtime_response_invalid',
+						__( 'Cloud runtime response was not valid JSON.', 'npcink-cloud-addon' ),
+						array( 'status' => 502 )
+					);
+				}
 				return new WP_Error(
 					'cloud_runtime_request_failed',
 					$this->format_transport_error_message( $response->get_error_message() ),
@@ -846,16 +864,24 @@ if ( ! class_exists( 'Npcink_Cloud_Runtime_Client' ) ) {
 			$headers['Accept'] = sanitize_text_field( $accept );
 			unset( $headers['Content-Type'] );
 
-			$response = wp_remote_request(
+			$response = Npcink_Cloud_Outbound_Policy::request_raw(
 				$this->build_request_url( $path ),
 				array(
 					'method'  => $method,
 					'timeout' => max( 5, absint( $this->config['timeout'] ?? 8 ) ),
 					'limit_response_size' => self::MAX_DOWNLOAD_BYTES,
 					'headers' => $headers,
-				)
+				),
+				self::MAX_DOWNLOAD_BYTES
 			);
 			if ( is_wp_error( $response ) ) {
+				if ( 'cloud_outbound_response_too_large' === $response->get_error_code() ) {
+					return new WP_Error(
+						'cloud_runtime_artifact_too_large',
+						__( 'Cloud artifact download exceeds the local preview size limit.', 'npcink-cloud-addon' ),
+						array( 'status' => 413 )
+					);
+				}
 				return new WP_Error(
 					'cloud_runtime_request_failed',
 					$this->format_transport_error_message( $response->get_error_message() ),
@@ -880,15 +906,17 @@ if ( ! class_exists( 'Npcink_Cloud_Runtime_Client' ) ) {
 				);
 			}
 
-			$response = wp_remote_get(
+			$response = Npcink_Cloud_Outbound_Policy::request_json(
 				$base_url . '/health/live',
 				array(
+					'method'  => 'GET',
 					'timeout' => max( 5, absint( $this->config['timeout'] ?? 8 ) ),
 					'limit_response_size' => self::MAX_JSON_RESPONSE_BYTES,
 					'headers' => array(
 						'Accept' => 'application/json',
 					),
-				)
+				),
+				self::MAX_JSON_RESPONSE_BYTES
 			);
 
 			if ( is_wp_error( $response ) ) {

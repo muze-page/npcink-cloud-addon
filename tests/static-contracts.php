@@ -15,6 +15,7 @@ $wordpress_org_readme = maca_read( $root . '/readme.txt' );
 $pot = maca_read( $root . '/languages/npcink-cloud-addon.pot' );
 $bootstrap = maca_read( $root . '/includes/bootstrap.php' );
 $credential_store = maca_read( $root . '/includes/class-cloud-credential-store.php' );
+$outbound_policy = maca_read( $root . '/includes/class-cloud-outbound-policy.php' );
 $transport = maca_read( $root . '/includes/class-cloud-media-derivative-transport.php' );
 $runtime_client = maca_read( $root . '/includes/class-cloud-runtime-client.php' );
 $ai_task_contract = maca_read( $root . '/includes/class-cloud-ai-task-contract.php' );
@@ -779,7 +780,19 @@ maca_assert(
 
 maca_assert(
 	false !== strpos( $settings, 'invalid_cloud_base_url' )
-	&& false !== strpos( $settings, 'is_local_http_base_url' ),
+	&& false !== strpos( $settings, 'Npcink_Cloud_Outbound_Policy::normalize_base_url' )
+	&& false !== strpos( $outbound_policy, "'https' === \$scheme" )
+	&& false !== strpos( $outbound_policy, 'local_requests_allowed' )
+	&& false !== strpos( $outbound_policy, 'host_resolves_publicly' )
+	&& false !== strpos( $outbound_policy, "'redirection'" )
+	&& false !== strpos( $outbound_policy, 'wp_safe_remote_request' )
+	&& false !== strpos( $outbound_policy, 'MAX_AUTH_RESPONSE_BYTES = 65536' )
+	&& false !== strpos( $runtime_client, 'Npcink_Cloud_Outbound_Policy::request_json' )
+	&& false !== strpos( $runtime_client, 'Npcink_Cloud_Outbound_Policy::request_raw' )
+	&& false !== strpos( $settings_page, 'Npcink_Cloud_Outbound_Policy::request_json' )
+	&& false === strpos( $runtime_client, 'wp_remote_request(' )
+	&& false === strpos( $runtime_client, 'wp_remote_get(' )
+	&& false === strpos( $settings_page, 'wp_remote_post(' ),
 	'Cloud Base URL normalization requires HTTPS except local development hosts.'
 );
 

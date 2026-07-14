@@ -112,6 +112,18 @@ The low-level signed request method is private and endpoint-allowlisted. New
 callers should use the named methods above instead of sending arbitrary Cloud
 paths through the addon.
 
+All Cloud HTTP calls share one local outbound policy. Production targets must
+resolve only to public IP addresses, signed requests never follow redirects,
+TLS verification remains enabled, JSON responses must declare a JSON media
+type, and response bodies are capped by request class. Exact loopback targets
+are available only when WordPress explicitly reports a local environment or a
+local-development constant opts in.
+
+Hostname validation is performed before dispatch and WordPress safe HTTP
+validation runs again at dispatch, but the connector does not pin a DNS answer
+to a transport connection. Operators must therefore configure trusted Cloud
+hostnames and DNS; sub-second DNS rebinding remains a documented residual risk.
+
 `manual_readiness_test()` reuses the existing `/health/live` plus signed
 `GET /v1/entitlements/current` probe and returns
 `cloud_addon_readiness_result.v1` with `status`, `bounded_status`,
@@ -318,7 +330,8 @@ configure router, prompt, or preset behavior.
 ## Site Knowledge Change Bridge
 
 When Cloud settings are verified, the addon listens for public post/page and
-approved comment changes, stores a bounded local delivery buffer, and sends a
+approved comment changes only after an administrator explicitly enables Site
+Knowledge delivery, stores a bounded local delivery buffer, and sends a
 Cloud Site Knowledge refresh request through the existing
 `POST /v1/runtime/execute` runtime contract.
 
@@ -364,8 +377,11 @@ state token. After Cloud returns a code, the addon exchanges it at
 `/portal/v1/addon-connections/exchange`, stores the returned Cloud API Key
 wrapper and base URL, and verifies the signed connection immediately.
 
-Cloud Base URL must use `https://` unless it points to local development hosts
-such as `localhost`, `127.0.0.1`, or `::1`. Timeout and manual recovery key
+Cloud Base URL must use `https://` unless it points to an exact local
+development host (`localhost`, `127.0.0.1`, or `::1`) and WordPress explicitly
+reports a local environment (or the local-request opt-in constant is enabled).
+Site Knowledge delivery is disabled until an administrator explicitly enables
+that local consent. Timeout and manual recovery key
 entry are kept in `Connection Management > Manual fallback` for local debugging
 or authorization outages.
 

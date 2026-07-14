@@ -12,6 +12,35 @@ require_once __DIR__ . '/helpers.php';
 maca_load_addon_classes();
 require_once MACA_TEST_ROOT . '/includes/class-cloud-settings-page.php';
 
+$missing_consent_settings = Npcink_Cloud_Addon_Settings::normalize_settings(
+	array(
+		'base_url' => 'https://cloud.example.test',
+		'site_id'  => 'site_missing_consent',
+		'key_id'   => 'key_missing_consent',
+		'secret'   => 'secret_missing_consent',
+		'verified' => true,
+	)
+);
+maca_assert(
+	false === (bool) $missing_consent_settings['site_knowledge_delivery_enabled'],
+	'Behavior: missing Site Knowledge delivery consent normalizes to disabled.'
+);
+
+maca_reset_test_state();
+Npcink_Cloud_Addon_Settings::write_settings( $missing_consent_settings );
+maca_assert(
+	! Npcink_Cloud_Addon_Settings::is_site_knowledge_delivery_enabled(),
+	'Behavior: verified Cloud credentials do not implicitly enable Site Knowledge delivery.'
+);
+
+$explicit_consent_settings = Npcink_Cloud_Addon_Settings::get_settings();
+$explicit_consent_settings['site_knowledge_delivery_enabled'] = true;
+Npcink_Cloud_Addon_Settings::write_settings( $explicit_consent_settings );
+maca_assert(
+	Npcink_Cloud_Addon_Settings::is_site_knowledge_delivery_enabled(),
+	'Behavior: explicit administrator Site Knowledge delivery consent remains enabled after persistence.'
+);
+
 $credential_settings = array(
 	'base_url' => 'https://cloud.example.test',
 	'site_id' => 'site_at_rest_test',

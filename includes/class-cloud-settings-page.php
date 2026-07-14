@@ -1222,12 +1222,14 @@ if ( ! class_exists( 'Npcink_Cloud_Settings_Page' ) ) {
 		 * @return array<string,mixed>|WP_Error
 		 */
 		private static function exchange_authorization_code( string $base_url, string $code, string $state ) {
-			$response = wp_remote_post(
+			$response = Npcink_Cloud_Outbound_Policy::request_json(
 				untrailingslashit( $base_url ) . '/portal/v1/addon-connections/exchange',
 				array(
+					'method'  => 'POST',
 					'timeout' => 12,
 					'headers' => array(
 						'Content-Type' => 'application/json',
+						'Accept'       => 'application/json',
 					),
 					'body'    => wp_json_encode(
 						array(
@@ -1235,7 +1237,8 @@ if ( ! class_exists( 'Npcink_Cloud_Settings_Page' ) ) {
 							'state' => $state,
 						)
 					),
-				)
+				),
+				Npcink_Cloud_Outbound_Policy::MAX_AUTH_RESPONSE_BYTES
 			);
 			if ( is_wp_error( $response ) ) {
 				return new WP_Error(

@@ -56,6 +56,8 @@ if ( ! defined( 'ABSPATH' ) ) {
 	define( 'ABSPATH', MACA_TEST_ROOT . '/tests/wordpress-stub/' );
 }
 
+require_once MACA_TEST_ROOT . '/includes/class-cloud-outbound-policy.php';
+
 if ( ! defined( 'HOUR_IN_SECONDS' ) ) {
 	define( 'HOUR_IN_SECONDS', 3600 );
 }
@@ -315,11 +317,22 @@ if ( ! function_exists( 'wp_remote_request' ) ) {
 			'url'  => $url,
 			'args' => $args,
 		);
+		if ( str_ends_with( $url, '/health/live' ) ) {
+			return array(
+				'response' => array( 'code' => 200 ),
+				'headers'  => array( 'Content-Type' => 'application/json' ),
+				'body'     => wp_json_encode( array( 'message' => 'ok' ) ),
+			);
+		}
 
 		if ( ! empty( $GLOBALS['maca_http_response_queue'] ) ) {
 			$response = array_shift( $GLOBALS['maca_http_response_queue'] );
 			if ( is_callable( $response ) ) {
-				return $response( $url, $args );
+				$response = $response( $url, $args );
+			}
+
+			if ( is_array( $response ) && ! array_key_exists( 'headers', $response ) ) {
+				$response['headers'] = array( 'Content-Type' => 'application/json' );
 			}
 
 			return $response;
@@ -327,6 +340,7 @@ if ( ! function_exists( 'wp_remote_request' ) ) {
 
 		return array(
 			'response' => array( 'code' => 200 ),
+			'headers'  => array( 'Content-Type' => 'application/json' ),
 			'body'     => wp_json_encode(
 				array(
 					'status' => 'ok',
@@ -336,6 +350,12 @@ if ( ! function_exists( 'wp_remote_request' ) ) {
 				)
 			),
 		);
+	}
+}
+
+if ( ! function_exists( 'wp_safe_remote_request' ) ) {
+	function wp_safe_remote_request( string $url, array $args = array() ) {
+		return wp_remote_request( $url, $args );
 	}
 }
 
@@ -354,8 +374,28 @@ if ( ! function_exists( 'wp_remote_get' ) ) {
 
 		return array(
 			'response' => array( 'code' => 200 ),
+			'headers'  => array( 'Content-Type' => 'application/json' ),
 			'body'     => wp_json_encode( array( 'message' => 'ok' ) ),
 		);
+	}
+}
+
+if ( ! function_exists( 'wp_remote_retrieve_header' ) ) {
+	function wp_remote_retrieve_header( array $response, string $name ): string {
+		$headers = is_array( $response['headers'] ?? null ) ? $response['headers'] : array();
+		foreach ( $headers as $key => $value ) {
+			if ( strtolower( (string) $key ) === strtolower( $name ) ) {
+				return is_scalar( $value ) ? (string) $value : '';
+			}
+		}
+
+		return '';
+	}
+}
+
+if ( ! function_exists( 'wp_get_environment_type' ) ) {
+	function wp_get_environment_type(): string {
+		return (string) ( $GLOBALS['maca_wp_environment_type'] ?? 'local' );
 	}
 }
 
@@ -378,6 +418,7 @@ if ( ! function_exists( 'wp_remote_retrieve_body' ) ) {
  */
 function maca_load_addon_classes(): void {
 	require_once MACA_TEST_ROOT . '/includes/class-cloud-credential-store.php';
+	require_once MACA_TEST_ROOT . '/includes/class-cloud-outbound-policy.php';
 	require_once MACA_TEST_ROOT . '/includes/class-cloud-addon-settings.php';
 	require_once MACA_TEST_ROOT . '/includes/class-cloud-ai-task-contract.php';
 	require_once MACA_TEST_ROOT . '/includes/class-cloud-runtime-client.php';
@@ -474,7 +515,31 @@ function maca_reset_test_state(): void {
 	$GLOBALS['maca_http_response_queue'] = array();
 	$GLOBALS['maca_filters'] = array();
 	$GLOBALS['maca_wp_salt'] = 'maca-test-auth-salt';
+	$GLOBALS['maca_wp_environment_type'] = 'local';
+	maca_register_default_outbound_filters();
 }
+
+/**
+ * Registers deterministic public DNS results for behavior-test hostnames.
+ *
+ * @return void
+ */
+function maca_register_default_outbound_filters(): void {
+	add_filter(
+		'npcink_cloud_addon_resolved_host_ips',
+		static function ( $ips, string $host ): array {
+			if ( str_ends_with( $host, '.example.test' ) ) {
+				return array( '1.1.1.1' );
+			}
+
+			return is_array( $ips ) ? $ips : array();
+		},
+		10,
+		2
+	);
+}
+
+maca_register_default_outbound_filters();
 
 /**
  * Returns a valid local ability response fixture.

@@ -167,6 +167,8 @@ executor and index lifecycle owner.
 
 The local delivery consent setting controls future public content delivery and
 administrator start/rebuild requests only. It is not index lifecycle truth.
+It defaults to disabled and must be explicitly enabled by an administrator;
+successful Cloud credential verification does not enable delivery.
 Turning it off does not delete existing Cloud index data; the explicit delete
 action remains available as a confirmed cleanup path.
 

@@ -398,7 +398,13 @@ if ( ! class_exists( 'Npcink_Cloud_Settings_Page' ) ) {
 		 * @return void
 		 */
 		private static function persist_and_verify_settings( array $settings, string $success_message ): void {
-			Npcink_Cloud_Addon_Settings::write_settings( $settings );
+			if ( ! Npcink_Cloud_Addon_Settings::write_settings( $settings ) ) {
+				self::set_admin_notice(
+					'error',
+					__( 'Cloud credentials could not be stored securely. The existing connection was not changed. Check the WordPress security salts and reconnect.', 'npcink-cloud-addon' )
+				);
+				return;
+			}
 
 			$client = new Npcink_Cloud_Runtime_Client( $settings );
 			$probe = $client->probe_connectivity();

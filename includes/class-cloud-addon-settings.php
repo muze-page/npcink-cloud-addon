@@ -42,8 +42,8 @@ if ( ! class_exists( 'Npcink_Cloud_Addon_Settings' ) ) {
 				self::option_name(),
 				array(
 					'type' => 'array',
-					'sanitize_callback' => array( __CLASS__, 'normalize_settings' ),
-					'default' => self::defaults(),
+					'sanitize_callback' => array( __CLASS__, 'sanitize_option_value' ),
+					'default' => self::stored_defaults(),
 					'show_in_rest' => false,
 				)
 			);
@@ -71,7 +71,7 @@ if ( ! class_exists( 'Npcink_Cloud_Addon_Settings' ) ) {
 			$stored = get_option( self::option_name(), false );
 			$stored = is_array( $stored ) ? $stored : array();
 
-			return self::normalize_settings( $stored );
+			return self::settings_from_stored_option( $stored );
 		}
 
 		/**
@@ -325,12 +325,71 @@ if ( ! class_exists( 'Npcink_Cloud_Addon_Settings' ) ) {
 		 */
 		public static function write_settings( array $settings ): bool {
 			$normalized = self::normalize_settings( $settings );
+			$current_stored = get_option( self::option_name(), array() );
+			$current_stored = is_array( $current_stored ) ? $current_stored : array();
+			if ( self::has_unreadable_credential_envelope( $current_stored ) && ! self::has_complete_credentials( $normalized ) ) {
+				return false;
+			}
+
 			$current = self::get_settings();
 			if ( $current === $normalized ) {
 				return true;
 			}
 
-			return false !== update_option( self::option_name(), $normalized, false );
+			$stored = self::build_stored_option( $normalized );
+			if ( is_wp_error( $stored ) ) {
+				return false;
+			}
+
+			return false !== update_option( self::option_name(), $stored, false );
+		}
+
+		/**
+		 * Sanitizes Settings API writes into the encrypted at-rest shape.
+		 *
+		 * Invalid or unencryptable input returns the existing stored option so a
+		 * failed security operation never replaces usable credentials.
+		 *
+		 * @param mixed $value Candidate option value.
+		 * @return array<string,mixed>
+		 */
+		public static function sanitize_option_value( $value ): array {
+			$value = is_array( $value ) ? $value : array();
+			$current_stored = get_option( self::option_name(), array() );
+			$current_stored = is_array( $current_stored ) ? $current_stored : array();
+
+			if ( array_key_exists( 'credential_envelope', $value ) ) {
+				$credentials = empty( $value['credential_envelope'] )
+					? array( 'site_id' => '', 'key_id' => '', 'secret' => '' )
+					: Npcink_Cloud_Credential_Store::decrypt( $value['credential_envelope'] );
+				if ( is_wp_error( $credentials ) ) {
+					self::add_storage_error( $credentials );
+					return $current_stored;
+				}
+
+				$normalized = self::normalize_settings( array_merge( $value, $credentials ) );
+				$stored = self::build_stored_option( $normalized, $value['credential_envelope'] );
+			} else {
+				$normalized = self::normalize_settings( $value );
+				if ( self::has_unreadable_credential_envelope( $current_stored ) && ! self::has_complete_credentials( $normalized ) ) {
+					self::add_settings_storage_error();
+					return $current_stored;
+				}
+				if ( ! self::has_any_credentials( $normalized ) ) {
+					$current = self::get_settings();
+					$normalized['site_id'] = (string) $current['site_id'];
+					$normalized['key_id'] = (string) $current['key_id'];
+					$normalized['secret'] = (string) $current['secret'];
+				}
+				$stored = self::build_stored_option( $normalized );
+			}
+
+			if ( is_wp_error( $stored ) ) {
+				self::add_storage_error( $stored );
+				return $current_stored;
+			}
+
+			return $stored;
 		}
 
 		/**
@@ -407,6 +466,153 @@ if ( ! class_exists( 'Npcink_Cloud_Addon_Settings' ) ) {
 				'site_knowledge_delivery_enabled' => true,
 				'site_knowledge_generation_reference_enabled' => false,
 				'wordpress_ai_connector_enabled' => true,
+			);
+		}
+
+		/**
+		 * Returns the safe WordPress option default.
+		 *
+		 * @return array<string,mixed>
+		 */
+		private static function stored_defaults(): array {
+			$stored = self::defaults();
+			unset( $stored['site_id'], $stored['key_id'], $stored['secret'] );
+			$stored['credential_envelope'] = array();
+
+			return $stored;
+		}
+
+		/**
+		 * Builds public settings from the authenticated stored option.
+		 *
+		 * Legacy plaintext credential fields are deliberately ignored. Missing,
+		 * tampered, or undecryptable envelopes fail closed as unconfigured.
+		 *
+		 * @param array<string,mixed> $stored Stored option.
+		 * @return array<string,mixed>
+		 */
+		private static function settings_from_stored_option( array $stored ): array {
+			$non_secret = $stored;
+			unset( $non_secret['site_id'], $non_secret['key_id'], $non_secret['secret'], $non_secret['credential_envelope'] );
+			$settings = self::normalize_settings( $non_secret );
+
+			$envelope = $stored['credential_envelope'] ?? null;
+			if ( ! is_array( $envelope ) || empty( $envelope ) ) {
+				$settings['verified'] = false;
+				$settings['verified_at'] = '';
+				return $settings;
+			}
+
+			$credentials = Npcink_Cloud_Credential_Store::decrypt( $envelope );
+			if ( is_wp_error( $credentials ) ) {
+				$settings['verified'] = false;
+				$settings['verified_at'] = '';
+				return $settings;
+			}
+
+			$settings['site_id'] = self::normalize_identifier( $credentials['site_id'] );
+			$settings['key_id'] = self::normalize_identifier( $credentials['key_id'] );
+			$settings['secret'] = self::normalize_secret( $credentials['secret'] );
+
+			return $settings;
+		}
+
+		/**
+		 * Builds the authenticated WordPress option shape.
+		 *
+		 * @param array<string,mixed> $settings Public settings shape.
+		 * @param mixed               $existing_envelope Optional authenticated envelope to retain.
+		 * @return array<string,mixed>|WP_Error
+		 */
+		private static function build_stored_option( array $settings, $existing_envelope = null ) {
+			$settings = self::normalize_settings( $settings );
+			$credentials = array(
+				'site_id' => (string) $settings['site_id'],
+				'key_id'  => (string) $settings['key_id'],
+				'secret'  => (string) $settings['secret'],
+			);
+
+			$envelope = $existing_envelope;
+			if ( ! is_array( $envelope ) ) {
+				$envelope = self::has_any_credentials( $credentials )
+					? Npcink_Cloud_Credential_Store::encrypt( $credentials )
+					: array();
+			}
+			if ( is_wp_error( $envelope ) ) {
+				return $envelope;
+			}
+
+			unset( $settings['site_id'], $settings['key_id'], $settings['secret'] );
+			$settings['credential_envelope'] = $envelope;
+
+			return $settings;
+		}
+
+		/**
+		 * Returns whether any credential slot is populated.
+		 *
+		 * @param array<string,mixed> $credentials Credential payload.
+		 * @return bool
+		 */
+		private static function has_any_credentials( array $credentials ): bool {
+			return '' !== (string) ( $credentials['site_id'] ?? '' )
+				|| '' !== (string) ( $credentials['key_id'] ?? '' )
+				|| '' !== (string) ( $credentials['secret'] ?? '' );
+		}
+
+		/**
+		 * Returns whether every signing credential slot is populated.
+		 *
+		 * @param array<string,mixed> $credentials Credential payload.
+		 * @return bool
+		 */
+		private static function has_complete_credentials( array $credentials ): bool {
+			return '' !== (string) ( $credentials['site_id'] ?? '' )
+				&& '' !== (string) ( $credentials['key_id'] ?? '' )
+				&& '' !== (string) ( $credentials['secret'] ?? '' );
+		}
+
+		/**
+		 * Returns whether a stored credential envelope cannot be authenticated.
+		 *
+		 * @param array<string,mixed> $stored Stored option.
+		 * @return bool
+		 */
+		private static function has_unreadable_credential_envelope( array $stored ): bool {
+			$envelope = $stored['credential_envelope'] ?? null;
+			return is_array( $envelope )
+				&& ! empty( $envelope )
+				&& is_wp_error( Npcink_Cloud_Credential_Store::decrypt( $envelope ) );
+		}
+
+		/**
+		 * Reports a generic Settings API storage error without secret material.
+		 *
+		 * @param WP_Error $error Storage error.
+		 * @return void
+		 */
+		private static function add_storage_error( WP_Error $error ): void {
+			if ( function_exists( 'add_settings_error' ) ) {
+				add_settings_error(
+					self::option_name(),
+					$error->get_error_code(),
+					$error->get_error_message(),
+					'error'
+				);
+			}
+		}
+
+		/**
+		 * Reports an unreadable-envelope Settings API error.
+		 *
+		 * @return void
+		 */
+		private static function add_settings_storage_error(): void {
+			self::add_storage_error(
+				new WP_Error(
+					'cloud_credential_authentication_failed',
+					__( 'Cloud credentials could not be stored or read securely. Reconnect this site after checking the WordPress security salts.', 'npcink-cloud-addon' )
+				)
 			);
 		}
 

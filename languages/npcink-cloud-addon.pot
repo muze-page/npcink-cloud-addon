@@ -71,6 +71,15 @@ msgstr ""
 msgid "Cloud settings are saved and verified."
 msgstr ""
 
+#: includes/class-cloud-addon-settings.php:614
+#: includes/class-cloud-credential-store.php:197
+msgid "Cloud credentials could not be stored or read securely. Reconnect this site after checking the WordPress security salts."
+msgstr ""
+
+#: includes/class-cloud-settings-page.php:404
+msgid "Cloud credentials could not be stored securely. The existing connection was not changed. Check the WordPress security salts and reconnect."
+msgstr ""
+
 #: includes/class-cloud-addon-settings.php:246
 msgid "Unavailable"
 msgstr ""

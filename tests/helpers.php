@@ -208,6 +208,13 @@ $GLOBALS['maca_transients'] = array();
 $GLOBALS['maca_http_requests'] = array();
 $GLOBALS['maca_http_response_queue'] = array();
 $GLOBALS['maca_filters'] = array();
+$GLOBALS['maca_wp_salt'] = 'maca-test-auth-salt';
+
+if ( ! function_exists( 'wp_salt' ) ) {
+	function wp_salt( string $scheme = 'auth' ): string {
+		return (string) ( $GLOBALS['maca_wp_salt'] ?? '' );
+	}
+}
 
 if ( ! function_exists( 'get_option' ) ) {
 	function get_option( string $name, $default = false ) {
@@ -370,6 +377,7 @@ if ( ! function_exists( 'wp_remote_retrieve_body' ) ) {
  * @return void
  */
 function maca_load_addon_classes(): void {
+	require_once MACA_TEST_ROOT . '/includes/class-cloud-credential-store.php';
 	require_once MACA_TEST_ROOT . '/includes/class-cloud-addon-settings.php';
 	require_once MACA_TEST_ROOT . '/includes/class-cloud-ai-task-contract.php';
 	require_once MACA_TEST_ROOT . '/includes/class-cloud-runtime-client.php';
@@ -387,7 +395,8 @@ function maca_load_addon_classes(): void {
  * @return void
  */
 function maca_seed_settings( bool $verified, string $base_url = 'https://cloud.example.test' ): void {
-	$GLOBALS['maca_options'][ Npcink_Cloud_Addon_Settings::option_name() ] = array(
+	Npcink_Cloud_Addon_Settings::write_settings(
+		array(
 		'base_url' => $base_url,
 		'site_id' => 'site_test',
 		'key_id' => 'key_test',
@@ -400,6 +409,7 @@ function maca_seed_settings( bool $verified, string $base_url = 'https://cloud.e
 		'site_knowledge_delivery_enabled' => true,
 		'site_knowledge_generation_reference_enabled' => false,
 		'wordpress_ai_connector_enabled' => true,
+		)
 	);
 }
 
@@ -412,7 +422,7 @@ function maca_seed_settings( bool $verified, string $base_url = 'https://cloud.e
 function maca_set_monitoring_enabled( bool $enabled ): void {
 	$settings = Npcink_Cloud_Addon_Settings::get_settings();
 	$settings['monitoring_enabled'] = $enabled;
-	$GLOBALS['maca_options'][ Npcink_Cloud_Addon_Settings::option_name() ] = $settings;
+	Npcink_Cloud_Addon_Settings::write_settings( $settings );
 }
 
 /**
@@ -424,7 +434,7 @@ function maca_set_monitoring_enabled( bool $enabled ): void {
 function maca_set_site_knowledge_delivery_enabled( bool $enabled ): void {
 	$settings = Npcink_Cloud_Addon_Settings::get_settings();
 	$settings['site_knowledge_delivery_enabled'] = $enabled;
-	$GLOBALS['maca_options'][ Npcink_Cloud_Addon_Settings::option_name() ] = $settings;
+	Npcink_Cloud_Addon_Settings::write_settings( $settings );
 }
 
 /**
@@ -436,7 +446,7 @@ function maca_set_site_knowledge_delivery_enabled( bool $enabled ): void {
 function maca_set_site_knowledge_generation_reference_enabled( bool $enabled ): void {
 	$settings = Npcink_Cloud_Addon_Settings::get_settings();
 	$settings['site_knowledge_generation_reference_enabled'] = $enabled;
-	$GLOBALS['maca_options'][ Npcink_Cloud_Addon_Settings::option_name() ] = $settings;
+	Npcink_Cloud_Addon_Settings::write_settings( $settings );
 }
 
 /**
@@ -448,7 +458,7 @@ function maca_set_site_knowledge_generation_reference_enabled( bool $enabled ): 
 function maca_set_wordpress_ai_connector_enabled( bool $enabled ): void {
 	$settings = Npcink_Cloud_Addon_Settings::get_settings();
 	$settings['wordpress_ai_connector_enabled'] = $enabled;
-	$GLOBALS['maca_options'][ Npcink_Cloud_Addon_Settings::option_name() ] = $settings;
+	Npcink_Cloud_Addon_Settings::write_settings( $settings );
 }
 
 /**
@@ -463,6 +473,7 @@ function maca_reset_test_state(): void {
 	$GLOBALS['maca_http_requests'] = array();
 	$GLOBALS['maca_http_response_queue'] = array();
 	$GLOBALS['maca_filters'] = array();
+	$GLOBALS['maca_wp_salt'] = 'maca-test-auth-salt';
 }
 
 /**

@@ -17,6 +17,8 @@ rollback, and all WordPress writes.
 Keep these even if they make the code less minimal:
 
 - HMAC signing, trace headers, idempotency headers, and endpoint allowlists.
+- Authenticated encryption for addon-owned signing credentials at rest, with
+  fail-closed handling for tampering, decryption failure, or salt rotation.
 - Save-and-Verify gating before media derivative dispatch.
 - Ability payload checks that reject credentials, Authorization data, signed
   headers, tokens, and Cloud signing fields.

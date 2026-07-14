@@ -21,7 +21,9 @@ index, freshness, and collection lifecycle owner.
 - Cloud-side site authorization entry for the current WordPress site.
 - Connection Management manual fallback Cloud API Key wrapper entry.
 - `mak1_{base64url(json)}` key parsing.
-- Internal `site_id`, `key_id`, and `secret` storage for server-side signing.
+- Authenticated encrypted storage of the internal `site_id`, `key_id`, and
+  `secret` envelope for server-side signing; split plaintext fields are never
+  persisted in the WordPress option.
 - HMAC signatures, trace headers, idempotency headers, and request nonce headers.
 - Health and signed connectivity checks.
 - Bounded manual connector readiness/test results with non-secret support facts.
@@ -72,6 +74,14 @@ status projections, and bounded delivery buffers. The observability buffer and
 Site Knowledge change buffer are local delivery durability only: they help the
 addon survive temporary upload failures and expose health counts, but they are
 not queue truth, run truth, billing truth, indexing truth, approval truth, or audit truth.
+
+The addon derives its credential-encryption key from the WordPress
+authentication salt and fails closed when the credential envelope cannot be
+authenticated or decrypted. Security salt rotation therefore requires the site
+to reconnect. The envelope reduces plaintext exposure in database backups and
+option inspection; it is not a defense against complete server compromise,
+because code executing inside WordPress can access both the salts and runtime
+credentials.
 
 The addon must not create WordPress custom tables for workflow runs, Cloud
 runtime history, provider request logs, Site Knowledge indexing jobs,

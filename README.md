@@ -2,7 +2,7 @@
 
 Standalone WordPress plugin for connecting a local Npcink installation to `npcink-cloud`.
 
-The addon is a thin Cloud connector. It stores the Cloud Base URL and Cloud API Key returned by Cloud site authorization, parses the key into signing credentials, sends signed runtime requests, reads health and entitlement status, transports opt-in metadata-only plugin observability and Agent feedback data, bridges public Site Knowledge change hints to Cloud, and exposes a minimal PHP interface for local plugins.
+The addon is a thin Cloud connector. It stores the Cloud Base URL and the Cloud API Key signing credentials returned by Cloud site authorization, sends signed runtime requests, reads health and entitlement status, transports opt-in metadata-only plugin observability and Agent feedback data, bridges public Site Knowledge change hints to Cloud, and exposes a minimal PHP interface for local plugins. Signing credentials are persisted as one authenticated encrypted envelope rather than plaintext option fields.
 
 Cross-project platform coordination starts from
 `/Users/muze/gitee/npcink-workflow-toolbox/docs/platform/README.md`. This
@@ -13,7 +13,7 @@ bounded signed transport.
 
 The addon owns:
 
-- Cloud Base URL and Cloud API Key wrapper storage.
+- Cloud Base URL and authenticated encrypted signing credential storage.
 - Cloud site authorization callback exchange and `mak1_{base64url(json)}` parsing.
 - HMAC signing, trace headers, idempotency headers, and Cloud error mapping.
 - Connectivity probing with `/health/live` and a signed Cloud read.
@@ -146,6 +146,15 @@ Returned evidence is candidate basis only and must still be visually confirmed
 by the local operator before any future governed apply path.
 
 `npcink_cloud_addon_get_settings()` returns server-side settings, including the stored secret. Do not print it into HTML or logs.
+
+The public PHP settings shape still contains `site_id`, `key_id`, and `secret`
+for server-side signing, but the WordPress option contains only a versioned
+authenticated credential envelope. Its key is derived from the WordPress
+authentication salt. Changing security salts makes the existing envelope
+unreadable and requires reconnecting the site; decryption or authentication
+failure is treated as unconfigured. This protects database-at-rest credentials,
+but it does not protect against a fully compromised server that can execute
+WordPress code and access the salts.
 
 ## WordPress AI Connector Runtime
 

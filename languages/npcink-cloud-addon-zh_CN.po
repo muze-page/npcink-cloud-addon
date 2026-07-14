@@ -44,6 +44,15 @@ msgstr "已验证"
 msgid "Cloud settings are saved and verified."
 msgstr "Cloud 设置已保存并通过验证。"
 
+#: includes/class-cloud-addon-settings.php:614
+#: includes/class-cloud-credential-store.php:197
+msgid "Cloud credentials could not be stored or read securely. Reconnect this site after checking the WordPress security salts."
+msgstr "无法安全存储或读取 Cloud 凭据。请检查 WordPress 安全盐后重新连接此站点。"
+
+#: includes/class-cloud-settings-page.php:404
+msgid "Cloud credentials could not be stored securely. The existing connection was not changed. Check the WordPress security salts and reconnect."
+msgstr "无法安全存储 Cloud 凭据。现有连接未更改。请检查 WordPress 安全盐并重新连接。"
+
 #: includes/class-cloud-addon-settings.php:246
 msgid "Unavailable"
 msgstr "不可用"

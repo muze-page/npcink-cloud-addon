@@ -14,6 +14,7 @@ $plugin_file = maca_read( $root . '/npcink-cloud-addon.php' );
 $wordpress_org_readme = maca_read( $root . '/readme.txt' );
 $pot = maca_read( $root . '/languages/npcink-cloud-addon.pot' );
 $bootstrap = maca_read( $root . '/includes/bootstrap.php' );
+$credential_store = maca_read( $root . '/includes/class-cloud-credential-store.php' );
 $transport = maca_read( $root . '/includes/class-cloud-media-derivative-transport.php' );
 $runtime_client = maca_read( $root . '/includes/class-cloud-runtime-client.php' );
 $ai_task_contract = maca_read( $root . '/includes/class-cloud-ai-task-contract.php' );
@@ -172,6 +173,16 @@ maca_assert(
 );
 
 maca_assert(
+	false !== strpos( $bootstrap, 'class-cloud-credential-store.php' )
+	&& false !== strpos( $credential_store, "ALGORITHM_SODIUM = 'sodium_secretbox'" )
+	&& false !== strpos( $credential_store, "ALGORITHM_OPENSSL = 'aes-256-gcm'" )
+	&& false !== strpos( $credential_store, "wp_salt( 'auth' )" )
+	&& false !== strpos( $settings, "'sanitize_callback' => array( __CLASS__, 'sanitize_option_value' )" )
+	&& false !== strpos( $settings, "unset( \$settings['site_id'], \$settings['key_id'], \$settings['secret'] )" ),
+	'Cloud signing credentials use authenticated encrypted option storage and every Settings API write emits the at-rest envelope.'
+);
+
+maca_assert(
 	false !== strpos( $bootstrap, 'npcink_cloud_addon_get_manual_readiness_result' )
 	&& false !== strpos( $bootstrap, 'does not create runtime work, queues, registries' )
 	&& false !== strpos( $runtime_client, 'manual_readiness_test' )
@@ -221,7 +232,10 @@ maca_assert(
 	&& false !== strpos( $zh_cn_po, 'msgstr "高级与排查"' )
 	&& false !== strpos( $zh_cn_po, 'msgstr "技术投递详情"' )
 	&& false !== strpos( $zh_cn_po, 'msgstr "更多本地授权"' )
-	&& false !== strpos( $zh_cn_po, 'msgstr "Cloud 错误分类"' ),
+	&& false !== strpos( $zh_cn_po, 'msgstr "Cloud 错误分类"' )
+	&& false !== strpos( $pot, 'Cloud credentials could not be stored or read securely.' )
+	&& false !== strpos( $zh_cn_po, 'msgstr "无法安全存储或读取 Cloud 凭据。请检查 WordPress 安全盐后重新连接此站点。"' )
+	&& false !== strpos( $zh_cn_po, 'msgstr "无法安全存储 Cloud 凭据。现有连接未更改。请检查 WordPress 安全盐并重新连接。"' ),
 	'Chinese localization translates fixed Cloud Addon admin terminology without translating dynamic metadata.'
 );
 

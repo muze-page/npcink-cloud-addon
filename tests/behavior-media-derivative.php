@@ -11,16 +11,21 @@ require_once __DIR__ . '/helpers.php';
 
 maca_load_addon_classes();
 
-$GLOBALS['maca_options'][ Npcink_Cloud_Addon_Settings::option_name() ] = array(
-	'base_url' => 'https://cloud.example.test',
-	'site_id' => 'npcink_site',
-	'key_id' => 'npcink_key',
-	'secret' => 'npcink_secret',
-	'timeout' => 12,
-	'verified' => true,
-	'verified_at' => '2026-06-20 00:00:00 UTC',
-	'last_verification_error' => '',
-	'monitoring_enabled' => true,
+maca_assert(
+	Npcink_Cloud_Addon_Settings::write_settings(
+		array(
+			'base_url' => 'https://cloud.example.test',
+			'site_id' => 'npcink_site',
+			'key_id' => 'npcink_key',
+			'secret' => 'npcink_secret',
+			'timeout' => 12,
+			'verified' => true,
+			'verified_at' => '2026-06-20 00:00:00 UTC',
+			'last_verification_error' => '',
+			'monitoring_enabled' => true,
+		)
+	),
+	'Behavior: Npcink Cloud Addon settings write succeeds.'
 );
 $stored_settings = Npcink_Cloud_Addon_Settings::get_settings();
 maca_assert(

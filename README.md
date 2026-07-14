@@ -250,14 +250,25 @@ underlying provider/model. The bounded vision wrapper is only for
 `alt_text_suggest`; it does not make the addon a generic vision provider,
 router, media metadata writer, or approval owner.
 
-The request must use `wp_ai_connector_runtime.v1` and one supported task
-surface, such as `title_generation`, `excerpt_generation`, `meta_description`,
-`content_summary`, `content_rewrite`, `content_classification`,
-`comment_moderation`, `comment_reply_suggest`, or `alt_text_suggest`. The addon
-projects the request into `ability_name=npcink-cloud/wp-ai-connector`,
-`channel=wordpress_ai_connector`, `execution_kind=wordpress_ai_connector`,
-`write_posture=suggestion_only`, `direct_wordpress_write=false`, and
-`no_conversation=true`.
+The transport request uses the platform-neutral
+`cloud_connector_runtime.v1` envelope with
+`ability_name=npcink-cloud/connector-runtime`, `channel=editor`, a verified
+top-level `site_id`, and an input connector identity containing canonical
+`site_url`, `platform_kind=wordpress`, `connector_id=npcink-cloud-addon`, the
+active connector version, and `suggestion_only=true`. WordPress-specific task
+semantics live only in the nested `wordpress_operation.v1` contract. Text tasks
+use `execution_kind=text`; the bounded alt-text scene uses
+`execution_kind=vision`.
+
+`title_generation`, `content_summary`, and `content_rewrite` send the actual
+AI Client user message as `source_text`, with an optional
+`system_instruction`. They do not send legacy `prompt`, `post_title`, or
+`post_excerpt` fields. Embedded content tags remain opaque source text. A
+successful response must expose `cloud_connector_result.v1`,
+`suggestion_only=true`, `connector_id=npcink-cloud-addon`, and a matching
+`wordpress_operation.v1` task before text is read from
+`response.data.result.output.output_text`; the addon does not dual-read legacy
+result shapes.
 
 This helper rejects generic chat or provider-control shapes such as `messages`,
 `conversation_id`, `session_id`, `thread_id`, `tools`, `tool_calls`, `functions`,

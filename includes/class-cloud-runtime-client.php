@@ -18,10 +18,11 @@ if ( ! class_exists( 'Npcink_Cloud_Runtime_Client' ) ) {
 	final class Npcink_Cloud_Runtime_Client {
 		private const MAX_JSON_RESPONSE_BYTES = 1048576;
 		private const MAX_DOWNLOAD_BYTES = 26214400;
-		private const WP_AI_CONNECTOR_CONTRACT = 'wp_ai_connector_runtime.v1';
+		private const CLOUD_CONNECTOR_RUNTIME_CONTRACT = 'cloud_connector_runtime.v1';
+		private const WORDPRESS_OPERATION_CONTRACT = 'wordpress_operation.v1';
 		private const WP_AI_CONNECTOR_MAX_REQUEST_BYTES = 24000;
 		private const WP_AI_CONNECTOR_ALT_TEXT_MAX_REQUEST_BYTES = 900000;
-		private const WP_AI_CONNECTOR_MAX_PROMPT_CHARS = 12000;
+		private const WP_AI_CONNECTOR_MAX_SCENE_TEXT_CHARS = 12000;
 		private const WP_AI_CONNECTOR_MAX_TIMEOUT_SECONDS = 60;
 		private const WP_AI_CONNECTOR_MAX_RETENTION_TTL = 86400;
 		private const WP_AI_IMAGE_GENERATION_CONTRACT = 'image_generation_request.v1';
@@ -67,6 +68,11 @@ if ( ! class_exists( 'Npcink_Cloud_Runtime_Client' ) ) {
 			'content_summary',
 			'excerpt_generation',
 			'meta_description',
+			'title_generation',
+		);
+		private const WP_AI_CONNECTOR_SOURCE_TEXT_TASKS = array(
+			'content_rewrite',
+			'content_summary',
 			'title_generation',
 		);
 		private const WP_AI_CONNECTOR_FORBIDDEN_KEYS = array(
@@ -1691,19 +1697,34 @@ if ( ! class_exists( 'Npcink_Cloud_Runtime_Client' ) ) {
 		 * @return array<string,mixed>|WP_Error
 		 */
 		private function normalize_wordpress_ai_connector_request( array $request ) {
-			$contract_version = (string) ( $request['contract_version'] ?? self::WP_AI_CONNECTOR_CONTRACT );
-			if ( self::WP_AI_CONNECTOR_CONTRACT !== $contract_version ) {
+			$contract_version = (string) ( $request['contract_version'] ?? '' );
+			if ( self::CLOUD_CONNECTOR_RUNTIME_CONTRACT !== $contract_version ) {
 				return new WP_Error(
 					'cloud_wp_ai_connector_contract_invalid',
-					__( 'WordPress AI connector requests require the wp_ai_connector_runtime.v1 contract.', 'npcink-cloud-addon' ),
+					__( 'WordPress AI connector requests require the cloud_connector_runtime.v1 contract.', 'npcink-cloud-addon' ),
 					array( 'status' => 400 )
 				);
 			}
 
-			$task          = sanitize_key( (string) ( $request['task'] ?? ( $request['feature_id'] ?? '' ) ) );
+			$operation_contract = is_array( $request['operation_contract'] ?? null ) ? $request['operation_contract'] : array();
+			if (
+				self::WORDPRESS_OPERATION_CONTRACT !== (string) ( $operation_contract['contract_version'] ?? '' )
+				|| array() !== array_diff( array( 'contract_version', 'task', 'request' ), array_keys( $operation_contract ) )
+				|| array() !== array_diff( array_keys( $operation_contract ), array( 'contract_version', 'task', 'request' ) )
+				|| ! is_array( $operation_contract['request'] ?? null )
+			) {
+				return new WP_Error(
+					'cloud_wp_ai_connector_operation_contract_invalid',
+					__( 'WordPress AI connector requests require one wordpress_operation.v1 operation contract.', 'npcink-cloud-addon' ),
+					array( 'status' => 400 )
+				);
+			}
+
+			$task          = sanitize_key( (string) ( $operation_contract['task'] ?? '' ) );
+			$scene_request = $operation_contract['request'];
 			$task_contract = null;
-			if ( is_array( $request['task_contract'] ?? null ) ) {
-				$task_contract = Npcink_Cloud_AI_Task_Contract::normalize( $request['task_contract'] );
+			if ( is_array( $scene_request['task_contract'] ?? null ) ) {
+				$task_contract = Npcink_Cloud_AI_Task_Contract::normalize( $scene_request['task_contract'] );
 				if ( is_wp_error( $task_contract ) ) {
 					return $task_contract;
 				}
@@ -1752,8 +1773,52 @@ if ( ! class_exists( 'Npcink_Cloud_Runtime_Client' ) ) {
 				);
 			}
 
-			$prompt = (string) ( $request['prompt'] ?? '' );
-			if ( '' !== $prompt && $this->text_length( $prompt ) > self::WP_AI_CONNECTOR_MAX_PROMPT_CHARS ) {
+			if ( in_array( $task, self::WP_AI_CONNECTOR_SOURCE_TEXT_TASKS, true ) ) {
+				foreach ( array( 'prompt', 'post_title', 'post_excerpt' ) as $forbidden_text_field ) {
+					if ( array_key_exists( $forbidden_text_field, $scene_request ) ) {
+						return new WP_Error(
+							'cloud_wp_ai_connector_source_text_shape_invalid',
+							__( 'WordPress AI title, summary, and rewrite requests require source_text without legacy prompt or post fields.', 'npcink-cloud-addon' ),
+							array( 'status' => 400 )
+						);
+					}
+				}
+				if ( ! is_string( $scene_request['source_text'] ?? null ) || '' === trim( $scene_request['source_text'] ) ) {
+					return new WP_Error(
+						'cloud_wp_ai_connector_source_text_required',
+						__( 'WordPress AI title, summary, and rewrite requests require nonempty source_text.', 'npcink-cloud-addon' ),
+						array( 'status' => 400 )
+					);
+				}
+				$scene_request['source_text'] = trim( $scene_request['source_text'] );
+				if ( $this->text_length( $scene_request['source_text'] ) > self::WP_AI_CONNECTOR_MAX_SCENE_TEXT_CHARS ) {
+					return new WP_Error(
+						'cloud_wp_ai_connector_source_text_too_large',
+						__( 'WordPress AI source_text exceeds the scene runtime size limit.', 'npcink-cloud-addon' ),
+						array( 'status' => 413 )
+					);
+				}
+				if ( array_key_exists( 'system_instruction', $scene_request ) ) {
+					if ( ! is_string( $scene_request['system_instruction'] ) ) {
+						return new WP_Error(
+							'cloud_wp_ai_connector_system_instruction_invalid',
+							__( 'WordPress AI system_instruction must be a string.', 'npcink-cloud-addon' ),
+							array( 'status' => 400 )
+						);
+					}
+					$scene_request['system_instruction'] = trim( $scene_request['system_instruction'] );
+					if ( $this->text_length( $scene_request['system_instruction'] ) > self::WP_AI_CONNECTOR_MAX_SCENE_TEXT_CHARS ) {
+						return new WP_Error(
+							'cloud_wp_ai_connector_system_instruction_too_large',
+							__( 'WordPress AI system_instruction exceeds the scene runtime size limit.', 'npcink-cloud-addon' ),
+							array( 'status' => 413 )
+						);
+					}
+				}
+			}
+
+			$prompt = (string) ( $scene_request['prompt'] ?? '' );
+			if ( '' !== $prompt && $this->text_length( $prompt ) > self::WP_AI_CONNECTOR_MAX_SCENE_TEXT_CHARS ) {
 				return new WP_Error(
 					'cloud_wp_ai_connector_prompt_too_large',
 					__( 'WordPress AI connector prompt exceeds the scene runtime size limit.', 'npcink-cloud-addon' ),
@@ -1765,12 +1830,11 @@ if ( ! class_exists( 'Npcink_Cloud_Runtime_Client' ) ) {
 			$retention_ttl   = absint( $request['retention_ttl'] ?? self::WP_AI_CONNECTOR_MAX_RETENTION_TTL );
 			$retry_max       = absint( $request['retry_max'] ?? 0 );
 			$profile_id      = $this->normalize_identifier( (string) ( $request['profile_id'] ?? 'text.balanced' ) );
-			$input           = is_array( $request['input'] ?? null ) ? $request['input'] : array();
 			if ( null !== $task_contract ) {
-				$input['task_contract'] = $task_contract;
+				$scene_request['task_contract'] = $task_contract;
 			}
 			$site_knowledge_reference = $this->normalize_wordpress_ai_site_knowledge_reference(
-				$input['site_knowledge_reference'] ?? null,
+				$scene_request['site_knowledge_reference'] ?? null,
 				$task,
 				is_array( $task_contract ) ? $task_contract : array()
 			);
@@ -1778,33 +1842,57 @@ if ( ! class_exists( 'Npcink_Cloud_Runtime_Client' ) ) {
 				return $site_knowledge_reference;
 			}
 			if ( null !== $site_knowledge_reference ) {
-				$input['site_knowledge_reference'] = $site_knowledge_reference;
+				$scene_request['site_knowledge_reference'] = $site_knowledge_reference;
 			}
 
-			if ( '' !== $prompt ) {
-				$input['prompt'] = $prompt;
+			$site_id = $this->normalize_identifier( (string) ( $this->config['site_id'] ?? '' ) );
+			if ( '' === $site_id ) {
+				return new WP_Error(
+					'cloud_wp_ai_connector_site_id_required',
+					__( 'WordPress AI connector requests require a verified Cloud site_id.', 'npcink-cloud-addon' ),
+					array( 'status' => 400 )
+				);
 			}
+			$site_url = function_exists( 'home_url' ) ? untrailingslashit( home_url( '/' ) ) : '';
+			if ( '' === $site_url ) {
+				return new WP_Error(
+					'cloud_wp_ai_connector_site_url_required',
+					__( 'WordPress AI connector requests require the canonical WordPress site URL.', 'npcink-cloud-addon' ),
+					array( 'status' => 400 )
+				);
+			}
+			$connector_version = defined( 'NPCINK_CLOUD_ADDON_VERSION' ) ? (string) NPCINK_CLOUD_ADDON_VERSION : '';
+			if ( '' === $connector_version ) {
+				return new WP_Error(
+					'cloud_wp_ai_connector_version_required',
+					__( 'WordPress AI connector requests require the active addon version.', 'npcink-cloud-addon' ),
+					array( 'status' => 400 )
+				);
+			}
+			$is_alt_text = 'alt_text_suggest' === $task;
 
 			return array(
-				'ability_name'        => 'npcink-cloud/wp-ai-connector',
-				'ability_family'      => 'text',
-				'contract_version'    => self::WP_AI_CONNECTOR_CONTRACT,
-				'channel'             => 'wordpress_ai_connector',
-				'execution_kind'      => 'wordpress_ai_connector',
+				'site_id'             => $site_id,
+				'ability_name'        => 'npcink-cloud/connector-runtime',
+				'ability_family'      => $is_alt_text ? 'vision' : 'text',
+				'contract_version'    => self::CLOUD_CONNECTOR_RUNTIME_CONTRACT,
+				'channel'             => 'editor',
+				'execution_kind'      => $is_alt_text ? 'vision' : 'text',
 				'execution_pattern'   => 'inline',
 				'profile_id'          => '' !== $profile_id ? $profile_id : 'text.balanced',
 				'input'               => array(
-					'contract_version'           => self::WP_AI_CONNECTOR_CONTRACT,
-					'source_surface'             => 'wordpress_ai_connector',
-					'connector_id'                => 'npcink-cloud',
-					'task'                        => $task,
-					'write_posture'               => 'suggestion_only',
-					'direct_wordpress_write'      => false,
-					'no_conversation'             => true,
-					'expected_response_contract'  => 'wp_ai_connector_result.v1',
-					'request'                     => $input,
+					'site_url'           => $site_url,
+					'platform_kind'      => 'wordpress',
+					'connector_id'       => 'npcink-cloud-addon',
+					'connector_version'  => $connector_version,
+					'suggestion_only'    => true,
+					'operation_contract' => array(
+						'contract_version' => self::WORDPRESS_OPERATION_CONTRACT,
+						'task'             => $task,
+						'request'          => $scene_request,
+					),
 				),
-				'data_classification' => 'public_site_content',
+				'data_classification' => $is_alt_text ? 'public_reference_media' : 'public_site_content',
 				'storage_mode'        => 'result_only',
 				'retention_ttl'       => min( self::WP_AI_CONNECTOR_MAX_RETENTION_TTL, max( 0, $retention_ttl ) ),
 				'timeout_seconds'     => min( self::WP_AI_CONNECTOR_MAX_TIMEOUT_SECONDS, max( 1, $timeout_seconds ) ),

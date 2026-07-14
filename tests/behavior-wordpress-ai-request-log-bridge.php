@@ -113,23 +113,30 @@ namespace {
 	update_option( 'wpai_feature_ai-request-logging_enabled', '1', false );
 	Npcink_Cloud_WordPress_AI_Connector::maybe_log_wordpress_ai_request_evidence(
 		array(
-			'type'             => 'text',
-			'operation'        => 'npcink-cloud/wp-ai-connector',
-			'task'             => 'content_summary',
-			'contract_version' => 'wp_ai_connector_runtime.v1',
-			'response'         => new WP_Error( 'cloud_runtime_failed', 'Provider timeout while generating text output.' ),
-			'duration_ms'      => 456,
-			'fallback_model_id' => Npcink_Cloud_WordPress_AI_Connector::MODEL_ID,
+			'type'                       => 'text',
+			'operation'                  => 'npcink-cloud/connector-runtime',
+			'task'                       => 'content_summary',
+			'contract_version'           => 'cloud_connector_runtime.v1',
+			'operation_contract_version' => 'wordpress_operation.v1',
+			'response'                   => new WP_Error( 'cloud_runtime_failed', 'Provider timeout while generating text output.' ),
+			'duration_ms'                => 456,
+			'fallback_model_id'          => Npcink_Cloud_WordPress_AI_Connector::MODEL_ID,
 		)
 	);
 
 	$error_log = $GLOBALS['maca_wpai_request_logs'][1] ?? array();
+	$error_context = is_array( $error_log['context'] ?? null ) ? $error_log['context'] : array();
 	maca_assert(
 		2 === count( $GLOBALS['maca_wpai_request_logs'] )
 		&& 'error' === (string) ( $error_log['status'] ?? '' )
+		&& 'npcink-cloud/connector-runtime:content_summary' === (string) ( $error_log['operation'] ?? '' )
 		&& 'Provider timeout while generating text output.' === (string) ( $error_log['error_message'] ?? '' )
 		&& 'npcink-cloud' === (string) ( $error_log['provider'] ?? '' )
-		&& Npcink_Cloud_WordPress_AI_Connector::MODEL_ID === (string) ( $error_log['model'] ?? '' ),
+		&& Npcink_Cloud_WordPress_AI_Connector::MODEL_ID === (string) ( $error_log['model'] ?? '' )
+		&& 'cloud_connector_runtime.v1' === (string) ( $error_context['contract_version'] ?? '' )
+		&& 'wordpress_operation.v1' === (string) ( $error_context['operation_contract_version'] ?? '' )
+		&& 'editor' === (string) ( $error_context['channel'] ?? '' )
+		&& 'npcink-cloud-addon' === (string) ( $error_context['connector_id'] ?? '' ),
 		'Behavior: WordPress AI request log bridge records bounded Cloud runtime errors without request content.'
 	);
 }

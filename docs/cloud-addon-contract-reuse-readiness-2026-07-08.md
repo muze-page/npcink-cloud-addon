@@ -122,7 +122,9 @@ These existing addon contracts are enough to continue the reuse pass:
 - `POST /v1/agent-feedback/events`;
 - `GET /v1/agent-feedback/summary`;
 - `site_knowledge_change_bridge_status.v1`;
-- `wp_ai_connector_runtime.v1`;
+- `cloud_connector_runtime.v1`;
+- `wordpress_operation.v1`;
+- `cloud_connector_result.v1`;
 - `image_context_evidence_request.v1`;
 - `cloud_agent_feedback.v1`.
 

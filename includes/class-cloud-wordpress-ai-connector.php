@@ -317,19 +317,20 @@ if ( ! class_exists( 'Npcink_Cloud_WordPress_AI_Connector' ) ) {
 			);
 
 			$context = array(
-				'contract_version'       => self::clean_log_value( (string) ( $event['contract_version'] ?? '' ), 80 ),
-				'source_surface'         => 'wordpress_ai_connector',
-				'connector_id'           => self::CONNECTOR_ID,
-				'task'                   => $task,
-				'cloud_run_id'           => $run_id,
-				'suggestion_only'        => true,
-				'direct_wordpress_write' => false,
-				'content_storage'        => 'omitted_metadata_only',
+				'contract_version'           => self::clean_log_value( (string) ( $event['contract_version'] ?? '' ), 80 ),
+				'operation_contract_version' => self::clean_log_value( (string) ( $event['operation_contract_version'] ?? '' ), 80 ),
+				'channel'                    => 'editor',
+				'connector_id'               => 'npcink-cloud-addon',
+				'task'                       => $task,
+				'cloud_run_id'               => $run_id,
+				'suggestion_only'            => true,
+				'direct_wordpress_write'     => false,
+				'content_storage'            => 'omitted_metadata_only',
 			);
 
 			$log_data = array(
 				'type'        => $type,
-				'operation'   => self::clean_log_value( (string) ( $event['operation'] ?? 'npcink-cloud/wp-ai-connector' ), 120 ) . ':' . $task,
+				'operation'   => self::clean_log_value( (string) ( $event['operation'] ?? 'npcink-cloud/connector-runtime' ), 120 ) . ':' . $task,
 				'provider'    => self::clean_log_value( $provider, 120 ),
 				'model'       => self::clean_log_value( $model, 160 ),
 				'duration_ms' => max( 0, (int) ( $event['duration_ms'] ?? 0 ) ),
@@ -839,8 +840,6 @@ if ( ! class_exists( 'Npcink_Cloud_WordPress_AI_Connector' ) ) {
 			}
 
 			$scene_input = array(
-				'prompt'             => $text,
-				'system_instruction' => (string) ( $this->config->getSystemInstruction() ?? '' ),
 				'response_format'    => $this->response_format_hint( $task ),
 				'candidate_count'    => $this->config->getCandidateCount(),
 				'max_tokens'         => $this->config->getMaxTokens(),
@@ -850,6 +849,15 @@ if ( ! class_exists( 'Npcink_Cloud_WordPress_AI_Connector' ) ) {
 					'task'   => $task,
 				),
 			);
+			if ( in_array( $task, array( 'title_generation', 'content_summary', 'content_rewrite' ), true ) ) {
+				$scene_input['source_text'] = $text;
+			} else {
+				$scene_input['prompt'] = $text;
+			}
+			$system_instruction = (string) ( $this->config->getSystemInstruction() ?? '' );
+			if ( '' !== trim( $system_instruction ) ) {
+				$scene_input['system_instruction'] = $system_instruction;
+			}
 			$site_knowledge_reference_mode = $this->site_knowledge_reference_mode( $task );
 			if ( '' !== $site_knowledge_reference_mode && Npcink_Cloud_Addon_Settings::is_site_knowledge_generation_reference_enabled() ) {
 				$scene_input['site_knowledge_reference'] = array(
@@ -858,33 +866,23 @@ if ( ! class_exists( 'Npcink_Cloud_WordPress_AI_Connector' ) ) {
 				);
 			}
 
-			$request = array(
-				'contract_version' => 'wp_ai_connector_runtime.v1',
-				'task'             => $task,
-				'task_contract'    => $task_contract,
-				'prompt'           => $text,
-				'input'            => $scene_input,
-				'timeout_seconds'  => 60,
-				'retention_ttl'    => 86400,
-				'retry_max'        => 0,
-			);
-
 			$started  = Npcink_Cloud_WordPress_AI_Connector::runtime_timer_start();
 			$response = npcink_cloud_addon_execute_registered_ai_task_runtime(
 				$ability_name,
-				$request,
+				$scene_input,
 				'trace_wp_ai_connector_' . wp_generate_uuid4(),
 				'wp_ai_connector_' . wp_generate_uuid4()
 			);
 			Npcink_Cloud_WordPress_AI_Connector::maybe_log_wordpress_ai_request_evidence(
 				array(
-					'type'             => 'text',
-					'operation'        => 'npcink-cloud/wp-ai-connector',
-					'task'             => $task,
-					'contract_version' => 'wp_ai_connector_runtime.v1',
-					'response'         => $response,
-					'duration_ms'      => Npcink_Cloud_WordPress_AI_Connector::runtime_timer_elapsed_ms( $started ),
-					'fallback_model_id' => Npcink_Cloud_WordPress_AI_Connector::MODEL_ID,
+					'type'                       => 'text',
+					'operation'                  => 'npcink-cloud/connector-runtime',
+					'task'                       => $task,
+					'contract_version'           => 'cloud_connector_runtime.v1',
+					'operation_contract_version' => 'wordpress_operation.v1',
+					'response'                   => $response,
+					'duration_ms'                => Npcink_Cloud_WordPress_AI_Connector::runtime_timer_elapsed_ms( $started ),
+					'fallback_model_id'          => Npcink_Cloud_WordPress_AI_Connector::MODEL_ID,
 				)
 			);
 
@@ -892,7 +890,7 @@ if ( ! class_exists( 'Npcink_Cloud_WordPress_AI_Connector' ) ) {
 				throw new \WordPress\AiClient\Common\Exception\RuntimeException( esc_html( $response->get_error_message() ) );
 			}
 
-			$output_text = $this->extract_text( is_array( $response ) ? $response : array() );
+			$output_text = $this->extract_text( is_array( $response ) ? $response : array(), $task );
 			if ( '' === $output_text ) {
 				throw new \WordPress\AiClient\Common\Exception\RuntimeException( 'Npcink Cloud AI connector response did not include text output.' );
 			}
@@ -911,7 +909,7 @@ if ( ! class_exists( 'Npcink_Cloud_WordPress_AI_Connector' ) ) {
 				$this->provider_metadata,
 				$this->metadata,
 				array(
-					'contract_version' => 'wp_ai_connector_result.v1',
+					'contract_version' => 'cloud_connector_result.v1',
 					'task'             => $task,
 					'suggestion_only'  => true,
 				)
@@ -999,41 +997,28 @@ if ( ! class_exists( 'Npcink_Cloud_WordPress_AI_Connector' ) ) {
 		}
 
 		/**
-		 * Extracts text from common Cloud runtime result shapes.
+		 * Extracts text from the task-bound Cloud connector result.
 		 *
 		 * @param array<string,mixed> $response Cloud response.
+		 * @param string              $expected_task Expected WordPress operation task.
 		 * @return string
 		 */
-		private function extract_text( array $response ): string {
-			$candidates = array(
-				$response['text'] ?? null,
-				$response['content'] ?? null,
-				$response['output_text'] ?? null,
-				$response['result']['text'] ?? null,
-				$response['result']['content'] ?? null,
-				$response['result']['output_text'] ?? null,
-				$response['data']['text'] ?? null,
-				$response['data']['content'] ?? null,
-				$response['data']['output_text'] ?? null,
-				$response['data']['result']['text'] ?? null,
-				$response['data']['result']['content'] ?? null,
-				$response['data']['result']['output_text'] ?? null,
-			);
-
-			foreach ( $candidates as $candidate ) {
-				if ( is_string( $candidate ) && '' !== trim( $candidate ) ) {
-					return trim( $candidate );
-				}
+		private function extract_text( array $response, string $expected_task ): string {
+			$result             = is_array( $response['data']['result'] ?? null ) ? $response['data']['result'] : array();
+			$operation_contract = is_array( $result['operation_contract'] ?? null ) ? $result['operation_contract'] : array();
+			if (
+				'cloud_connector_result.v1' !== (string) ( $result['contract_version'] ?? '' )
+				|| true !== ( $result['suggestion_only'] ?? null )
+				|| 'npcink-cloud-addon' !== (string) ( $result['connector_id'] ?? '' )
+				|| 'wordpress_operation.v1' !== (string) ( $operation_contract['contract_version'] ?? '' )
+				|| $expected_task !== (string) ( $operation_contract['task'] ?? '' )
+			) {
+				return '';
 			}
 
-			if ( isset( $response['choices'][0]['text'] ) && is_string( $response['choices'][0]['text'] ) ) {
-				return trim( $response['choices'][0]['text'] );
-			}
-			if ( isset( $response['data']['choices'][0]['text'] ) && is_string( $response['data']['choices'][0]['text'] ) ) {
-				return trim( $response['data']['choices'][0]['text'] );
-			}
+			$output = is_array( $result['output'] ?? null ) ? $result['output'] : array();
 
-			return '';
+			return is_string( $output['output_text'] ?? null ) ? trim( $output['output_text'] ) : '';
 		}
 	}
 
@@ -1154,27 +1139,29 @@ if ( ! class_exists( 'Npcink_Cloud_WordPress_AI_Connector' ) ) {
 			}
 
 			$request = array(
-				'contract_version' => 'wp_ai_connector_runtime.v1',
-				'task'             => 'alt_text_suggest',
-				'prompt'           => $text,
-				'input'            => array(
-					'prompt'             => $text,
-					'image_url'          => $source['image_url'],
-					'thumbnail_url'      => $source['thumbnail_url'],
-					'mime_type'          => $source['mime_type'],
-					'filename'           => $source['filename'],
-					'title'              => $source['title'],
-					'existing_alt'       => $source['existing_alt'],
-					'existing_caption'   => $source['existing_caption'],
-					'locale'             => function_exists( 'get_locale' ) ? get_locale() : '',
-					'scene_gate'         => array(
-						'source' => 'wordpress_ai_plugin_ability',
-						'task'   => 'alt_text_suggest',
+				'contract_version'   => 'cloud_connector_runtime.v1',
+				'operation_contract' => array(
+					'contract_version' => 'wordpress_operation.v1',
+					'task'             => 'alt_text_suggest',
+					'request'          => array(
+						'prompt'           => $text,
+						'image_url'        => $source['image_url'],
+						'thumbnail_url'    => $source['thumbnail_url'],
+						'mime_type'        => $source['mime_type'],
+						'filename'         => $source['filename'],
+						'title'            => $source['title'],
+						'existing_alt'     => $source['existing_alt'],
+						'existing_caption' => $source['existing_caption'],
+						'locale'           => function_exists( 'get_locale' ) ? get_locale() : '',
+						'scene_gate'       => array(
+							'source' => 'wordpress_ai_plugin_ability',
+							'task'   => 'alt_text_suggest',
+						),
 					),
 				),
-				'timeout_seconds'  => 60,
-				'retention_ttl'    => 86400,
-				'retry_max'        => 0,
+				'timeout_seconds'    => 60,
+				'retention_ttl'      => 86400,
+				'retry_max'          => 0,
 			);
 
 			$started  = Npcink_Cloud_WordPress_AI_Connector::runtime_timer_start();
@@ -1185,13 +1172,14 @@ if ( ! class_exists( 'Npcink_Cloud_WordPress_AI_Connector' ) ) {
 			);
 			Npcink_Cloud_WordPress_AI_Connector::maybe_log_wordpress_ai_request_evidence(
 				array(
-					'type'              => 'vision',
-					'operation'         => 'npcink-cloud/wp-ai-connector',
-					'task'              => 'alt_text_suggest',
-					'contract_version'  => 'wp_ai_connector_runtime.v1',
-					'response'          => $response,
-					'duration_ms'       => Npcink_Cloud_WordPress_AI_Connector::runtime_timer_elapsed_ms( $started ),
-					'fallback_model_id' => Npcink_Cloud_WordPress_AI_Connector::VISION_MODEL_ID,
+					'type'                       => 'vision',
+					'operation'                  => 'npcink-cloud/connector-runtime',
+					'task'                       => 'alt_text_suggest',
+					'contract_version'           => 'cloud_connector_runtime.v1',
+					'operation_contract_version' => 'wordpress_operation.v1',
+					'response'                   => $response,
+					'duration_ms'                => Npcink_Cloud_WordPress_AI_Connector::runtime_timer_elapsed_ms( $started ),
+					'fallback_model_id'          => Npcink_Cloud_WordPress_AI_Connector::VISION_MODEL_ID,
 				)
 			);
 
@@ -1199,7 +1187,7 @@ if ( ! class_exists( 'Npcink_Cloud_WordPress_AI_Connector' ) ) {
 				throw new \WordPress\AiClient\Common\Exception\RuntimeException( esc_html( $response->get_error_message() ) );
 			}
 
-			$output_text = $this->extract_text( is_array( $response ) ? $response : array() );
+			$output_text = $this->extract_text( is_array( $response ) ? $response : array(), 'alt_text_suggest' );
 			if ( '' === $output_text ) {
 				throw new \WordPress\AiClient\Common\Exception\RuntimeException( 'Npcink Cloud AI vision connector response did not include alt text output.' );
 			}
@@ -1218,7 +1206,7 @@ if ( ! class_exists( 'Npcink_Cloud_WordPress_AI_Connector' ) ) {
 				$this->provider_metadata,
 				$this->metadata,
 				array(
-					'contract_version'       => 'wp_ai_connector_result.v1',
+					'contract_version'       => 'cloud_connector_result.v1',
 					'task'                   => 'alt_text_suggest',
 					'suggestion_only'        => true,
 					'direct_wordpress_write' => false,
@@ -1441,41 +1429,28 @@ if ( ! class_exists( 'Npcink_Cloud_WordPress_AI_Connector' ) ) {
 		}
 
 		/**
-		 * Extracts text from common Cloud runtime result shapes.
+		 * Extracts text from the task-bound Cloud connector result.
 		 *
 		 * @param array<string,mixed> $response Cloud response.
+		 * @param string              $expected_task Expected WordPress operation task.
 		 * @return string
 		 */
-		private function extract_text( array $response ): string {
-			$candidates = array(
-				$response['text'] ?? null,
-				$response['content'] ?? null,
-				$response['output_text'] ?? null,
-				$response['result']['text'] ?? null,
-				$response['result']['content'] ?? null,
-				$response['result']['output_text'] ?? null,
-				$response['data']['text'] ?? null,
-				$response['data']['content'] ?? null,
-				$response['data']['output_text'] ?? null,
-				$response['data']['result']['text'] ?? null,
-				$response['data']['result']['content'] ?? null,
-				$response['data']['result']['output_text'] ?? null,
-			);
-
-			foreach ( $candidates as $candidate ) {
-				if ( is_string( $candidate ) && '' !== trim( $candidate ) ) {
-					return trim( $candidate );
-				}
+		private function extract_text( array $response, string $expected_task ): string {
+			$result             = is_array( $response['data']['result'] ?? null ) ? $response['data']['result'] : array();
+			$operation_contract = is_array( $result['operation_contract'] ?? null ) ? $result['operation_contract'] : array();
+			if (
+				'cloud_connector_result.v1' !== (string) ( $result['contract_version'] ?? '' )
+				|| true !== ( $result['suggestion_only'] ?? null )
+				|| 'npcink-cloud-addon' !== (string) ( $result['connector_id'] ?? '' )
+				|| 'wordpress_operation.v1' !== (string) ( $operation_contract['contract_version'] ?? '' )
+				|| $expected_task !== (string) ( $operation_contract['task'] ?? '' )
+			) {
+				return '';
 			}
 
-			if ( isset( $response['choices'][0]['text'] ) && is_string( $response['choices'][0]['text'] ) ) {
-				return trim( $response['choices'][0]['text'] );
-			}
-			if ( isset( $response['data']['choices'][0]['text'] ) && is_string( $response['data']['choices'][0]['text'] ) ) {
-				return trim( $response['data']['choices'][0]['text'] );
-			}
+			$output = is_array( $result['output'] ?? null ) ? $result['output'] : array();
 
-			return '';
+			return is_string( $output['output_text'] ?? null ) ? trim( $output['output_text'] ) : '';
 		}
 	}
 

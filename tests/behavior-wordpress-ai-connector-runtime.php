@@ -14,35 +14,67 @@ maca_load_addon_classes();
 maca_seed_settings( true );
 $client = new Npcink_Cloud_Runtime_Client( Npcink_Cloud_Addon_Settings::get_settings() );
 
+/**
+ * Builds the single active WordPress operation request accepted by the addon.
+ *
+ * @param string              $task WordPress operation task.
+ * @param array<string,mixed> $scene_request Task scene request.
+ * @param array<string,mixed> $runtime_options Optional bounded runtime options.
+ * @return array<string,mixed>
+ */
+function maca_wordpress_operation_request( string $task, array $scene_request, array $runtime_options = array() ): array {
+	return array_merge(
+		array(
+			'contract_version'  => 'cloud_connector_runtime.v1',
+			'operation_contract' => array(
+				'contract_version' => 'wordpress_operation.v1',
+				'task'             => $task,
+				'request'          => $scene_request,
+			),
+		),
+		$runtime_options
+	);
+}
+
 $GLOBALS['maca_http_response_queue'][] = array(
 	'response' => array( 'code' => 200 ),
 	'body'     => wp_json_encode(
 		array(
 			'status' => 'ok',
-			'run_id' => 'run_wp_ai_connector_1',
 			'data'   => array(
-				'content' => 'Suggested title',
+				'run_id' => 'run_wp_ai_connector_1',
+				'status' => 'succeeded',
+				'result' => array(
+					'contract_version'  => 'cloud_connector_result.v1',
+					'suggestion_only'   => true,
+					'connector_id'      => 'npcink-cloud-addon',
+					'operation_contract' => array(
+						'contract_version' => 'wordpress_operation.v1',
+						'task'             => 'title_generation',
+					),
+					'output' => array( 'output_text' => 'Suggested title' ),
+				),
 			),
 		)
 	),
 );
 
 $result = $client->execute_wordpress_ai_connector_runtime(
-	array(
-		'contract_version' => 'wp_ai_connector_runtime.v1',
-		'task'             => 'title_generation',
-		'prompt'           => 'Suggest a concise title for this post.',
-		'input'            => array(
-			'post_title'   => 'Old title',
-			'post_excerpt' => 'A short public excerpt.',
+	maca_wordpress_operation_request(
+		'title_generation',
+		array(
+			'source_text'       => '<content>A concise article about the verified Cloud connector.</content>',
+			'system_instruction' => 'Return one concise title.',
 			'site_knowledge_reference' => array(
 				'enabled' => true,
 				'mode'    => 'site_title_style',
 			),
 		),
-		'timeout_seconds'  => 120,
-		'retention_ttl'    => 999999,
-		'retry_max'        => 9,
+		array(
+			'timeout_seconds' => 120,
+			'retention_ttl'   => 999999,
+			'retry_max'       => 9,
+		)
 	),
 	'trace-wp-ai-connector',
 	'wp-ai-idempotency'
@@ -52,45 +84,63 @@ $request      = end( $GLOBALS['maca_http_requests'] );
 $request_body = json_decode( (string) ( $request['args']['body'] ?? '' ), true );
 
 maca_assert(
-	is_array( $result ) && 'run_wp_ai_connector_1' === (string) ( $result['run_id'] ?? '' ),
+	is_array( $result ) && 'run_wp_ai_connector_1' === (string) ( $result['data']['run_id'] ?? '' ),
 	'Behavior: WordPress AI connector runtime returns the Cloud response for a supported scene task.'
 );
 
 maca_assert(
 	is_array( $request_body )
-	&& 'npcink-cloud/wp-ai-connector' === (string) ( $request_body['ability_name'] ?? '' )
-	&& 'wp_ai_connector_runtime.v1' === (string) ( $request_body['contract_version'] ?? '' )
-	&& 'wordpress_ai_connector' === (string) ( $request_body['channel'] ?? '' )
-	&& 'wordpress_ai_connector' === (string) ( $request_body['execution_kind'] ?? '' )
+	&& 'site_test' === (string) ( $request_body['site_id'] ?? '' )
+	&& 'npcink-cloud/connector-runtime' === (string) ( $request_body['ability_name'] ?? '' )
+	&& 'cloud_connector_runtime.v1' === (string) ( $request_body['contract_version'] ?? '' )
+	&& 'editor' === (string) ( $request_body['channel'] ?? '' )
+	&& 'text' === (string) ( $request_body['execution_kind'] ?? '' )
 	&& 'inline' === (string) ( $request_body['execution_pattern'] ?? '' )
 	&& 'result_only' === (string) ( $request_body['storage_mode'] ?? '' )
 	&& 60 === (int) ( $request_body['timeout_seconds'] ?? 0 )
 	&& 86400 === (int) ( $request_body['retention_ttl'] ?? 0 )
 	&& 1 === (int) ( $request_body['retry_max'] ?? -1 )
 	&& false === (bool) ( $request_body['policy']['allow_fallback'] ?? true )
-	&& 'wordpress_ai_connector' === (string) ( $request_body['input']['source_surface'] ?? '' )
-	&& 'npcink-cloud' === (string) ( $request_body['input']['connector_id'] ?? '' )
-	&& 'title_generation' === (string) ( $request_body['input']['task'] ?? '' )
-	&& true === (bool) ( $request_body['input']['request']['site_knowledge_reference']['enabled'] ?? false )
-	&& 'site_title_style' === (string) ( $request_body['input']['request']['site_knowledge_reference']['mode'] ?? '' )
-	&& 'suggestion_only' === (string) ( $request_body['input']['write_posture'] ?? '' )
-	&& false === (bool) ( $request_body['input']['direct_wordpress_write'] ?? true )
-	&& true === (bool) ( $request_body['input']['no_conversation'] ?? false ),
+	&& 'https://wordpress.example.test' === (string) ( $request_body['input']['site_url'] ?? '' )
+	&& 'wordpress' === (string) ( $request_body['input']['platform_kind'] ?? '' )
+	&& 'npcink-cloud-addon' === (string) ( $request_body['input']['connector_id'] ?? '' )
+	&& '0.1.3-test' === (string) ( $request_body['input']['connector_version'] ?? '' )
+	&& true === (bool) ( $request_body['input']['suggestion_only'] ?? false )
+	&& 'wordpress_operation.v1' === (string) ( $request_body['input']['operation_contract']['contract_version'] ?? '' )
+	&& 'title_generation' === (string) ( $request_body['input']['operation_contract']['task'] ?? '' )
+	&& '<content>A concise article about the verified Cloud connector.</content>' === (string) ( $request_body['input']['operation_contract']['request']['source_text'] ?? '' )
+	&& 'Return one concise title.' === (string) ( $request_body['input']['operation_contract']['request']['system_instruction'] ?? '' )
+	&& true === (bool) ( $request_body['input']['operation_contract']['request']['site_knowledge_reference']['enabled'] ?? false )
+	&& 'site_title_style' === (string) ( $request_body['input']['operation_contract']['request']['site_knowledge_reference']['mode'] ?? '' )
+	&& ! isset( $request_body['input']['operation_contract']['request']['prompt'] )
+	&& ! isset( $request_body['input']['operation_contract']['request']['post_title'] )
+	&& ! isset( $request_body['input']['operation_contract']['request']['post_excerpt'] ),
 	'Behavior: WordPress AI connector runtime projects a scene-bound no-chat no-write Cloud payload.'
 );
 
-$injected_reference = $client->execute_wordpress_ai_connector_runtime(
+$legacy_contract = $client->execute_wordpress_ai_connector_runtime(
 	array(
-		'contract_version' => 'wp_ai_connector_runtime.v1',
+		'contract_version' => 'wp_ai_connector_' . 'runtime.v1',
 		'task'             => 'title_generation',
-		'prompt'           => 'Suggest a title.',
-		'input'            => array(
+		'prompt'           => 'Legacy connector requests are not accepted.',
+	)
+);
+maca_assert(
+	is_wp_error( $legacy_contract ) && 'cloud_wp_ai_connector_contract_invalid' === $legacy_contract->get_error_code(),
+	'Behavior: WordPress AI connector runtime rejects the removed legacy transport contract.'
+);
+
+$injected_reference = $client->execute_wordpress_ai_connector_runtime(
+	maca_wordpress_operation_request(
+		'title_generation',
+		array(
+			'source_text' => '<content>Suggest a title for this article.</content>',
 			'site_knowledge_reference' => array(
 				'enabled' => true,
 				'mode'    => 'site_title_style',
 				'titles'  => array( 'Injected title' ),
 			),
-		),
+		)
 	)
 );
 maca_assert(
@@ -108,11 +158,10 @@ foreach ( $reference_modes as $reference_task => $reference_mode ) {
 		'body'     => wp_json_encode( array( 'status' => 'ok', 'run_id' => 'run_' . $reference_task ) ),
 	);
 	$reference_result = $client->execute_wordpress_ai_connector_runtime(
-		array(
-			'contract_version' => 'wp_ai_connector_runtime.v1',
-			'task'             => $reference_task,
-			'prompt'           => 'Run the bounded editor task.',
-			'input'            => array(
+		maca_wordpress_operation_request(
+			$reference_task,
+			array(
+				'source_text' => '<content>Run the bounded editor task.</content>',
 				'site_knowledge_reference' => array(
 					'enabled' => true,
 					'mode'    => $reference_mode,
@@ -124,19 +173,18 @@ foreach ( $reference_modes as $reference_task => $reference_mode ) {
 	$reference_body = json_decode( (string) ( $reference_request['args']['body'] ?? '' ), true );
 	maca_assert(
 		is_array( $reference_result )
-		&& $reference_task === (string) ( $reference_body['input']['task'] ?? '' )
-		&& $reference_mode === (string) ( $reference_body['input']['request']['site_knowledge_reference']['mode'] ?? '' ),
+		&& $reference_task === (string) ( $reference_body['input']['operation_contract']['task'] ?? '' )
+		&& $reference_mode === (string) ( $reference_body['input']['operation_contract']['request']['site_knowledge_reference']['mode'] ?? '' ),
 		'Behavior: WordPress AI connector runtime accepts the task-bound Site Knowledge reference mode for ' . $reference_task . '.'
 	);
 }
 
 foreach ( array( 'excerpt_generation', 'meta_description', 'content_classification' ) as $unsupported_reference_task ) {
 	$unsupported_task_reference = $client->execute_wordpress_ai_connector_runtime(
-		array(
-			'contract_version' => 'wp_ai_connector_runtime.v1',
-			'task'             => $unsupported_reference_task,
-			'prompt'           => 'Run the bounded editor task.',
-			'input'            => array(
+		maca_wordpress_operation_request(
+			$unsupported_reference_task,
+			array(
+				'prompt' => 'Run the bounded editor task.',
 				'site_knowledge_reference' => array( 'enabled' => true ),
 			),
 		)
@@ -149,11 +197,10 @@ foreach ( array( 'excerpt_generation', 'meta_description', 'content_classificati
 }
 
 $mismatched_reference = $client->execute_wordpress_ai_connector_runtime(
-	array(
-		'contract_version' => 'wp_ai_connector_runtime.v1',
-		'task'             => 'content_summary',
-		'prompt'           => 'Summarize this article.',
-		'input'            => array(
+	maca_wordpress_operation_request(
+		'content_summary',
+		array(
+			'source_text' => '<content>Summarize this article.</content>',
 			'site_knowledge_reference' => array(
 				'enabled' => true,
 				'mode'    => 'site_title_style',
@@ -168,11 +215,10 @@ maca_assert(
 );
 
 $unsupported_reference = $client->execute_wordpress_ai_connector_runtime(
-	array(
-		'contract_version' => 'wp_ai_connector_runtime.v1',
-		'task'             => 'content_rewrite',
-		'prompt'           => 'Rewrite this paragraph.',
-		'input'            => array(
+	maca_wordpress_operation_request(
+		'content_rewrite',
+		array(
+			'source_text' => '<block-content>Rewrite this paragraph.</block-content>',
 			'site_knowledge_reference' => array(
 				'enabled' => true,
 				'mode'    => 'site_title_style',
@@ -187,15 +233,17 @@ maca_assert(
 );
 
 $chat_shape = $client->execute_wordpress_ai_connector_runtime(
-	array(
-		'contract_version' => 'wp_ai_connector_runtime.v1',
-		'task'             => 'content_summary',
-		'messages'         => array(
-			array(
-				'role'    => 'user',
-				'content' => 'Let us chat.',
+	maca_wordpress_operation_request(
+		'content_summary',
+		array(
+			'source_text' => '<content>Summarize this article.</content>',
+			'messages'    => array(
+				array(
+					'role'    => 'user',
+					'content' => 'Let us chat.',
+				),
 			),
-		),
+		)
 	)
 );
 maca_assert(
@@ -204,27 +252,33 @@ maca_assert(
 );
 
 $unknown_task = $client->execute_wordpress_ai_connector_runtime(
-	array(
-		'contract_version' => 'wp_ai_connector_runtime.v1',
-		'task'             => 'free_chat',
-		'prompt'           => 'Talk about anything.',
-	)
+	maca_wordpress_operation_request( 'free_chat', array( 'prompt' => 'Talk about anything.' ) )
 );
 maca_assert(
 	is_wp_error( $unknown_task ) && 'cloud_wp_ai_connector_task_not_allowed' === $unknown_task->get_error_code(),
 	'Behavior: WordPress AI connector runtime rejects unsupported task surfaces.'
 );
 
-$large_prompt = $client->execute_wordpress_ai_connector_runtime(
-	array(
-		'contract_version' => 'wp_ai_connector_runtime.v1',
-		'task'             => 'content_rewrite',
-		'prompt'           => str_repeat( 'x', 12001 ),
+$large_source_text = $client->execute_wordpress_ai_connector_runtime(
+	maca_wordpress_operation_request( 'content_rewrite', array( 'source_text' => str_repeat( 'x', 12001 ) ) )
+);
+maca_assert(
+	is_wp_error( $large_source_text ) && 'cloud_wp_ai_connector_source_text_too_large' === $large_source_text->get_error_code(),
+	'Behavior: WordPress AI connector runtime rejects oversized source text for rewrite tasks.'
+);
+
+$legacy_text_shape = $client->execute_wordpress_ai_connector_runtime(
+	maca_wordpress_operation_request(
+		'title_generation',
+		array(
+			'source_text' => '<content>Current article content.</content>',
+			'prompt'      => 'Legacy prompt must not survive the reset.',
+		)
 	)
 );
 maca_assert(
-	is_wp_error( $large_prompt ) && 'cloud_wp_ai_connector_prompt_too_large' === $large_prompt->get_error_code(),
-	'Behavior: WordPress AI connector runtime rejects oversized prompts.'
+	is_wp_error( $legacy_text_shape ) && 'cloud_wp_ai_connector_source_text_shape_invalid' === $legacy_text_shape->get_error_code(),
+	'Behavior: WordPress AI text tasks reject legacy prompt and post-field compatibility shapes.'
 );
 
 $GLOBALS['maca_http_response_queue'][] = array(
@@ -232,10 +286,17 @@ $GLOBALS['maca_http_response_queue'][] = array(
 	'body'     => wp_json_encode(
 		array(
 			'status' => 'ok',
-			'run_id' => 'run_wp_ai_alt_text_1',
 			'data'   => array(
+				'run_id' => 'run_wp_ai_alt_text_1',
 				'result' => array(
-					'output_text' => 'A blue ceramic mug on a white table.',
+					'contract_version'  => 'cloud_connector_result.v1',
+					'suggestion_only'   => true,
+					'connector_id'      => 'npcink-cloud-addon',
+					'operation_contract' => array(
+						'contract_version' => 'wordpress_operation.v1',
+						'task'             => 'alt_text_suggest',
+					),
+					'output' => array( 'output_text' => 'A blue ceramic mug on a white table.' ),
 				),
 			),
 		)
@@ -243,11 +304,10 @@ $GLOBALS['maca_http_response_queue'][] = array(
 );
 
 $alt_text_result = $client->execute_wordpress_ai_connector_runtime(
-	array(
-		'contract_version' => 'wp_ai_connector_runtime.v1',
-		'task'             => 'alt_text_suggest',
-		'prompt'           => 'Generate accessible alt text for this media item.',
-		'input'            => array(
+	maca_wordpress_operation_request(
+		'alt_text_suggest',
+		array(
+			'prompt'           => 'Generate accessible alt text for this media item.',
 			'image_url'        => 'https://cdn.example.test/uploads/blue-mug.jpg',
 			'thumbnail_url'    => 'https://cdn.example.test/uploads/blue-mug-150x150.jpg',
 			'mime_type'        => 'image/jpeg',
@@ -257,7 +317,7 @@ $alt_text_result = $client->execute_wordpress_ai_connector_runtime(
 			'existing_caption' => '',
 			'locale'           => 'en_US',
 		),
-		'timeout_seconds'  => 90,
+		array( 'timeout_seconds' => 90 )
 	),
 	'trace-wp-ai-alt-text',
 	'wp-ai-alt-text-idempotency'
@@ -266,19 +326,20 @@ $alt_text_request      = end( $GLOBALS['maca_http_requests'] );
 $alt_text_request_body = json_decode( (string) ( $alt_text_request['args']['body'] ?? '' ), true );
 
 maca_assert(
-	is_array( $alt_text_result ) && 'run_wp_ai_alt_text_1' === (string) ( $alt_text_result['run_id'] ?? '' ),
+	is_array( $alt_text_result ) && 'run_wp_ai_alt_text_1' === (string) ( $alt_text_result['data']['run_id'] ?? '' ),
 	'Behavior: WordPress AI connector runtime returns the Cloud response for a supported alt text scene task.'
 );
 
 maca_assert(
 	is_array( $alt_text_request_body )
-	&& 'npcink-cloud/wp-ai-connector' === (string) ( $alt_text_request_body['ability_name'] ?? '' )
-	&& 'wordpress_ai_connector' === (string) ( $alt_text_request_body['execution_kind'] ?? '' )
-	&& 'alt_text_suggest' === (string) ( $alt_text_request_body['input']['task'] ?? '' )
-	&& 'https://cdn.example.test/uploads/blue-mug.jpg' === (string) ( $alt_text_request_body['input']['request']['image_url'] ?? '' )
-	&& 'image/jpeg' === (string) ( $alt_text_request_body['input']['request']['mime_type'] ?? '' )
-	&& 'suggestion_only' === (string) ( $alt_text_request_body['input']['write_posture'] ?? '' )
-	&& false === (bool) ( $alt_text_request_body['input']['direct_wordpress_write'] ?? true ),
+	&& 'npcink-cloud/connector-runtime' === (string) ( $alt_text_request_body['ability_name'] ?? '' )
+	&& 'cloud_connector_runtime.v1' === (string) ( $alt_text_request_body['contract_version'] ?? '' )
+	&& 'editor' === (string) ( $alt_text_request_body['channel'] ?? '' )
+	&& 'vision' === (string) ( $alt_text_request_body['execution_kind'] ?? '' )
+	&& 'alt_text_suggest' === (string) ( $alt_text_request_body['input']['operation_contract']['task'] ?? '' )
+	&& 'https://cdn.example.test/uploads/blue-mug.jpg' === (string) ( $alt_text_request_body['input']['operation_contract']['request']['image_url'] ?? '' )
+	&& 'image/jpeg' === (string) ( $alt_text_request_body['input']['operation_contract']['request']['mime_type'] ?? '' )
+	&& true === (bool) ( $alt_text_request_body['input']['suggestion_only'] ?? false ),
 	'Behavior: WordPress AI connector runtime projects bounded alt text image URL context without local writes.'
 );
 
@@ -287,10 +348,17 @@ $GLOBALS['maca_http_response_queue'][] = array(
 	'body'     => wp_json_encode(
 		array(
 			'status' => 'ok',
-			'run_id' => 'run_wp_ai_alt_text_data_url_1',
 			'data'   => array(
+				'run_id' => 'run_wp_ai_alt_text_data_url_1',
 				'result' => array(
-					'output_text' => 'A small inline test image.',
+					'contract_version'  => 'cloud_connector_result.v1',
+					'suggestion_only'   => true,
+					'connector_id'      => 'npcink-cloud-addon',
+					'operation_contract' => array(
+						'contract_version' => 'wordpress_operation.v1',
+						'task'             => 'alt_text_suggest',
+					),
+					'output' => array( 'output_text' => 'A small inline test image.' ),
 				),
 			),
 		)
@@ -299,11 +367,10 @@ $GLOBALS['maca_http_response_queue'][] = array(
 
 $alt_text_data_url = 'data:image/png;base64,' . base64_encode( 'image-bytes' );
 $data_url_result   = $client->execute_wordpress_ai_connector_runtime(
-	array(
-		'contract_version' => 'wp_ai_connector_runtime.v1',
-		'task'             => 'alt_text_suggest',
-		'prompt'           => 'Generate alt text.',
-		'input'            => array(
+	maca_wordpress_operation_request(
+		'alt_text_suggest',
+		array(
+			'prompt'    => 'Generate alt text.',
 			'image_url' => $alt_text_data_url,
 			'mime_type' => 'image/png',
 			'filename'  => 'inline-test.png',
@@ -317,17 +384,16 @@ $data_url_request_body = json_decode( (string) ( $data_url_request['args']['body
 
 maca_assert(
 	is_array( $data_url_result )
-	&& 'run_wp_ai_alt_text_data_url_1' === (string) ( $data_url_result['run_id'] ?? '' )
-	&& $alt_text_data_url === (string) ( $data_url_request_body['input']['request']['image_url'] ?? '' ),
+	&& 'run_wp_ai_alt_text_data_url_1' === (string) ( $data_url_result['data']['run_id'] ?? '' )
+	&& $alt_text_data_url === (string) ( $data_url_request_body['input']['operation_contract']['request']['image_url'] ?? '' ),
 	'Behavior: WordPress AI connector runtime accepts bounded alt text data URL references without accepting generic base64 fields.'
 );
 
 $inline_alt_text = $client->execute_wordpress_ai_connector_runtime(
-	array(
-		'contract_version' => 'wp_ai_connector_runtime.v1',
-		'task'             => 'alt_text_suggest',
-		'prompt'           => 'Generate alt text.',
-		'input'            => array(
+	maca_wordpress_operation_request(
+		'alt_text_suggest',
+		array(
+			'prompt'       => 'Generate alt text.',
 			'image_base64' => base64_encode( 'image-bytes' ),
 			'mime_type'    => 'image/png',
 		),

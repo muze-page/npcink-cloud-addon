@@ -434,8 +434,12 @@ msgstr ""
 msgid "Cloud media derivative request payload could not be encoded."
 msgstr ""
 
-#: includes/class-cloud-runtime-client.php:1670
-msgid "WordPress AI connector requests require the wp_ai_connector_runtime.v1 contract."
+#: includes/class-cloud-runtime-client.php:1704
+msgid "WordPress AI connector requests require the cloud_connector_runtime.v1 contract."
+msgstr ""
+
+#: includes/class-cloud-runtime-client.php:1718
+msgid "WordPress AI connector requests require one wordpress_operation.v1 operation contract."
 msgstr ""
 
 #: includes/class-cloud-runtime-client.php:1685
@@ -458,8 +462,40 @@ msgstr ""
 msgid "WordPress AI connector request exceeds the scene runtime size limit."
 msgstr ""
 
+#: includes/class-cloud-runtime-client.php:1781
+msgid "WordPress AI title, summary, and rewrite requests require source_text without legacy prompt or post fields."
+msgstr ""
+
+#: includes/class-cloud-runtime-client.php:1789
+msgid "WordPress AI title, summary, and rewrite requests require nonempty source_text."
+msgstr ""
+
+#: includes/class-cloud-runtime-client.php:1797
+msgid "WordPress AI source_text exceeds the scene runtime size limit."
+msgstr ""
+
+#: includes/class-cloud-runtime-client.php:1805
+msgid "WordPress AI system_instruction must be a string."
+msgstr ""
+
+#: includes/class-cloud-runtime-client.php:1813
+msgid "WordPress AI system_instruction exceeds the scene runtime size limit."
+msgstr ""
+
 #: includes/class-cloud-runtime-client.php:1731
 msgid "WordPress AI connector prompt exceeds the scene runtime size limit."
+msgstr ""
+
+#: includes/class-cloud-runtime-client.php:1852
+msgid "WordPress AI connector requests require a verified Cloud site_id."
+msgstr ""
+
+#: includes/class-cloud-runtime-client.php:1860
+msgid "WordPress AI connector requests require the canonical WordPress site URL."
+msgstr ""
+
+#: includes/class-cloud-runtime-client.php:1868
+msgid "WordPress AI connector requests require the active addon version."
 msgstr ""
 
 #: includes/class-cloud-runtime-client.php:1805

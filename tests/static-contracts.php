@@ -259,21 +259,29 @@ maca_assert(
 maca_assert(
 	false !== strpos( $runtime_client, 'function execute_wordpress_ai_connector_runtime' )
 	&& false !== strpos( $runtime_client, 'normalize_wordpress_ai_connector_request' )
-	&& false !== strpos( $runtime_client, "WP_AI_CONNECTOR_CONTRACT = 'wp_ai_connector_runtime.v1'" )
-	&& false !== strpos( $runtime_client, "'ability_name'        => 'npcink-cloud/wp-ai-connector'" )
-	&& false !== strpos( $runtime_client, "'channel'             => 'wordpress_ai_connector'" )
-	&& false !== strpos( $runtime_client, "'execution_kind'      => 'wordpress_ai_connector'" )
-	&& false !== strpos( $runtime_client, "'write_posture'               => 'suggestion_only'" )
-	&& false !== strpos( $runtime_client, "'direct_wordpress_write'      => false" )
-	&& false !== strpos( $runtime_client, "'no_conversation'             => true" )
+	&& false !== strpos( $runtime_client, "CLOUD_CONNECTOR_RUNTIME_CONTRACT = 'cloud_connector_runtime.v1'" )
+	&& false !== strpos( $runtime_client, "WORDPRESS_OPERATION_CONTRACT = 'wordpress_operation.v1'" )
+	&& false !== strpos( $runtime_client, "'ability_name'        => 'npcink-cloud/connector-runtime'" )
+	&& false !== strpos( $runtime_client, "'channel'             => 'editor'" )
+	&& false !== strpos( $runtime_client, "'execution_kind'      => \$is_alt_text ? 'vision' : 'text'" )
+	&& false !== strpos( $runtime_client, "'site_id'             => \$site_id" )
+	&& false !== strpos( $runtime_client, "'site_url'           => \$site_url" )
+	&& false !== strpos( $runtime_client, "'platform_kind'      => 'wordpress'" )
+	&& false !== strpos( $runtime_client, "'connector_id'       => 'npcink-cloud-addon'" )
+	&& false !== strpos( $runtime_client, "'connector_version'  => \$connector_version" )
+	&& false !== strpos( $runtime_client, "'suggestion_only'    => true" )
+	&& false !== strpos( $runtime_client, "array( 'prompt', 'post_title', 'post_excerpt' )" )
+	&& false !== strpos( $runtime_client, "\$scene_request['source_text']" )
 	&& false !== strpos( $runtime_client, 'WP_AI_CONNECTOR_FORBIDDEN_KEYS' )
 	&& false !== strpos( $runtime_client, "'credentials'" )
 	&& false !== strpos( $runtime_client, "'api_key'" )
 	&& false !== strpos( $runtime_client, "'messages'" )
 	&& false !== strpos( $runtime_client, "'conversation_id'" )
 	&& false !== strpos( $runtime_client, "'tool_calls'" )
-	&& false !== strpos( $runtime_client, "'stream'" ),
-	'Runtime client exposes a bounded WordPress AI connector scene runtime, not a generic chat shape.'
+	&& false !== strpos( $runtime_client, "'stream'" )
+	&& false === strpos( $runtime_client, 'wp_ai_connector_' . 'runtime.v1' )
+	&& false === strpos( $runtime_client, 'npcink-cloud/wp-ai-' . 'connector' ),
+	'Runtime client exposes the bounded cross-platform connector envelope and rejects legacy WordPress text shapes.'
 );
 
 maca_assert(
@@ -425,9 +433,18 @@ maca_assert(
 	&& false !== strpos( $wordpress_ai_connector, 'does not support chat history' )
 	&& false !== strpos( $wordpress_ai_connector, 'does not support tools or web search' )
 	&& false !== strpos( $wordpress_ai_connector, 'npcink_cloud_addon_execute_wordpress_ai_connector_runtime' )
+	&& false !== strpos( $wordpress_ai_connector, "\$scene_input['source_text'] = \$text" )
+	&& false !== strpos( $wordpress_ai_connector, "'cloud_connector_result.v1'" )
+	&& false !== strpos( $wordpress_ai_connector, "\$response['data']['result']" )
+	&& false !== strpos( $wordpress_ai_connector, "true !== ( \$result['suggestion_only'] ?? null )" )
+	&& false !== strpos( $wordpress_ai_connector, "'npcink-cloud-addon' !== (string) ( \$result['connector_id'] ?? '' )" )
+	&& false !== strpos( $wordpress_ai_connector, "'wordpress_operation.v1' !== (string) ( \$operation_contract['contract_version'] ?? '' )" )
+	&& false !== strpos( $wordpress_ai_connector, "\$expected_task !== (string) ( \$operation_contract['task'] ?? '' )" )
+	&& false !== strpos( $wordpress_ai_connector, "\$output['output_text']" )
 	&& false !== strpos( $wordpress_ai_connector, "'response_format'    => \$this->response_format_hint( \$task )" )
 	&& false !== strpos( $wordpress_ai_connector, 'function response_format_hint' )
 	&& false === strpos( $wordpress_ai_connector, "'output_schema'      =>" )
+	&& false === strpos( $wordpress_ai_connector, 'wp_ai_connector_' . 'result.v1' )
 	&& false === strpos( $wordpress_ai_connector, 'chat/completions' )
 	&& false === strpos( $wordpress_ai_connector, 'OpenAiCompatible' ),
 	'AI Client provider is scene-gated to known WordPress AI abilities and does not expose an OpenAI-compatible chat proxy or deep schema payload.'
@@ -449,6 +466,10 @@ maca_assert(
 	false !== strpos( $wordpress_ai_connector, 'maybe_log_wordpress_ai_request_evidence' )
 	&& false !== strpos( $wordpress_ai_connector, 'AI_Request_Log_Manager' )
 	&& false !== strpos( $wordpress_ai_connector, 'omitted_metadata_only' )
+	&& false !== strpos( $wordpress_ai_connector, "'operation'                  => 'npcink-cloud/connector-runtime'" )
+	&& false !== strpos( $wordpress_ai_connector, "'operation_contract_version' => 'wordpress_operation.v1'" )
+	&& false !== strpos( $wordpress_ai_connector, "'channel'                    => 'editor'" )
+	&& false !== strpos( $wordpress_ai_connector, "'connector_id'               => 'npcink-cloud-addon'" )
 	&& false === strpos( $wordpress_ai_connector, "'input_preview'" )
 	&& false === strpos( $wordpress_ai_connector, "'output_preview'" ),
 	'WordPress AI request log bridge is metadata-only and does not persist prompt or output previews.'
@@ -457,6 +478,9 @@ maca_assert(
 maca_assert(
 	false !== strpos( $readme, 'WordPress AI Connector Runtime' )
 	&& false !== strpos( $readme, 'OpenAI-compatible provider' )
+	&& false !== strpos( $readme, '`cloud_connector_runtime.v1` envelope' )
+	&& false !== strpos( $readme, '`wordpress_operation.v1` contract' )
+	&& false !== strpos( $readme, '`response.data.result.output.output_text`' )
 	&& false !== strpos( $readme, 'npcink_cloud_addon_execute_toolbox_image_generation_runtime()' )
 	&& false !== strpos( $readme, 'npcink_cloud_addon_execute_toolbox_site_ops_cloud_analysis_runtime()' )
 	&& false !== strpos( $readme, 'npcink_cloud_addon_execute_toolbox_web_search_runtime()' )
@@ -467,6 +491,9 @@ maca_assert(
 	&& false !== strpos( $readme, 'reference-image refinement' )
 	&& false !== strpos( $runtime_contract, 'WordPress AI Connector Runtime' )
 	&& false !== strpos( $runtime_contract, 'generic chat provider' )
+	&& false !== strpos( $runtime_contract, '`contract_version=cloud_connector_runtime.v1`' )
+	&& false !== strpos( $runtime_contract, '`input.operation_contract.contract_version=wordpress_operation.v1`' )
+	&& false !== strpos( $runtime_contract, '`response.data.result.contract_version=cloud_connector_result.v1`' )
 	&& false !== strpos( $runtime_contract, 'image_generation_request.v1' )
 	&& false !== strpos( $runtime_contract, 'execute_toolbox_image_generation_runtime()' )
 	&& false !== strpos( $runtime_contract, 'execute_toolbox_site_ops_cloud_analysis_runtime()' )
@@ -481,6 +508,9 @@ maca_assert(
 	&& false !== strpos( $runtime_contract, 'does not support reference-image refinement' )
 	&& false !== strpos( $runtime_contract, 'Direct free-form `wp_ai_client_prompt()`' )
 	&& false !== strpos( $adapter_doc, 'WordPress AI Connector Flow' )
+	&& false !== strpos( $adapter_doc, '`cloud_connector_runtime.v1`' )
+	&& false !== strpos( $adapter_doc, '`wordpress_operation.v1`' )
+	&& false !== strpos( $adapter_doc, '`cloud_connector_result.v1`' )
 	&& false !== strpos( $adapter_doc, 'must not expose an OpenAI-compatible endpoint' )
 	&& false !== strpos( $adapter_doc, 'image provider proxy' )
 	&& false !== strpos( $adapter_doc, 'human chat' ),
@@ -1570,7 +1600,7 @@ foreach ( array( 'npcink-governance-core', 'npcink-abilities-toolkit', 'npcink-a
 	);
 }
 
-foreach ( array( 'Cloud Addon Contract Reuse Readiness', 'signed_transport', 'ability_contracts', 'proposal_handoff', 'execution_profiles', 'product_surface', 'runtime_detail', 'Reference-Plugin Learning', 'Jetpack', 'Site Kit by Google', 'WP Mail SMTP', 'Health Check & Troubleshooting', 'WordPress Application Passwords', 'No new Cloud Addon endpoint', 'workflow runtime', 'scheduler truth', 'WordPress write executor is needed for this pass', 'contract_reuse', 'mak1_{base64url(json)}', 'POST /v1/runtime/execute', 'POST /v1/runtime/media-derivatives', 'GET /v1/runs/{run_id}', 'GET /v1/runs/{run_id}/result', 'GET /v1/runs/nightly-inspection/recent', 'POST /v1/runs/{run_id}/retry', 'GET /v1/runtime/artifacts/{artifact_id}/download', 'GET /v1/entitlements/current', 'POST /v1/observability/plugin-events', 'GET /v1/observability/plugin-summary', 'POST /v1/agent-feedback/events', 'GET /v1/agent-feedback/summary', 'site_knowledge_change_bridge_status.v1', 'wp_ai_connector_runtime.v1', 'image_context_evidence_request.v1', 'cloud_agent_feedback.v1', 'Stop and write a boundary note or ADR', 'generic Cloud proxy routes', 'raw request/response', 'provider credentials', 'npcink-ai-cloud', 'composer run test:all' ) as $required_contract_reuse_text ) {
+foreach ( array( 'Cloud Addon Contract Reuse Readiness', 'signed_transport', 'ability_contracts', 'proposal_handoff', 'execution_profiles', 'product_surface', 'runtime_detail', 'Reference-Plugin Learning', 'Jetpack', 'Site Kit by Google', 'WP Mail SMTP', 'Health Check & Troubleshooting', 'WordPress Application Passwords', 'No new Cloud Addon endpoint', 'workflow runtime', 'scheduler truth', 'WordPress write executor is needed for this pass', 'contract_reuse', 'mak1_{base64url(json)}', 'POST /v1/runtime/execute', 'POST /v1/runtime/media-derivatives', 'GET /v1/runs/{run_id}', 'GET /v1/runs/{run_id}/result', 'GET /v1/runs/nightly-inspection/recent', 'POST /v1/runs/{run_id}/retry', 'GET /v1/runtime/artifacts/{artifact_id}/download', 'GET /v1/entitlements/current', 'POST /v1/observability/plugin-events', 'GET /v1/observability/plugin-summary', 'POST /v1/agent-feedback/events', 'GET /v1/agent-feedback/summary', 'site_knowledge_change_bridge_status.v1', 'cloud_connector_runtime.v1', 'wordpress_operation.v1', 'cloud_connector_result.v1', 'image_context_evidence_request.v1', 'cloud_agent_feedback.v1', 'Stop and write a boundary note or ADR', 'generic Cloud proxy routes', 'raw request/response', 'provider credentials', 'npcink-ai-cloud', 'composer run test:all' ) as $required_contract_reuse_text ) {
 	maca_assert(
 		false !== strpos( $contract_reuse_readiness_doc, $required_contract_reuse_text ),
 		'Cloud Addon contract reuse readiness preserves: ' . $required_contract_reuse_text

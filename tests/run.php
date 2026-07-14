@@ -11,6 +11,7 @@ require __DIR__ . '/static-contracts.php';
 require __DIR__ . '/behavior-credential-store.php';
 require __DIR__ . '/behavior-outbound-policy.php';
 require __DIR__ . '/behavior-cloud-addon-localization.php';
+require __DIR__ . '/behavior-wordpress-ai-connector-result.php';
 require __DIR__ . '/behavior-wordpress-ai-connector-registration.php';
 require __DIR__ . '/behavior-wordpress-ai-request-log-bridge.php';
 require __DIR__ . '/behavior-ai-plugin-localization.php';

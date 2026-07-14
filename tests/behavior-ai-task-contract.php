@@ -99,19 +99,25 @@ $GLOBALS['maca_http_response_queue'][] = array(
 $client = new Npcink_Cloud_Runtime_Client( Npcink_Cloud_Addon_Settings::get_settings() );
 $result = $client->execute_wordpress_ai_connector_runtime(
 	array(
-		'contract_version' => 'wp_ai_connector_runtime.v1',
-		'task'             => 'seo_headline',
-		'task_contract'    => $custom_contract,
-		'prompt'           => 'Write one accurate headline.',
-		'input'            => array(),
+		'contract_version'  => 'cloud_connector_runtime.v1',
+		'operation_contract' => array(
+			'contract_version' => 'wordpress_operation.v1',
+			'task'             => 'seo_headline',
+			'request'          => array(
+				'task_contract' => $custom_contract,
+				'prompt'        => 'Write one accurate headline.',
+			),
+		),
 	)
 );
 $request      = end( $GLOBALS['maca_http_requests'] );
 $request_body = json_decode( (string) ( $request['args']['body'] ?? '' ), true );
 maca_assert(
 	is_array( $result )
-	&& 'seo_headline' === (string) ( $request_body['input']['task'] ?? '' )
-	&& 'example/seo-headline' === (string) ( $request_body['input']['request']['task_contract']['ability_name'] ?? '' )
-	&& ! isset( $request_body['input']['request']['site_knowledge_reference'] ),
+	&& 'cloud_connector_runtime.v1' === (string) ( $request_body['contract_version'] ?? '' )
+	&& 'wordpress_operation.v1' === (string) ( $request_body['input']['operation_contract']['contract_version'] ?? '' )
+	&& 'seo_headline' === (string) ( $request_body['input']['operation_contract']['task'] ?? '' )
+	&& 'example/seo-headline' === (string) ( $request_body['input']['operation_contract']['request']['task_contract']['ability_name'] ?? '' )
+	&& ! isset( $request_body['input']['operation_contract']['request']['site_knowledge_reference'] ),
 	'Behavior: the generic connector transports a registered task projection without adding unproven generation reference context.'
 );

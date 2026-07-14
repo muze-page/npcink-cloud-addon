@@ -358,8 +358,9 @@ bounded `data:image/...;base64,...` URL from the local WordPress attachment
 file; this fallback is limited to the alt-text scene and is not exposed as a
 generic image upload channel.
 
-Input must use `contract_version=wp_ai_connector_runtime.v1` and one of the
-supported task surfaces:
+Input must use the platform-neutral
+`contract_version=cloud_connector_runtime.v1` envelope and one of the supported
+WordPress task surfaces:
 
 - `title_generation`
 - `excerpt_generation`
@@ -373,21 +374,41 @@ supported task surfaces:
 
 The method projects accepted requests into a fixed runtime payload:
 
-- `ability_name=npcink-cloud/wp-ai-connector`
-- `channel=wordpress_ai_connector`
-- `execution_kind=wordpress_ai_connector`
+- verified top-level `site_id`
+- `ability_name=npcink-cloud/connector-runtime`
+- `channel=editor`
+- `execution_kind=text` for text tasks or `vision` for `alt_text_suggest`
 - `execution_pattern=inline`
 - `storage_mode=result_only`
-- `write_posture=suggestion_only`
-- `direct_wordpress_write=false`
-- `no_conversation=true`
+- `input.site_url=untrailingslashit(home_url('/'))`
+- `input.platform_kind=wordpress`
+- `input.connector_id=npcink-cloud-addon`
+- `input.connector_version=<active addon version>`
+- `input.suggestion_only=true`
+- `input.operation_contract.contract_version=wordpress_operation.v1`
 - `policy.allow_fallback=false`
+
+The nested operation contract has exactly `contract_version`, `task`, and
+`request`. Platform identity stays in the connector envelope; WordPress task
+semantics stay in `wordpress_operation.v1`. For `title_generation`,
+`content_summary`, and `content_rewrite`, `request.source_text` is the actual
+single AI Client user message. `request.system_instruction` is optional. Those
+three tasks reject legacy `prompt`, `post_title`, and `post_excerpt` fields;
+embedded content tags are transported as opaque text. Other bounded tasks such
+as alt text may keep their task-specific prompt field.
 
 The method rejects generic chat or provider-control fields such as `messages`,
 `conversation_id`, `session_id`, `thread_id`, `tools`, `tool_calls`,
 `functions`, `function_call`, `stream`, credentials, cookies, nonces, and signed
-headers. It also bounds prompt/body size and clamps timeout to 60 seconds,
-retention, and retry values.
+headers. It also bounds source/prompt/body size and clamps timeout to 60
+seconds, retention, and retry values.
+
+Text and alt-text consumers accept one result shape only:
+`response.data.result.contract_version=cloud_connector_result.v1`,
+`suggestion_only=true`, `connector_id=npcink-cloud-addon`, and an
+`operation_contract` whose `contract_version=wordpress_operation.v1` and task
+matches the current request. Only then is output read from
+`response.data.result.output.output_text`. Legacy result layouts are not read.
 
 For quality-accepted editor tasks, the scene request may carry the optional
 bounded shape `site_knowledge_reference={enabled:boolean,mode:string}`. The

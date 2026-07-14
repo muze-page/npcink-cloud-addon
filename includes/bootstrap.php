@@ -215,22 +215,33 @@ if ( ! function_exists( 'npcink_cloud_addon_execute_registered_ai_task_runtime' 
 			return $task_contract;
 		}
 
-		$request['contract_version'] = 'wp_ai_connector_runtime.v1';
-		$request['task']             = $task_contract['task'];
-		$request['task_contract']    = $task_contract;
+		$request['task_contract'] = $task_contract;
 		$supports_generation_reference = in_array(
 			(string) $task_contract['task'],
 			array( 'title_generation', 'content_summary' ),
 			true
 		);
 		if ( $supports_generation_reference && Npcink_Cloud_Addon_Settings::is_site_knowledge_generation_reference_enabled() ) {
-			$request['input'] = is_array( $request['input'] ?? null ) ? $request['input'] : array();
-			if ( ! isset( $request['input']['site_knowledge_reference'] ) ) {
-				$request['input']['site_knowledge_reference'] = array( 'enabled' => true );
+			if ( ! isset( $request['site_knowledge_reference'] ) ) {
+				$request['site_knowledge_reference'] = array( 'enabled' => true );
 			}
 		}
 
-		return npcink_cloud_addon_execute_wordpress_ai_connector_runtime( $request, $trace_id, $idempotency_key );
+		return npcink_cloud_addon_execute_wordpress_ai_connector_runtime(
+			array(
+				'contract_version'   => 'cloud_connector_runtime.v1',
+				'operation_contract' => array(
+					'contract_version' => 'wordpress_operation.v1',
+					'task'             => $task_contract['task'],
+					'request'          => $request,
+				),
+				'timeout_seconds'    => 60,
+				'retention_ttl'      => 86400,
+				'retry_max'          => 0,
+			),
+			$trace_id,
+			$idempotency_key
+		);
 	}
 }
 

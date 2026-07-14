@@ -47,10 +47,19 @@ For the WordPress AI connector/provider flow:
    scenes or `npcink_cloud_addon_execute_wordpress_ai_image_generation_runtime()`
    for the WordPress AI image generation feature.
 3. The addon rejects generic chat message/session/tool/stream shapes and
-   projects the request into `wp_ai_connector_runtime.v1` or Cloud's existing
+   projects text and alt-text requests into `cloud_connector_runtime.v1` with
+   `ability_name=npcink-cloud/connector-runtime`, `channel=editor`, connector
+   identity, and a nested `wordpress_operation.v1` task contract. WordPress AI
+   image generation continues to use its existing
    `image_generation_request.v1` runtime contract.
-4. Cloud returns suggestion-only runtime output.
-5. Host/provider code maps the output back into the WordPress AI feature
+4. Title, summary, and rewrite pass the single AI Client user message as
+   `source_text` and may include `system_instruction`; they do not pass legacy
+   prompt or post fields.
+5. Cloud returns `cloud_connector_result.v1` with `suggestion_only=true`,
+   `connector_id=npcink-cloud-addon`, and a matching `wordpress_operation.v1`
+   task; connector text is then read only from
+   `response.data.result.output.output_text`.
+6. Host/provider code maps the output back into the WordPress AI feature
    response shape.
 
 This connector flow must not expose an OpenAI-compatible endpoint, a human chat

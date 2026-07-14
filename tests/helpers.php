@@ -11,6 +11,10 @@ if ( ! defined( 'MACA_TEST_ROOT' ) ) {
 	define( 'MACA_TEST_ROOT', dirname( __DIR__ ) );
 }
 
+if ( ! defined( 'NPCINK_CLOUD_ADDON_VERSION' ) ) {
+	define( 'NPCINK_CLOUD_ADDON_VERSION', '0.1.3-test' );
+}
+
 /**
  * Assertion helper.
  *
@@ -195,6 +199,12 @@ if ( ! function_exists( 'wp_generate_uuid4' ) ) {
 if ( ! function_exists( 'untrailingslashit' ) ) {
 	function untrailingslashit( string $value ): string {
 		return rtrim( $value, '/' );
+	}
+}
+
+if ( ! function_exists( 'home_url' ) ) {
+	function home_url( string $path = '' ): string {
+		return 'https://wordpress.example.test/' . ltrim( $path, '/' );
 	}
 }
 

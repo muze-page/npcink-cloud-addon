@@ -528,10 +528,24 @@ $automatic_status_requests = array_values(
 		static fn( array $request ): bool => 'GET' === (string) ( $request['args']['method'] ?? '' )
 	)
 );
+$automatic_idempotency_keys = array_map(
+	static fn( array $request ): string => (string) ( $request['args']['headers']['Idempotency-Key'] ?? '' ),
+	array_values(
+		array_filter(
+			$GLOBALS['maca_http_requests'],
+			static fn( array $request ): bool => 'POST' === (string) ( $request['args']['method'] ?? '' )
+		)
+	)
+);
 maca_assert(
 	3 === absint( $automatic_cursor['batch_count'] ?? 0 )
 	&& 3 === count( $automatic_bodies )
 	&& 3 === count( $automatic_status_requests )
+	&& array(
+		'site_knowledge_automatic_skm_automatic_123_0',
+		'site_knowledge_automatic_skm_automatic_123_1',
+		'site_knowledge_automatic_skm_automatic_123_2',
+	) === $automatic_idempotency_keys
 	&& 'automatic_rebuild' === (string) ( $automatic_bodies[0]['input']['operation_source'] ?? '' )
 	&& 'rebuild' === (string) ( $automatic_bodies[0]['input']['sync_mode'] ?? '' )
 	&& 'full_sync' === (string) ( $automatic_bodies[0]['input']['maintenance']['action'] ?? '' )
@@ -543,6 +557,40 @@ maca_assert(
 	&& true === (bool) ( $automatic_bodies[2]['input']['maintenance']['is_final'] ?? false )
 	&& array() === get_option( Npcink_Cloud_Site_Knowledge_Change_Bridge::MAINTENANCE_OPTION, array() ),
 	'Behavior: Cloud maintenance intent becomes an automatic bounded full-sync cursor and completes without a site-admin action.'
+);
+
+maca_reset_site_knowledge_bridge_state();
+maca_seed_settings( true );
+update_option(
+	Npcink_Cloud_Site_Knowledge_Change_Bridge::MAINTENANCE_OPTION,
+	array(
+		'status' => 'blocked',
+		'request_id' => 'skm_blocked_123',
+		'post_ids' => array( 12001 ),
+		'next_batch' => 0,
+		'batch_count' => 1,
+		'attempts' => 3,
+	),
+	false
+);
+Npcink_Cloud_Site_Knowledge_Change_Bridge::maybe_schedule_automatic_rebuild(
+	array(
+		'maintenance' => array(
+			'contract_version' => 'site_knowledge_maintenance.v1',
+			'status' => 'blocked',
+			'action' => 'full_sync',
+			'automatic' => true,
+			'request_id' => 'skm_blocked_123',
+			'target_embedding_space_id' => 'siliconflow:BAAI/bge-m3',
+		),
+	)
+);
+$blocked_cursor = get_option( Npcink_Cloud_Site_Knowledge_Change_Bridge::MAINTENANCE_OPTION, array() );
+maca_assert(
+	'blocked' === (string) ( $blocked_cursor['status'] ?? '' )
+	&& 3 === absint( $blocked_cursor['attempts'] ?? 0 )
+	&& false === wp_next_scheduled( Npcink_Cloud_Site_Knowledge_Change_Bridge::FLUSH_HOOK ),
+	'Behavior: refreshing the same blocked maintenance request preserves the bounded retry stop.'
 );
 
 maca_reset_site_knowledge_bridge_state();

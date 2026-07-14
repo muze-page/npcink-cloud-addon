@@ -469,9 +469,9 @@ if ( ! class_exists( 'Npcink_Cloud_Site_Knowledge_Change_Bridge' ) ) {
 
 				$cursor = self::get_maintenance_cursor();
 				if ( $request_id === (string) ( $cursor['request_id'] ?? '' ) ) {
-					$cursor['status'] = 'queued';
-					$cursor['attempts'] = 0;
-					update_option( self::MAINTENANCE_OPTION, $cursor, false );
+					if ( 'blocked' === (string) ( $cursor['status'] ?? '' ) ) {
+						return;
+					}
 					self::schedule_flush( 1 );
 					return;
 				}
@@ -549,7 +549,7 @@ if ( ! class_exists( 'Npcink_Cloud_Site_Knowledge_Change_Bridge' ) ) {
 					0 === $batch_index ? array() : $batch,
 					'automatic_rebuild',
 					$batch,
-					'site_knowledge_automatic_' . $request_id . '_' . $batch_index . '_' . absint( $cursor['attempts'] ?? 0 ),
+					'site_knowledge_automatic_' . $request_id . '_' . $batch_index,
 					array(
 						'action' => 'full_sync',
 						'request_id' => $request_id,

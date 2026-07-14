@@ -203,6 +203,14 @@ $GLOBALS['maca_http_response_queue'][] = array(
 			'data' => array(
 				'result' => array(
 					'contract_version' => 'site_knowledge_status.v1',
+					'maintenance' => array(
+						'contract_version' => 'site_knowledge_maintenance.v1',
+						'status' => 'awaiting_site',
+						'action' => 'full_sync',
+						'automatic' => true,
+						'request_id' => 'skm_1234567890abcdef',
+						'target_embedding_space_id' => 'siliconflow:BAAI/bge-m3',
+					),
 					'coverage' => array(
 						'indexed_posts' => 2340,
 						'indexed_chunks' => 15200,
@@ -244,6 +252,10 @@ maca_assert(
 	&& 4000 === (int) ( $quota_summary['max_sync_chunks'] ?? 0 )
 	&& 4 === (int) ( $quota_summary['truncated_documents'] ?? 0 )
 	&& 1 === (int) ( $quota_summary['skipped_due_to_quota'] ?? 0 )
+	&& 'awaiting_site' === (string) ( $quota_summary['maintenance']['status'] ?? '' )
+	&& 'full_sync' === (string) ( $quota_summary['maintenance']['action'] ?? '' )
+	&& true === (bool) ( $quota_summary['maintenance']['automatic'] ?? false )
+	&& 'skm_1234567890abcdef' === (string) ( $quota_summary['maintenance']['request_id'] ?? '' )
 	&& 'npcink-cloud/site-knowledge-status' === (string) ( $quota_body['ability_name'] ?? '' )
 	&& 'site_knowledge_status.v1' === (string) ( $quota_body['contract_version'] ?? '' )
 	&& 'suggestion_only' === (string) ( $quota_body['input']['write_posture'] ?? '' )

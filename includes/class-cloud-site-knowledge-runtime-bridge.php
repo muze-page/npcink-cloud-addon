@@ -206,6 +206,9 @@ if ( ! class_exists( 'Npcink_Cloud_Site_Knowledge_Runtime_Bridge' ) ) {
 			}
 
 			set_transient( self::status_cache_key(), $summary, self::STATUS_CACHE_TTL_SECONDS );
+			if ( function_exists( 'do_action' ) ) {
+				do_action( 'npcink_cloud_site_knowledge_status_refreshed', $summary );
+			}
 
 			return $summary;
 		}
@@ -229,6 +232,20 @@ if ( ! class_exists( 'Npcink_Cloud_Site_Knowledge_Runtime_Bridge' ) ) {
 			$document_utilization = is_numeric( $quota['document_utilization'] ?? null )
 				? (float) $quota['document_utilization']
 				: $indexed_documents / $max_documents;
+			$maintenance_source = is_array( $source['maintenance'] ?? null ) ? $source['maintenance'] : array();
+			$maintenance_status = sanitize_key( (string) ( $maintenance_source['status'] ?? 'not_required' ) );
+			$maintenance_action = sanitize_key( (string) ( $maintenance_source['action'] ?? 'none' ) );
+			$maintenance = array(
+				'contract_version' => sanitize_text_field( (string) ( $maintenance_source['contract_version'] ?? '' ) ),
+				'status' => in_array( $maintenance_status, array( 'not_required', 'awaiting_site', 'delivering', 'blocked' ), true ) ? $maintenance_status : 'not_required',
+				'action' => 'full_sync' === $maintenance_action ? 'full_sync' : 'none',
+				'automatic' => ! empty( $maintenance_source['automatic'] ),
+				'request_id' => sanitize_key( (string) ( $maintenance_source['request_id'] ?? '' ) ),
+				'target_embedding_space_id' => sanitize_text_field( (string) ( $maintenance_source['target_embedding_space_id'] ?? '' ) ),
+				'completed_batches' => absint( $maintenance_source['completed_batches'] ?? 0 ),
+				'total_batches' => absint( $maintenance_source['total_batches'] ?? 0 ),
+				'last_error_code' => sanitize_key( (string) ( $maintenance_source['last_error_code'] ?? '' ) ),
+			);
 
 			return array(
 				'state' => 'fresh',
@@ -249,6 +266,7 @@ if ( ! class_exists( 'Npcink_Cloud_Site_Knowledge_Runtime_Bridge' ) ) {
 				'skipped_due_to_quota' => absint( $quota['skipped_due_to_quota'] ?? 0 ),
 				'last_sync_at' => sanitize_text_field( (string) ( $coverage['last_sync_at'] ?? '' ) ),
 				'warning_ratio' => is_numeric( $quota['warning_ratio'] ?? null ) ? (float) $quota['warning_ratio'] : 0.85,
+				'maintenance' => $maintenance,
 				'synced_at' => gmdate( 'Y-m-d H:i:s' ) . ' UTC',
 				'fresh_until' => gmdate( 'Y-m-d H:i:s', time() + self::STATUS_FRESHNESS_TTL_SECONDS ) . ' UTC',
 			);

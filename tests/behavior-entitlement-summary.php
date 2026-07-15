@@ -106,7 +106,6 @@ maca_assert(
 $format_overview_entitlement = maca_private_method( Npcink_Cloud_Settings_Page::class, 'format_overview_entitlement' );
 $overview_metrics_method = maca_private_method( Npcink_Cloud_Settings_Page::class, 'get_overview_entitlement_metrics' );
 $site_knowledge_usage_method = maca_private_method( Npcink_Cloud_Settings_Page::class, 'get_site_knowledge_usage_projection' );
-$runtime_status_method = maca_private_method( Npcink_Cloud_Settings_Page::class, 'format_runtime_status_label' );
 $overview_metrics = $overview_metrics_method->invoke( null, $read_summary );
 $site_knowledge_input = array(
 	'state' => 'fresh',
@@ -156,9 +155,6 @@ maca_assert(
 	&& $site_knowledge_direct === $site_knowledge_usage
 	&& ! empty( $overview_metrics['runtime']['available'] )
 	&& '8 of 10 runs remaining' === (string) ( $overview_metrics['runtime']['label'] ?? '' )
-	&& 'Queued' === $runtime_status_method->invoke( null, 'queued' )
-	&& 'Succeeded' === $runtime_status_method->invoke( null, 'success' )
-	&& 'custom_state' === $runtime_status_method->invoke( null, 'custom_state' )
 	&& empty( $missing_overview_metrics['credits']['available'] )
 	&& empty( $missing_overview_metrics['runtime']['available'] ),
 	'Behavior: direct Site Knowledge projection matches the settings facade while overview copy avoids duplicate fallbacks.'

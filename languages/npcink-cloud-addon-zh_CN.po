@@ -532,14 +532,12 @@ msgstr "失败"
 msgid "Last upload error"
 msgstr "上次上传错误"
 
-#: includes/class-cloud-settings-page.php:1065
-#: includes/class-cloud-settings-page.php:1093
+#: includes/class-cloud-runtime-runs-presenter.php:87
 #: includes/class-cloud-settings-page.php:2371
 msgid "yes"
 msgstr "是"
 
-#: includes/class-cloud-settings-page.php:1065
-#: includes/class-cloud-settings-page.php:1093
+#: includes/class-cloud-runtime-runs-presenter.php:87
 #: includes/class-cloud-settings-page.php:2371
 msgid "no"
 msgstr "否"
@@ -555,6 +553,7 @@ msgstr "可用"
 #: includes/class-cloud-settings-page.php:3248
 #: includes/class-cloud-settings-page.php:3259
 #: includes/class-cloud-settings-page.php:3298
+#: includes/class-cloud-runtime-runs-presenter.php:101
 msgid "unavailable"
 msgstr "不可用"
 
@@ -1884,53 +1883,53 @@ msgstr "免费版"
 msgid "Pro plan"
 msgstr "专业版"
 
-#: includes/class-cloud-settings-page.php:3161
+#: includes/class-cloud-runtime-runs-presenter.php:105
 msgid "Submitted"
 msgstr "已提交"
 
-#: includes/class-cloud-settings-page.php:3162
+#: includes/class-cloud-runtime-runs-presenter.php:106
 msgid "Queued"
 msgstr "排队中"
 
-#: includes/class-cloud-settings-page.php:3163
+#: includes/class-cloud-runtime-runs-presenter.php:107
 msgid "Pending"
 msgstr "等待中"
 
-#: includes/class-cloud-settings-page.php:3164
+#: includes/class-cloud-runtime-runs-presenter.php:108
 msgid "Running"
 msgstr "运行中"
 
-#: includes/class-cloud-settings-page.php:3165
+#: includes/class-cloud-runtime-runs-presenter.php:109
 msgid "Processing"
 msgstr "处理中"
 
-#: includes/class-cloud-settings-page.php:3166
+#: includes/class-cloud-runtime-runs-presenter.php:110
 msgid "Completed"
 msgstr "已完成"
 
-#: includes/class-cloud-settings-page.php:3167
-#: includes/class-cloud-settings-page.php:3168
+#: includes/class-cloud-runtime-runs-presenter.php:111
+#: includes/class-cloud-runtime-runs-presenter.php:112
 msgid "Succeeded"
 msgstr "已成功"
 
-#: includes/class-cloud-settings-page.php:3169
+#: includes/class-cloud-runtime-runs-presenter.php:113
 msgid "Failed"
 msgstr "失败"
 
-#: includes/class-cloud-settings-page.php:3170
+#: includes/class-cloud-runtime-runs-presenter.php:114
 msgid "Error"
 msgstr "错误"
 
-#: includes/class-cloud-settings-page.php:3171
-#: includes/class-cloud-settings-page.php:3172
+#: includes/class-cloud-runtime-runs-presenter.php:115
+#: includes/class-cloud-runtime-runs-presenter.php:116
 msgid "Canceled"
 msgstr "已取消"
 
-#: includes/class-cloud-settings-page.php:3173
+#: includes/class-cloud-runtime-runs-presenter.php:117
 msgid "Ready"
 msgstr "就绪"
 
-#: includes/class-cloud-settings-page.php:3174
+#: includes/class-cloud-runtime-runs-presenter.php:118
 msgid "Not ready"
 msgstr "未就绪"
 

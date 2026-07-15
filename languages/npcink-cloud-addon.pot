@@ -890,14 +890,12 @@ msgstr ""
 msgid "Cloud addon sections"
 msgstr ""
 
-#: includes/class-cloud-settings-page.php:1065
-#: includes/class-cloud-settings-page.php:1093
+#: includes/class-cloud-runtime-runs-presenter.php:87
 #: includes/class-cloud-settings-page.php:2371
 msgid "yes"
 msgstr ""
 
-#: includes/class-cloud-settings-page.php:1065
-#: includes/class-cloud-settings-page.php:1093
+#: includes/class-cloud-runtime-runs-presenter.php:87
 #: includes/class-cloud-settings-page.php:2371
 msgid "no"
 msgstr ""
@@ -1562,6 +1560,7 @@ msgstr ""
 #: includes/class-cloud-settings-page.php:3248
 #: includes/class-cloud-settings-page.php:3259
 #: includes/class-cloud-settings-page.php:3298
+#: includes/class-cloud-runtime-runs-presenter.php:101
 msgid "unavailable"
 msgstr ""
 
@@ -1828,53 +1827,53 @@ msgstr ""
 msgid "queued"
 msgstr ""
 
-#: includes/class-cloud-settings-page.php:3161
+#: includes/class-cloud-runtime-runs-presenter.php:105
 msgid "Submitted"
 msgstr ""
 
-#: includes/class-cloud-settings-page.php:3162
+#: includes/class-cloud-runtime-runs-presenter.php:106
 msgid "Queued"
 msgstr ""
 
-#: includes/class-cloud-settings-page.php:3163
+#: includes/class-cloud-runtime-runs-presenter.php:107
 msgid "Pending"
 msgstr ""
 
-#: includes/class-cloud-settings-page.php:3164
+#: includes/class-cloud-runtime-runs-presenter.php:108
 msgid "Running"
 msgstr ""
 
-#: includes/class-cloud-settings-page.php:3165
+#: includes/class-cloud-runtime-runs-presenter.php:109
 msgid "Processing"
 msgstr ""
 
-#: includes/class-cloud-settings-page.php:3166
+#: includes/class-cloud-runtime-runs-presenter.php:110
 msgid "Completed"
 msgstr ""
 
-#: includes/class-cloud-settings-page.php:3167
-#: includes/class-cloud-settings-page.php:3168
+#: includes/class-cloud-runtime-runs-presenter.php:111
+#: includes/class-cloud-runtime-runs-presenter.php:112
 msgid "Succeeded"
 msgstr ""
 
-#: includes/class-cloud-settings-page.php:3169
+#: includes/class-cloud-runtime-runs-presenter.php:113
 msgid "Failed"
 msgstr ""
 
-#: includes/class-cloud-settings-page.php:3170
+#: includes/class-cloud-runtime-runs-presenter.php:114
 msgid "Error"
 msgstr ""
 
-#: includes/class-cloud-settings-page.php:3171
-#: includes/class-cloud-settings-page.php:3172
+#: includes/class-cloud-runtime-runs-presenter.php:115
+#: includes/class-cloud-runtime-runs-presenter.php:116
 msgid "Canceled"
 msgstr ""
 
-#: includes/class-cloud-settings-page.php:3173
+#: includes/class-cloud-runtime-runs-presenter.php:117
 msgid "Ready"
 msgstr ""
 
-#: includes/class-cloud-settings-page.php:3174
+#: includes/class-cloud-runtime-runs-presenter.php:118
 msgid "Not ready"
 msgstr ""
 

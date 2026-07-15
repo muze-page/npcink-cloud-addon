@@ -580,7 +580,7 @@ if ( ! class_exists( 'Npcink_Cloud_Settings_Page' ) ) {
 					self::redirect_to_page( 'advanced', 'runs' );
 				}
 
-				$run_id = isset( $_POST['runtime_run_id'] ) ? self::normalize_run_id( sanitize_text_field( wp_unslash( $_POST['runtime_run_id'] ) ) ) : '';
+				$run_id = isset( $_POST['runtime_run_id'] ) ? Npcink_Cloud_Runtime_Runs_Presenter::normalize_run_id( sanitize_text_field( wp_unslash( $_POST['runtime_run_id'] ) ) ) : '';
 				if ( '' === $run_id ) {
 					self::set_admin_notice( 'error', __( 'Enter a Cloud run ID before requesting retry.', 'npcink-cloud-addon' ) );
 					self::redirect_to_page( 'advanced', 'runs' );
@@ -609,7 +609,7 @@ if ( ! class_exists( 'Npcink_Cloud_Settings_Page' ) ) {
 
 				$data = is_array( $result['data'] ?? null ) ? $result['data'] : ( is_array( $result ) ? $result : array() );
 				$retry_run = is_array( $data['retry_run'] ?? null ) ? $data['retry_run'] : array();
-				$new_run_id = self::normalize_run_id( (string) ( $retry_run['run_id'] ?? $data['run_id'] ?? '' ) );
+				$new_run_id = Npcink_Cloud_Runtime_Runs_Presenter::normalize_run_id( (string) ( $retry_run['run_id'] ?? $data['run_id'] ?? '' ) );
 				self::set_admin_notice(
 					'success',
 					'' !== $new_run_id
@@ -864,7 +864,7 @@ if ( ! class_exists( 'Npcink_Cloud_Settings_Page' ) ) {
 				'runtime_view' => sanitize_key( $view ),
 			);
 			if ( '' !== $run_id ) {
-				$args['runtime_run_id'] = self::normalize_run_id( $run_id );
+				$args['runtime_run_id'] = Npcink_Cloud_Runtime_Runs_Presenter::normalize_run_id( $run_id );
 			}
 
 			return add_query_arg( $args, admin_url( 'admin.php' ) );
@@ -918,98 +918,7 @@ if ( ! class_exists( 'Npcink_Cloud_Settings_Page' ) ) {
 		private static function runtime_run_id_from_request(): string {
 			$raw = filter_input( INPUT_GET, 'runtime_run_id', FILTER_UNSAFE_RAW );
 
-			return is_string( $raw ) ? self::normalize_run_id( wp_unslash( $raw ) ) : '';
-		}
-
-		/**
-		 * Normalizes a Cloud run id for display and signed reads.
-		 *
-		 * @param mixed $value Raw run id.
-		 * @return string
-		 */
-		private static function normalize_run_id( $value ): string {
-			return (string) preg_replace( '/[^A-Za-z0-9._:-]/', '', sanitize_text_field( (string) $value ) );
-		}
-
-		/**
-		 * Extracts recent run cards from common Cloud response envelopes.
-		 *
-		 * @param array<string,mixed> $response Cloud response.
-		 * @return array<int,array<string,mixed>>
-		 */
-		private static function runtime_runs_from_response( array $response ): array {
-			$candidates = array(
-				$response['data']['runs'] ?? null,
-				$response['data']['items'] ?? null,
-				$response['runs'] ?? null,
-				$response['items'] ?? null,
-			);
-			foreach ( $candidates as $candidate ) {
-				if ( is_array( $candidate ) ) {
-					return array_values(
-						array_filter(
-							$candidate,
-							static function ( $item ): bool {
-								return is_array( $item );
-							}
-						)
-					);
-				}
-			}
-
-			return array();
-		}
-
-		/**
-		 * Reads the first scalar value from one shallow record.
-		 *
-		 * @param array<string,mixed> $source Source record.
-		 * @param array<int,string>   $keys Candidate keys.
-		 * @return string
-		 */
-		private static function runtime_scalar( array $source, array $keys ): string {
-			foreach ( $keys as $key ) {
-				if ( ! array_key_exists( $key, $source ) ) {
-					continue;
-				}
-				$value = $source[ $key ];
-				if ( is_bool( $value ) ) {
-					return $value ? __( 'yes', 'npcink-cloud-addon' ) : __( 'no', 'npcink-cloud-addon' );
-				}
-				if ( is_scalar( $value ) && '' !== trim( (string) $value ) ) {
-					return sanitize_text_field( (string) $value );
-				}
-			}
-
-			return '';
-		}
-
-		/**
-		 * Reads the first scalar value from nested Cloud response paths.
-		 *
-		 * @param array<string,mixed> $source Source record.
-		 * @param array<int,string>   $paths Dot-separated paths.
-		 * @return string
-		 */
-		private static function runtime_pick( array $source, array $paths ): string {
-			foreach ( $paths as $path ) {
-				$value = $source;
-				foreach ( explode( '.', $path ) as $segment ) {
-					if ( ! is_array( $value ) || ! array_key_exists( $segment, $value ) ) {
-						$value = null;
-						break;
-					}
-					$value = $value[ $segment ];
-				}
-				if ( is_bool( $value ) ) {
-					return $value ? __( 'yes', 'npcink-cloud-addon' ) : __( 'no', 'npcink-cloud-addon' );
-				}
-				if ( is_scalar( $value ) && '' !== trim( (string) $value ) ) {
-					return sanitize_text_field( (string) $value );
-				}
-			}
-
-			return '';
+			return is_string( $raw ) ? Npcink_Cloud_Runtime_Runs_Presenter::normalize_run_id( wp_unslash( $raw ) ) : '';
 		}
 
 		/**
@@ -1944,7 +1853,7 @@ if ( ! class_exists( 'Npcink_Cloud_Settings_Page' ) ) {
 				return;
 			}
 
-			$runs = self::runtime_runs_from_response( is_array( $response ) ? $response : array() );
+			$runs = Npcink_Cloud_Runtime_Runs_Presenter::recent_rows( is_array( $response ) ? $response : array() );
 			?>
 			<h3><?php esc_html_e( 'Recent runs', 'npcink-cloud-addon' ); ?></h3>
 			<?php if ( empty( $runs ) ) : ?>
@@ -1963,12 +1872,12 @@ if ( ! class_exists( 'Npcink_Cloud_Settings_Page' ) ) {
 				</thead>
 				<tbody>
 					<?php foreach ( array_slice( $runs, 0, 5 ) as $run ) : ?>
-						<?php $run_id = self::normalize_run_id( (string) ( $run['run_id'] ?? $run['id'] ?? '' ) ); ?>
+						<?php $run_id = (string) ( $run['run_id'] ?? '' ); ?>
 						<tr>
 							<th scope="row"><code><?php echo esc_html( self::format_empty( $run_id ) ); ?></code></th>
-							<td><?php echo esc_html( self::format_runtime_status_label( self::runtime_scalar( $run, array( 'status', 'state' ) ) ) ); ?></td>
-							<td><?php echo esc_html( self::format_runtime_status_label( self::runtime_scalar( $run, array( 'result_status', 'result' ) ) ) ); ?></td>
-							<td><?php echo esc_html( self::format_datetime_value( self::runtime_scalar( $run, array( 'updated_at', 'created_at', 'finished_at' ) ) ) ); ?></td>
+							<td><?php echo esc_html( (string) ( $run['status_label'] ?? '' ) ); ?></td>
+							<td><?php echo esc_html( (string) ( $run['result_status_label'] ?? '' ) ); ?></td>
+							<td><?php echo esc_html( self::format_datetime_value( (string) ( $run['updated_at'] ?? '' ) ) ); ?></td>
 							<td>
 								<?php if ( '' !== $run_id ) : ?>
 									<a href="<?php echo esc_url( self::runtime_tab_url( 'status', $run_id ) ); ?>"><?php esc_html_e( 'Inspect', 'npcink-cloud-addon' ); ?></a>
@@ -2005,19 +1914,19 @@ if ( ! class_exists( 'Npcink_Cloud_Settings_Page' ) ) {
 				return;
 			}
 
-			$payload = is_array( $response ) ? $response : array();
-			$error_code = self::runtime_pick( $payload, array( 'data.error_code', 'error_code', 'data.run_lifecycle.error_code' ) );
+			$detail = Npcink_Cloud_Runtime_Runs_Presenter::detail( is_array( $response ) ? $response : array() );
+			$error_code = (string) ( $detail['error_code'] ?? '' );
 			?>
 			<table class="widefat striped" style="max-width: 980px;">
 				<tbody>
-					<?php self::render_diagnostic_row( __( 'Run ID', 'npcink-cloud-addon' ), self::runtime_pick( $payload, array( 'data.run_id', 'run.run_id', 'run_id' ) ), __( 'Cloud run identifier.', 'npcink-cloud-addon' ) ); ?>
-					<?php self::render_diagnostic_row( __( 'Run status', 'npcink-cloud-addon' ), self::format_runtime_status_label( self::runtime_pick( $payload, array( 'data.status', 'run.status', 'status' ) ) ), __( 'Cloud-owned run state.', 'npcink-cloud-addon' ) ); ?>
-					<?php self::render_diagnostic_row( __( 'Result status', 'npcink-cloud-addon' ), self::format_runtime_status_label( self::runtime_pick( $payload, array( 'data.result_status', 'result.status', 'result_status' ) ) ), __( 'Result availability from Cloud.', 'npcink-cloud-addon' ) ); ?>
+					<?php self::render_diagnostic_row( __( 'Run ID', 'npcink-cloud-addon' ), (string) ( $detail['run_id'] ?? '' ), __( 'Cloud run identifier.', 'npcink-cloud-addon' ) ); ?>
+					<?php self::render_diagnostic_row( __( 'Run status', 'npcink-cloud-addon' ), (string) ( $detail['status_label'] ?? '' ), __( 'Cloud-owned run state.', 'npcink-cloud-addon' ) ); ?>
+					<?php self::render_diagnostic_row( __( 'Result status', 'npcink-cloud-addon' ), (string) ( $detail['result_status_label'] ?? '' ), __( 'Result availability from Cloud.', 'npcink-cloud-addon' ) ); ?>
 					<?php if ( '' !== $error_code ) : ?>
 						<?php self::render_diagnostic_row( __( 'Error code', 'npcink-cloud-addon' ), $error_code, __( 'Cloud error classification.', 'npcink-cloud-addon' ) ); ?>
 					<?php endif; ?>
-					<?php self::render_diagnostic_row( __( 'Started', 'npcink-cloud-addon' ), self::format_datetime_value( self::runtime_pick( $payload, array( 'data.run_lifecycle.processing_started_at', 'data.started_at', 'started_at' ) ) ), __( 'Displayed in the WordPress site timezone.', 'npcink-cloud-addon' ) ); ?>
-					<?php self::render_diagnostic_row( __( 'Finished', 'npcink-cloud-addon' ), self::format_datetime_value( self::runtime_pick( $payload, array( 'data.run_lifecycle.processing_finished_at', 'data.completed_at', 'completed_at' ) ) ), __( 'Displayed in the WordPress site timezone.', 'npcink-cloud-addon' ) ); ?>
+					<?php self::render_diagnostic_row( __( 'Started', 'npcink-cloud-addon' ), self::format_datetime_value( (string) ( $detail['started_at'] ?? '' ) ), __( 'Displayed in the WordPress site timezone.', 'npcink-cloud-addon' ) ); ?>
+					<?php self::render_diagnostic_row( __( 'Finished', 'npcink-cloud-addon' ), self::format_datetime_value( (string) ( $detail['finished_at'] ?? '' ) ), __( 'Displayed in the WordPress site timezone.', 'npcink-cloud-addon' ) ); ?>
 				</tbody>
 			</table>
 			<div class="npcink-cloud-summary__actions npcink-cloud-summary__actions--start npcink-cloud-run-detail-actions">
@@ -2962,41 +2871,6 @@ if ( ! class_exists( 'Npcink_Cloud_Settings_Page' ) ) {
 			);
 
 			return $labels[ $status ] ?? self::format_empty( $status );
-		}
-
-		/**
-		 * Maps known Cloud runtime states to local display copy.
-		 *
-		 * Unknown states remain visible for troubleshooting instead of being guessed.
-		 *
-		 * @param string $status Raw Cloud runtime status.
-		 * @return string
-		 */
-		private static function format_runtime_status_label( string $status ): string {
-			$status = trim( $status );
-			if ( '' === $status ) {
-				return self::format_empty( '' );
-			}
-
-			$labels = array(
-				'submitted'  => __( 'Submitted', 'npcink-cloud-addon' ),
-				'queued'     => __( 'Queued', 'npcink-cloud-addon' ),
-				'pending'    => __( 'Pending', 'npcink-cloud-addon' ),
-				'running'    => __( 'Running', 'npcink-cloud-addon' ),
-				'processing' => __( 'Processing', 'npcink-cloud-addon' ),
-				'completed'  => __( 'Completed', 'npcink-cloud-addon' ),
-				'succeeded'  => __( 'Succeeded', 'npcink-cloud-addon' ),
-				'success'    => __( 'Succeeded', 'npcink-cloud-addon' ),
-				'failed'     => __( 'Failed', 'npcink-cloud-addon' ),
-				'error'      => __( 'Error', 'npcink-cloud-addon' ),
-				'canceled'   => __( 'Canceled', 'npcink-cloud-addon' ),
-				'cancelled'  => __( 'Canceled', 'npcink-cloud-addon' ),
-				'ready'      => __( 'Ready', 'npcink-cloud-addon' ),
-				'not_ready'  => __( 'Not ready', 'npcink-cloud-addon' ),
-			);
-			$key = sanitize_key( $status );
-
-			return $labels[ $key ] ?? $status;
 		}
 
 		/**

@@ -59,6 +59,7 @@ $site_knowledge_full_index_doc = maca_read( $root . '/docs/site-knowledge-full-i
 $site_knowledge_runtime_bridge = maca_read( $root . '/includes/class-cloud-site-knowledge-runtime-bridge.php' );
 $site_knowledge_admin_projection = maca_read( $root . '/includes/class-cloud-site-knowledge-admin-projection.php' );
 $site_knowledge_admin_actions = maca_read( $root . '/includes/class-cloud-site-knowledge-admin-actions.php' );
+$runtime_runs_presenter = maca_read( $root . '/includes/class-cloud-runtime-runs-presenter.php' );
 $settings = maca_read( $root . '/includes/class-cloud-addon-settings.php' );
 $settings_page = maca_read( $root . '/includes/class-cloud-settings-page.php' );
 $refresh_site_knowledge_handler = maca_extract_class_method_source( $settings_page, 'public static function handle_refresh_site_knowledge(): void' );
@@ -86,6 +87,7 @@ $uninstall = maca_read( $root . '/uninstall.php' );
 
 $projection_require_position = strpos( $bootstrap, "require_once __DIR__ . '/class-cloud-site-knowledge-admin-projection.php';" );
 $admin_actions_require_position = strpos( $bootstrap, "require_once __DIR__ . '/class-cloud-site-knowledge-admin-actions.php';" );
+$runtime_presenter_require_position = strpos( $bootstrap, "require_once __DIR__ . '/class-cloud-runtime-runs-presenter.php';" );
 $settings_page_require_position = strpos( $bootstrap, "require_once __DIR__ . '/class-cloud-settings-page.php';" );
 $projection_forbidden_calls = array(
 	'wp_remote_', 'wp_safe_remote_', 'get_option(', 'update_option(', 'add_option(', 'delete_option(',
@@ -125,6 +127,29 @@ maca_assert(
 	&& false !== strpos( $site_knowledge_admin_actions, 'public static function request_index_operation( string $operation, string $confirmation = \'\' ): array' )
 	&& ! $admin_actions_has_forbidden_call,
 	'Site Knowledge administrator actions load before the settings facade and remain request-, transport-, persistence-, hook-, and Runtime Client-free.'
+);
+
+$runtime_presenter_forbidden_calls = array(
+	'wp_remote_', 'wp_safe_remote_', 'get_option(', 'update_option(', 'add_option(', 'delete_option(', 'get_transient(', 'set_transient(', 'delete_transient(',
+	'add_action(', 'add_filter(', '$_GET', '$_POST', '$_REQUEST', '$_SERVER', '$_COOKIE', '$_FILES', 'current_user_can(', 'check_admin_referer(', 'wp_create_nonce(', 'wp_verify_nonce(', 'wp_nonce_', 'wp_safe_redirect(', 'wp_redirect(', 'Npcink_Cloud_Runtime_Client', 'echo ', 'exit;',
+);
+$runtime_presenter_has_forbidden_call = false;
+foreach ( $runtime_presenter_forbidden_calls as $forbidden_call ) {
+	$runtime_presenter_has_forbidden_call = $runtime_presenter_has_forbidden_call || false !== strpos( $runtime_runs_presenter, $forbidden_call );
+}
+maca_assert(
+	false !== $runtime_presenter_require_position && $runtime_presenter_require_position < $settings_page_require_position
+	&& false !== strpos( $runtime_runs_presenter, 'final class Npcink_Cloud_Runtime_Runs_Presenter' )
+	&& false !== strpos( $runtime_runs_presenter, 'public static function recent_rows' )
+	&& false !== strpos( $runtime_runs_presenter, 'public static function detail' )
+	&& false !== strpos( $runtime_runs_presenter, 'public static function normalize_run_id' )
+	&& false !== strpos( $settings_page, 'Npcink_Cloud_Runtime_Runs_Presenter::recent_rows' )
+	&& false !== strpos( $settings_page, 'Npcink_Cloud_Runtime_Runs_Presenter::detail' )
+	&& false === strpos( $settings_page, 'function format_runtime_status_label' )
+	&& false === strpos( $settings_page, 'function runtime_runs_from_response' )
+	&& false === strpos( $settings_page, 'function normalize_run_id' ) && false === strpos( $settings_page, 'function runtime_scalar' ) && false === strpos( $settings_page, 'function runtime_pick' )
+	&& ! $runtime_presenter_has_forbidden_call,
+	'Runtime Runs presenter loads before the settings facade and remains read-only, side-effect-free response projection.'
 );
 
 $plugin_header_version = array();

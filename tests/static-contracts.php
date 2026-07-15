@@ -31,6 +31,7 @@ $observability = maca_read( $root . '/includes/class-cloud-observability-collect
 $site_knowledge_bridge = maca_read( $root . '/includes/class-cloud-site-knowledge-change-bridge.php' );
 $site_knowledge_full_index_doc = maca_read( $root . '/docs/site-knowledge-full-index-delivery.md' );
 $site_knowledge_runtime_bridge = maca_read( $root . '/includes/class-cloud-site-knowledge-runtime-bridge.php' );
+$site_knowledge_admin_projection = maca_read( $root . '/includes/class-cloud-site-knowledge-admin-projection.php' );
 $settings = maca_read( $root . '/includes/class-cloud-addon-settings.php' );
 $settings_page = maca_read( $root . '/includes/class-cloud-settings-page.php' );
 $boundary_doc = maca_read( $root . '/docs/cloud-addon-boundary.md' );
@@ -53,6 +54,28 @@ $wp_ai_editor_smoke = maca_read( $root . '/scripts/smoke-wordpress-ai-editor.php
 $wp_ai_generation_eval = maca_read( $root . '/scripts/eval-wordpress-ai-generation-reference.php' );
 $zh_cn_po = maca_read( $root . '/languages/npcink-cloud-addon-zh_CN.po' );
 $uninstall = maca_read( $root . '/uninstall.php' );
+
+$projection_require_position = strpos( $bootstrap, "require_once __DIR__ . '/class-cloud-site-knowledge-admin-projection.php';" );
+$settings_page_require_position = strpos( $bootstrap, "require_once __DIR__ . '/class-cloud-settings-page.php';" );
+$projection_forbidden_calls = array(
+	'wp_remote_', 'wp_safe_remote_', 'get_option(', 'update_option(', 'add_option(', 'delete_option(',
+	'get_transient(', 'set_transient(', 'delete_transient(', 'add_action(', 'add_filter(',
+);
+$projection_has_side_effect_call = false;
+foreach ( $projection_forbidden_calls as $forbidden_call ) {
+	$projection_has_side_effect_call = $projection_has_side_effect_call || false !== strpos( $site_knowledge_admin_projection, $forbidden_call );
+}
+
+maca_assert(
+	false !== $projection_require_position
+	&& false !== $settings_page_require_position
+	&& $projection_require_position < $settings_page_require_position
+	&& false !== strpos( $site_knowledge_admin_projection, 'final class Npcink_Cloud_Site_Knowledge_Admin_Projection' )
+	&& false !== strpos( $site_knowledge_admin_projection, 'public static function build' )
+	&& false !== strpos( $settings_page, 'return Npcink_Cloud_Site_Knowledge_Admin_Projection::build( $summary );' )
+	&& ! $projection_has_side_effect_call,
+	'Site Knowledge admin quota projection is loaded before the settings facade and remains transport-, persistence-, and hook-free.'
+);
 
 $plugin_header_version = array();
 $plugin_constant_version = array();

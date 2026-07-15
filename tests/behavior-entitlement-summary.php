@@ -108,19 +108,19 @@ $overview_metrics_method = maca_private_method( Npcink_Cloud_Settings_Page::clas
 $site_knowledge_usage_method = maca_private_method( Npcink_Cloud_Settings_Page::class, 'get_site_knowledge_usage_projection' );
 $runtime_status_method = maca_private_method( Npcink_Cloud_Settings_Page::class, 'format_runtime_status_label' );
 $overview_metrics = $overview_metrics_method->invoke( null, $read_summary );
-$site_knowledge_usage = $site_knowledge_usage_method->invoke(
-	null,
-	array(
-		'state' => 'fresh',
-		'available' => true,
-		'quota_status' => 'ok',
-		'indexed_documents' => 599,
-		'max_documents' => 10000,
-		'remaining_documents' => 9401,
-		'document_percent' => 6,
-		'warning_ratio' => 0.85,
-	)
+$site_knowledge_input = array(
+	'state' => 'fresh',
+	'available' => true,
+	'quota_status' => 'ok',
+	'indexed_documents' => 599,
+	'max_documents' => 10000,
+	'remaining_documents' => 9401,
+	'document_percent' => 6,
+	'warning_ratio' => 0.85,
+	'last_sync_at' => '2026-07-15 00:00:00 UTC',
 );
+$site_knowledge_direct = Npcink_Cloud_Site_Knowledge_Admin_Projection::build( $site_knowledge_input );
+$site_knowledge_usage = $site_knowledge_usage_method->invoke( null, $site_knowledge_input );
 $missing_overview_metrics = $overview_metrics_method->invoke(
 	null,
 	array(
@@ -152,6 +152,8 @@ maca_assert(
 	&& '94% remaining' === (string) ( $site_knowledge_usage['status_label'] ?? '' )
 	&& 94 === (int) ( $site_knowledge_usage['percent'] ?? -1 )
 	&& 'Indexed 599 documents; remaining 9,401 documents; limit 10,000 documents.' === (string) ( $site_knowledge_usage['tooltip'] ?? '' )
+	&& '2026-07-15 00:00:00' === (string) ( $site_knowledge_direct['details']['lastSync']['value'] ?? '' )
+	&& $site_knowledge_direct === $site_knowledge_usage
 	&& ! empty( $overview_metrics['runtime']['available'] )
 	&& '8 of 10 runs remaining' === (string) ( $overview_metrics['runtime']['label'] ?? '' )
 	&& 'Queued' === $runtime_status_method->invoke( null, 'queued' )
@@ -159,8 +161,38 @@ maca_assert(
 	&& 'custom_state' === $runtime_status_method->invoke( null, 'custom_state' )
 	&& empty( $missing_overview_metrics['credits']['available'] )
 	&& empty( $missing_overview_metrics['runtime']['available'] ),
-	'Behavior: overview entitlement copy uses one loading state and never duplicates missing fallbacks.'
+	'Behavior: direct Site Knowledge projection matches the settings facade while overview copy avoids duplicate fallbacks.'
 );
+
+$site_knowledge_projection_cases = array(
+	'unavailable' => array( 'input' => array( 'state' => 'unavailable' ), 'available' => false, 'severity' => 'ok' ),
+	'near_limit' => array(
+		'input' => array( 'state' => 'fresh', 'available' => true, 'quota_status' => 'near_limit', 'indexed_documents' => 90, 'max_documents' => 100, 'remaining_documents' => 10 ),
+		'available' => true,
+		'severity' => 'warning',
+	),
+	'limited' => array(
+		'input' => array( 'state' => 'fresh', 'available' => true, 'quota_status' => 'limited', 'indexed_documents' => 100, 'max_documents' => 100, 'remaining_documents' => 0 ),
+		'available' => true,
+		'severity' => 'error',
+	),
+	'invalid_last_sync' => array(
+		'input' => array( 'state' => 'fresh', 'available' => true, 'indexed_documents' => 1, 'max_documents' => 100, 'remaining_documents' => 99, 'last_sync_at' => 'not-a-date' ),
+		'available' => true,
+		'severity' => 'ok',
+		'last_sync_at' => 'not-a-date',
+	),
+);
+foreach ( $site_knowledge_projection_cases as $case_name => $case ) {
+	$projection = Npcink_Cloud_Site_Knowledge_Admin_Projection::build( $case['input'] );
+	$expected_last_sync = (string) ( $case['last_sync_at'] ?? '' );
+	maca_assert(
+		(bool) $case['available'] === ! empty( $projection['available'] )
+		&& (string) $case['severity'] === (string) ( $projection['severity'] ?? '' )
+		&& ( '' === $expected_last_sync || ( ! empty( $projection['details']['lastSync']['available'] ) && $expected_last_sync === (string) ( $projection['details']['lastSync']['value'] ?? '' ) ) ),
+		'Behavior: Site Knowledge projection handles ' . $case_name . ' without changing bounded availability, severity, or timestamp fallback.'
+	);
+}
 
 maca_reset_test_state();
 maca_seed_settings( true );

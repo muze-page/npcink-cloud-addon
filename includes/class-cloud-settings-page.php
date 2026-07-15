@@ -560,6 +560,7 @@ if ( ! class_exists( 'Npcink_Cloud_Settings_Page' ) ) {
 				$settings['site_knowledge_delivery_enabled'] = ! empty( $_POST['site_knowledge_delivery_enabled'] );
 				Npcink_Cloud_Addon_Settings::write_settings( $settings );
 				Npcink_Cloud_Site_Knowledge_Change_Bridge::sync_schedule();
+				Npcink_Cloud_Site_Knowledge_Change_Bridge::resume_pending_delivery();
 
 				if ( ! empty( $settings['site_knowledge_delivery_enabled'] ) ) {
 					self::set_admin_notice( 'success', __( 'Site Knowledge delivery enabled for public WordPress content.', 'npcink-cloud-addon' ) );
@@ -604,20 +605,23 @@ if ( ! class_exists( 'Npcink_Cloud_Settings_Page' ) ) {
 					self::redirect_to_page( 'site_knowledge' );
 				}
 
-				$sent = is_array( $status ) ? absint( $status['last_index_action_sent_count'] ?? $status['last_sent_count'] ?? 0 ) : 0;
+				$selected = is_array( $status ) ? absint( $status['last_index_action_selected_count'] ?? 0 ) : 0;
+				$batch_count = is_array( $status ) ? absint( $status['last_index_action_batch_count'] ?? 0 ) : 0;
 				switch ( $operation ) {
 					case 'start':
 						$message = sprintf(
-							/* translators: %d: public content item count. */
-							__( 'Site Knowledge indexing started. Public content items sent: %d.', 'npcink-cloud-addon' ),
-							$sent
+							/* translators: 1: public content item count, 2: bounded delivery batch count. */
+							__( 'Site Knowledge indexing delivery scheduled: %1$d public content items in %2$d batches.', 'npcink-cloud-addon' ),
+							$selected,
+							$batch_count
 						);
 						break;
 					case 'rebuild':
 						$message = sprintf(
-							/* translators: %d: public content item count. */
-							__( 'Site Knowledge rebuild requested. Public content items sent: %d.', 'npcink-cloud-addon' ),
-							$sent
+							/* translators: 1: public content item count, 2: bounded delivery batch count. */
+							__( 'Site Knowledge rebuild delivery scheduled: %1$d public content items in %2$d batches.', 'npcink-cloud-addon' ),
+							$selected,
+							$batch_count
 						);
 						break;
 					case 'delete':
@@ -1357,6 +1361,7 @@ if ( ! class_exists( 'Npcink_Cloud_Settings_Page' ) ) {
 
 			if ( 'site_knowledge_delivery_enabled' === $permission ) {
 				Npcink_Cloud_Site_Knowledge_Change_Bridge::sync_schedule();
+				Npcink_Cloud_Site_Knowledge_Change_Bridge::resume_pending_delivery();
 				return;
 			}
 

@@ -40,6 +40,8 @@ maca_assert(
 	'Performance guard: bootstrap performs zero HTTP and creates one hourly event per recurring job.'
 );
 
+$maintenance_reads_before = absint( $GLOBALS['maca_option_read_counts'][ Npcink_Cloud_Site_Knowledge_Change_Bridge::MAINTENANCE_OPTION ] ?? 0 );
+$buffer_reads_before = absint( $GLOBALS['maca_option_read_counts'][ Npcink_Cloud_Site_Knowledge_Change_Bridge::BUFFER_OPTION ] ?? 0 );
 for ( $iteration = 0; $iteration < 25; $iteration++ ) {
 	Npcink_Cloud_Observability_Collector::sync_schedule();
 	Npcink_Cloud_Site_Knowledge_Change_Bridge::sync_schedule();
@@ -48,8 +50,10 @@ for ( $iteration = 0; $iteration < 25; $iteration++ ) {
 maca_assert(
 	1 === absint( $GLOBALS['maca_schedule_call_counts'][ $observability_hook ] ?? 0 )
 	&& 1 === absint( $GLOBALS['maca_schedule_call_counts'][ $site_knowledge_hook ] ?? 0 )
+	&& $maintenance_reads_before === absint( $GLOBALS['maca_option_read_counts'][ Npcink_Cloud_Site_Knowledge_Change_Bridge::MAINTENANCE_OPTION ] ?? 0 )
+	&& $buffer_reads_before === absint( $GLOBALS['maca_option_read_counts'][ Npcink_Cloud_Site_Knowledge_Change_Bridge::BUFFER_OPTION ] ?? 0 )
 	&& array() === $GLOBALS['maca_http_requests'],
-	'Performance guard: repeated schedule synchronization is idempotent and network-free.'
+	'Performance guard: repeated schedule synchronization is idempotent, network-free, and adds no delivery option reads.'
 );
 
 $GLOBALS['maca_scheduled_event_schedules'][ $observability_hook ] = 'twicedaily';

@@ -86,6 +86,9 @@ over wall-clock thresholds that vary with the WordPress host:
 
 - plugin file load and `npcink_cloud_addon_bootstrap()` must issue zero outbound
   HTTP requests;
+- repeated bootstrap schedule synchronization must not read the normally absent
+  Site Knowledge cursor or change-buffer options; explicit permission changes
+  own the low-frequency resume check;
 - repeated schedule synchronization must retain exactly one hourly
   observability event and one hourly Site Knowledge reconciliation event;
 - an unexpected recurring interval must be corrected once, without network
@@ -107,7 +110,11 @@ and the Cloud service owns hosted runtime latency.
 
 Do not add a distributed lock or a new async scheduler to satisfy hypothetical
 traffic. Revisit cross-request locking only after overlapping Cron execution is
-observed in profiling. Revisit administrator full-index batching when real
-corpus measurements show that the current bounded synchronous path approaches
-the host request timeout; any replacement must reuse the existing delivery
-cursor and must not turn the addon into workflow or scheduler truth.
+observed in profiling. Administrator full-index delivery reuses the existing
+bounded cursor and flush hook because the prior synchronous path amplified one
+admin request into as many as 50 sequential Cloud calls. The cursor remains
+delivery durability only and must not grow into workflow or scheduler truth.
+The existing cursor option is claimed atomically for a new request, and later
+cursor transitions use exact-version conditional writes so a stale Cron callback
+cannot replace a newer request. Stable per-batch idempotency remains the Cloud
+protection against overlapping delivery.

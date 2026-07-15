@@ -968,17 +968,17 @@ msgstr "请求的站点知识库索引操作不受支持。"
 msgid "Type the confirmation word before running this Site Knowledge index action."
 msgstr "运行此站点知识库索引操作前，请输入确认词。"
 
-#. translators: %d: public content item count.
-#: includes/class-cloud-settings-page.php:606
+#. translators: 1: public content item count, 2: bounded delivery batch count.
+#: includes/class-cloud-settings-page.php:614
 #, php-format
-msgid "Site Knowledge indexing started. Public content items sent: %d."
-msgstr "站点知识库索引已开始。已发送公开内容项：%d。"
+msgid "Site Knowledge indexing delivery scheduled: %1$d public content items in %2$d batches."
+msgstr "Site Knowledge 索引投递已安排：%1$d 项公开内容，共 %2$d 个批次。"
 
-#. translators: %d: public content item count.
-#: includes/class-cloud-settings-page.php:613
+#. translators: 1: public content item count, 2: bounded delivery batch count.
+#: includes/class-cloud-settings-page.php:622
 #, php-format
-msgid "Site Knowledge rebuild requested. Public content items sent: %d."
-msgstr "站点知识库重建索引请求已发送。已发送公开内容项：%d。"
+msgid "Site Knowledge rebuild delivery scheduled: %1$d public content items in %2$d batches."
+msgstr "Site Knowledge 重建投递已安排：%1$d 项公开内容，共 %2$d 个批次。"
 
 #: includes/class-cloud-settings-page.php:618
 msgid "Site Knowledge index deletion requested. WordPress content was not changed."
@@ -1163,6 +1163,28 @@ msgstr "请求 Cloud 重试"
 #: includes/class-cloud-site-knowledge-change-bridge.php:401
 msgid "No public posts or pages were found for Site Knowledge indexing."
 msgstr "没有找到可用于站点知识库索引的公开文章或页面。"
+
+#: includes/class-cloud-site-knowledge-change-bridge.php:565
+msgid "Site Knowledge delete cleanup is waiting for a local retry."
+msgstr "Site Knowledge 删除清理正在等待本地重试。"
+
+#: includes/class-cloud-site-knowledge-change-bridge.php:616
+msgid "Cloud Site Knowledge run did not finish within the bounded polling window."
+msgstr "Cloud Site Knowledge 运行未能在有限轮询窗口内完成。"
+
+#: includes/class-cloud-site-knowledge-change-bridge.php:413
+#: includes/class-cloud-site-knowledge-change-bridge.php:433
+#: includes/class-cloud-site-knowledge-change-bridge.php:474
+msgid "A Site Knowledge full-index delivery is already in progress."
+msgstr "已有一个 Site Knowledge 全量索引投递正在进行。"
+
+#: includes/class-cloud-site-knowledge-change-bridge.php:573
+msgid "Site Knowledge full-index delivery is blocked after bounded retries."
+msgstr "Site Knowledge 全量索引投递已达到重试上限并暂停。"
+
+#: includes/class-cloud-site-knowledge-change-bridge.php:633
+msgid "Cloud Site Knowledge maintenance run failed."
+msgstr "Cloud Site Knowledge 维护运行失败。"
 
 #: includes/class-cloud-site-knowledge-change-bridge.php:509
 msgid "Site Knowledge sync mode must be refresh, rebuild, or delete."

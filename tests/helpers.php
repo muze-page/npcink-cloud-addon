@@ -219,6 +219,7 @@ $GLOBALS['maca_option_update_counts'] = array();
 $GLOBALS['maca_transients'] = array();
 $GLOBALS['maca_http_requests'] = array();
 $GLOBALS['maca_http_response_queue'] = array();
+$GLOBALS['maca_actions'] = array();
 $GLOBALS['maca_filters'] = array();
 $GLOBALS['maca_wp_salt'] = 'maca-test-auth-salt';
 
@@ -282,7 +283,13 @@ if ( ! function_exists( 'delete_transient' ) ) {
 }
 
 if ( ! function_exists( 'add_action' ) ) {
-	function add_action(): void {}
+	function add_action( string $hook_name, $callback, int $priority = 10, int $accepted_args = 1 ): bool {
+		$GLOBALS['maca_actions'][ $hook_name ][ $priority ][] = array(
+			'callback'      => $callback,
+			'accepted_args' => $accepted_args,
+		);
+		return true;
+	}
 }
 
 if ( ! function_exists( 'add_filter' ) ) {
@@ -572,6 +579,7 @@ function maca_reset_test_state(): void {
 	$GLOBALS['maca_transients'] = array();
 	$GLOBALS['maca_http_requests'] = array();
 	$GLOBALS['maca_http_response_queue'] = array();
+	$GLOBALS['maca_actions'] = array();
 	$GLOBALS['maca_filters'] = array();
 	$GLOBALS['maca_scheduled_events'] = array();
 	$GLOBALS['maca_scheduled_event_schedules'] = array();

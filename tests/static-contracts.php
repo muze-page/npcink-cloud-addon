@@ -1362,26 +1362,6 @@ maca_assert(
 	'Site Knowledge shows one auto-refreshed document quota with visible numbers and keeps lower-frequency Cloud quota fields in technical detail.'
 );
 
-$overview_method_start = strpos( $settings_page, 'private static function render_overview_page' );
-$overview_method_end = strpos( $settings_page, 'private static function render_advanced_page' );
-$site_knowledge_method_start = strpos( $settings_page, 'private static function render_site_knowledge_summary' );
-$site_knowledge_method_end = strpos( $settings_page, 'private static function render_site_knowledge_cloud_quota_detail' );
-$overview_method = false !== $overview_method_start && false !== $overview_method_end
-	? substr( $settings_page, $overview_method_start, $overview_method_end - $overview_method_start )
-	: '';
-$site_knowledge_method = false !== $site_knowledge_method_start && false !== $site_knowledge_method_end
-	? substr( $settings_page, $site_knowledge_method_start, $site_knowledge_method_end - $site_knowledge_method_start )
-	: '';
-maca_assert(
-	false !== strpos( $overview_method, "<?php if ( \$site_knowledge_delivery_enabled ) : ?>" )
-	&& false !== strpos( $overview_method, "esc_html_e( 'Available knowledge documents'" )
-	&& false !== strpos( $overview_method, 'data-npcink-site-knowledge-usage' )
-	&& false === strpos( $site_knowledge_method, "esc_html_e( 'Available knowledge documents'" )
-	&& false !== strpos( $site_knowledge_method, 'data-npcink-site-knowledge-refresh' )
-	&& false !== strpos( $site_knowledge_method, 'render_site_knowledge_cloud_quota_detail' ),
-	'Site Knowledge document usage belongs to Overview service summary when delivery is enabled, while the Site Knowledge page keeps only low-frequency Cloud index detail.'
-);
-
 maca_assert(
 	false !== strpos( $site_knowledge_vector_ops_doc, 'require' )
 	&& false !== strpos( $site_knowledge_vector_ops_doc, '`manage_options`' )

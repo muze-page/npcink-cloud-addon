@@ -23,6 +23,7 @@ require __DIR__ . '/behavior-wordpress-ai-request-log-bridge.php';
 require __DIR__ . '/behavior-ai-plugin-localization.php';
 require __DIR__ . '/behavior-ai-plugin-localization-audit.php';
 require __DIR__ . '/behavior-entitlement-summary.php';
+require __DIR__ . '/behavior-settings-page-contract.php';
 require __DIR__ . '/behavior-ai-task-contract.php';
 require __DIR__ . '/behavior-wordpress-ai-connector-runtime.php';
 require __DIR__ . '/behavior-media-derivative.php';

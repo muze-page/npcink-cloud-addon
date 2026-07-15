@@ -7,6 +7,12 @@
 
 declare(strict_types=1);
 
+$performance_guard_command = escapeshellarg( PHP_BINARY ) . ' ' . escapeshellarg( __DIR__ . '/behavior-performance-guards.php' );
+passthru( $performance_guard_command, $performance_guard_status );
+if ( 0 !== $performance_guard_status ) {
+	exit( $performance_guard_status );
+}
+
 require __DIR__ . '/static-contracts.php';
 require __DIR__ . '/behavior-credential-store.php';
 require __DIR__ . '/behavior-outbound-policy.php';

@@ -113,7 +113,7 @@ if ( ! class_exists( 'Npcink_Cloud_Observability_Collector' ) ) {
 			$result = $client->send_observability_events(
 				$batch,
 				'trace_cloud_observability_' . wp_generate_uuid4(),
-				'obs_' . wp_generate_uuid4()
+				self::batch_idempotency_key( $batch )
 			);
 
 			if ( is_wp_error( $result ) ) {
@@ -125,7 +125,9 @@ if ( ! class_exists( 'Npcink_Cloud_Observability_Collector' ) ) {
 			$stored = min( $accepted, max( 0, absint( $data['stored_count'] ?? $accepted ) ) );
 			$duplicate = min( $accepted, max( 0, absint( $data['duplicate_count'] ?? ( $accepted - $stored ) ) ) );
 			if ( $accepted > 0 ) {
-				$buffer = array_slice( $buffer, $accepted );
+				$latest_buffer = get_option( self::BUFFER_OPTION, array() );
+				$latest_buffer = is_array( $latest_buffer ) ? array_values( $latest_buffer ) : array();
+				$buffer = self::remove_accepted_events( $latest_buffer, array_slice( $batch, 0, $accepted ) );
 				update_option( self::BUFFER_OPTION, $buffer, false );
 			}
 
@@ -284,9 +286,85 @@ if ( ! class_exists( 'Npcink_Cloud_Observability_Collector' ) ) {
 				return;
 			}
 
-			if ( false === wp_next_scheduled( self::CRON_HOOK ) ) {
+			$next_flush = wp_next_scheduled( self::CRON_HOOK );
+			if (
+				false !== $next_flush
+				&& function_exists( 'wp_get_schedule' )
+				&& 'hourly' !== wp_get_schedule( self::CRON_HOOK )
+				&& function_exists( 'wp_clear_scheduled_hook' )
+			) {
+				wp_clear_scheduled_hook( self::CRON_HOOK );
+				$next_flush = false;
+			}
+
+			if ( false === $next_flush ) {
 				wp_schedule_event( time() + 300, 'hourly', self::CRON_HOOK );
 			}
+		}
+
+		/**
+		 * Builds a stable key so an uncertain transport retry cannot duplicate a batch.
+		 *
+		 * @param array<int,array<string,mixed>> $batch Normalized event batch.
+		 * @return string
+		 */
+		private static function batch_idempotency_key( array $batch ): string {
+			$encoded = wp_json_encode( $batch );
+			if ( ! is_string( $encoded ) || '' === $encoded ) {
+				return 'obs_' . wp_generate_uuid4();
+			}
+
+			return 'obs_batch_' . substr( hash( 'sha256', $encoded ), 0, 40 );
+		}
+
+		/**
+		 * Removes only accepted event identities from the latest stored buffer.
+		 *
+		 * Re-reading after HTTP preserves events captured while the request was in
+		 * flight. Identity counts also keep concurrent identical flushes from
+		 * removing a later batch after the first flush already removed its events.
+		 *
+		 * @param array<int,mixed>               $buffer Latest stored buffer.
+		 * @param array<int,array<string,mixed>> $accepted_events Accepted batch prefix.
+		 * @return array<int,mixed>
+		 */
+		private static function remove_accepted_events( array $buffer, array $accepted_events ): array {
+			$accepted_identities = array();
+			foreach ( $accepted_events as $event ) {
+				$identity = self::event_identity( $event );
+				$accepted_identities[ $identity ] = absint( $accepted_identities[ $identity ] ?? 0 ) + 1;
+			}
+
+			$remaining = array();
+			foreach ( $buffer as $event ) {
+				if ( is_array( $event ) ) {
+					$identity = self::event_identity( $event );
+					if ( ! empty( $accepted_identities[ $identity ] ) ) {
+						$accepted_identities[ $identity ]--;
+						continue;
+					}
+				}
+				$remaining[] = $event;
+			}
+
+			return array_values( $remaining );
+		}
+
+		/**
+		 * Returns one non-secret identity for a normalized event.
+		 *
+		 * @param array<string,mixed> $event Event payload.
+		 * @return string
+		 */
+		private static function event_identity( array $event ): string {
+			$event_id = sanitize_text_field( (string) ( $event['event_id'] ?? '' ) );
+			if ( '' !== $event_id ) {
+				return 'id:' . $event_id;
+			}
+
+			$encoded = wp_json_encode( $event );
+
+			return 'hash:' . hash( 'sha256', is_string( $encoded ) ? $encoded : '' );
 		}
 
 		/**

@@ -321,6 +321,47 @@ if ( ! function_exists( 'register_setting' ) ) {
 	function register_setting(): void {}
 }
 
+if ( ! function_exists( 'wp_next_scheduled' ) ) {
+	function wp_next_scheduled( string $hook, array $args = array() ) {
+		unset( $args );
+		return $GLOBALS['maca_scheduled_events'][ $hook ] ?? false;
+	}
+}
+
+if ( ! function_exists( 'wp_get_schedule' ) ) {
+	function wp_get_schedule( string $hook, array $args = array() ) {
+		unset( $args );
+		return $GLOBALS['maca_scheduled_event_schedules'][ $hook ] ?? false;
+	}
+}
+
+if ( ! function_exists( 'wp_schedule_event' ) ) {
+	function wp_schedule_event( int $timestamp, string $recurrence, string $hook, array $args = array() ): bool {
+		unset( $args );
+		$GLOBALS['maca_scheduled_events'][ $hook ] = $timestamp;
+		$GLOBALS['maca_scheduled_event_schedules'][ $hook ] = $recurrence;
+		$GLOBALS['maca_schedule_call_counts'][ $hook ] = absint( $GLOBALS['maca_schedule_call_counts'][ $hook ] ?? 0 ) + 1;
+		return true;
+	}
+}
+
+if ( ! function_exists( 'wp_schedule_single_event' ) ) {
+	function wp_schedule_single_event( int $timestamp, string $hook, array $args = array() ): bool {
+		unset( $args );
+		$GLOBALS['maca_scheduled_events'][ $hook ] = $timestamp;
+		$GLOBALS['maca_scheduled_event_schedules'][ $hook ] = 'single';
+		$GLOBALS['maca_schedule_call_counts'][ $hook ] = absint( $GLOBALS['maca_schedule_call_counts'][ $hook ] ?? 0 ) + 1;
+		return true;
+	}
+}
+
+if ( ! function_exists( 'wp_clear_scheduled_hook' ) ) {
+	function wp_clear_scheduled_hook( string $hook, array $args = array() ): void {
+		unset( $args );
+		unset( $GLOBALS['maca_scheduled_events'][ $hook ], $GLOBALS['maca_scheduled_event_schedules'][ $hook ] );
+	}
+}
+
 if ( ! function_exists( 'wp_remote_request' ) ) {
 	function wp_remote_request( string $url, array $args = array() ) {
 		$GLOBALS['maca_http_requests'][] = array(
@@ -524,6 +565,9 @@ function maca_reset_test_state(): void {
 	$GLOBALS['maca_http_requests'] = array();
 	$GLOBALS['maca_http_response_queue'] = array();
 	$GLOBALS['maca_filters'] = array();
+	$GLOBALS['maca_scheduled_events'] = array();
+	$GLOBALS['maca_scheduled_event_schedules'] = array();
+	$GLOBALS['maca_schedule_call_counts'] = array();
 	$GLOBALS['maca_wp_salt'] = 'maca-test-auth-salt';
 	$GLOBALS['maca_wp_environment_type'] = 'local';
 	maca_register_default_outbound_filters();

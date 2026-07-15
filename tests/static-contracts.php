@@ -52,6 +52,7 @@ $wp_ai_smoke = maca_read( $root . '/scripts/smoke-wordpress-ai-abilities.php' );
 $wp_ai_editor_smoke = maca_read( $root . '/scripts/smoke-wordpress-ai-editor.php' );
 $wp_ai_generation_eval = maca_read( $root . '/scripts/eval-wordpress-ai-generation-reference.php' );
 $zh_cn_po = maca_read( $root . '/languages/npcink-cloud-addon-zh_CN.po' );
+$uninstall = maca_read( $root . '/uninstall.php' );
 
 $plugin_header_version = array();
 $plugin_constant_version = array();
@@ -1591,6 +1592,12 @@ maca_assert(
 	&& false !== strpos( $complexity_doc, 'tests/static-contracts.php' )
 	&& false !== strpos( $complexity_doc, 'tests/behavior-media-derivative.php' ),
 	'Complexity budget document records what complexity is worth keeping and where tests belong.'
+);
+
+maca_assert(
+	false !== strpos( $uninstall, "delete_option( 'npcink_cloud_addon_agent_feedback_summary' )" )
+	&& false !== strpos( $uninstall, "delete_option( 'npcink_cloud_addon_site_knowledge_maintenance_cursor' )" ),
+	'Uninstall removes all addon-owned bounded summary and Site Knowledge maintenance state.'
 );
 
 foreach ( array( 'npcink-governance-core', 'npcink-abilities-toolkit', 'npcink-ai-client-adapter', 'npcink-workflow-toolbox', 'npcink-cloud-addon', 'npcink-ai-cloud' ) as $contract_reuse_repo_name ) {

@@ -339,6 +339,73 @@ maca_assert(
 
 maca_reset_site_knowledge_bridge_state();
 maca_seed_settings( true );
+maca_add_public_post_fixture( 708 );
+update_option(
+	Npcink_Cloud_Site_Knowledge_Change_Bridge::BUFFER_OPTION,
+	array(
+		'post_ids' => array( 708 ),
+		'attempts' => 0,
+	),
+	false
+);
+$GLOBALS['maca_http_response_queue'][] = new WP_Error( 'http_request_failed', 'Connection outcome was uncertain.' );
+Npcink_Cloud_Site_Knowledge_Change_Bridge::flush_buffer();
+$first_change_key = (string) ( $GLOBALS['maca_http_requests'][0]['args']['headers']['Idempotency-Key'] ?? '' );
+maca_add_public_post_fixture( 709 );
+$GLOBALS['maca_http_response_queue'][] = static function ( string $url, array $args ): array {
+	unset( $url, $args );
+	$GLOBALS['maca_posts'][708]->post_content = 'Changed while the original Site Knowledge payload was in flight.';
+	Npcink_Cloud_Site_Knowledge_Change_Bridge::handle_saved_post( 708, $GLOBALS['maca_posts'][708] );
+	Npcink_Cloud_Site_Knowledge_Change_Bridge::handle_saved_post( 709, $GLOBALS['maca_posts'][709] );
+
+	return array(
+		'response' => array( 'code' => 200 ),
+		'body' => wp_json_encode( array( 'status' => 'ok', 'data' => array() ) ),
+	);
+};
+Npcink_Cloud_Site_Knowledge_Change_Bridge::flush_buffer();
+$retry_change_key = (string) ( $GLOBALS['maca_http_requests'][1]['args']['headers']['Idempotency-Key'] ?? '' );
+$change_buffer = get_option( Npcink_Cloud_Site_Knowledge_Change_Bridge::BUFFER_OPTION, array() );
+maca_assert(
+	'' !== $first_change_key
+	&& $first_change_key === $retry_change_key
+	&& array( 708, 709 ) === (array) ( $change_buffer['post_ids'] ?? array() ),
+	'Behavior: an uncertain Site Knowledge retry preserves same-id content changes and new ids buffered during HTTP.'
+);
+Npcink_Cloud_Site_Knowledge_Change_Bridge::flush_buffer();
+$changed_payload_key = (string) ( $GLOBALS['maca_http_requests'][2]['args']['headers']['Idempotency-Key'] ?? '' );
+$change_buffer = get_option( Npcink_Cloud_Site_Knowledge_Change_Bridge::BUFFER_OPTION, array() );
+maca_assert(
+	$changed_payload_key !== $retry_change_key
+	&& array() === (array) ( $change_buffer['post_ids'] ?? array() ),
+	'Behavior: changed Site Knowledge content receives a new key and clears only after that version is delivered.'
+);
+
+maca_reset_site_knowledge_bridge_state();
+maca_seed_settings( true );
+for ( $post_id = 8000; $post_id <= 8025; $post_id++ ) {
+	maca_add_public_post_fixture( $post_id );
+}
+update_option(
+	Npcink_Cloud_Site_Knowledge_Change_Bridge::BUFFER_OPTION,
+	array(
+		'post_ids' => range( 8000, 8025 ),
+		'attempts' => 2,
+	),
+	false
+);
+$GLOBALS['maca_http_response_queue'][] = new WP_Error( 'http_request_failed', 'Final bounded attempt failed.' );
+$exhausted = Npcink_Cloud_Site_Knowledge_Change_Bridge::flush_buffer();
+$exhausted_buffer = get_option( Npcink_Cloud_Site_Knowledge_Change_Bridge::BUFFER_OPTION, array() );
+maca_assert(
+	'delivery_attempts_exhausted' === (string) ( $exhausted['last_error_code'] ?? '' )
+	&& array( 8025 ) === (array) ( $exhausted_buffer['post_ids'] ?? array() )
+	&& 0 === absint( $exhausted_buffer['attempts'] ?? 0 ),
+	'Behavior: exhausting one Site Knowledge batch preserves later buffered work.'
+);
+
+maca_reset_site_knowledge_bridge_state();
+maca_seed_settings( true );
 maca_set_site_knowledge_delivery_enabled( false );
 maca_add_public_post_fixture( 750 );
 $disabled_start = Npcink_Cloud_Site_Knowledge_Change_Bridge::request_manual_index_operation( 'start' );

@@ -353,12 +353,14 @@ if ( ! class_exists( 'Npcink_Cloud_Site_Knowledge_Change_Bridge' ) ) {
 			}
 
 				$post_ids = array_slice( $buffer['post_ids'], 0, self::MAX_BATCH_ITEMS );
+				$sent_fingerprints = self::delivery_fingerprints( $post_ids );
 				$result = self::request_site_knowledge_sync( 'refresh', $post_ids, 'change_bridge' );
 				if ( is_wp_error( $result ) ) {
-					return self::retry_or_drop_buffer( $buffer, $result->get_error_message() );
+					return self::retry_or_drop_buffer( $buffer, $post_ids, $sent_fingerprints, $result->get_error_message() );
 				}
 
-			$remaining = array_values( array_diff( $buffer['post_ids'], $post_ids ) );
+			$latest_buffer = self::get_buffer();
+			$remaining = self::remaining_after_delivery( $latest_buffer['post_ids'], $post_ids, $sent_fingerprints );
 			self::save_buffer( $remaining, 0 );
 			if ( ! empty( $remaining ) ) {
 				self::schedule_flush( self::RETRY_SECONDS );
@@ -749,6 +751,7 @@ if ( ! class_exists( 'Npcink_Cloud_Site_Knowledge_Change_Bridge' ) ) {
 				$document_post_ids = array_values( array_unique( array_filter( array_map( 'absint', $document_post_ids ) ) ) );
 				$limit    = 'change_bridge' === $operation_source ? self::MAX_BATCH_ITEMS : self::MANUAL_INDEX_POSTS;
 				$client  = new Npcink_Cloud_Runtime_Client();
+				$documents = 'delete' === $sync_mode ? array() : self::collect_documents( $document_post_ids, $limit );
 				$payload = array(
 					'ability_name' => 'npcink-cloud/site-knowledge-sync',
 					'contract_version' => 'site_knowledge_sync.v1',
@@ -759,7 +762,7 @@ if ( ! class_exists( 'Npcink_Cloud_Site_Knowledge_Change_Bridge' ) ) {
 						'operation_source' => sanitize_key( $operation_source ),
 						'post_ids' => $post_ids,
 						'max_posts' => $limit,
-						'documents' => 'delete' === $sync_mode ? array() : self::collect_documents( $document_post_ids, $limit ),
+						'documents' => $documents,
 						'write_posture' => 'suggestion_only',
 						'direct_wordpress_write' => false,
 					),
@@ -775,12 +778,33 @@ if ( ! class_exists( 'Npcink_Cloud_Site_Knowledge_Change_Bridge' ) ) {
 				if ( ! empty( $maintenance ) ) {
 					$payload['input']['maintenance'] = $maintenance;
 				}
+				if ( '' === $idempotency_key && 'change_bridge' === $operation_source ) {
+					$idempotency_key = self::change_batch_idempotency_key( $payload['input'] );
+				}
 
 				return $client->execute_runtime(
 					$payload,
 					'trace_site_knowledge_' . sanitize_key( $operation_source ) . '_' . wp_generate_uuid4(),
 					'' !== $idempotency_key ? sanitize_key( $idempotency_key ) : 'site_knowledge_' . sanitize_key( $operation_source ) . '_' . wp_generate_uuid4()
 				);
+			}
+
+			/**
+			 * Builds a stable key for one exact change-bridge payload.
+			 *
+			 * Content changes produce a new payload and therefore a new key, while an
+			 * uncertain retry of the same payload remains safe to deduplicate in Cloud.
+			 *
+			 * @param array<string,mixed> $input Bounded Site Knowledge input.
+			 * @return string
+			 */
+			private static function change_batch_idempotency_key( array $input ): string {
+				$encoded = wp_json_encode( $input );
+				if ( ! is_string( $encoded ) || '' === $encoded ) {
+					return 'site_knowledge_change_' . wp_generate_uuid4();
+				}
+
+				return 'site_knowledge_change_' . substr( hash( 'sha256', $encoded ), 0, 32 );
 			}
 
 		/**
@@ -898,20 +922,93 @@ if ( ! class_exists( 'Npcink_Cloud_Site_Knowledge_Change_Bridge' ) ) {
 		}
 
 		/**
+		 * Captures the exact local document versions represented by one batch.
+		 *
+		 * @param array<int,int> $post_ids Post ids.
+		 * @return array<int,string>
+		 */
+		private static function delivery_fingerprints( array $post_ids ): array {
+			$fingerprints = array();
+			foreach ( $post_ids as $post_id ) {
+				$post_id = absint( $post_id );
+				if ( $post_id > 0 ) {
+					$fingerprints[ $post_id ] = self::delivery_fingerprint( $post_id );
+				}
+			}
+
+			return $fingerprints;
+		}
+
+		/**
+		 * Returns a non-secret fingerprint of the public document sent to Cloud.
+		 *
+		 * @param int $post_id Post id.
+		 * @return string
+		 */
+		private static function delivery_fingerprint( int $post_id ): string {
+			$post = function_exists( 'get_post' ) ? get_post( $post_id ) : null;
+			$document = self::is_public_post( $post ) ? self::post_document( $post ) : array( 'post_id' => $post_id, 'missing' => true );
+			$encoded = wp_json_encode( $document );
+			if ( ! is_string( $encoded ) || '' === $encoded ) {
+				return 'unencodable_' . wp_generate_uuid4();
+			}
+
+			return hash( 'sha256', $encoded );
+		}
+
+		/**
+		 * Removes only post versions that still match the delivered batch.
+		 *
+		 * @param array<int,int>    $buffered_post_ids Latest buffered post ids.
+		 * @param array<int,int>    $attempted_post_ids Attempted batch ids.
+		 * @param array<int,string> $sent_fingerprints Sent document fingerprints.
+		 * @return array<int,int>
+		 */
+		private static function remaining_after_delivery( array $buffered_post_ids, array $attempted_post_ids, array $sent_fingerprints ): array {
+			$attempted_lookup = array_fill_keys( array_map( 'absint', $attempted_post_ids ), true );
+			$remaining = array();
+			foreach ( $buffered_post_ids as $post_id ) {
+				$post_id = absint( $post_id );
+				if ( $post_id <= 0 ) {
+					continue;
+				}
+				if ( empty( $attempted_lookup[ $post_id ] ) ) {
+					$remaining[] = $post_id;
+					continue;
+				}
+
+				$sent_fingerprint = (string) ( $sent_fingerprints[ $post_id ] ?? '' );
+				$current_fingerprint = self::delivery_fingerprint( $post_id );
+				if ( '' === $sent_fingerprint || ! hash_equals( $sent_fingerprint, $current_fingerprint ) ) {
+					$remaining[] = $post_id;
+				}
+			}
+
+			return array_values( array_unique( $remaining ) );
+		}
+
+		/**
 		 * Retries or drops the buffered batch after bounded delivery attempts.
 		 *
 		 * @param array<string,mixed> $buffer Buffer payload.
+		 * @param array<int,int>      $attempted_post_ids Attempted batch ids.
+		 * @param array<int,string>   $sent_fingerprints Sent document fingerprints.
 		 * @param string              $error Error message.
 		 * @return array<string,mixed>
 		 */
-		private static function retry_or_drop_buffer( array $buffer, string $error ): array {
-			$attempts = absint( $buffer['attempts'] ?? 0 ) + 1;
+		private static function retry_or_drop_buffer( array $buffer, array $attempted_post_ids, array $sent_fingerprints, string $error ): array {
+			$latest_buffer = self::get_buffer();
+			$attempts = max( absint( $buffer['attempts'] ?? 0 ), absint( $latest_buffer['attempts'] ?? 0 ) ) + 1;
 			if ( $attempts >= self::MAX_DELIVERY_ATTEMPTS ) {
-				self::save_buffer( array(), 0 );
+				$remaining = self::remaining_after_delivery( $latest_buffer['post_ids'], $attempted_post_ids, $sent_fingerprints );
+				self::save_buffer( $remaining, 0 );
+				if ( ! empty( $remaining ) ) {
+					self::schedule_flush( self::RETRY_SECONDS );
+				}
 				return self::record_delivery_result( false, 0, $error, 'delivery_attempts_exhausted' );
 			}
 
-			self::save_buffer( $buffer['post_ids'], $attempts );
+			self::save_buffer( $latest_buffer['post_ids'], $attempts );
 			self::schedule_flush( self::RETRY_SECONDS );
 
 			return self::record_delivery_result( false, 0, $error, 'delivery_failed_retry_scheduled' );

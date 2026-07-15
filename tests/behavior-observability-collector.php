@@ -99,6 +99,7 @@ $GLOBALS['maca_http_response_queue'][] = array(
 );
 $failed = Npcink_Cloud_Observability_Collector::flush_buffer();
 $buffer = get_option( Npcink_Cloud_Observability_Collector::BUFFER_OPTION, array() );
+$failed_idempotency_key = (string) ( $GLOBALS['maca_http_requests'][0]['args']['headers']['Idempotency-Key'] ?? '' );
 maca_assert(
 	empty( $failed['last_upload_ok'] )
 	&& 3 === count( $buffer )
@@ -122,6 +123,7 @@ $GLOBALS['maca_http_response_queue'][] = array(
 );
 $successful = Npcink_Cloud_Observability_Collector::flush_buffer();
 $buffer = get_option( Npcink_Cloud_Observability_Collector::BUFFER_OPTION, array() );
+$retry_idempotency_key = (string) ( $GLOBALS['maca_http_requests'][1]['args']['headers']['Idempotency-Key'] ?? '' );
 maca_assert(
 	! empty( $successful['last_upload_ok'] )
 	&& 1 === count( $buffer )
@@ -136,6 +138,11 @@ maca_assert(
 	&& '' === (string) ( $successful['last_upload_error'] ?? '' )
 	&& '' !== (string) ( $successful['last_uploaded_at'] ?? '' ),
 	'Behavior: successful observability upload records sent, stored, and duplicate counts.'
+);
+maca_assert(
+	'' !== $failed_idempotency_key
+	&& $failed_idempotency_key === $retry_idempotency_key,
+	'Behavior: an uncertain observability retry reuses the exact batch idempotency key.'
 );
 $status = Npcink_Cloud_Observability_Collector::get_status();
 maca_assert(
@@ -185,6 +192,33 @@ maca_assert(
 	&& 50 === absint( $bounded['total_uploaded'] ?? 0 )
 	&& 1 === count( $GLOBALS['maca_http_requests'] ),
 	'Behavior: observability flush sends one bounded batch request rather than per-event addon telemetry.'
+);
+
+maca_reset_test_state();
+maca_seed_settings( true );
+maca_set_monitoring_enabled( true );
+for ( $i = 1; $i <= 3; $i++ ) {
+	Npcink_Cloud_Observability_Collector::capture_event( maca_observability_event( $i ) );
+}
+$GLOBALS['maca_http_response_queue'][] = static function ( string $url, array $args ): array {
+	unset( $url, $args );
+	Npcink_Cloud_Observability_Collector::capture_event( maca_observability_event( 4 ) );
+
+	return array(
+		'response' => array( 'code' => 200 ),
+		'body' => wp_json_encode(
+			array(
+				'status' => 'ok',
+				'data' => array( 'accepted_count' => 2 ),
+			)
+		),
+	);
+};
+Npcink_Cloud_Observability_Collector::flush_buffer();
+$buffer = get_option( Npcink_Cloud_Observability_Collector::BUFFER_OPTION, array() );
+maca_assert(
+	array( 'evt_3', 'evt_4' ) === array_column( $buffer, 'event_id' ),
+	'Behavior: observability flush preserves events captured while HTTP is in flight.'
 );
 
 maca_reset_test_state();

@@ -78,3 +78,36 @@ Tests are split by purpose:
 
 Keep new tests in the narrowest matching file. Do not add product workflow
 simulation to the helper layer.
+
+## Deterministic Performance And Safety Baseline
+
+The current pre-user baseline favors deterministic work-amplification guards
+over wall-clock thresholds that vary with the WordPress host:
+
+- plugin file load and `npcink_cloud_addon_bootstrap()` must issue zero outbound
+  HTTP requests;
+- repeated schedule synchronization must retain exactly one hourly
+  observability event and one hourly Site Knowledge reconciliation event;
+- an unexpected recurring interval must be corrected once, without network
+  traffic;
+- observability remains capped at 200 buffered events and 50 events per
+  request; Site Knowledge remains capped at 500 post IDs, 25 change IDs per
+  request, and three delivery attempts;
+- uncertain retries of an unchanged observability or Site Knowledge change
+  payload must reuse its content-addressed idempotency key. An unchanged Site
+  Knowledge document payload intentionally does not create duplicate Cloud
+  indexing work; changed document content produces a different key.
+- successful flushes must re-read the latest local buffer and remove only the
+  exact event identities or Site Knowledge document fingerprints that Cloud
+  accepted, preserving changes captured while HTTP was in flight.
+
+These guards run under `composer run test:all`. Endpoint latency sampling stays
+outside this connector because Toolbox owns the operator-facing request surface
+and the Cloud service owns hosted runtime latency.
+
+Do not add a distributed lock or a new async scheduler to satisfy hypothetical
+traffic. Revisit cross-request locking only after overlapping Cron execution is
+observed in profiling. Revisit administrator full-index batching when real
+corpus measurements show that the current bounded synchronous path approaches
+the host request timeout; any replacement must reuse the existing delivery
+cursor and must not turn the addon into workflow or scheduler truth.

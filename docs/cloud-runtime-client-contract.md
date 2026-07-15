@@ -45,8 +45,6 @@ create_media_derivative(array $payload, array $files = array(), string $trace_id
 get_run(string $run_id, string $trace_id = '')
 get_run_result(string $run_id, string $trace_id = '')
 get_current_entitlement(string $trace_id = '')
-get_profile_stats(string $profile_id, string $trace_id = '')
-get_instance_stats(string $instance_id, string $trace_id = '')
 send_observability_events(array $events, string $trace_id = '', string $idempotency_key = '')
 send_agent_feedback_event(array $payload, string $trace_id = '', string $idempotency_key = '')
 get_agent_feedback_summary(int $window_hours = 24, string $trace_id = '')
@@ -99,8 +97,6 @@ It returns `null` until the addon settings have passed Save and Verify.
 | `retry_run()` | `POST /v1/runs/{run_id}/retry` |
 | `download_media_derivative_artifact()` | `GET /v1/runtime/artifacts/{artifact_id}/download` |
 | `get_current_entitlement()` | `GET /v1/entitlements/current` |
-| `get_profile_stats()` | `GET /v1/stats/profiles/{profile_id}` |
-| `get_instance_stats()` | `GET /v1/stats/instances/{instance_id}` |
 | `send_observability_events()` | `POST /v1/observability/plugin-events` |
 | `send_agent_feedback_event()` | `POST /v1/agent-feedback/events` |
 | `get_agent_feedback_summary()` | `GET /v1/agent-feedback/summary` |

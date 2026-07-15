@@ -71,10 +71,6 @@ if ( ! class_exists( 'Npcink_Cloud_Runtime_Endpoint_Policy' ) ) {
 			if ( 'GET' === $method && 1 === preg_match( '#^/v1/runtime/artifacts/[A-Za-z0-9._:-]+/download$#', $path_only ) ) {
 				return true;
 			}
-			if ( 'GET' === $method && 1 === preg_match( '#^/v1/stats/(?:profiles|instances)/[A-Za-z0-9._:-]+$#', $path_only ) ) {
-				return true;
-			}
-
 			return false;
 		}
 

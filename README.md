@@ -25,8 +25,6 @@ The addon owns:
   - `GET /v1/runs/nightly-inspection/recent`
   - `POST /v1/runs/{run_id}/retry`
   - `GET /v1/runtime/artifacts/{artifact_id}/download`
-  - `GET /v1/stats/profiles/{profile_id}`
-  - `GET /v1/stats/instances/{instance_id}`
   - `GET /v1/entitlements/current`
 - Opt-in plugin observability transport:
   - `POST /v1/observability/plugin-events`
@@ -100,8 +98,6 @@ get_recent_nightly_inspection_runs(int $limit = 5, string $trace_id = '')
 retry_run(string $run_id, array $payload = array(), string $trace_id = '', string $idempotency_key = '')
 download_media_derivative_artifact(string $artifact_id, string $trace_id = '')
 get_current_entitlement(string $trace_id = '')
-get_profile_stats(string $profile_id, string $trace_id = '')
-get_instance_stats(string $instance_id, string $trace_id = '')
 send_observability_events(array $events, string $trace_id = '', string $idempotency_key = '')
 send_agent_feedback_event(array $payload, string $trace_id = '', string $idempotency_key = '')
 get_agent_feedback_summary(int $window_hours = 24, string $trace_id = '')

@@ -206,8 +206,6 @@ Allowed Cloud contract endpoints:
 - `GET /v1/runs/nightly-inspection/recent`
 - `POST /v1/runs/{run_id}/retry`
 - `GET /v1/runtime/artifacts/{artifact_id}/download`
-- `GET /v1/stats/profiles/{profile_id}`
-- `GET /v1/stats/instances/{instance_id}`
 - `GET /v1/entitlements/current`
 - `POST /v1/observability/plugin-events`
 - `POST /v1/agent-feedback/events`

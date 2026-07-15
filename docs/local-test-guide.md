@@ -154,7 +154,6 @@ With valid Cloud credentials:
 - `execute_runtime()` calls `/v1/runtime/execute`.
 - `get_run()` calls `/v1/runs/{run_id}`.
 - `get_run_result()` calls `/v1/runs/{run_id}/result`.
-- `get_profile_stats()` and `get_instance_stats()` only read `/v1/stats/*`.
 - `get_current_entitlement()` only reads `/v1/entitlements/current`.
 - When the Cloud response includes `entitlement.pro_cloud_runtime`, the local
   entitlement summary preserves the Pro Cloud Runtime quota detail as read-only

@@ -611,44 +611,6 @@ if ( ! class_exists( 'Npcink_Cloud_Runtime_Client' ) ) {
 		}
 
 		/**
-		 * Reads profile stats.
-		 *
-		 * @param string $profile_id Hosted profile id.
-		 * @param string $trace_id Optional trace id.
-		 * @return array<string,mixed>|WP_Error
-		 */
-		public function get_profile_stats( string $profile_id, string $trace_id = '' ) {
-			$profile_id = $this->normalize_identifier( $profile_id );
-			if ( '' === $profile_id ) {
-				return new WP_Error(
-					'cloud_runtime_profile_missing',
-					__( 'Cloud profile_id is required.', 'npcink-cloud-addon' )
-				);
-			}
-
-			return $this->request( 'GET', '/v1/stats/profiles/' . rawurlencode( $profile_id ), null, '', $trace_id );
-		}
-
-		/**
-		 * Reads instance stats.
-		 *
-		 * @param string $instance_id Hosted instance id.
-		 * @param string $trace_id Optional trace id.
-		 * @return array<string,mixed>|WP_Error
-		 */
-		public function get_instance_stats( string $instance_id, string $trace_id = '' ) {
-			$instance_id = $this->normalize_identifier( $instance_id );
-			if ( '' === $instance_id ) {
-				return new WP_Error(
-					'cloud_runtime_instance_missing',
-					__( 'Cloud instance_id is required.', 'npcink-cloud-addon' )
-				);
-			}
-
-			return $this->request( 'GET', '/v1/stats/instances/' . rawurlencode( $instance_id ), null, '', $trace_id );
-		}
-
-		/**
 		 * Sends a batch of plugin observability events.
 		 *
 		 * @param array<int,array<string,mixed>> $events Event batch.

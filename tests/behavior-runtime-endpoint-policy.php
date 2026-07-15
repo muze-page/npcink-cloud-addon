@@ -19,8 +19,6 @@ $allowed_requests = array(
 	array( 'GET', '/v1/runs/run_1/result' ),
 	array( 'POST', '/v1/runs/run_1/retry' ),
 	array( 'GET', '/v1/runtime/artifacts/artifact_1/download' ),
-	array( 'GET', '/v1/stats/profiles/profile_1' ),
-	array( 'GET', '/v1/stats/instances/instance_1' ),
 	array( 'POST', '/v1/observability/plugin-events' ),
 	array( 'POST', '/v1/agent-feedback/events' ),
 	array( 'GET', '/v1/agent-feedback/summary?window_hours=24' ),
@@ -51,6 +49,8 @@ $denied_requests = array(
 	array( 'GET', '/v1/runs/https://example.test/a/b' ),
 	array( 'GET', '/v1/runs/https%3A%2F%2Fexample.test%2Fa%2Fb' ),
 	array( 'POST', '/v1/entitlements/current' ),
+	array( 'GET', '/v1/stats/profiles/profile_1' ),
+	array( 'GET', '/v1/stats/instances/instance_1' ),
 	array( 'GET', '/v1/runs/nightly-inspection/recent/result' ),
 	array( 'GET', '/v1/unlisted' ),
 );

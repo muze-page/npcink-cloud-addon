@@ -73,7 +73,11 @@ if ( ! function_exists( 'add_query_arg' ) ) {
 			$base = (string) $url;
 		}
 
-		$query = http_build_query( $args );
+		$query_parts = array();
+		foreach ( $args as $arg_key => $arg_value ) {
+			$query_parts[] = rawurlencode( (string) $arg_key ) . '=' . (string) $arg_value;
+		}
+		$query = implode( '&', $query_parts );
 		return '' === $query ? $base : $base . ( false === strpos( $base, '?' ) ? '?' : '&' ) . $query;
 	}
 }
@@ -165,6 +169,43 @@ foreach ( $expected_hooks as $hook_name => $hook_contract ) {
 		'Behavior: settings hook remains callable: ' . $hook_name
 	);
 }
+
+$authorization_url_builder = new ReflectionMethod( Npcink_Cloud_Settings_Page::class, 'build_authorization_url_for_base_url' );
+if ( PHP_VERSION_ID < 80100 ) {
+	$authorization_url_builder->setAccessible( true );
+}
+
+$authorization_url = (string) $authorization_url_builder->invoke( null, 'https://cloud.example.test/' );
+$parse_query_pairs = static function ( string $query ): array {
+	$pairs = array();
+	foreach ( explode( '&', $query ) as $pair ) {
+		list( $raw_key, $raw_value ) = array_pad( explode( '=', $pair, 2 ), 2, '' );
+		$key = rawurldecode( $raw_key );
+		$pairs[ $key ][] = rawurldecode( $raw_value );
+	}
+
+	return $pairs;
+};
+
+$authorization_query = $parse_query_pairs( (string) wp_parse_url( $authorization_url, PHP_URL_QUERY ) );
+$top_level_states = $authorization_query['state'] ?? array();
+$return_urls = $authorization_query['return_url'] ?? array();
+$return_url = 1 === count( $return_urls ) ? (string) $return_urls[0] : '';
+$callback_query = $parse_query_pairs( (string) wp_parse_url( $return_url, PHP_URL_QUERY ) );
+$callback_states = $callback_query['state'] ?? array();
+
+maca_assert(
+	1 === count( $top_level_states )
+	&& 1 === count( $return_urls ),
+	'Behavior: Cloud authorization URL has exactly one top-level state and one encoded return URL.'
+);
+
+maca_assert(
+	array( 'npcink_cloud_addon_complete_auth' ) === ( $callback_query['action'] ?? array() )
+	&& 1 === count( $callback_states )
+	&& (string) $top_level_states[0] === (string) $callback_states[0],
+	'Behavior: authorization return URL keeps the matching state and the complete-auth callback action.'
+);
 
 maca_reset_test_state();
 $http_before_render = count( $GLOBALS['maca_http_requests'] );

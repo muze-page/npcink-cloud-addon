@@ -972,7 +972,7 @@ if ( ! class_exists( 'Npcink_Cloud_Settings_Page' ) ) {
 					'connect'    => 'wordpress-addon',
 					'site_url'   => home_url( '/' ),
 					'site_name'  => get_bloginfo( 'name' ),
-					'return_url' => $return_url,
+					'return_url' => rawurlencode( $return_url ),
 					'state'      => $state,
 				),
 				untrailingslashit( $base_url ) . '/portal/sites'

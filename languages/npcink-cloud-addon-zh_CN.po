@@ -1020,14 +1020,6 @@ msgstr "站点知识库投递已在本地关闭。"
 msgid "Site Knowledge delivery is disabled locally. Enable delivery before starting or rebuilding the index."
 msgstr "站点知识库投递已在本地关闭。开始索引或重建索引前，请先启用投递。"
 
-#: includes/class-cloud-settings-page.php:559
-msgid "Site Knowledge delivery enabled for public WordPress content."
-msgstr "已为公开 WordPress 内容启用站点知识库投递。"
-
-#: includes/class-cloud-settings-page.php:561
-msgid "Site Knowledge delivery disabled locally. Existing Cloud index data was not deleted."
-msgstr "站点知识库投递已在本地关闭。已有 Cloud 索引数据未被删除。"
-
 #: includes/class-cloud-settings-page.php:1323
 #: includes/class-cloud-settings-page.php:2224
 msgid "Site Knowledge delivery"

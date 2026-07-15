@@ -136,7 +136,6 @@ $expected_hooks = array(
 	'admin_post_npcink_cloud_addon_update_local_permission' => array( 'handle_update_local_permission', 10 ),
 	'admin_post_npcink_cloud_addon_refresh_site_knowledge' => array( 'handle_refresh_site_knowledge', 10 ),
 	'wp_ajax_npcink_cloud_addon_refresh_site_knowledge_status' => array( 'handle_refresh_site_knowledge_status', 10 ),
-	'admin_post_npcink_cloud_addon_update_site_knowledge_delivery' => array( 'handle_update_site_knowledge_delivery', 10 ),
 	'admin_post_npcink_cloud_addon_manage_site_knowledge_index' => array( 'handle_manage_site_knowledge_index', 10 ),
 	'admin_post_npcink_cloud_addon_retry_runtime_run' => array( 'handle_retry_runtime_run', 10 ),
 	'admin_post_npcink_cloud_addon_run_manual_readiness_test' => array( 'handle_run_manual_readiness_test', 10 ),

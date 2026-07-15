@@ -26,7 +26,6 @@ if ( ! class_exists( 'Npcink_Cloud_Settings_Page' ) ) {
 		private const ACTION_UPDATE_LOCAL_PERMISSION = 'npcink_cloud_addon_update_local_permission';
 		private const ACTION_REFRESH_SITE_KNOWLEDGE = 'npcink_cloud_addon_refresh_site_knowledge';
 		private const ACTION_REFRESH_SITE_KNOWLEDGE_STATUS = 'npcink_cloud_addon_refresh_site_knowledge_status';
-		private const ACTION_UPDATE_SITE_KNOWLEDGE_DELIVERY = 'npcink_cloud_addon_update_site_knowledge_delivery';
 		private const ACTION_MANAGE_SITE_KNOWLEDGE_INDEX = 'npcink_cloud_addon_manage_site_knowledge_index';
 		private const ACTION_RETRY_RUNTIME_RUN = 'npcink_cloud_addon_retry_runtime_run';
 		private const ACTION_RUN_MANUAL_READINESS_TEST = 'npcink_cloud_addon_run_manual_readiness_test';
@@ -49,7 +48,6 @@ if ( ! class_exists( 'Npcink_Cloud_Settings_Page' ) ) {
 			add_action( 'admin_post_' . self::ACTION_UPDATE_LOCAL_PERMISSION, array( __CLASS__, 'handle_update_local_permission' ) );
 			add_action( 'admin_post_' . self::ACTION_REFRESH_SITE_KNOWLEDGE, array( __CLASS__, 'handle_refresh_site_knowledge' ) );
 			add_action( 'wp_ajax_' . self::ACTION_REFRESH_SITE_KNOWLEDGE_STATUS, array( __CLASS__, 'handle_refresh_site_knowledge_status' ) );
-			add_action( 'admin_post_' . self::ACTION_UPDATE_SITE_KNOWLEDGE_DELIVERY, array( __CLASS__, 'handle_update_site_knowledge_delivery' ) );
 			add_action( 'admin_post_' . self::ACTION_MANAGE_SITE_KNOWLEDGE_INDEX, array( __CLASS__, 'handle_manage_site_knowledge_index' ) );
 			add_action( 'admin_post_' . self::ACTION_RETRY_RUNTIME_RUN, array( __CLASS__, 'handle_retry_runtime_run' ) );
 			add_action( 'admin_post_' . self::ACTION_RUN_MANUAL_READINESS_TEST, array( __CLASS__, 'handle_run_manual_readiness_test' ) );
@@ -536,37 +534,6 @@ if ( ! class_exists( 'Npcink_Cloud_Settings_Page' ) ) {
 						absint( $status['last_sent_count'] ?? 0 )
 					)
 				);
-				self::redirect_to_page( 'site_knowledge' );
-			}
-
-			/**
-			 * Handles local Site Knowledge delivery consent changes.
-			 *
-			 * @return void
-			 */
-			public static function handle_update_site_knowledge_delivery(): void {
-				if ( ! current_user_can( 'manage_options' ) ) {
-					wp_die( esc_html__( 'You do not have permission to manage Npcink Cloud settings.', 'npcink-cloud-addon' ) );
-				}
-
-				check_admin_referer( self::ACTION_UPDATE_SITE_KNOWLEDGE_DELIVERY );
-
-				if ( ! Npcink_Cloud_Addon_Settings::is_verified() ) {
-					self::set_admin_notice( 'error', __( 'Cloud Addon settings are not verified.', 'npcink-cloud-addon' ) );
-					self::redirect_to_page( 'site_knowledge' );
-				}
-
-				$settings = Npcink_Cloud_Addon_Settings::get_settings();
-				$settings['site_knowledge_delivery_enabled'] = ! empty( $_POST['site_knowledge_delivery_enabled'] );
-				Npcink_Cloud_Addon_Settings::write_settings( $settings );
-				Npcink_Cloud_Site_Knowledge_Change_Bridge::sync_schedule();
-				Npcink_Cloud_Site_Knowledge_Change_Bridge::resume_pending_delivery();
-
-				if ( ! empty( $settings['site_knowledge_delivery_enabled'] ) ) {
-					self::set_admin_notice( 'success', __( 'Site Knowledge delivery enabled for public WordPress content.', 'npcink-cloud-addon' ) );
-				} else {
-					self::set_admin_notice( 'success', __( 'Site Knowledge delivery disabled locally. Existing Cloud index data was not deleted.', 'npcink-cloud-addon' ) );
-				}
 				self::redirect_to_page( 'site_knowledge' );
 			}
 

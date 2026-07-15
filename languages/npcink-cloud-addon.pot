@@ -808,14 +808,6 @@ msgstr ""
 msgid "Site Knowledge refresh requested. Public content items sent: %d."
 msgstr ""
 
-#: includes/class-cloud-settings-page.php:559
-msgid "Site Knowledge delivery enabled for public WordPress content."
-msgstr ""
-
-#: includes/class-cloud-settings-page.php:561
-msgid "Site Knowledge delivery disabled locally. Existing Cloud index data was not deleted."
-msgstr ""
-
 #: includes/class-cloud-settings-page.php:585
 #: includes/class-cloud-site-knowledge-change-bridge.php:374
 msgid "The requested Site Knowledge index action is not supported."

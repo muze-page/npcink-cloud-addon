@@ -42,6 +42,7 @@ $pot = maca_read( $root . '/languages/npcink-cloud-addon.pot' );
 $bootstrap = maca_read( $root . '/includes/bootstrap.php' );
 $credential_store = maca_read( $root . '/includes/class-cloud-credential-store.php' );
 $outbound_policy = maca_read( $root . '/includes/class-cloud-outbound-policy.php' );
+$runtime_artifact_url_normalizer = maca_read( $root . '/includes/class-cloud-runtime-artifact-url-normalizer.php' );
 $runtime_endpoint_policy = maca_read( $root . '/includes/class-cloud-runtime-endpoint-policy.php' );
 $transport = maca_read( $root . '/includes/class-cloud-media-derivative-transport.php' );
 $runtime_client = maca_read( $root . '/includes/class-cloud-runtime-client.php' );
@@ -69,6 +70,21 @@ $boundary_doc = maca_read( $root . '/docs/cloud-addon-boundary.md' );
 $runtime_contract = maca_read( $root . '/docs/cloud-runtime-client-contract.md' );
 $adapter_doc = maca_read( $root . '/docs/adapter-integration-seam.md' );
 $complexity_doc = maca_read( $root . '/docs/cloud-addon-complexity-budget.md' );
+$test_helpers = maca_read( $root . '/tests/helpers.php' );
+$test_runner = maca_read( $root . '/tests/run.php' );
+
+$runtime_artifact_url_normalizer_forbidden = array(
+	'Npcink_Cloud_Runtime_Client', 'Npcink_Cloud_Addon_Settings', 'Npcink_Cloud_Outbound_Policy', 'wp_remote_', 'wp_safe_remote_', 'curl_',
+	'WP_Error', '__(', '_x(', 'esc_html__(', 'hash_hmac', 'secret', 'signature', 'nonce', 'trace',
+	'get_option(', 'update_option(', 'add_option(', 'delete_option(', 'get_transient(', 'set_transient(', 'delete_transient(',
+	'add_action(', 'add_filter(', 'do_action(', 'apply_filters(', '$_GET', '$_POST', '$_REQUEST', '$_SERVER', '$_COOKIE', '$_FILES',
+	'wp_json_encode(', 'json_encode(', 'json_decode(', 'wp_insert_' . 'post(', 'wp_update_' . 'post(', 'update_post_meta(',
+);
+$runtime_artifact_url_normalizer_has_forbidden = false;
+foreach ( $runtime_artifact_url_normalizer_forbidden as $forbidden_normalizer_dependency ) {
+	$runtime_artifact_url_normalizer_has_forbidden = $runtime_artifact_url_normalizer_has_forbidden
+		|| false !== strpos( $runtime_artifact_url_normalizer, $forbidden_normalizer_dependency );
+}
 
 $runtime_endpoint_policy_forbidden = array(
 	'Npcink_Cloud_Runtime_Client', 'Npcink_Cloud_Outbound_Policy', 'wp_remote_', 'wp_safe_remote_', 'curl_',
@@ -789,6 +805,40 @@ maca_assert(
 	&& false === strpos( $transport, '/v1/runtime/workflows/' . 'runs' )
 	&& false === strpos( $transport, '/v1/artifacts' ),
 	'Runtime client keeps Cloud calls on named allowlisted contract surfaces.'
+);
+
+$runtime_decode_start = strpos( $runtime_client, 'private function decode_response' );
+$runtime_raw_decode_start = strpos( $runtime_client, 'private function decode_raw_response' );
+$runtime_artifact_normalizer_call = strpos( $runtime_client, 'Npcink_Cloud_Runtime_Artifact_Url_Normalizer::normalize' );
+$runtime_artifact_normalizer_bootstrap_position = strpos( $bootstrap, 'class-cloud-runtime-artifact-url-normalizer.php' );
+$runtime_client_bootstrap_position = strpos( $bootstrap, 'class-cloud-runtime-client.php' );
+$runtime_artifact_normalizer_helper_position = strpos( $test_helpers, 'class-cloud-runtime-artifact-url-normalizer.php' );
+$runtime_client_helper_position = strpos( $test_helpers, 'class-cloud-runtime-client.php' );
+maca_assert(
+	! $runtime_artifact_url_normalizer_has_forbidden
+	&& false !== strpos( $runtime_artifact_url_normalizer, 'final class Npcink_Cloud_Runtime_Artifact_Url_Normalizer' )
+	&& false !== strpos( $runtime_artifact_url_normalizer, 'public static function normalize' )
+	&& 1 === substr_count( $runtime_artifact_url_normalizer, 'public static function' )
+	&& false !== strpos( $runtime_artifact_url_normalizer, 'private static function normalize_value' )
+	&& false !== strpos( $runtime_artifact_url_normalizer, 'private static function absolute_url' )
+	&& false !== strpos( $runtime_artifact_url_normalizer, '#^/v1/runtime/artifacts/[A-Za-z0-9._:-]+/(?:download|public-download)(?:\\\\?token=[A-Za-z0-9._~-]+)?$#' )
+	&& 1 === substr_count( $runtime_client, 'Npcink_Cloud_Runtime_Artifact_Url_Normalizer::normalize' )
+	&& false === strpos( $runtime_client, 'normalize_runtime_artifact_urls' )
+	&& false === strpos( $runtime_client, 'absolute_runtime_artifact_url' )
+	&& false === strpos( $runtime_client, '#^/v1/runtime/artifacts/[A-Za-z0-9._:-]+/(?:download|public-download)' )
+	&& false !== $runtime_decode_start
+	&& false !== $runtime_raw_decode_start
+	&& false !== $runtime_artifact_normalizer_call
+	&& $runtime_decode_start < $runtime_artifact_normalizer_call
+	&& $runtime_artifact_normalizer_call < $runtime_raw_decode_start
+	&& false !== $runtime_artifact_normalizer_bootstrap_position
+	&& false !== $runtime_client_bootstrap_position
+	&& $runtime_artifact_normalizer_bootstrap_position < $runtime_client_bootstrap_position
+	&& false !== $runtime_artifact_normalizer_helper_position
+	&& false !== $runtime_client_helper_position
+	&& $runtime_artifact_normalizer_helper_position < $runtime_client_helper_position
+	&& false !== strpos( $test_runner, 'behavior-runtime-artifact-url-normalizer.php' ),
+	'Runtime artifact URL normalization is a pure helper loaded before the client and used only by successful JSON response decoding.'
 );
 
 maca_assert(

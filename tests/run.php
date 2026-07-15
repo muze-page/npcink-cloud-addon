@@ -20,6 +20,7 @@ if ( 0 !== $site_knowledge_admin_actions_status ) {
 }
 
 require __DIR__ . '/static-contracts.php';
+require __DIR__ . '/behavior-runtime-artifact-url-normalizer.php';
 require __DIR__ . '/behavior-runtime-endpoint-policy.php';
 require __DIR__ . '/behavior-runtime-runs-presenter.php';
 require __DIR__ . '/behavior-credential-store.php';

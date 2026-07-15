@@ -1343,7 +1343,10 @@ if ( ! class_exists( 'Npcink_Cloud_Runtime_Client' ) ) {
 				);
 			}
 
-			return $this->normalize_runtime_artifact_urls( $decoded );
+			return Npcink_Cloud_Runtime_Artifact_Url_Normalizer::normalize(
+				$decoded,
+				(string) ( $this->config['base_url'] ?? '' )
+			);
 		}
 
 		/**
@@ -1393,51 +1396,6 @@ if ( ! class_exists( 'Npcink_Cloud_Runtime_Client' ) ) {
 				'content_type'   => $content_type,
 				'content_length' => $content_len,
 			);
-		}
-
-		/**
-		 * Converts Cloud runtime artifact paths into absolute Cloud URLs.
-		 *
-		 * Runtime responses may return short TTL artifact paths such as
-		 * /v1/runtime/artifacts/{id}/download or tokenized public-download
-		 * paths. WordPress editor surfaces need absolute URLs for media
-		 * preview controls.
-		 *
-		 * @param mixed $value Decoded Cloud response value.
-		 * @return mixed
-		 */
-		private function normalize_runtime_artifact_urls( $value ) {
-			if ( is_string( $value ) ) {
-				return $this->absolute_runtime_artifact_url( $value );
-			}
-			if ( ! is_array( $value ) ) {
-				return $value;
-			}
-
-			$next = array();
-			foreach ( $value as $key => $item ) {
-				$next[ $key ] = $this->normalize_runtime_artifact_urls( $item );
-			}
-			return $next;
-		}
-
-		/**
-		 * Builds an absolute Cloud URL for one runtime artifact path.
-		 *
-		 * @param string $value Decoded scalar value.
-		 * @return string
-		 */
-		private function absolute_runtime_artifact_url( string $value ): string {
-			if ( 1 !== preg_match( '#^/v1/runtime/artifacts/[A-Za-z0-9._:-]+/(?:download|public-download)(?:\\?token=[A-Za-z0-9._~-]+)?$#', $value ) ) {
-				return $value;
-			}
-
-			$base_url = untrailingslashit( (string) ( $this->config['base_url'] ?? '' ) );
-			if ( '' === $base_url ) {
-				return $value;
-			}
-
-			return esc_url_raw( $base_url . $value );
 		}
 
 		/**

@@ -600,7 +600,16 @@ if ( ! class_exists( 'Npcink_Cloud_Site_Knowledge_Change_Bridge' ) ) {
 			}
 
 			$batch = array_slice( $post_ids, $batch_index * self::MANUAL_INDEX_POSTS, self::MANUAL_INDEX_POSTS );
-			$pending_run_id = sanitize_key( (string) ( $cursor['pending_run_id'] ?? '' ) );
+			$raw_pending_run_id = $cursor['pending_run_id'] ?? '';
+			$pending_run_id = is_string( $raw_pending_run_id )
+				? self::normalize_cloud_run_id( $raw_pending_run_id )
+				: '';
+			if ( '' !== $raw_pending_run_id && '' === $pending_run_id ) {
+				return self::record_full_index_delivery_failure(
+					$cursor,
+					__( 'Cloud Site Knowledge run identifier is invalid.', 'npcink-cloud-addon' )
+				);
+			}
 			if ( '' !== $pending_run_id ) {
 				$client = new Npcink_Cloud_Runtime_Client();
 				$run = $client->get_run( $pending_run_id, 'trace_site_knowledge_full_index_status_' . wp_generate_uuid4() );
@@ -608,7 +617,7 @@ if ( ! class_exists( 'Npcink_Cloud_Site_Knowledge_Change_Bridge' ) ) {
 					return self::record_full_index_delivery_failure( $cursor, $run->get_error_message() );
 				}
 				$run_status = self::cloud_run_status( is_array( $run ) ? $run : array() );
-				if ( in_array( $run_status, array( 'queued', 'running', 'processing', 'pending' ), true ) ) {
+				if ( in_array( $run_status, array( 'submitted', 'queued', 'running', 'processing', 'pending' ), true ) ) {
 					$poll_generation = absint( $cursor['poll_generation'] ?? 0 ) + 1;
 					if ( $poll_generation >= self::MAX_RUN_POLLS ) {
 						return self::record_full_index_delivery_failure(
@@ -662,7 +671,14 @@ if ( ! class_exists( 'Npcink_Cloud_Site_Knowledge_Change_Bridge' ) ) {
 				return self::record_full_index_delivery_failure( $cursor, $result->get_error_message() );
 			}
 
-			$run_id = self::cloud_run_id( is_array( $result ) ? $result : array() );
+			$result = is_array( $result ) ? $result : array();
+			$run_id = self::cloud_run_id( $result );
+			if ( self::has_cloud_run_id( $result ) && '' === $run_id ) {
+				return self::record_full_index_delivery_failure(
+					$cursor,
+					__( 'Cloud Site Knowledge run identifier is invalid.', 'npcink-cloud-addon' )
+				);
+			}
 			if ( '' !== $run_id ) {
 				$expected_cursor = $cursor;
 				$cursor['pending_run_id'] = $run_id;
@@ -751,8 +767,31 @@ if ( ! class_exists( 'Npcink_Cloud_Site_Knowledge_Change_Bridge' ) ) {
 			 */
 			private static function cloud_run_id( array $response ): string {
 				$data = is_array( $response['data'] ?? null ) ? $response['data'] : array();
+				$value = array_key_exists( 'run_id', $data ) ? $data['run_id'] : ( $response['run_id'] ?? '' );
 
-				return sanitize_key( (string) ( $data['run_id'] ?? $response['run_id'] ?? '' ) );
+				return is_string( $value ) ? self::normalize_cloud_run_id( $value ) : '';
+			}
+
+			/**
+			 * Determines whether the Cloud envelope explicitly contains a run id.
+			 *
+			 * @param array<string,mixed> $response Cloud response.
+			 * @return bool
+			 */
+			private static function has_cloud_run_id( array $response ): bool {
+				$data = is_array( $response['data'] ?? null ) ? $response['data'] : array();
+
+				return array_key_exists( 'run_id', $data ) || array_key_exists( 'run_id', $response );
+			}
+
+			/**
+			 * Normalizes a Cloud run id without changing its case.
+			 *
+			 * @param string $value Raw Cloud run id.
+			 * @return string
+			 */
+			private static function normalize_cloud_run_id( string $value ): string {
+				return 1 === preg_match( '/\A[A-Za-z0-9._:-]+\z/', $value ) ? $value : '';
 			}
 
 			/**

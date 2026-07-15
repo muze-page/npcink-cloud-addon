@@ -1717,7 +1717,8 @@ if ( ! class_exists( 'Npcink_Cloud_Runtime_Client' ) ) {
 		 * @return array<string,mixed>|WP_Error
 		 */
 		private function normalize_wordpress_ai_alt_text_upload_response( array $response, string $mime_type, string $contents ) {
-			$artifact = $response['data']['result']['artifact'] ?? null;
+			$result   = $response['data']['result'] ?? null;
+			$artifact = is_array( $result ) ? ( $result['artifact'] ?? null ) : null;
 			$expires_at = is_array( $artifact ) && is_string( $artifact['expires_at'] ?? null )
 				? $artifact['expires_at']
 				: '';
@@ -1725,7 +1726,10 @@ if ( ! class_exists( 'Npcink_Cloud_Runtime_Client' ) ) {
 				? strtotime( $expires_at )
 				: false;
 			$expected_format = self::WP_AI_ALT_TEXT_UPLOAD_FORMATS[ $mime_type ];
-			$is_valid = is_array( $artifact )
+			$is_valid = is_array( $result )
+				&& 'media_upload_artifact' === ( $result['artifact_type'] ?? null )
+				&& 'media_upload_result.v1' === ( $result['contract_version'] ?? null )
+				&& is_array( $artifact )
 				&& is_string( $artifact['artifact_id'] ?? null )
 				&& 1 === preg_match( '/^art_[0-9a-f]{32}$/', $artifact['artifact_id'] )
 				&& 'image' === ( $artifact['media_kind'] ?? null )

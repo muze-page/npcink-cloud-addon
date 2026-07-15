@@ -725,11 +725,26 @@ $GLOBALS['maca_http_response_queue'][] = array(
 	'body' => wp_json_encode(
 		array(
 			'status' => 'ok',
-			'data' => array( 'run_id' => 'run_manual_still_running' ),
+			'data' => array( 'run_id' => 'Run.Manual_Mixed-Case.1' ),
 		)
 	),
 );
 maca_run_site_knowledge_flush();
+$accepted_run_cursor = get_option( Npcink_Cloud_Site_Knowledge_Change_Bridge::MAINTENANCE_OPTION, array() );
+$GLOBALS['maca_http_response_queue'][] = array(
+	'response' => array( 'code' => 200 ),
+	'body' => wp_json_encode(
+		array(
+			'status' => 'ok',
+			'data' => array(
+				'run' => array( 'status' => 'submitted' ),
+			),
+		)
+	),
+);
+$submitted_poll_status = maca_run_site_knowledge_flush();
+$submitted_poll_cursor = get_option( Npcink_Cloud_Site_Knowledge_Change_Bridge::MAINTENANCE_OPTION, array() );
+$submitted_poll_request = $GLOBALS['maca_http_requests'][1] ?? array();
 $GLOBALS['maca_http_response_queue'][] = array(
 	'response' => array( 'code' => 200 ),
 	'body' => wp_json_encode(
@@ -744,27 +759,77 @@ $GLOBALS['maca_http_response_queue'][] = array(
 $running_poll_status = maca_run_site_knowledge_flush();
 $running_poll_cursor = get_option( Npcink_Cloud_Site_Knowledge_Change_Bridge::MAINTENANCE_OPTION, array() );
 $running_poll_scheduled = wp_next_scheduled( Npcink_Cloud_Site_Knowledge_Change_Bridge::FLUSH_HOOK );
+$running_poll_request = $GLOBALS['maca_http_requests'][2] ?? array();
 $GLOBALS['maca_http_response_queue'][] = array(
 	'response' => array( 'code' => 200 ),
 	'body' => wp_json_encode(
 		array(
 			'status' => 'ok',
 			'data' => array(
-				'run' => array( 'status' => 'succeeded' ),
+				'run' => array( 'status' => 'completed' ),
 			),
 		)
 	),
 );
 $running_poll_final_status = maca_run_site_knowledge_flush();
 maca_assert(
-	1 === absint( $running_poll_cursor['poll_generation'] ?? 0 )
+	'Run.Manual_Mixed-Case.1' === (string) ( $accepted_run_cursor['pending_run_id'] ?? '' )
+	&& 'Run.Manual_Mixed-Case.1' === (string) ( $submitted_poll_cursor['pending_run_id'] ?? '' )
+	&& 1 === absint( $submitted_poll_cursor['poll_generation'] ?? 0 )
+	&& 'delivering' === (string) ( $submitted_poll_status['last_index_action_status'] ?? '' )
+	&& 'https://cloud.example.test/v1/runs/Run.Manual_Mixed-Case.1' === (string) ( $submitted_poll_request['url'] ?? '' )
+	&& 'Run.Manual_Mixed-Case.1' === (string) ( $running_poll_cursor['pending_run_id'] ?? '' )
+	&& 2 === absint( $running_poll_cursor['poll_generation'] ?? 0 )
 	&& '' !== (string) ( $running_poll_cursor['last_polled_at'] ?? '' )
 	&& false !== $running_poll_scheduled
 	&& 'delivering' === (string) ( $running_poll_status['last_index_action_status'] ?? '' )
+	&& 'https://cloud.example.test/v1/runs/Run.Manual_Mixed-Case.1' === (string) ( $running_poll_request['url'] ?? '' )
 	&& 'completed' === (string) ( $running_poll_final_status['last_index_action_status'] ?? '' )
 	&& array() === get_option( Npcink_Cloud_Site_Knowledge_Change_Bridge::MAINTENANCE_OPTION, array() )
-	&& 3 === count( $GLOBALS['maca_http_requests'] ),
-	'Behavior: a still-running Cloud run advances the poll generation and schedules the next status check.'
+	&& 4 === count( $GLOBALS['maca_http_requests'] ),
+	'Behavior: submitted and running Cloud states preserve a mixed-case run id until the bounded poll completes.'
+);
+
+maca_reset_site_knowledge_bridge_state();
+maca_seed_settings( true );
+maca_add_public_post_fixture( 1110151 );
+Npcink_Cloud_Site_Knowledge_Change_Bridge::request_manual_index_operation( 'start' );
+$invalid_pending_cursor = get_option( Npcink_Cloud_Site_Knowledge_Change_Bridge::MAINTENANCE_OPTION, array() );
+$invalid_pending_cursor['pending_run_id'] = 'Run/ABC';
+update_option( Npcink_Cloud_Site_Knowledge_Change_Bridge::MAINTENANCE_OPTION, $invalid_pending_cursor, false );
+$invalid_pending_status = maca_run_site_knowledge_flush();
+$invalid_pending_cursor = get_option( Npcink_Cloud_Site_Knowledge_Change_Bridge::MAINTENANCE_OPTION, array() );
+maca_assert(
+	array() === $GLOBALS['maca_http_requests']
+	&& 'retrying' === (string) ( $invalid_pending_cursor['status'] ?? '' )
+	&& 1 === absint( $invalid_pending_cursor['attempts'] ?? 0 )
+	&& ! isset( $invalid_pending_cursor['pending_run_id'] )
+	&& 'full_index_delivery_retry_scheduled' === (string) ( $invalid_pending_status['last_error_code'] ?? '' ),
+	'Behavior: an invalid pending run id fails closed instead of being rewritten and queried.'
+);
+
+maca_reset_site_knowledge_bridge_state();
+maca_seed_settings( true );
+maca_add_public_post_fixture( 1110152 );
+Npcink_Cloud_Site_Knowledge_Change_Bridge::request_manual_index_operation( 'start' );
+$GLOBALS['maca_http_response_queue'][] = array(
+	'response' => array( 'code' => 200 ),
+	'body' => wp_json_encode(
+		array(
+			'status' => 'ok',
+			'data' => array( 'run_id' => 'Run/ABC' ),
+		)
+	),
+);
+$invalid_response_status = maca_run_site_knowledge_flush();
+$invalid_response_cursor = get_option( Npcink_Cloud_Site_Knowledge_Change_Bridge::MAINTENANCE_OPTION, array() );
+maca_assert(
+	1 === count( $GLOBALS['maca_http_requests'] )
+	&& 'retrying' === (string) ( $invalid_response_cursor['status'] ?? '' )
+	&& 1 === absint( $invalid_response_cursor['attempts'] ?? 0 )
+	&& ! isset( $invalid_response_cursor['pending_run_id'] )
+	&& 'full_index_delivery_retry_scheduled' === (string) ( $invalid_response_status['last_error_code'] ?? '' ),
+	'Behavior: an explicit invalid Cloud run id cannot complete or advance a full-index batch.'
 );
 
 maca_reset_site_knowledge_bridge_state();

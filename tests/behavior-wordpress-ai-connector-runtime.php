@@ -313,16 +313,27 @@ $alt_text_artifact    = array(
 	'checksum'       => $alt_text_checksum,
 	'expires_at'     => gmdate( 'c', time() + 1800 ),
 );
-$alt_text_upload_response = static function ( array $artifact ) {
+$alt_text_upload_response = static function ( array $artifact, array $result_overrides = array() ) {
+	$result = array(
+		'artifact_type'    => 'media_upload_artifact',
+		'contract_version' => 'media_upload_result.v1',
+		'artifact'         => $artifact,
+	);
+	foreach ( $result_overrides as $field => $value ) {
+		if ( null === $value ) {
+			unset( $result[ $field ] );
+			continue;
+		}
+		$result[ $field ] = $value;
+	}
+
 	return array(
 		'response' => array( 'code' => 200 ),
 		'body'     => wp_json_encode(
 			array(
 				'status' => 'ok',
 				'data'   => array(
-					'result' => array(
-						'artifact' => $artifact,
-					),
+					'result' => $result,
 				),
 			)
 		),
@@ -445,6 +456,29 @@ maca_assert(
 	&& false === strpos( $missing_upload_artifact->get_error_message(), $alt_text_contents ),
 	'Behavior: WordPress AI alt-text upload rejects a missing data.result.artifact without exposing source bytes.'
 );
+
+$invalid_upload_result_markers = array(
+	'missing artifact type'      => array( 'artifact_type' => null ),
+	'incorrect artifact type'    => array( 'artifact_type' => 'generic_artifact' ),
+	'missing contract version'   => array( 'contract_version' => null ),
+	'incorrect contract version' => array( 'contract_version' => 'media_upload_result.v2' ),
+);
+foreach ( $invalid_upload_result_markers as $case => $result_overrides ) {
+	$GLOBALS['maca_http_response_queue'][] = $alt_text_upload_response( $alt_text_artifact, $result_overrides );
+	$invalid_marker_result = $client->upload_wordpress_ai_alt_text_source(
+		array(
+			'contents'  => $alt_text_contents,
+			'filename'  => 'blue-mug.jpg',
+			'mime_type' => 'image/jpeg',
+		)
+	);
+	maca_assert(
+		is_wp_error( $invalid_marker_result )
+		&& 'cloud_wp_ai_alt_text_upload_artifact_invalid' === $invalid_marker_result->get_error_code()
+		&& false === strpos( $invalid_marker_result->get_error_message(), $alt_text_contents ),
+		'Behavior: WordPress AI alt-text upload rejects ' . $case . ' without exposing source bytes.'
+	);
+}
 
 $invalid_alt_text_uploads = array(
 	'missing field'       => array( 'contents' => 'x', 'filename' => 'x.jpg' ),

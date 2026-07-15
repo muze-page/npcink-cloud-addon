@@ -194,6 +194,31 @@ namespace {
 		&& false === strpos( wp_json_encode( $scene_request ), 'base64' ),
 		'Behavior: execute receives only the source artifact id and bounded text context.'
 	);
+
+	$long_context = 'X' . str_repeat( '这是关于无障碍旅行规划的文章上下文。', 40 ) . 'FULL_ARTICLE_END_SENTINEL';
+	$upstream_prompt = 'Generate alt text for this image. Ensure the alt text you return matches the language of the content in the <additional-context> tag.'
+		. "\n\n<additional-context>" . $long_context . '</additional-context>';
+	$long_prompt_client = new Maca_Alt_Text_Client_Stub();
+	$GLOBALS['maca_alt_text_client'] = $long_prompt_client;
+	$long_prompt_result = Npcink_Cloud_WordPress_AI_Alt_Text_Handoff::dispatch( 123, $upstream_prompt );
+	$long_execute_call  = $long_prompt_client->calls[1] ?? array();
+	$bounded_prompt     = (string) ( $long_execute_call['request']['operation_contract']['request']['prompt'] ?? '' );
+	$bounded_characters = array();
+	$bounded_length     = function_exists( 'mb_strlen' )
+		? mb_strlen( $bounded_prompt )
+		: preg_match_all( '/./us', $bounded_prompt, $bounded_characters );
+	maca_assert(
+		is_array( $long_prompt_result )
+		&& array( 'upload', 'execute' ) === array_column( $long_prompt_client->calls, 'method' )
+		&& 1 === preg_match( '//u', $bounded_prompt )
+		&& 500 === $bounded_length
+		&& str_starts_with( $bounded_prompt, 'Generate alt text for this image.' )
+		&& false !== strpos( $bounded_prompt, 'matches the language of the content' )
+		&& false !== strpos( $bounded_prompt, '<additional-context>' )
+		&& false !== strpos( $bounded_prompt, '无障碍旅行规划' )
+		&& false === strpos( $bounded_prompt, 'FULL_ARTICLE_END_SENTINEL' ),
+		'Behavior: the real upstream alt-text prompt keeps its goal, language hint, and bounded context while upload and execute continue normally.'
+	);
 	$connector_source = maca_read( MACA_TEST_ROOT . '/includes/class-cloud-wordpress-ai-connector.php' );
 	maca_assert(
 		false === strpos( $connector_source, 'wp_' . 'insert_post' )

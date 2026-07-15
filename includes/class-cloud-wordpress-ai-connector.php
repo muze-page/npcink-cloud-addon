@@ -1214,9 +1214,10 @@ if ( ! class_exists( 'Npcink_Cloud_WordPress_AI_Connector' ) ) {
 		 */
 		private static function local_source( int $attachment_id, string $prompt ) {
 			$prompt = trim( $prompt );
-			if ( 0 >= $attachment_id || '' === $prompt || self::text_length( $prompt ) > 500 ) {
+			if ( 0 >= $attachment_id || '' === $prompt ) {
 				return self::source_error( 'cloud_wp_ai_alt_text_input_invalid', 'WordPress AI alt text generation requires one bounded attachment prompt.' );
 			}
+			$prompt = self::bounded_text( $prompt, 500 );
 			if ( ! current_user_can( 'edit_post', $attachment_id ) ) {
 				return self::source_error( 'cloud_wp_ai_alt_text_attachment_forbidden', 'You are not allowed to use this attachment for Cloud alt text generation.', 403 );
 			}
@@ -1316,11 +1317,17 @@ if ( ! class_exists( 'Npcink_Cloud_WordPress_AI_Connector' ) ) {
 		}
 
 		private static function bounded_text( string $value, int $max_length ): string {
-			return self::text_length( $value ) <= $max_length ? $value : ( function_exists( 'mb_substr' ) ? mb_substr( $value, 0, $max_length ) : substr( $value, 0, $max_length ) );
-		}
+			if ( 0 >= $max_length || '' === $value ) {
+				return '';
+			}
+			if ( function_exists( 'mb_substr' ) ) {
+				return mb_substr( $value, 0, $max_length );
+			}
 
-		private static function text_length( string $value ): int {
-			return function_exists( 'mb_strlen' ) ? mb_strlen( $value ) : strlen( $value );
+			$matches = array();
+			$matched = preg_match( '/\A.{0,' . $max_length . '}/us', $value, $matches );
+
+			return 1 === $matched && is_string( $matches[0] ?? null ) ? $matches[0] : '';
 		}
 	}
 

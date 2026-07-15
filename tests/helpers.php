@@ -484,6 +484,7 @@ if ( ! function_exists( 'wp_remote_retrieve_body' ) ) {
 function maca_load_addon_classes(): void {
 	require_once MACA_TEST_ROOT . '/includes/class-cloud-credential-store.php';
 	require_once MACA_TEST_ROOT . '/includes/class-cloud-outbound-policy.php';
+	require_once MACA_TEST_ROOT . '/includes/class-cloud-runtime-endpoint-policy.php';
 	require_once MACA_TEST_ROOT . '/includes/class-cloud-addon-settings.php';
 	require_once MACA_TEST_ROOT . '/includes/class-cloud-ai-task-contract.php';
 	require_once MACA_TEST_ROOT . '/includes/class-cloud-runtime-client.php';

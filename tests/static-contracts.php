@@ -42,6 +42,7 @@ $pot = maca_read( $root . '/languages/npcink-cloud-addon.pot' );
 $bootstrap = maca_read( $root . '/includes/bootstrap.php' );
 $credential_store = maca_read( $root . '/includes/class-cloud-credential-store.php' );
 $outbound_policy = maca_read( $root . '/includes/class-cloud-outbound-policy.php' );
+$runtime_endpoint_policy = maca_read( $root . '/includes/class-cloud-runtime-endpoint-policy.php' );
 $transport = maca_read( $root . '/includes/class-cloud-media-derivative-transport.php' );
 $runtime_client = maca_read( $root . '/includes/class-cloud-runtime-client.php' );
 $ai_task_contract = maca_read( $root . '/includes/class-cloud-ai-task-contract.php' );
@@ -68,6 +69,19 @@ $boundary_doc = maca_read( $root . '/docs/cloud-addon-boundary.md' );
 $runtime_contract = maca_read( $root . '/docs/cloud-runtime-client-contract.md' );
 $adapter_doc = maca_read( $root . '/docs/adapter-integration-seam.md' );
 $complexity_doc = maca_read( $root . '/docs/cloud-addon-complexity-budget.md' );
+
+$runtime_endpoint_policy_forbidden = array(
+	'Npcink_Cloud_Runtime_Client', 'Npcink_Cloud_Outbound_Policy', 'wp_remote_', 'wp_safe_remote_', 'curl_',
+	'WP_Error', '__(', '_x(', 'esc_html__(', 'hash_hmac', 'secret', 'signature', 'nonce', 'trace',
+	'get_option(', 'update_option(', 'add_option(', 'delete_option(', 'get_transient(', 'set_transient(', 'delete_transient(',
+	'add_action(', 'add_filter(', 'do_action(', 'apply_filters(', '$_GET', '$_POST', '$_REQUEST', '$_SERVER', '$_COOKIE', '$_FILES',
+	'wp_json_encode(', 'json_encode(', 'json_decode(', 'payload', 'response', 'base_url',
+);
+$runtime_endpoint_policy_has_forbidden = false;
+foreach ( $runtime_endpoint_policy_forbidden as $forbidden_policy_dependency ) {
+	$runtime_endpoint_policy_has_forbidden = $runtime_endpoint_policy_has_forbidden
+		|| false !== strpos( $runtime_endpoint_policy, $forbidden_policy_dependency );
+}
 $contract_reuse_readiness_doc = maca_read( $root . '/docs/cloud-addon-contract-reuse-readiness-2026-07-08.md' );
 $cloud_bulk_article_doc = maca_read( $root . '/docs/cloud-bulk-article-run-seam.md' );
 $admin_surface_standard = maca_read( $root . '/docs/admin-surface-standard.md' );
@@ -753,13 +767,23 @@ maca_assert(
 	&& false !== strpos( $runtime_client, 'public function retry_run' )
 	&& false !== strpos( $runtime_client, "rawurlencode( \$run_id ) . '/retry'" )
 	&& false !== strpos( $runtime_client, 'private function request' )
-	&& false !== strpos( $runtime_client, 'is_allowed_request_path' )
+	&& 2 === substr_count( $runtime_client, 'Npcink_Cloud_Runtime_Endpoint_Policy::allows' )
+	&& false === strpos( $runtime_client, 'is_allowed_request_path' )
 	&& false !== strpos( $runtime_client, "'cloud_runtime_endpoint_not_allowed'" )
-	&& false !== strpos( $runtime_client, '#^/v1/runs/[A-Za-z0-9._:-]+(?:/result)?$#' )
-	&& false !== strpos( $runtime_client, "'/v1/runs/nightly-inspection/recent' === \$path_only" )
-	&& false !== strpos( $runtime_client, '#^/v1/runs/[A-Za-z0-9._:-]+/retry$#' )
-	&& false !== strpos( $runtime_client, '#^/v1/runtime/artifacts/[A-Za-z0-9._:-]+/download$#' )
-	&& false !== strpos( $runtime_client, '#^/v1/stats/(?:profiles|instances)/[A-Za-z0-9._:-]+$#' )
+	&& false === strpos( $runtime_endpoint_policy, 'cloud_runtime_endpoint_not_allowed' )
+	&& ! $runtime_endpoint_policy_has_forbidden
+	&& false !== strpos( $runtime_endpoint_policy, 'public static function allows' )
+	&& false !== strpos( $runtime_endpoint_policy, 'private static function path_only' )
+	&& false !== strpos( $runtime_endpoint_policy, '#^/v1/runs/[A-Za-z0-9._:-]+(?:/result)?$#' )
+	&& strpos( $runtime_endpoint_policy, "'/v1/runs/nightly-inspection/recent'" )
+		< strpos( $runtime_endpoint_policy, '#^/v1/runs/[A-Za-z0-9._:-]+(?:/result)?$#' )
+	&& false !== strpos( $runtime_endpoint_policy, '#^/v1/runs/[A-Za-z0-9._:-]+/retry$#' )
+	&& false !== strpos( $runtime_endpoint_policy, '#^/v1/runtime/artifacts/[A-Za-z0-9._:-]+/download$#' )
+	&& false !== strpos( $runtime_endpoint_policy, '#^/v1/stats/(?:profiles|instances)/[A-Za-z0-9._:-]+$#' )
+	&& false !== strpos( $bootstrap, 'class-cloud-runtime-endpoint-policy.php' )
+	&& false !== strpos( $bootstrap, 'class-cloud-runtime-client.php' )
+	&& strpos( $bootstrap, 'class-cloud-runtime-endpoint-policy.php' )
+		< strpos( $bootstrap, 'class-cloud-runtime-client.php' )
 	&& false !== strpos( $runtime_client, 'MAX_JSON_RESPONSE_BYTES = 1048576' )
 	&& false !== strpos( $runtime_client, 'limit_response_size' )
 	&& false === strpos( $transport, '/v1/runtime/workflows/' . 'runs' )

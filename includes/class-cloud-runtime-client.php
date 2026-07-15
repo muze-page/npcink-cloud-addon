@@ -757,8 +757,7 @@ if ( ! class_exists( 'Npcink_Cloud_Runtime_Client' ) ) {
 			}
 
 			$method = strtoupper( trim( $method ) );
-			$path = '/' . ltrim( trim( $path ), '/' );
-			if ( ! $this->is_allowed_request_path( $method, $path ) ) {
+			if ( ! Npcink_Cloud_Runtime_Endpoint_Policy::allows( $method, $path ) ) {
 				return new WP_Error(
 					'cloud_runtime_endpoint_not_allowed',
 					__( 'This Cloud endpoint is not allowed by the Cloud Addon runtime contract.', 'npcink-cloud-addon' ),
@@ -855,8 +854,7 @@ if ( ! class_exists( 'Npcink_Cloud_Runtime_Client' ) ) {
 			}
 
 			$method = strtoupper( trim( $method ) );
-			$path   = '/' . ltrim( trim( $path ), '/' );
-			if ( ! $this->is_allowed_request_path( $method, $path ) ) {
+			if ( ! Npcink_Cloud_Runtime_Endpoint_Policy::allows( $method, $path ) ) {
 				return new WP_Error(
 					'cloud_runtime_endpoint_not_allowed',
 					__( 'This Cloud endpoint is not allowed by the Cloud Addon runtime contract.', 'npcink-cloud-addon' ),
@@ -1541,58 +1539,6 @@ if ( ! class_exists( 'Npcink_Cloud_Runtime_Client' ) ) {
 			}
 
 			return '';
-		}
-
-		/**
-		 * Returns whether one signed request path is within the Addon contract.
-		 *
-		 * @param string $method HTTP method.
-		 * @param string $path Relative path with optional query.
-		 * @return bool
-		 */
-		private function is_allowed_request_path( string $method, string $path ): bool {
-			$method = strtoupper( $method );
-			$path_only = wp_parse_url( $path, PHP_URL_PATH );
-			$path_only = is_string( $path_only ) ? $path_only : $path;
-
-			if ( 'POST' === $method && '/v1/runtime/execute' === $path_only ) {
-				return true;
-			}
-			if ( 'POST' === $method && '/v1/runtime/media-derivatives' === $path_only ) {
-				return true;
-			}
-			if ( 'GET' === $method && '/v1/entitlements/current' === $path_only ) {
-				return true;
-			}
-			if ( 'GET' === $method && 1 === preg_match( '#^/v1/runs/[A-Za-z0-9._:-]+(?:/result)?$#', $path_only ) ) {
-				return true;
-			}
-			if ( 'GET' === $method && '/v1/runs/nightly-inspection/recent' === $path_only ) {
-				return true;
-			}
-			if ( 'POST' === $method && 1 === preg_match( '#^/v1/runs/[A-Za-z0-9._:-]+/retry$#', $path_only ) ) {
-				return true;
-			}
-			if ( 'GET' === $method && 1 === preg_match( '#^/v1/runtime/artifacts/[A-Za-z0-9._:-]+/download$#', $path_only ) ) {
-				return true;
-			}
-			if ( 'GET' === $method && 1 === preg_match( '#^/v1/stats/(?:profiles|instances)/[A-Za-z0-9._:-]+$#', $path_only ) ) {
-				return true;
-			}
-			if ( 'POST' === $method && '/v1/observability/plugin-events' === $path_only ) {
-				return true;
-			}
-			if ( 'POST' === $method && '/v1/agent-feedback/events' === $path_only ) {
-				return true;
-			}
-			if ( 'GET' === $method && '/v1/agent-feedback/summary' === $path_only ) {
-				return true;
-			}
-			if ( 'GET' === $method && '/v1/observability/plugin-summary' === $path_only ) {
-				return true;
-			}
-
-			return false;
 		}
 
 		/**

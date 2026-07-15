@@ -414,6 +414,26 @@ maca_assert(
 );
 
 maca_assert(
+	false !== strpos( $runtime_client, 'function upload_wordpress_ai_alt_text_source' )
+	&& false !== strpos( $runtime_client, "'/v1/runtime/media/uploads'" )
+	&& false !== strpos( $runtime_client, 'WP_AI_ALT_TEXT_MAX_UPLOAD_BYTES = 8388608' )
+	&& false !== strpos( $runtime_client, 'WP_AI_ALT_TEXT_MIN_ARTIFACT_TTL_SECONDS = 120' )
+	&& false !== strpos( $runtime_client, "Npcink_Cloud_Addon_Settings::is_verified()" )
+	&& false !== strpos( $runtime_client, "'request_contract_version' => 'media_upload_request.v1'" )
+	&& false !== strpos( $runtime_client, "'media_kind'              => 'image'" )
+	&& false !== strpos( $runtime_client, "'ttl_minutes'             => 30" )
+	&& false !== strpos( $runtime_client, 'build_wordpress_ai_alt_text_upload_multipart_body' )
+	&& false !== strpos( $runtime_client, 'name="file"; filename="' )
+	&& false !== strpos( $runtime_client, "'/^art_[0-9a-f]{32}$/'" )
+	&& false !== strpos( $runtime_client, "'sha256:' . hash( 'sha256', \$contents )" )
+	&& false !== strpos( $runtime_client, "'artifact_id'    => \$artifact['artifact_id']" )
+	&& false !== strpos( $runtime_client, "array( 'source_artifact_id', 'prompt', 'filename', 'title', 'existing_alt', 'existing_caption', 'locale', 'max_tokens' )" )
+	&& false !== strpos( $runtime_client, "'data_classification' => \$is_alt_text ? 'internal' : 'public_site_content'" )
+	&& false === strpos( $runtime_client, 'WP_AI_CONNECTOR_ALT_TEXT_MAX_REQUEST_BYTES' ),
+	'Runtime client keeps WordPress AI alt-text upload and execution on the dedicated Artifact-id-only contract.'
+);
+
+maca_assert(
 	false !== strpos( $bootstrap, 'npcink_cloud_addon_project_ai_task_contract' )
 	&& false !== strpos( $bootstrap, 'npcink_cloud_addon_execute_registered_ai_task_runtime' )
 	&& false !== strpos( $bootstrap, 'is_site_knowledge_generation_reference_enabled' )
@@ -552,7 +572,16 @@ maca_assert(
 	&& false !== strpos( $wordpress_ai_connector, 'CapabilityEnum::imageGeneration()' )
 	&& false !== strpos( $wordpress_ai_connector, 'wpai_preferred_image_models' )
 	&& false !== strpos( $wordpress_ai_connector, 'wpai_preferred_vision_models' )
-	&& false !== strpos( $wordpress_ai_connector, 'requires a public image URL for alt text generation' )
+	&& false !== strpos( $wordpress_ai_connector, 'class Npcink_Cloud_WordPress_AI_Alt_Text_Handoff' )
+	&& false !== strpos( $wordpress_ai_connector, 'upload_wordpress_ai_alt_text_source' )
+	&& false !== strpos( $wordpress_ai_connector, "add_action( 'wp_before_execute_ability'" )
+	&& false !== strpos( $wordpress_ai_connector, "'ai/alt-text-generation' === \$ability_name" )
+	&& false !== strpos( $wordpress_ai_connector, 'consume_alt_text_ability_context' )
+	&& false !== strpos( $wordpress_ai_connector, 'fstat( $handle )' )
+	&& false !== strpos( $wordpress_ai_connector, 'getimagesizefromstring( $contents )' )
+	&& false === strpos( $wordpress_ai_connector, 'WordPress\\AI\\Abilities\\Image\\Alt_Text_Generation' )
+	&& false !== strpos( $wordpress_ai_connector, "'source_artifact_id' => \$artifact_id" )
+	&& false !== strpos( $wordpress_ai_connector, 'requires a local WordPress attachment' )
 	&& false !== strpos( $wordpress_ai_connector, "'task'             => 'alt_text_suggest'" )
 	&& false !== strpos( $wordpress_ai_connector, 'npcink_cloud_addon_execute_wordpress_ai_image_generation_runtime' )
 	&& false !== strpos( $wordpress_ai_connector, 'does not support reference image refinement yet' )
@@ -561,7 +590,8 @@ maca_assert(
 	&& false !== strpos( $wordpress_ai_connector, 'Npcink Cloud AI connector only accepts known WordPress AI ability scene calls' )
 	&& false !== strpos( $wordpress_ai_connector, 'does not support chat history' )
 	&& false !== strpos( $wordpress_ai_connector, 'does not support tools or web search' )
-	&& false !== strpos( $wordpress_ai_connector, 'npcink_cloud_addon_execute_wordpress_ai_connector_runtime' )
+	&& false !== strpos( $wordpress_ai_connector, "method_exists( \$client, 'execute_wordpress_ai_connector_runtime' )" )
+	&& false !== strpos( $wordpress_ai_connector, '$client->execute_wordpress_ai_connector_runtime(' )
 	&& false !== strpos( $wordpress_ai_connector, "\$scene_input['source_text'] = \$text" )
 	&& false !== strpos( $wordpress_ai_connector, "'cloud_connector_result.v1'" )
 	&& false !== strpos( $wordpress_ai_connector, "\$response['data']['result']" )
@@ -586,7 +616,9 @@ maca_assert(
 	&& false !== strpos( $wp_ai_smoke, "'ai/meta-description'" )
 	&& false !== strpos( $wp_ai_smoke, "'ai/alt-text-generation'" )
 	&& false !== strpos( $wp_ai_smoke, 'WP_AI_SMOKE_IMAGE' )
-	&& false !== strpos( $wp_ai_smoke, 'WP_AI_SMOKE_ALT_TEXT_URL' )
+	&& false !== strpos( $wp_ai_smoke, 'WP_AI_SMOKE_ALT_TEXT_ATTACHMENT_ID' )
+	&& false !== strpos( $wp_ai_smoke, "'attachment_id' => \$alt_text_attachment_id" )
+	&& false === strpos( $wp_ai_smoke, 'WP_AI_SMOKE_ALT_TEXT_URL' )
 	&& false === strpos( $wp_ai_smoke, '/wp-abilities/v1/abilities/ai/image-import/run' ),
 	'WordPress AI smoke gate verifies discovery and bounded runs without default media writes.'
 );
@@ -634,6 +666,8 @@ maca_assert(
 	&& false !== strpos( $runtime_contract, 'channel=toolbox_image_source' )
 	&& false !== strpos( $runtime_contract, 'scene wrapper' )
 	&& false !== strpos( $runtime_contract, 'registers a bounded `wpai_preferred_vision_models` override' )
+	&& false !== strpos( $runtime_contract, '`wp_before_execute_ability`' )
+	&& false !== strpos( $runtime_contract, 'future public' )
 	&& false !== strpos( $runtime_contract, 'does not support reference-image refinement' )
 	&& false !== strpos( $runtime_contract, 'Direct free-form `wp_ai_client_prompt()`' )
 	&& false !== strpos( $adapter_doc, 'WordPress AI Connector Flow' )
@@ -776,6 +810,7 @@ maca_assert(
 
 maca_assert(
 	false !== strpos( $runtime_client, "'POST', '/v1/runtime/execute'" )
+	&& false !== strpos( $runtime_client, "'/v1/runtime/media/uploads'" )
 	&& false !== strpos( $runtime_client, "'POST', '/v1/runtime/media-derivatives'" )
 	&& false !== strpos( $runtime_client, "'GET', '/v1/runs/'" )
 	&& false !== strpos( $runtime_client, 'get_recent_nightly_inspection_runs' )
@@ -790,6 +825,7 @@ maca_assert(
 	&& ! $runtime_endpoint_policy_has_forbidden
 	&& false !== strpos( $runtime_endpoint_policy, 'public static function allows' )
 	&& false !== strpos( $runtime_endpoint_policy, 'private static function path_only' )
+	&& false !== strpos( $runtime_endpoint_policy, "'/v1/runtime/media/uploads'" )
 	&& false !== strpos( $runtime_endpoint_policy, '#^/v1/runs/[A-Za-z0-9._:-]+(?:/result)?$#' )
 	&& strpos( $runtime_endpoint_policy, "'/v1/runs/nightly-inspection/recent'" )
 		< strpos( $runtime_endpoint_policy, '#^/v1/runs/[A-Za-z0-9._:-]+(?:/result)?$#' )

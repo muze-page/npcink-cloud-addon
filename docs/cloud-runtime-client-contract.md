@@ -81,6 +81,7 @@ It returns `null` until the addon settings have passed Save and Verify.
 | `probe_connectivity()` | `GET /health/live`, then signed `GET /v1/entitlements/current` |
 | `manual_readiness_test()` | Reuses `probe_connectivity()` and returns bounded local result shape |
 | `execute_runtime()` | `POST /v1/runtime/execute` |
+| `upload_wordpress_ai_alt_text_source()` (internal attachment handoff only) | `POST /v1/runtime/media/uploads` |
 | `execute_wordpress_ai_connector_runtime()` | `POST /v1/runtime/execute` |
 | `execute_wordpress_ai_image_generation_runtime()` | `POST /v1/runtime/execute` |
 | `execute_toolbox_image_generation_runtime()` | `POST /v1/runtime/execute` |
@@ -345,14 +346,45 @@ order. Bottom-level provider/model routing stays with Cloud hosted runtime
 profiles.
 
 The addon registers a bounded `wpai_preferred_vision_models` override only for
-WordPress AI alt-text generation. It projects a fetchable image URL and bounded
-media metadata to Cloud `alt_text_suggest`; it does not accept arbitrary base64
-image payloads, become a generic vision provider or router, write media
-metadata, or own final approval. For local or private attachment URLs that an
-external vision provider cannot fetch, the provider wrapper may generate a
-bounded `data:image/...;base64,...` URL from the local WordPress attachment
-file; this fallback is limited to the alt-text scene and is not exposed as a
-generic image upload channel.
+WordPress AI alt-text generation. The scene must carry a local WordPress
+`attachment_id` that the current user may edit. The provider wrapper verifies
+that the attachment resolves to a regular readable file under the WordPress
+uploads directory, limits the source to 8 MiB, and accepts only detected JPEG,
+PNG, or WebP content whose MIME matches WordPress attachment metadata.
+
+The attachment id is captured only from `wp_before_execute_ability`, after
+WordPress Ability input validation and permission checks. The wrapper rejects
+stack inspection and binds the checked path metadata to the opened file with
+`stat()`/`fstat()` before reading. MIME is detected from the bounded bytes that
+were actually read. The transport also requires current Save-and-Verify state
+and rejects returned artifacts whose remaining lifetime cannot cover the
+bounded execution window.
+
+The wrapper then calls the dedicated
+`upload_wordpress_ai_alt_text_source()` transport. That method sends one
+short-TTL `media_upload_request.v1` image upload through
+`POST /v1/runtime/media/uploads`, validates the returned same-site available
+artifact against its media kind, MIME, byte size, checksum, identifier, and
+expiry, and returns only the bounded artifact descriptor. It is not a generic
+upload API or artifact registry. External image URLs, attachment URLs, Data
+URLs, caller-supplied base64, arbitrary file paths, and compatibility fallback
+shapes are rejected before Cloud execution.
+
+The installed upstream WordPress AI alt-text ability currently converts its
+local file reference to a Data URL before selecting an AI Client model. The
+addon must not override or short-circuit that ability through
+`wp_pre_execute_ability`, because that would make the addon responsible for
+upstream validation, permission, and result semantics. Eliminating the
+upstream transient base64 allocation therefore depends on a future public
+attachment-reference model seam. This known upstream cost does not change the
+Addon transport contract: no Data URL or base64 crosses the Cloud boundary.
+
+Only after upload succeeds may `alt_text_suggest` execute. Its scene request
+contains exactly `source_artifact_id`, `prompt`, and the optional bounded
+`filename`, `title`, `existing_alt`, `existing_caption`, `locale`, and
+`max_tokens` fields. Alt-text requests use `data_classification=internal` and
+remain `suggestion_only`; the addon does not become a generic vision provider
+or router, write media metadata, or own final approval.
 
 Input must use the platform-neutral
 `contract_version=cloud_connector_runtime.v1` envelope and one of the supported
@@ -495,9 +527,11 @@ mutation, preset mutation, or WordPress write methods.
 
 The private request helper must reject any signed path outside the endpoint
 mapping above. In particular, it must reject workflow runtime, generic artifact,
-support-bundle, file-upload, database-export, raw-payload, approval, proposal,
-billing-mutation, prompt, router, preset, and WordPress write endpoints unless a
-future boundary update explicitly adds a named public method.
+support-bundle, generic file-upload, database-export, raw-payload, approval,
+proposal, billing-mutation, prompt, router, preset, and WordPress write
+endpoints. The sole upload exception is the named, image-only, short-TTL
+`upload_wordpress_ai_alt_text_source()` method above; it must not be widened
+into a caller-selected endpoint, media kind, retention policy, or registry.
 
 ## Media Derivative Transport
 

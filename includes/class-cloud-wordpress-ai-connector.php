@@ -24,6 +24,13 @@ if ( ! class_exists( 'Npcink_Cloud_WordPress_AI_Connector' ) ) {
 		public const SETTING_NAME = 'npcink_cloud_addon_wp_ai_connector_connected';
 
 		/**
+		 * Current validated WordPress AI alt-text ability input.
+		 *
+		 * @var array<string,mixed>
+		 */
+		private static $alt_text_ability_context = array();
+
+		/**
 		 * Registers hooks.
 		 *
 		 * @return void
@@ -38,6 +45,72 @@ if ( ! class_exists( 'Npcink_Cloud_WordPress_AI_Connector' ) ) {
 			add_filter( 'wpai_preferred_vision_models', array( __CLASS__, 'filter_preferred_vision_models' ) );
 			add_filter( 'wpai_preferred_image_models', array( __CLASS__, 'filter_preferred_image_models' ) );
 			add_filter( 'wp_get_abilities_result', array( __CLASS__, 'prioritize_wordpress_ai_abilities_for_rest_list' ), 20, 2 );
+			add_action( 'wp_before_execute_ability', array( __CLASS__, 'begin_wordpress_ai_ability_context' ), 10, 3 );
+			add_action( 'wp_after_execute_ability', array( __CLASS__, 'end_wordpress_ai_ability_context' ), 10, 4 );
+			add_action( 'shutdown', array( __CLASS__, 'reset_wordpress_ai_ability_context' ), 1 );
+		}
+
+		/**
+		 * Captures the validated input for the one supported WordPress AI vision ability.
+		 *
+		 * WordPress fires this hook after input validation and permission checks and
+		 * immediately before the registered ability callback.
+		 *
+		 * @param string $ability_name Ability name.
+		 * @param mixed  $input Validated ability input.
+		 * @param mixed  $ability Optional ability object on WordPress 7.1+.
+		 * @return void
+		 */
+		public static function begin_wordpress_ai_ability_context( string $ability_name, $input, $ability = null ): void {
+			unset( $ability );
+			self::reset_wordpress_ai_ability_context();
+			if ( 'ai/alt-text-generation' === $ability_name && is_array( $input ) ) {
+				self::$alt_text_ability_context = $input;
+			}
+		}
+
+		/**
+		 * Clears the one-request ability context after successful execution.
+		 *
+		 * @param string $ability_name Ability name.
+		 * @param mixed  $input Ability input.
+		 * @param mixed  $result Ability result.
+		 * @param mixed  $ability Optional ability object on WordPress 7.1+.
+		 * @return void
+		 */
+		public static function end_wordpress_ai_ability_context( string $ability_name, $input, $result, $ability = null ): void {
+			unset( $ability_name, $input, $result, $ability );
+			self::reset_wordpress_ai_ability_context();
+		}
+
+		/**
+		 * Reports whether the current call is the supported vision ability.
+		 *
+		 * @return bool
+		 */
+		public static function has_alt_text_ability_context(): bool {
+			return array() !== self::$alt_text_ability_context;
+		}
+
+		/**
+		 * Returns and clears the current alt-text ability input once.
+		 *
+		 * @return array<string,mixed>
+		 */
+		public static function consume_alt_text_ability_context(): array {
+			$context = self::$alt_text_ability_context;
+			self::reset_wordpress_ai_ability_context();
+
+			return $context;
+		}
+
+		/**
+		 * Clears any stale ability context.
+		 *
+		 * @return void
+		 */
+		public static function reset_wordpress_ai_ability_context(): void {
+			self::$alt_text_ability_context = array();
 		}
 
 		/**
@@ -1023,19 +1096,240 @@ if ( ! class_exists( 'Npcink_Cloud_WordPress_AI_Connector' ) ) {
 	}
 
 	/**
+	 * Bounded local attachment handoff for WordPress AI alt text generation.
+	 */
+	final class Npcink_Cloud_WordPress_AI_Alt_Text_Handoff {
+		private const MAX_SOURCE_BYTES = 8388608;
+		private const ALLOWED_MIME_TYPES = array( 'image/jpeg', 'image/png', 'image/webp' );
+
+		/**
+		 * Extracts one positive attachment ID from the WordPress AI ability input.
+		 *
+		 * @param array<string,mixed> $input Ability input.
+		 * @return int|WP_Error
+		 */
+		public static function attachment_id_from_ability_input( array $input ) {
+			if ( ! array_key_exists( 'attachment_id', $input ) ) {
+				return self::source_error( 'cloud_wp_ai_alt_text_attachment_required', 'WordPress AI alt text generation requires a local WordPress attachment.' );
+			}
+
+			$value = $input['attachment_id'];
+			if (
+				( ! is_int( $value ) && ! is_string( $value ) )
+				|| ( is_string( $value ) && 1 !== preg_match( '/^[0-9]+$/', $value ) )
+			) {
+				return self::source_error( 'cloud_wp_ai_alt_text_attachment_required', 'WordPress AI alt text generation requires a local WordPress attachment.' );
+			}
+
+			$attachment_id = absint( $value );
+			if ( 0 >= $attachment_id ) {
+				return self::source_error( 'cloud_wp_ai_alt_text_attachment_required', 'WordPress AI alt text generation requires a local WordPress attachment.' );
+			}
+
+			return $attachment_id;
+		}
+
+		/**
+		 * Uploads one authorized local attachment and executes the suggestion-only scene.
+		 *
+		 * @param int         $attachment_id Attachment ID.
+		 * @param string      $prompt Alt-text prompt.
+		 * @return array<string,mixed>|WP_Error
+		 */
+		public static function dispatch( int $attachment_id, string $prompt ) {
+			$client = function_exists( 'npcink_cloud_addon_verified_runtime_client' )
+				? npcink_cloud_addon_verified_runtime_client()
+				: null;
+			if (
+				! is_object( $client )
+				|| ! method_exists( $client, 'upload_wordpress_ai_alt_text_source' )
+				|| ! method_exists( $client, 'execute_wordpress_ai_connector_runtime' )
+			) {
+				return new WP_Error(
+					'cloud_wp_ai_alt_text_verified_client_required',
+					__( 'WordPress AI alt text generation requires verified Npcink Cloud settings.', 'npcink-cloud-addon' ),
+					array( 'status' => 503 )
+				);
+			}
+
+			$source = self::local_source( $attachment_id, $prompt );
+			if ( is_wp_error( $source ) ) {
+				return $source;
+			}
+
+			$trace_id = 'trace_wp_ai_vision_' . wp_generate_uuid4();
+			$artifact = $client->upload_wordpress_ai_alt_text_source(
+				$source['file'],
+				$trace_id,
+				'wp_ai_vision_upload_' . wp_generate_uuid4()
+			);
+			unset( $source['file'] );
+			if ( is_wp_error( $artifact ) ) {
+				return $artifact;
+			}
+			$artifact_id = is_array( $artifact ) && is_string( $artifact['artifact_id'] ?? null )
+				? $artifact['artifact_id']
+				: '';
+			if ( 1 !== preg_match( '/^art_[0-9a-f]{32}$/', $artifact_id ) ) {
+				return new WP_Error(
+					'cloud_wp_ai_alt_text_artifact_invalid',
+					__( 'Npcink Cloud did not return a valid source artifact for alt text generation.', 'npcink-cloud-addon' ),
+					array( 'status' => 502 )
+				);
+			}
+
+			$request = array(
+				'contract_version'   => 'cloud_connector_runtime.v1',
+				'operation_contract' => array(
+					'contract_version' => 'wordpress_operation.v1',
+					'task'             => 'alt_text_suggest',
+					'request'          => array(
+						'source_artifact_id' => $artifact_id,
+						'prompt'             => $source['prompt'],
+						'filename'           => $source['filename'],
+						'title'              => $source['title'],
+						'existing_alt'       => $source['existing_alt'],
+						'existing_caption'   => $source['existing_caption'],
+						'locale'             => $source['locale'],
+					),
+				),
+				'timeout_seconds'    => 60,
+				'retention_ttl'      => 86400,
+				'retry_max'          => 0,
+			);
+
+			return $client->execute_wordpress_ai_connector_runtime(
+				$request,
+				$trace_id,
+				'wp_ai_vision_execute_' . wp_generate_uuid4()
+			);
+		}
+
+		/**
+		 * Validates and reads one local WordPress attachment without exposing its path.
+		 *
+		 * @param int    $attachment_id Attachment ID.
+		 * @param string $prompt Alt-text prompt.
+		 * @return array<string,mixed>|WP_Error
+		 */
+		private static function local_source( int $attachment_id, string $prompt ) {
+			$prompt = trim( $prompt );
+			if ( 0 >= $attachment_id || '' === $prompt || self::text_length( $prompt ) > 500 ) {
+				return self::source_error( 'cloud_wp_ai_alt_text_input_invalid', 'WordPress AI alt text generation requires one bounded attachment prompt.' );
+			}
+			if ( ! current_user_can( 'edit_post', $attachment_id ) ) {
+				return self::source_error( 'cloud_wp_ai_alt_text_attachment_forbidden', 'You are not allowed to use this attachment for Cloud alt text generation.', 403 );
+			}
+
+			$attachment = get_post( $attachment_id );
+			if ( ! is_object( $attachment ) || 'attachment' !== (string) ( $attachment->post_type ?? '' ) ) {
+				return self::source_error( 'cloud_wp_ai_alt_text_attachment_invalid', 'WordPress AI alt text generation requires a local media attachment.' );
+			}
+
+			$file_path  = get_attached_file( $attachment_id );
+			$upload_dir = wp_upload_dir();
+			$real_path  = is_string( $file_path ) ? realpath( $file_path ) : false;
+			$real_base  = is_array( $upload_dir ) && is_string( $upload_dir['basedir'] ?? null ) ? realpath( $upload_dir['basedir'] ) : false;
+			if (
+				false === $real_path
+				|| false === $real_base
+				|| 0 !== strpos( $real_path, rtrim( $real_base, DIRECTORY_SEPARATOR ) . DIRECTORY_SEPARATOR )
+				|| ! is_file( $real_path )
+				|| ! is_readable( $real_path )
+			) {
+				return self::source_error( 'cloud_wp_ai_alt_text_attachment_file_invalid', 'The local attachment file is unavailable for Cloud alt text generation.' );
+			}
+
+			$path_stat = @stat( $real_path ); // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged -- A raced file removal fails closed below.
+			$size      = is_array( $path_stat ) ? (int) ( $path_stat['size'] ?? 0 ) : 0;
+			$is_regular_file = is_array( $path_stat )
+				&& 0100000 === ( (int) ( $path_stat['mode'] ?? 0 ) & 0170000 );
+			if ( ! $is_regular_file || 0 >= $size || $size > self::MAX_SOURCE_BYTES ) {
+				return self::source_error( 'cloud_wp_ai_alt_text_attachment_size_invalid', 'The local attachment exceeds the Cloud alt text source size limit.', 413 );
+			}
+
+			$stored_mime = sanitize_mime_type( (string) get_post_mime_type( $attachment_id ) );
+
+			// phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_fopen -- Reads one locally authorized, size-bounded attachment.
+			$handle = @fopen( $real_path, 'rb' ); // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged -- A raced file removal fails closed below.
+			if ( false === $handle ) {
+				return self::source_error( 'cloud_wp_ai_alt_text_attachment_read_failed', 'The local attachment could not be read for Cloud alt text generation.' );
+			}
+
+			$handle_stat  = fstat( $handle );
+			$stat_matches = is_array( $handle_stat );
+			foreach ( array( 'dev', 'ino', 'mode', 'size' ) as $stat_field ) {
+				if ( ! $stat_matches || (int) ( $path_stat[ $stat_field ] ?? -1 ) !== (int) ( $handle_stat[ $stat_field ] ?? -2 ) ) {
+					$stat_matches = false;
+					break;
+				}
+			}
+			if ( ! $stat_matches ) {
+				// phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_fclose -- Closes the rejected local attachment handle immediately.
+				fclose( $handle );
+				return self::source_error( 'cloud_wp_ai_alt_text_attachment_file_changed', 'The local attachment changed before it could be read for Cloud alt text generation.', 409 );
+			}
+
+			$contents    = '';
+			$read_failed = false;
+			while ( ! feof( $handle ) && strlen( $contents ) <= self::MAX_SOURCE_BYTES ) {
+				$remaining = self::MAX_SOURCE_BYTES + 1 - strlen( $contents );
+				// phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_fread -- Bounded loop prevents partial reads and caps bytes at MAX+1.
+				$chunk = fread( $handle, min( 8192, $remaining ) );
+				if ( false === $chunk || ( '' === $chunk && ! feof( $handle ) ) ) {
+					$read_failed = true;
+					break;
+				}
+				$contents .= $chunk;
+			}
+			$reached_eof = feof( $handle );
+			// phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_fclose -- Closes the bounded local attachment handle immediately.
+			fclose( $handle );
+			if ( $read_failed || ! $reached_eof || '' === $contents || strlen( $contents ) !== $size || strlen( $contents ) > self::MAX_SOURCE_BYTES ) {
+				return self::source_error( 'cloud_wp_ai_alt_text_attachment_read_failed', 'The local attachment could not be read for Cloud alt text generation.' );
+			}
+
+			$image_info = @getimagesizefromstring( $contents ); // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged -- Invalid image bytes are expected to fail closed below.
+			$detected_mime = is_array( $image_info ) ? sanitize_mime_type( (string) ( $image_info['mime'] ?? '' ) ) : '';
+			if ( $stored_mime !== $detected_mime || ! in_array( $detected_mime, self::ALLOWED_MIME_TYPES, true ) ) {
+				return self::source_error( 'cloud_wp_ai_alt_text_attachment_mime_invalid', 'The local attachment image type is not supported for Cloud alt text generation.' );
+			}
+
+			return array(
+				'file'             => array(
+					'contents'  => $contents,
+					'filename'  => sanitize_file_name( basename( $real_path ) ),
+					'mime_type' => $detected_mime,
+				),
+				'prompt'           => $prompt,
+				'filename'         => self::bounded_text( sanitize_file_name( basename( $real_path ) ), 160 ),
+				'title'            => self::bounded_text( sanitize_text_field( (string) ( $attachment->post_title ?? '' ) ), 160 ),
+				'existing_alt'     => self::bounded_text( sanitize_text_field( (string) get_post_meta( $attachment_id, '_wp_attachment_image_alt', true ) ), 240 ),
+				'existing_caption' => self::bounded_text( sanitize_text_field( (string) ( $attachment->post_excerpt ?? '' ) ), 240 ),
+				'locale'           => self::bounded_text( function_exists( 'get_locale' ) ? sanitize_text_field( (string) get_locale() ) : '', 32 ),
+			);
+		}
+
+		/** @return WP_Error */
+		private static function source_error( string $code, string $message, int $status = 400 ): WP_Error {
+			return new WP_Error( $code, __( $message, 'npcink-cloud-addon' ), array( 'status' => $status ) );
+		}
+
+		private static function bounded_text( string $value, int $max_length ): string {
+			return self::text_length( $value ) <= $max_length ? $value : ( function_exists( 'mb_substr' ) ? mb_substr( $value, 0, $max_length ) : substr( $value, 0, $max_length ) );
+		}
+
+		private static function text_length( string $value ): int {
+			return function_exists( 'mb_strlen' ) ? mb_strlen( $value ) : strlen( $value );
+		}
+	}
+
+	/**
 	 * Scene-gated vision text model for WordPress AI alt text generation.
 	 */
 	final class Npcink_Cloud_WordPress_AI_Vision_Text_Model implements
 		\WordPress\AiClient\Providers\Models\Contracts\ModelInterface,
 		\WordPress\AiClient\Providers\Models\TextGeneration\Contracts\TextGenerationModelInterface {
-		private const ALT_TEXT_INLINE_IMAGE_MAX_BYTES = 650000;
-		private const ALT_TEXT_INLINE_IMAGE_MIME_TYPES = array(
-			'image/gif',
-			'image/jpeg',
-			'image/png',
-			'image/webp',
-		);
-
 		/**
 		 * Model metadata.
 		 *
@@ -1116,7 +1410,8 @@ if ( ! class_exists( 'Npcink_Cloud_WordPress_AI_Connector' ) ) {
 		 * @return \WordPress\AiClient\Results\DTO\GenerativeAiResult
 		 */
 		public function generateTextResult( array $prompt ): \WordPress\AiClient\Results\DTO\GenerativeAiResult {
-			if ( ! $this->is_alt_text_scene() ) {
+			$ability_input = Npcink_Cloud_WordPress_AI_Connector::consume_alt_text_ability_context();
+			if ( array() === $ability_input ) {
 				throw new \WordPress\AiClient\Common\Exception\RuntimeException( 'Npcink Cloud AI vision connector only accepts WordPress AI alt text generation scene calls.' );
 			}
 
@@ -1133,43 +1428,13 @@ if ( ! class_exists( 'Npcink_Cloud_WordPress_AI_Connector' ) ) {
 				throw new \WordPress\AiClient\Common\Exception\RuntimeException( 'Npcink Cloud AI vision connector requires text scene input.' );
 			}
 
-			$source = $this->alt_text_source_context( $prompt );
-			if ( '' === $source['image_url'] && '' === $source['thumbnail_url'] ) {
-				throw new \WordPress\AiClient\Common\Exception\RuntimeException( 'Npcink Cloud AI vision connector requires a public image URL for alt text generation.' );
+			$attachment_id = Npcink_Cloud_WordPress_AI_Alt_Text_Handoff::attachment_id_from_ability_input( $ability_input );
+			if ( is_wp_error( $attachment_id ) ) {
+				throw new \WordPress\AiClient\Common\Exception\RuntimeException( esc_html( $attachment_id->get_error_message() ) );
 			}
 
-			$request = array(
-				'contract_version'   => 'cloud_connector_runtime.v1',
-				'operation_contract' => array(
-					'contract_version' => 'wordpress_operation.v1',
-					'task'             => 'alt_text_suggest',
-					'request'          => array(
-						'prompt'           => $text,
-						'image_url'        => $source['image_url'],
-						'thumbnail_url'    => $source['thumbnail_url'],
-						'mime_type'        => $source['mime_type'],
-						'filename'         => $source['filename'],
-						'title'            => $source['title'],
-						'existing_alt'     => $source['existing_alt'],
-						'existing_caption' => $source['existing_caption'],
-						'locale'           => function_exists( 'get_locale' ) ? get_locale() : '',
-						'scene_gate'       => array(
-							'source' => 'wordpress_ai_plugin_ability',
-							'task'   => 'alt_text_suggest',
-						),
-					),
-				),
-				'timeout_seconds'    => 60,
-				'retention_ttl'      => 86400,
-				'retry_max'          => 0,
-			);
-
 			$started  = Npcink_Cloud_WordPress_AI_Connector::runtime_timer_start();
-			$response = npcink_cloud_addon_execute_wordpress_ai_connector_runtime(
-				$request,
-				'trace_wp_ai_vision_' . wp_generate_uuid4(),
-				'wp_ai_vision_' . wp_generate_uuid4()
-			);
+			$response = Npcink_Cloud_WordPress_AI_Alt_Text_Handoff::dispatch( $attachment_id, $text );
 			Npcink_Cloud_WordPress_AI_Connector::maybe_log_wordpress_ai_request_evidence(
 				array(
 					'type'                       => 'vision',
@@ -1235,197 +1500,6 @@ if ( ! class_exists( 'Npcink_Cloud_WordPress_AI_Connector' ) ) {
 			}
 
 			return trim( implode( "\n\n", $parts ) );
-		}
-
-		/**
-		 * Checks whether the current stack is the WordPress AI alt text ability.
-		 *
-		 * @return bool
-		 */
-		private function is_alt_text_scene(): bool {
-			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_debug_backtrace -- Bounded stack inspection gates calls to one known WordPress AI ability class.
-			foreach ( debug_backtrace( DEBUG_BACKTRACE_IGNORE_ARGS, 24 ) as $frame ) {
-				$class = isset( $frame['class'] ) ? (string) $frame['class'] : '';
-				if ( 'WordPress\\AI\\Abilities\\Image\\Alt_Text_Generation' === $class ) {
-					return true;
-				}
-			}
-
-			return false;
-		}
-
-		/**
-		 * Builds bounded image URL and metadata context for Cloud.
-		 *
-		 * @param list<\WordPress\AiClient\Messages\DTO\Message> $prompt Prompt messages.
-		 * @return array<string,string>
-		 */
-		private function alt_text_source_context( array $prompt ): array {
-			$source = array(
-				'image_url'        => '',
-				'thumbnail_url'    => '',
-				'mime_type'        => '',
-				'filename'         => '',
-				'title'            => '',
-				'existing_alt'     => '',
-				'existing_caption' => '',
-			);
-
-			$input = $this->alt_text_ability_input();
-			if ( ! empty( $input['attachment_id'] ) ) {
-				$source = $this->attachment_source_context( absint( $input['attachment_id'] ) );
-			} elseif ( ! empty( $input['image_url'] ) && is_string( $input['image_url'] ) && ! str_starts_with( $input['image_url'], 'data:' ) ) {
-				$source['image_url'] = esc_url_raw( $input['image_url'] );
-			}
-
-			if ( '' === $source['image_url'] && '' === $source['thumbnail_url'] ) {
-				$file = $this->prompt_file( $prompt );
-				if ( null !== $file && method_exists( $file, 'getUrl' ) ) {
-					$url = $file->getUrl();
-					if ( is_string( $url ) && '' !== $url ) {
-						$source['image_url'] = esc_url_raw( $url );
-					}
-				}
-				if ( null !== $file && method_exists( $file, 'getMimeType' ) ) {
-					$source['mime_type'] = sanitize_mime_type( (string) $file->getMimeType() );
-				}
-			}
-
-			return $source;
-		}
-
-		/**
-		 * Extracts the original alt-text ability input from the call stack.
-		 *
-		 * @return array<string,mixed>
-		 */
-		private function alt_text_ability_input(): array {
-			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_debug_backtrace -- Args are inspected only to recover the local attachment URL for the bounded Cloud vision scene.
-			foreach ( debug_backtrace( DEBUG_BACKTRACE_PROVIDE_OBJECT, 32 ) as $frame ) {
-				$class  = isset( $frame['class'] ) ? (string) $frame['class'] : '';
-				$method = isset( $frame['function'] ) ? (string) $frame['function'] : '';
-				if ( 'WordPress\\AI\\Abilities\\Image\\Alt_Text_Generation' !== $class || 'execute_callback' !== $method ) {
-					continue;
-				}
-				$args = isset( $frame['args'] ) && is_array( $frame['args'] ) ? $frame['args'] : array();
-				if ( isset( $args[0] ) && is_array( $args[0] ) ) {
-					return $args[0];
-				}
-			}
-
-			return array();
-		}
-
-		/**
-		 * Builds source context for a WordPress attachment.
-		 *
-		 * @param int $attachment_id Attachment ID.
-		 * @return array<string,string>
-		 */
-		private function attachment_source_context( int $attachment_id ): array {
-			$attachment = get_post( $attachment_id );
-			$large      = wp_get_attachment_image_src( $attachment_id, 'large' );
-			$full       = wp_get_attachment_image_src( $attachment_id, 'full' );
-			$thumbnail  = wp_get_attachment_image_src( $attachment_id, 'thumbnail' );
-			$image_url  = is_array( $large ) && ! empty( $large[0] ) ? (string) $large[0] : '';
-			if ( '' === $image_url && is_array( $full ) && ! empty( $full[0] ) ) {
-				$image_url = (string) $full[0];
-			}
-
-			$file_path = get_attached_file( $attachment_id );
-			$filename  = is_string( $file_path ) && '' !== $file_path ? basename( $file_path ) : '';
-			$mime_type = sanitize_mime_type( (string) get_post_mime_type( $attachment_id ) );
-			if ( '' === $filename && '' !== $image_url ) {
-				$path     = wp_parse_url( $image_url, PHP_URL_PATH );
-				$filename = is_string( $path ) ? basename( $path ) : '';
-			}
-			if ( is_string( $file_path ) && '' !== $file_path && $this->should_inline_attachment_image( $image_url ) ) {
-				$data_url = $this->attachment_image_data_url( $file_path, $mime_type );
-				if ( '' !== $data_url ) {
-					$image_url = $data_url;
-				}
-			}
-			$safe_image_url = str_starts_with( $image_url, 'data:' ) ? $image_url : esc_url_raw( $image_url );
-
-			return array(
-				'image_url'        => $safe_image_url,
-				'thumbnail_url'    => is_array( $thumbnail ) && ! empty( $thumbnail[0] ) ? esc_url_raw( (string) $thumbnail[0] ) : '',
-				'mime_type'        => $mime_type,
-				'filename'         => sanitize_file_name( $filename ),
-				'title'            => $attachment ? sanitize_text_field( $attachment->post_title ) : '',
-				'existing_alt'     => sanitize_text_field( (string) get_post_meta( $attachment_id, '_wp_attachment_image_alt', true ) ),
-				'existing_caption' => $attachment ? sanitize_text_field( $attachment->post_excerpt ) : '',
-			);
-		}
-
-		/**
-		 * Determines whether an attachment URL needs inline media for provider access.
-		 *
-		 * @param string $image_url Attachment URL.
-		 * @return bool
-		 */
-		private function should_inline_attachment_image( string $image_url ): bool {
-			$host = strtolower( (string) wp_parse_url( $image_url, PHP_URL_HOST ) );
-			if ( '' === $host ) {
-				return false;
-			}
-			if ( in_array( $host, array( 'localhost', '127.0.0.1', '::1' ), true ) ) {
-				return true;
-			}
-			if ( str_ends_with( $host, '.local' ) || str_ends_with( $host, '.test' ) || str_ends_with( $host, '.invalid' ) ) {
-				return true;
-			}
-			if ( filter_var( $host, FILTER_VALIDATE_IP ) ) {
-				return false === filter_var( $host, FILTER_VALIDATE_IP, FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE );
-			}
-
-			return false;
-		}
-
-		/**
-		 * Builds a bounded image data URL from a local WordPress attachment file.
-		 *
-		 * @param string $file_path Attachment file path.
-		 * @param string $mime_type Attachment MIME type.
-		 * @return string
-		 */
-		private function attachment_image_data_url( string $file_path, string $mime_type ): string {
-			if ( ! in_array( $mime_type, self::ALT_TEXT_INLINE_IMAGE_MIME_TYPES, true ) ) {
-				return '';
-			}
-			$real_path = realpath( $file_path );
-			if ( false === $real_path || ! is_file( $real_path ) || ! is_readable( $real_path ) ) {
-				return '';
-			}
-			$size = filesize( $real_path );
-			if ( false === $size || 0 >= $size || $size > self::ALT_TEXT_INLINE_IMAGE_MAX_BYTES ) {
-				return '';
-			}
-			// phpcs:ignore WordPress.WP.AlternativeFunctions.file_get_contents_file_get_contents -- Reads a bounded local attachment file for a single alt-text scene request.
-			$bytes = file_get_contents( $real_path );
-			if ( false === $bytes || '' === $bytes || strlen( $bytes ) > self::ALT_TEXT_INLINE_IMAGE_MAX_BYTES ) {
-				return '';
-			}
-
-			return 'data:' . $mime_type . ';base64,' . base64_encode( $bytes );
-		}
-
-		/**
-		 * Returns the first file part from the prompt.
-		 *
-		 * @param list<\WordPress\AiClient\Messages\DTO\Message> $prompt Prompt messages.
-		 * @return \WordPress\AiClient\Files\DTO\File|null
-		 */
-		private function prompt_file( array $prompt ) {
-			$message = $prompt[0];
-			foreach ( $message->getParts() as $part ) {
-				$file = $part->getFile();
-				if ( null !== $file ) {
-					return $file;
-				}
-			}
-
-			return null;
 		}
 
 		/**

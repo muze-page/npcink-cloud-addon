@@ -200,6 +200,7 @@ Allowed Cloud contract endpoints:
 
 - `GET /health/live`
 - `POST /v1/runtime/execute`
+- `POST /v1/runtime/media/uploads` for bounded WordPress AI alt-text source uploads only
 - `POST /v1/runtime/media-derivatives`
 - `GET /v1/runs/{run_id}`
 - `GET /v1/runs/{run_id}/result`
@@ -218,8 +219,17 @@ Forbidden legacy endpoint:
 
 Media derivative transport must use the named runtime media derivative endpoint,
 run/result endpoints, and explicit derivative artifact download endpoint above.
-Do not silently add ad hoc artifact upload, generic download, source registry,
-or logo registry endpoints to the addon.
+The alt-text vision wrapper may use only the named media upload endpoint to
+create one short-TTL image source artifact from an authorized local attachment,
+then pass only its `source_artifact_id` to the existing execute endpoint. Do
+not silently add ad hoc artifact upload, generic download, source registry, or
+logo registry endpoints to the addon.
+
+The wrapper may capture attachment input only after WordPress Ability
+validation and permission checks. It must not replace or short-circuit the
+upstream ability callback, inspect its call stack, or become a second Ability
+validation/result owner merely to avoid upstream Data URL allocation. That
+performance improvement requires an upstream attachment-reference seam.
 
 Observability transport must use only the observability endpoints above. Do not
 add ad hoc log upload, support bundle, file upload, database export, or raw
@@ -247,6 +257,8 @@ Image context evidence transport must use the existing
 and normalize `image_context_evidence.v1` as suggestion-only evidence. It must
 not add a local image recognition model, local queue, proposal creation,
 approval, media metadata write path, or generic image upload/download endpoint.
+The dedicated WordPress AI alt-text attachment upload is a separate named
+transport and must not be reused by this evidence seam.
 
 Agent feedback transport must use only `POST /v1/agent-feedback/events` for
 `cloud_agent_feedback.v1` local operator feedback and

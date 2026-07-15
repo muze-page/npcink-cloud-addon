@@ -19,6 +19,7 @@ The addon owns:
 - Connectivity probing with `/health/live` and a signed Cloud read.
 - Runtime and read projection calls:
   - `POST /v1/runtime/execute`
+  - `POST /v1/runtime/media/uploads` for bounded WordPress AI alt-text source uploads
   - `POST /v1/runtime/media-derivatives`
   - `GET /v1/runs/{run_id}`
   - `GET /v1/runs/{run_id}/result`
@@ -231,8 +232,15 @@ When the PHP AI Client is available, the addon registers scene-gated text,
 vision, and image models. The text model only forwards calls that originate from known
 WordPress AI plugin Ability classes, such as title, excerpt, metadata, summary,
 classification, moderation, or rewrite. The vision model only forwards
-WordPress AI alt-text generation calls that can be represented as a fetchable
-image URL plus bounded media metadata. The image model only forwards
+WordPress AI alt-text generation calls with an editable local image attachment.
+It captures the attachment id through WordPress's post-validation,
+post-permission `wp_before_execute_ability` hook, validates the attachment and
+local upload path, binds the opened file handle to the checked file metadata,
+detects MIME from the bytes actually read, sends bounded JPEG, PNG, or WebP
+bytes to the named short-TTL Cloud upload endpoint, then executes
+`alt_text_suggest` with the returned same-site `source_artifact_id`. It never
+forwards an attachment URL, Data URL, caller-supplied base64, or arbitrary file
+path. The image model only forwards
 text-to-image calls from the WordPress AI image generation feature and rejects
 reference-image refinement. Direct `wp_ai_client_prompt()` usage outside
 supported scenes is rejected before a Cloud request is made.
@@ -245,6 +253,14 @@ bottom-level provider model selection; Cloud hosted runtime profiles choose the
 underlying provider/model. The bounded vision wrapper is only for
 `alt_text_suggest`; it does not make the addon a generic vision provider,
 router, media metadata writer, or approval owner.
+
+The current upstream WordPress AI alt-text ability still materializes its
+local image as a Data URL before it calls the selected AI Client model. The
+addon intentionally does not intercept `wp_pre_execute_ability` or replace that
+ability callback, because doing so would duplicate the upstream ability's input
+validation, permission, and result truth. Removing that transient upstream
+base64 allocation requires an upstream attachment-reference model seam; the
+Addon transport itself never sends or persists the Data URL.
 
 The transport request uses the platform-neutral
 `cloud_connector_runtime.v1` envelope with

@@ -52,14 +52,21 @@ For the WordPress AI connector/provider flow:
    identity, and a nested `wordpress_operation.v1` task contract. WordPress AI
    image generation continues to use its existing
    `image_generation_request.v1` runtime contract.
-4. Title, summary, and rewrite pass the single AI Client user message as
+4. Alt text requires an editable local image attachment. The addon validates
+   input through the post-validation `wp_before_execute_ability` hook, binds
+   the uploads-directory path check to the opened file handle, detects MIME
+   from the bytes read, sends bounded JPEG, PNG, or WebP bytes through
+   `POST /v1/runtime/media/uploads`, validates the short-TTL Artifact, and then
+   executes with only its `source_artifact_id` plus bounded text context. URL,
+   Data URL, base64, arbitrary path, and call-stack fallbacks are not supported.
+5. Title, summary, and rewrite pass the single AI Client user message as
    `source_text` and may include `system_instruction`; they do not pass legacy
    prompt or post fields.
-5. Cloud returns `cloud_connector_result.v1` with `suggestion_only=true`,
+6. Cloud returns `cloud_connector_result.v1` with `suggestion_only=true`,
    `connector_id=npcink-cloud-addon`, and a matching `wordpress_operation.v1`
    task; connector text is then read only from
    `response.data.result.output.output_text`.
-6. Host/provider code maps the output back into the WordPress AI feature
+7. Host/provider code maps the output back into the WordPress AI feature
    response shape.
 
 This connector flow must not expose an OpenAI-compatible endpoint, a human chat

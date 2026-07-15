@@ -14,6 +14,23 @@ maca_load_addon_classes();
 maca_seed_settings( true );
 $client = new Npcink_Cloud_Runtime_Client( Npcink_Cloud_Addon_Settings::get_settings() );
 
+$http_count_before_unverified_alt_text_upload = count( $GLOBALS['maca_http_requests'] );
+maca_seed_settings( false );
+$unverified_alt_text_upload = $client->upload_wordpress_ai_alt_text_source(
+	array(
+		'contents'  => 'bounded-image-bytes',
+		'filename'  => 'source.jpg',
+		'mime_type' => 'image/jpeg',
+	)
+);
+maca_assert(
+	is_wp_error( $unverified_alt_text_upload )
+	&& 'cloud_runtime_unverified' === $unverified_alt_text_upload->get_error_code()
+	&& $http_count_before_unverified_alt_text_upload === count( $GLOBALS['maca_http_requests'] ),
+	'Behavior: WordPress AI alt-text upload requires current Save-and-Verify state before reading transport input or sending HTTP.'
+);
+maca_seed_settings( true );
+
 /**
  * Builds the single active WordPress operation request accepted by the addon.
  *
@@ -281,41 +298,230 @@ maca_assert(
 	'Behavior: WordPress AI text tasks reject legacy prompt and post-field compatibility shapes.'
 );
 
+$alt_text_contents    = "bounded-jpeg-bytes\0for-signing";
+$alt_text_artifact_id = 'art_0123456789abcdef0123456789abcdef';
+$alt_text_checksum    = 'sha256:' . hash( 'sha256', $alt_text_contents );
+$alt_text_artifact    = array(
+	'artifact_id'    => $alt_text_artifact_id,
+	'media_kind'     => 'image',
+	'status'         => 'available',
+	'content_type'   => 'image/jpeg',
+	'format'         => 'jpeg',
+	'width'          => 640,
+	'height'         => 480,
+	'filesize_bytes' => strlen( $alt_text_contents ),
+	'checksum'       => $alt_text_checksum,
+	'expires_at'     => gmdate( 'c', time() + 1800 ),
+);
+$alt_text_upload_response = static function ( array $artifact ) {
+	return array(
+		'response' => array( 'code' => 200 ),
+		'body'     => wp_json_encode(
+			array(
+				'status' => 'ok',
+				'data'   => array(
+					'result' => array(
+						'artifact' => $artifact,
+					),
+				),
+			)
+		),
+	);
+};
+
+$GLOBALS['maca_http_response_queue'][] = $alt_text_upload_response( $alt_text_artifact );
+$alt_text_uploaded_artifact = $client->upload_wordpress_ai_alt_text_source(
+	array(
+		'contents'  => $alt_text_contents,
+		'filename'  => 'blue-mug.jpg',
+		'mime_type' => 'image/jpeg',
+	),
+	'trace-wp-ai-alt-text-upload',
+	'wp-ai-alt-text-upload-idempotency'
+);
+$alt_text_upload_request = end( $GLOBALS['maca_http_requests'] );
+$alt_text_upload_headers = is_array( $alt_text_upload_request['args']['headers'] ?? null ) ? $alt_text_upload_request['args']['headers'] : array();
+$alt_text_upload_body    = (string) ( $alt_text_upload_request['args']['body'] ?? '' );
+$alt_text_content_type   = (string) ( $alt_text_upload_headers['Content-Type'] ?? '' );
+$alt_text_boundary       = str_starts_with( $alt_text_content_type, 'multipart/form-data; boundary=' )
+	? substr( $alt_text_content_type, strlen( 'multipart/form-data; boundary=' ) )
+	: '';
+$alt_text_request_part = array();
+preg_match(
+	'/Content-Disposition: form-data; name="request"\r\nContent-Type: application\/json\r\n\r\n(\{[^\r]+\})\r\n--/',
+	$alt_text_upload_body,
+	$alt_text_request_part
+);
+$alt_text_upload_json = json_decode( (string) ( $alt_text_request_part[1] ?? '' ), true );
+$alt_text_upload_canonical = implode(
+	"\n",
+	array(
+		'POST',
+		'/v1/runtime/media/uploads',
+		'site_test',
+		'key_test',
+		(string) ( $alt_text_upload_headers['X-Npcink-Timestamp'] ?? '' ),
+		(string) ( $alt_text_upload_headers['X-Npcink-Nonce'] ?? '' ),
+		'wp-ai-alt-text-upload-idempotency',
+		(string) ( $alt_text_upload_headers['traceparent'] ?? '' ),
+		hash( 'sha256', $alt_text_upload_body ),
+	)
+);
+
+maca_assert(
+	is_array( $alt_text_uploaded_artifact )
+	&& array_keys( $alt_text_artifact ) === array_keys( $alt_text_uploaded_artifact )
+	&& $alt_text_artifact === $alt_text_uploaded_artifact,
+	'Behavior: WordPress AI alt-text upload returns only the validated bounded artifact descriptor.'
+);
+
+maca_assert(
+	'https://cloud.example.test/v1/runtime/media/uploads' === (string) ( $alt_text_upload_request['url'] ?? '' )
+	&& 'POST' === (string) ( $alt_text_upload_request['args']['method'] ?? '' )
+	&& '' !== $alt_text_boundary
+	&& 1 === substr_count( $alt_text_upload_body, 'name="request"' )
+	&& 1 === substr_count( $alt_text_upload_body, 'name="file"' )
+	&& false === strpos( $alt_text_upload_body, 'name="source_file"' )
+	&& false === strpos( $alt_text_upload_body, 'name="watermark_file"' )
+	&& false !== strpos( $alt_text_upload_body, 'name="file"; filename="blue-mug.jpg"' )
+	&& false !== strpos( $alt_text_upload_body, "Content-Type: image/jpeg\r\n\r\n" . $alt_text_contents . "\r\n--" . $alt_text_boundary . '--' )
+	&& is_array( $alt_text_upload_json )
+	&& array( 'request_contract_version', 'media_kind', 'ttl_minutes' ) === array_keys( $alt_text_upload_json )
+	&& 'media_upload_request.v1' === (string) $alt_text_upload_json['request_contract_version']
+	&& 'image' === (string) $alt_text_upload_json['media_kind']
+	&& 30 === $alt_text_upload_json['ttl_minutes'],
+	'Behavior: WordPress AI alt-text upload sends exact request and file multipart parts with the fixed short-TTL contract.'
+);
+
+maca_assert(
+	hash_equals(
+		hash_hmac( 'sha256', $alt_text_upload_canonical, 'secret_test' ),
+		(string) ( $alt_text_upload_headers['X-Npcink-Signature'] ?? '' )
+	),
+	'Behavior: WordPress AI alt-text upload signature covers the exact multipart body sent over HTTP.'
+);
+
+foreach ( array( 'image/png' => 'png', 'image/webp' => 'webp' ) as $mapped_mime_type => $mapped_format ) {
+	$mapped_contents = 'bounded-' . $mapped_format . '-bytes';
+	$mapped_artifact = array_merge(
+		$alt_text_artifact,
+		array(
+			'content_type'   => $mapped_mime_type,
+			'format'         => $mapped_format,
+			'filesize_bytes' => strlen( $mapped_contents ),
+			'checksum'       => 'sha256:' . hash( 'sha256', $mapped_contents ),
+		)
+	);
+	$GLOBALS['maca_http_response_queue'][] = $alt_text_upload_response( $mapped_artifact );
+	$mapped_upload_result = $client->upload_wordpress_ai_alt_text_source(
+		array(
+			'contents'  => $mapped_contents,
+			'filename'  => 'source.' . $mapped_format,
+			'mime_type' => $mapped_mime_type,
+		)
+	);
+	maca_assert(
+		is_array( $mapped_upload_result )
+		&& $mapped_mime_type === (string) $mapped_upload_result['content_type']
+		&& $mapped_format === (string) $mapped_upload_result['format'],
+		'Behavior: WordPress AI alt-text upload preserves the strict ' . $mapped_format . ' MIME-to-format mapping.'
+	);
+}
+
+$GLOBALS['maca_http_response_queue'][] = array(
+	'response' => array( 'code' => 200 ),
+	'body'     => wp_json_encode( array( 'status' => 'ok', 'data' => array( 'result' => array() ) ) ),
+);
+$missing_upload_artifact = $client->upload_wordpress_ai_alt_text_source(
+	array(
+		'contents'  => $alt_text_contents,
+		'filename'  => 'blue-mug.jpg',
+		'mime_type' => 'image/jpeg',
+	)
+);
+maca_assert(
+	is_wp_error( $missing_upload_artifact )
+	&& 'cloud_wp_ai_alt_text_upload_artifact_invalid' === $missing_upload_artifact->get_error_code()
+	&& false === strpos( $missing_upload_artifact->get_error_message(), $alt_text_contents ),
+	'Behavior: WordPress AI alt-text upload rejects a missing data.result.artifact without exposing source bytes.'
+);
+
+$invalid_alt_text_uploads = array(
+	'missing field'       => array( 'contents' => 'x', 'filename' => 'x.jpg' ),
+	'unknown field'       => array( 'contents' => 'x', 'filename' => 'x.jpg', 'mime_type' => 'image/jpeg', 'path' => '/tmp/x.jpg' ),
+	'empty contents'      => array( 'contents' => '', 'filename' => 'x.jpg', 'mime_type' => 'image/jpeg' ),
+	'non-string contents' => array( 'contents' => array(), 'filename' => 'x.jpg', 'mime_type' => 'image/jpeg' ),
+	'oversized contents'  => array( 'contents' => str_repeat( 'x', 8388609 ), 'filename' => 'x.jpg', 'mime_type' => 'image/jpeg' ),
+	'unsafe filename'     => array( 'contents' => 'x', 'filename' => '///', 'mime_type' => 'image/jpeg' ),
+	'filename type'       => array( 'contents' => 'x', 'filename' => 123, 'mime_type' => 'image/jpeg' ),
+	'filename limit'      => array( 'contents' => 'x', 'filename' => str_repeat( 'x', 157 ) . '.jpg', 'mime_type' => 'image/jpeg' ),
+	'mime type'           => array( 'contents' => 'x', 'filename' => 'x.gif', 'mime_type' => 'image/gif' ),
+);
+$http_count_before_invalid_uploads = count( $GLOBALS['maca_http_requests'] );
+foreach ( $invalid_alt_text_uploads as $case => $invalid_upload ) {
+	$invalid_upload_result = $client->upload_wordpress_ai_alt_text_source( $invalid_upload );
+	maca_assert(
+		is_wp_error( $invalid_upload_result ),
+		'Behavior: WordPress AI alt-text upload rejects ' . $case . ' without exposing source bytes.'
+	);
+}
+maca_assert(
+	$http_count_before_invalid_uploads === count( $GLOBALS['maca_http_requests'] ),
+	'Behavior: invalid WordPress AI alt-text uploads never reach outbound HTTP.'
+);
+
+$mismatched_alt_text_artifacts = array(
+	'artifact id'  => array( 'artifact_id' => 'artifact_bad' ),
+	'media kind'   => array( 'media_kind' => 'audio' ),
+	'status'       => array( 'status' => 'pending' ),
+	'content type' => array( 'content_type' => 'image/png' ),
+	'format'       => array( 'format' => 'png' ),
+	'width'        => array( 'width' => 0 ),
+	'height'       => array( 'height' => '480' ),
+	'file size'    => array( 'filesize_bytes' => strlen( $alt_text_contents ) + 1 ),
+	'checksum'     => array( 'checksum' => hash( 'sha256', $alt_text_contents ) ),
+	'expiry'       => array( 'expires_at' => gmdate( 'c', time() - 1 ) ),
+	'expiry window' => array( 'expires_at' => gmdate( 'c', time() + 30 ) ),
+	'expiry shape' => array( 'expires_at' => 'tomorrow' ),
+);
+foreach ( $mismatched_alt_text_artifacts as $case => $artifact_override ) {
+	$GLOBALS['maca_http_response_queue'][] = $alt_text_upload_response( array_merge( $alt_text_artifact, $artifact_override ) );
+	$mismatched_upload_result = $client->upload_wordpress_ai_alt_text_source(
+		array(
+			'contents'  => $alt_text_contents,
+			'filename'  => 'blue-mug.jpg',
+			'mime_type' => 'image/jpeg',
+		)
+	);
+	maca_assert(
+		is_wp_error( $mismatched_upload_result )
+		&& 'cloud_wp_ai_alt_text_upload_artifact_invalid' === $mismatched_upload_result->get_error_code()
+		&& false === strpos( $mismatched_upload_result->get_error_message(), $alt_text_contents ),
+		'Behavior: WordPress AI alt-text upload rejects artifact ' . $case . ' mismatch without exposing source bytes.'
+	);
+}
+
 $GLOBALS['maca_http_response_queue'][] = array(
 	'response' => array( 'code' => 200 ),
 	'body'     => wp_json_encode(
 		array(
 			'status' => 'ok',
-			'data'   => array(
-				'run_id' => 'run_wp_ai_alt_text_1',
-				'result' => array(
-					'contract_version'  => 'cloud_connector_result.v1',
-					'suggestion_only'   => true,
-					'connector_id'      => 'npcink-cloud-addon',
-					'operation_contract' => array(
-						'contract_version' => 'wordpress_operation.v1',
-						'task'             => 'alt_text_suggest',
-					),
-					'output' => array( 'output_text' => 'A blue ceramic mug on a white table.' ),
-				),
-			),
+			'data'   => array( 'run_id' => 'run_wp_ai_alt_text_1' ),
 		)
 	),
 );
-
 $alt_text_result = $client->execute_wordpress_ai_connector_runtime(
 	maca_wordpress_operation_request(
 		'alt_text_suggest',
 		array(
-			'prompt'           => 'Generate accessible alt text for this media item.',
-			'image_url'        => 'https://cdn.example.test/uploads/blue-mug.jpg',
-			'thumbnail_url'    => 'https://cdn.example.test/uploads/blue-mug-150x150.jpg',
-			'mime_type'        => 'image/jpeg',
-			'filename'         => 'blue-mug.jpg',
-			'title'            => 'Blue mug',
-			'existing_alt'     => '',
-			'existing_caption' => '',
-			'locale'           => 'en_US',
+			'source_artifact_id' => $alt_text_uploaded_artifact['artifact_id'],
+			'prompt'              => 'Generate accessible alt text for this media item.',
+			'filename'            => 'blue-mug.jpg',
+			'title'               => 'Blue mug',
+			'existing_alt'        => '',
+			'existing_caption'    => '',
+			'locale'              => 'en_US',
+			'max_tokens'          => 96,
 		),
 		array( 'timeout_seconds' => 90 )
 	),
@@ -324,84 +530,55 @@ $alt_text_result = $client->execute_wordpress_ai_connector_runtime(
 );
 $alt_text_request      = end( $GLOBALS['maca_http_requests'] );
 $alt_text_request_body = json_decode( (string) ( $alt_text_request['args']['body'] ?? '' ), true );
+$alt_text_scene_request = $alt_text_request_body['input']['operation_contract']['request'] ?? null;
 
 maca_assert(
-	is_array( $alt_text_result ) && 'run_wp_ai_alt_text_1' === (string) ( $alt_text_result['data']['run_id'] ?? '' ),
-	'Behavior: WordPress AI connector runtime returns the Cloud response for a supported alt text scene task.'
-);
-
-maca_assert(
-	is_array( $alt_text_request_body )
-	&& 'npcink-cloud/connector-runtime' === (string) ( $alt_text_request_body['ability_name'] ?? '' )
-	&& 'cloud_connector_runtime.v1' === (string) ( $alt_text_request_body['contract_version'] ?? '' )
-	&& 'editor' === (string) ( $alt_text_request_body['channel'] ?? '' )
+	is_array( $alt_text_result )
+	&& 'run_wp_ai_alt_text_1' === (string) ( $alt_text_result['data']['run_id'] ?? '' )
+	&& is_array( $alt_text_scene_request )
+	&& array( 'source_artifact_id', 'prompt', 'filename', 'title', 'existing_alt', 'existing_caption', 'locale', 'max_tokens' ) === array_keys( $alt_text_scene_request )
+	&& $alt_text_artifact_id === (string) $alt_text_scene_request['source_artifact_id']
+	&& 'internal' === (string) ( $alt_text_request_body['data_classification'] ?? '' )
 	&& 'vision' === (string) ( $alt_text_request_body['execution_kind'] ?? '' )
-	&& 'alt_text_suggest' === (string) ( $alt_text_request_body['input']['operation_contract']['task'] ?? '' )
-	&& 'https://cdn.example.test/uploads/blue-mug.jpg' === (string) ( $alt_text_request_body['input']['operation_contract']['request']['image_url'] ?? '' )
-	&& 'image/jpeg' === (string) ( $alt_text_request_body['input']['operation_contract']['request']['mime_type'] ?? '' )
 	&& true === (bool) ( $alt_text_request_body['input']['suggestion_only'] ?? false ),
-	'Behavior: WordPress AI connector runtime projects bounded alt text image URL context without local writes.'
+	'Behavior: WordPress AI alt-text execution forwards only the Artifact id and bounded allowed fields as internal suggestion-only vision input.'
 );
 
-$GLOBALS['maca_http_response_queue'][] = array(
-	'response' => array( 'code' => 200 ),
-	'body'     => wp_json_encode(
-		array(
-			'status' => 'ok',
-			'data'   => array(
-				'run_id' => 'run_wp_ai_alt_text_data_url_1',
-				'result' => array(
-					'contract_version'  => 'cloud_connector_result.v1',
-					'suggestion_only'   => true,
-					'connector_id'      => 'npcink-cloud-addon',
-					'operation_contract' => array(
-						'contract_version' => 'wordpress_operation.v1',
-						'task'             => 'alt_text_suggest',
-					),
-					'output' => array( 'output_text' => 'A small inline test image.' ),
-				),
-			),
-		)
-	),
+$invalid_alt_text_scenes = array(
+	'unknown field'       => array( 'source_artifact_id' => $alt_text_artifact_id, 'prompt' => 'Alt text.', 'unknown' => 'x' ),
+	'legacy url'          => array( 'source_artifact_id' => $alt_text_artifact_id, 'prompt' => 'Alt text.', 'url' => 'https://example.test/x.jpg' ),
+	'image url'           => array( 'source_artifact_id' => $alt_text_artifact_id, 'prompt' => 'Alt text.', 'image_url' => 'https://example.test/x.jpg' ),
+	'thumbnail url'       => array( 'source_artifact_id' => $alt_text_artifact_id, 'prompt' => 'Alt text.', 'thumbnail_url' => 'https://example.test/x.jpg' ),
+	'mime type'           => array( 'source_artifact_id' => $alt_text_artifact_id, 'prompt' => 'Alt text.', 'mime_type' => 'image/jpeg' ),
+	'data'                => array( 'source_artifact_id' => $alt_text_artifact_id, 'prompt' => 'Alt text.', 'data' => 'bytes' ),
+	'base64'              => array( 'source_artifact_id' => $alt_text_artifact_id, 'prompt' => 'Alt text.', 'base64' => 'eA==' ),
+	'scene gate'          => array( 'source_artifact_id' => $alt_text_artifact_id, 'prompt' => 'Alt text.', 'scene_gate' => true ),
+	'artifact type'       => array( 'source_artifact_id' => 123, 'prompt' => 'Alt text.' ),
+	'artifact format'     => array( 'source_artifact_id' => 'artifact_bad', 'prompt' => 'Alt text.' ),
+	'prompt type'         => array( 'source_artifact_id' => $alt_text_artifact_id, 'prompt' => array() ),
+	'empty prompt'        => array( 'source_artifact_id' => $alt_text_artifact_id, 'prompt' => '  ' ),
+	'prompt limit'        => array( 'source_artifact_id' => $alt_text_artifact_id, 'prompt' => str_repeat( 'x', 501 ) ),
+	'filename type'       => array( 'source_artifact_id' => $alt_text_artifact_id, 'prompt' => 'Alt text.', 'filename' => 1 ),
+	'filename limit'      => array( 'source_artifact_id' => $alt_text_artifact_id, 'prompt' => 'Alt text.', 'filename' => str_repeat( 'x', 161 ) ),
+	'title limit'         => array( 'source_artifact_id' => $alt_text_artifact_id, 'prompt' => 'Alt text.', 'title' => str_repeat( 'x', 161 ) ),
+	'existing alt limit'  => array( 'source_artifact_id' => $alt_text_artifact_id, 'prompt' => 'Alt text.', 'existing_alt' => str_repeat( 'x', 241 ) ),
+	'caption limit'       => array( 'source_artifact_id' => $alt_text_artifact_id, 'prompt' => 'Alt text.', 'existing_caption' => str_repeat( 'x', 241 ) ),
+	'locale limit'        => array( 'source_artifact_id' => $alt_text_artifact_id, 'prompt' => 'Alt text.', 'locale' => str_repeat( 'x', 33 ) ),
+	'max tokens bool'     => array( 'source_artifact_id' => $alt_text_artifact_id, 'prompt' => 'Alt text.', 'max_tokens' => true ),
+	'max tokens string'   => array( 'source_artifact_id' => $alt_text_artifact_id, 'prompt' => 'Alt text.', 'max_tokens' => '32' ),
+	'max tokens low'      => array( 'source_artifact_id' => $alt_text_artifact_id, 'prompt' => 'Alt text.', 'max_tokens' => 0 ),
+	'max tokens high'     => array( 'source_artifact_id' => $alt_text_artifact_id, 'prompt' => 'Alt text.', 'max_tokens' => 97 ),
 );
-
-$alt_text_data_url = 'data:image/png;base64,' . base64_encode( 'image-bytes' );
-$data_url_result   = $client->execute_wordpress_ai_connector_runtime(
-	maca_wordpress_operation_request(
-		'alt_text_suggest',
-		array(
-			'prompt'    => 'Generate alt text.',
-			'image_url' => $alt_text_data_url,
-			'mime_type' => 'image/png',
-			'filename'  => 'inline-test.png',
-		),
-	),
-	'trace-wp-ai-alt-text-data-url',
-	'wp-ai-alt-text-data-url-idempotency'
-);
-$data_url_request      = end( $GLOBALS['maca_http_requests'] );
-$data_url_request_body = json_decode( (string) ( $data_url_request['args']['body'] ?? '' ), true );
-
+$http_count_before_invalid_scenes = count( $GLOBALS['maca_http_requests'] );
+foreach ( $invalid_alt_text_scenes as $case => $invalid_scene ) {
+	$invalid_scene_result = $client->execute_wordpress_ai_connector_runtime(
+		maca_wordpress_operation_request( 'alt_text_suggest', $invalid_scene )
+	);
+	maca_assert( is_wp_error( $invalid_scene_result ), 'Behavior: WordPress AI alt-text execution rejects ' . $case . '.' );
+}
 maca_assert(
-	is_array( $data_url_result )
-	&& 'run_wp_ai_alt_text_data_url_1' === (string) ( $data_url_result['data']['run_id'] ?? '' )
-	&& $alt_text_data_url === (string) ( $data_url_request_body['input']['operation_contract']['request']['image_url'] ?? '' ),
-	'Behavior: WordPress AI connector runtime accepts bounded alt text data URL references without accepting generic base64 fields.'
-);
-
-$inline_alt_text = $client->execute_wordpress_ai_connector_runtime(
-	maca_wordpress_operation_request(
-		'alt_text_suggest',
-		array(
-			'prompt'       => 'Generate alt text.',
-			'image_base64' => base64_encode( 'image-bytes' ),
-			'mime_type'    => 'image/png',
-		),
-	)
-);
-maca_assert(
-	is_wp_error( $inline_alt_text ) && 'cloud_wp_ai_connector_chat_shape_not_allowed' === $inline_alt_text->get_error_code(),
-	'Behavior: WordPress AI connector runtime rejects inline base64 alt text image payloads.'
+	$http_count_before_invalid_scenes === count( $GLOBALS['maca_http_requests'] ),
+	'Behavior: invalid WordPress AI alt-text execution requests never reach outbound HTTP.'
 );
 
 $GLOBALS['maca_http_response_queue'][] = array(

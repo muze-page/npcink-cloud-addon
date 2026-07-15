@@ -54,6 +54,7 @@ runtime truth rules here beyond addon-owned connector contracts.
 Allowed runtime/read endpoints:
 
 - `POST /v1/runtime/execute`
+- `POST /v1/runtime/media/uploads` for bounded WordPress AI alt-text source uploads only
 - `POST /v1/runtime/media-derivatives`
 - `GET /v1/runs/{run_id}`
 - `GET /v1/runs/{run_id}/result`

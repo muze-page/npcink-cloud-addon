@@ -12,6 +12,7 @@ maca_load_addon_classes();
 
 $allowed_requests = array(
 	array( 'POST', '/v1/runtime/execute' ),
+	array( 'POST', '/v1/runtime/media/uploads' ),
 	array( 'POST', '/v1/runtime/media-derivatives?trace=1' ),
 	array( 'GET', '/v1/entitlements/current' ),
 	array( 'GET', '/v1/runs/nightly-inspection/recent?limit=5' ),
@@ -49,6 +50,8 @@ $denied_requests = array(
 	array( 'GET', '/v1/runs/https://example.test/a/b' ),
 	array( 'GET', '/v1/runs/https%3A%2F%2Fexample.test%2Fa%2Fb' ),
 	array( 'POST', '/v1/entitlements/current' ),
+	array( 'GET', '/v1/runtime/media/uploads' ),
+	array( 'POST', '/v1/runtime/media/uploads/source' ),
 	array( 'GET', '/v1/stats/profiles/profile_1' ),
 	array( 'GET', '/v1/stats/instances/instance_1' ),
 	array( 'GET', '/v1/runs/nightly-inspection/recent/result' ),

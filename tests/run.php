@@ -13,6 +13,12 @@ if ( 0 !== $performance_guard_status ) {
 	exit( $performance_guard_status );
 }
 
+$alt_text_handoff_command = escapeshellarg( PHP_BINARY ) . ' ' . escapeshellarg( __DIR__ . '/behavior-wordpress-ai-alt-text-artifact-handoff.php' );
+passthru( $alt_text_handoff_command, $alt_text_handoff_status );
+if ( 0 !== $alt_text_handoff_status ) {
+	exit( $alt_text_handoff_status );
+}
+
 $site_knowledge_admin_actions_command = escapeshellarg( PHP_BINARY ) . ' ' . escapeshellarg( __DIR__ . '/behavior-site-knowledge-admin-actions.php' );
 passthru( $site_knowledge_admin_actions_command, $site_knowledge_admin_actions_status );
 if ( 0 !== $site_knowledge_admin_actions_status ) {

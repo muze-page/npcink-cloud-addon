@@ -23,6 +23,8 @@ Keep these even if they make the code less minimal:
 - Ability payload checks that reject credentials, Authorization data, signed
   headers, tokens, and Cloud signing fields.
 - Bounded source and watermark media derivative multipart transport.
+- Bounded WordPress AI alt-text attachment validation and one-purpose,
+  short-TTL image upload transport followed by Artifact-id-only execution.
 - Image watermark/logo fail-closed behavior unless the local ability supplies a
   watermark plan and the host supplies one short TTL artifact or upload; text
   watermark plans must remain structured options without a watermark source.
@@ -72,6 +74,9 @@ Tests are split by purpose:
   forbidden surfaces and required contracts.
 - `tests/behavior-media-derivative.php` calls public PHP APIs with WordPress
   stubs to prove fail-closed behavior and proposal payload shape.
+- WordPress AI connector behavior tests prove the alt-text path requires an
+  authorized local attachment, validates its short-TTL Artifact, and never
+  falls back to URLs, Data URLs, base64, or WordPress writes.
 - `tests/helpers.php` contains shared assertions, file readers, WordPress stubs,
   HTTP stubs, settings seed helpers, and media derivative fixtures.
 - `tests/run.php` is only the aggregate entry point used by Composer.

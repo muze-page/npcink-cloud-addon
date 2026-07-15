@@ -21,10 +21,16 @@ if ( ! class_exists( 'Npcink_Cloud_Runtime_Client' ) ) {
 		private const CLOUD_CONNECTOR_RUNTIME_CONTRACT = 'cloud_connector_runtime.v1';
 		private const WORDPRESS_OPERATION_CONTRACT = 'wordpress_operation.v1';
 		private const WP_AI_CONNECTOR_MAX_REQUEST_BYTES = 24000;
-		private const WP_AI_CONNECTOR_ALT_TEXT_MAX_REQUEST_BYTES = 900000;
 		private const WP_AI_CONNECTOR_MAX_SCENE_TEXT_CHARS = 12000;
 		private const WP_AI_CONNECTOR_MAX_TIMEOUT_SECONDS = 60;
 		private const WP_AI_CONNECTOR_MAX_RETENTION_TTL = 86400;
+		private const WP_AI_ALT_TEXT_MAX_UPLOAD_BYTES = 8388608;
+		private const WP_AI_ALT_TEXT_MIN_ARTIFACT_TTL_SECONDS = 120;
+		private const WP_AI_ALT_TEXT_UPLOAD_FORMATS = array(
+			'image/jpeg' => 'jpeg',
+			'image/png'  => 'png',
+			'image/webp' => 'webp',
+		);
 		private const WP_AI_IMAGE_GENERATION_CONTRACT = 'image_generation_request.v1';
 		private const WP_AI_IMAGE_GENERATION_MAX_REQUEST_BYTES = 12000;
 		private const WP_AI_IMAGE_GENERATION_MAX_PROMPT_CHARS = 4000;
@@ -478,6 +484,117 @@ if ( ! class_exists( 'Npcink_Cloud_Runtime_Client' ) ) {
 				$trace_id,
 				(string) $multipart['body'],
 				(string) $multipart['content_type']
+			);
+		}
+
+		/**
+		 * Uploads one bounded WordPress AI alt-text source image.
+		 *
+		 * This internal transport seam accepts bytes only from the authorized local
+		 * attachment handoff. It is not a generic caller-supplied upload API.
+		 *
+		 * @param array<string,mixed> $file Exact contents, filename, and mime_type fields.
+		 * @param string              $trace_id Optional trace id.
+		 * @param string              $idempotency_key Optional idempotency key.
+		 * @return array<string,mixed>|WP_Error
+		 * @internal Authorized local attachment handoff only.
+		 */
+		public function upload_wordpress_ai_alt_text_source( array $file, string $trace_id = '', string $idempotency_key = '' ) {
+			if ( ! class_exists( 'Npcink_Cloud_Addon_Settings' ) || ! Npcink_Cloud_Addon_Settings::is_verified() ) {
+				return new WP_Error(
+					'cloud_runtime_unverified',
+					__( 'Verify Npcink Cloud settings before uploading a WordPress AI alt-text source.', 'npcink-cloud-addon' ),
+					array( 'status' => 403 )
+				);
+			}
+
+			$allowed_file_fields = array( 'contents', 'filename', 'mime_type' );
+			if (
+				array() !== array_diff( $allowed_file_fields, array_keys( $file ) )
+				|| array() !== array_diff( array_keys( $file ), $allowed_file_fields )
+			) {
+				return new WP_Error(
+					'cloud_wp_ai_alt_text_upload_file_invalid',
+					__( 'WordPress AI alt-text uploads require exact contents, filename, and mime_type fields.', 'npcink-cloud-addon' ),
+					array( 'status' => 400 )
+				);
+			}
+
+			$contents = $file['contents'];
+			if ( ! is_string( $contents ) || '' === $contents ) {
+				return new WP_Error(
+					'cloud_wp_ai_alt_text_upload_contents_invalid',
+					__( 'WordPress AI alt-text upload contents must be a nonempty byte string.', 'npcink-cloud-addon' ),
+					array( 'status' => 400 )
+				);
+			}
+			if ( strlen( $contents ) > self::WP_AI_ALT_TEXT_MAX_UPLOAD_BYTES ) {
+				return new WP_Error(
+					'cloud_wp_ai_alt_text_upload_too_large',
+					__( 'WordPress AI alt-text upload contents exceed the 8 MiB limit.', 'npcink-cloud-addon' ),
+					array( 'status' => 413 )
+				);
+			}
+
+			if ( ! is_string( $file['filename'] ) ) {
+				return new WP_Error(
+					'cloud_wp_ai_alt_text_upload_filename_invalid',
+					__( 'WordPress AI alt-text upload filename must be a nonempty safe filename.', 'npcink-cloud-addon' ),
+					array( 'status' => 400 )
+				);
+			}
+			$filename = sanitize_file_name( $file['filename'] );
+			if ( '' === $filename || strlen( $filename ) > 160 ) {
+				return new WP_Error(
+					'cloud_wp_ai_alt_text_upload_filename_invalid',
+					__( 'WordPress AI alt-text upload filename must be a nonempty safe filename of at most 160 characters.', 'npcink-cloud-addon' ),
+					array( 'status' => 400 )
+				);
+			}
+
+			$mime_type = $file['mime_type'];
+			if ( ! is_string( $mime_type ) || ! isset( self::WP_AI_ALT_TEXT_UPLOAD_FORMATS[ $mime_type ] ) ) {
+				return new WP_Error(
+					'cloud_wp_ai_alt_text_upload_mime_type_invalid',
+					__( 'WordPress AI alt-text uploads allow only JPEG, PNG, or WebP images.', 'npcink-cloud-addon' ),
+					array( 'status' => 400 )
+				);
+			}
+
+			$multipart = $this->build_wordpress_ai_alt_text_upload_multipart_body(
+				array(
+					'request_contract_version' => 'media_upload_request.v1',
+					'media_kind'              => 'image',
+					'ttl_minutes'             => 30,
+				),
+				$contents,
+				$filename,
+				$mime_type
+			);
+			if ( is_wp_error( $multipart ) ) {
+				return $multipart;
+			}
+			if ( '' === $idempotency_key ) {
+				$idempotency_key = 'wp_ai_alt_text_upload_' . wp_generate_uuid4();
+			}
+
+			$response = $this->request(
+				'POST',
+				'/v1/runtime/media/uploads',
+				null,
+				$idempotency_key,
+				$trace_id,
+				(string) $multipart['body'],
+				(string) $multipart['content_type']
+			);
+			if ( is_wp_error( $response ) ) {
+				return $response;
+			}
+
+			return $this->normalize_wordpress_ai_alt_text_upload_response(
+				is_array( $response ) ? $response : array(),
+				$mime_type,
+				$contents
 			);
 		}
 
@@ -1557,6 +1674,98 @@ if ( ! class_exists( 'Npcink_Cloud_Runtime_Client' ) ) {
 		}
 
 		/**
+		 * Builds the fixed two-part WordPress AI alt-text upload body.
+		 *
+		 * @param array<string,mixed> $payload Upload request payload.
+		 * @param string              $contents Image bytes.
+		 * @param string              $filename Sanitized filename.
+		 * @param string              $mime_type Allowed image MIME type.
+		 * @return array{body:string,content_type:string}|WP_Error
+		 */
+		private function build_wordpress_ai_alt_text_upload_multipart_body( array $payload, string $contents, string $filename, string $mime_type ) {
+			$encoded = wp_json_encode( $payload );
+			if ( ! is_string( $encoded ) || '' === $encoded ) {
+				return new WP_Error(
+					'cloud_runtime_encode_failed',
+					__( 'WordPress AI alt-text upload request could not be encoded.', 'npcink-cloud-addon' )
+				);
+			}
+
+			$boundary = 'npcink-cloud-addon-alt-text-' . wp_generate_uuid4();
+			$body = '--' . $boundary . "\r\n";
+			$body .= "Content-Disposition: form-data; name=\"request\"\r\n";
+			$body .= "Content-Type: application/json\r\n\r\n";
+			$body .= $encoded . "\r\n";
+			$body .= '--' . $boundary . "\r\n";
+			$body .= 'Content-Disposition: form-data; name="file"; filename="' . $filename . "\"\r\n";
+			$body .= 'Content-Type: ' . $mime_type . "\r\n\r\n";
+			$body .= $contents . "\r\n";
+			$body .= '--' . $boundary . "--\r\n";
+
+			return array(
+				'body'         => $body,
+				'content_type' => 'multipart/form-data; boundary=' . $boundary,
+			);
+		}
+
+		/**
+		 * Validates one Cloud alt-text upload artifact response.
+		 *
+		 * @param array<string,mixed> $response Decoded Cloud response.
+		 * @param string              $mime_type Requested MIME type.
+		 * @param string              $contents Uploaded image bytes.
+		 * @return array<string,mixed>|WP_Error
+		 */
+		private function normalize_wordpress_ai_alt_text_upload_response( array $response, string $mime_type, string $contents ) {
+			$artifact = $response['data']['result']['artifact'] ?? null;
+			$expires_at = is_array( $artifact ) && is_string( $artifact['expires_at'] ?? null )
+				? $artifact['expires_at']
+				: '';
+			$expires_timestamp = 1 === preg_match( '/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})$/', $expires_at )
+				? strtotime( $expires_at )
+				: false;
+			$expected_format = self::WP_AI_ALT_TEXT_UPLOAD_FORMATS[ $mime_type ];
+			$is_valid = is_array( $artifact )
+				&& is_string( $artifact['artifact_id'] ?? null )
+				&& 1 === preg_match( '/^art_[0-9a-f]{32}$/', $artifact['artifact_id'] )
+				&& 'image' === ( $artifact['media_kind'] ?? null )
+				&& 'available' === ( $artifact['status'] ?? null )
+				&& $mime_type === ( $artifact['content_type'] ?? null )
+				&& $expected_format === ( $artifact['format'] ?? null )
+				&& is_int( $artifact['width'] ?? null )
+				&& $artifact['width'] > 0
+				&& is_int( $artifact['height'] ?? null )
+				&& $artifact['height'] > 0
+				&& is_int( $artifact['filesize_bytes'] ?? null )
+				&& strlen( $contents ) === $artifact['filesize_bytes']
+				&& is_string( $artifact['checksum'] ?? null )
+				&& 'sha256:' . hash( 'sha256', $contents ) === $artifact['checksum']
+				&& false !== $expires_timestamp
+				&& $expires_timestamp > time() + self::WP_AI_ALT_TEXT_MIN_ARTIFACT_TTL_SECONDS;
+
+			if ( ! $is_valid ) {
+				return new WP_Error(
+					'cloud_wp_ai_alt_text_upload_artifact_invalid',
+					__( 'Cloud returned an invalid WordPress AI alt-text source artifact.', 'npcink-cloud-addon' ),
+					array( 'status' => 502 )
+				);
+			}
+
+			return array(
+				'artifact_id'    => $artifact['artifact_id'],
+				'media_kind'     => 'image',
+				'status'         => 'available',
+				'content_type'   => $mime_type,
+				'format'         => $expected_format,
+				'width'          => $artifact['width'],
+				'height'         => $artifact['height'],
+				'filesize_bytes' => $artifact['filesize_bytes'],
+				'checksum'       => $artifact['checksum'],
+				'expires_at'     => $expires_at,
+			);
+		}
+
+		/**
 		 * Normalizes a WordPress AI connector request into a bounded runtime payload.
 		 *
 		 * @param array<string,mixed> $request Raw connector request.
@@ -1630,13 +1839,19 @@ if ( ! class_exists( 'Npcink_Cloud_Runtime_Client' ) ) {
 					array( 'status' => 400 )
 				);
 			}
-			$max_request_bytes = 'alt_text_suggest' === $task ? self::WP_AI_CONNECTOR_ALT_TEXT_MAX_REQUEST_BYTES : self::WP_AI_CONNECTOR_MAX_REQUEST_BYTES;
-			if ( strlen( $encoded_request ) > $max_request_bytes ) {
+			if ( strlen( $encoded_request ) > self::WP_AI_CONNECTOR_MAX_REQUEST_BYTES ) {
 				return new WP_Error(
 					'cloud_wp_ai_connector_request_too_large',
 					__( 'WordPress AI connector request exceeds the scene runtime size limit.', 'npcink-cloud-addon' ),
 					array( 'status' => 413 )
 				);
+			}
+
+			if ( 'alt_text_suggest' === $task ) {
+				$scene_request = $this->normalize_wordpress_ai_alt_text_request( $scene_request );
+				if ( is_wp_error( $scene_request ) ) {
+					return $scene_request;
+				}
 			}
 
 			if ( in_array( $task, self::WP_AI_CONNECTOR_SOURCE_TEXT_TASKS, true ) ) {
@@ -1758,7 +1973,7 @@ if ( ! class_exists( 'Npcink_Cloud_Runtime_Client' ) ) {
 						'request'          => $scene_request,
 					),
 				),
-				'data_classification' => $is_alt_text ? 'public_reference_media' : 'public_site_content',
+				'data_classification' => $is_alt_text ? 'internal' : 'public_site_content',
 				'storage_mode'        => 'result_only',
 				'retention_ttl'       => min( self::WP_AI_CONNECTOR_MAX_RETENTION_TTL, max( 0, $retention_ttl ) ),
 				'timeout_seconds'     => min( self::WP_AI_CONNECTOR_MAX_TIMEOUT_SECONDS, max( 1, $timeout_seconds ) ),
@@ -1767,6 +1982,79 @@ if ( ! class_exists( 'Npcink_Cloud_Runtime_Client' ) ) {
 					'allow_fallback' => false,
 				),
 			);
+		}
+
+		/**
+		 * Normalizes the Artifact-id-only WordPress AI alt-text scene request.
+		 *
+		 * @param array<string,mixed> $request Raw alt-text scene request.
+		 * @return array<string,mixed>|WP_Error
+		 */
+		private function normalize_wordpress_ai_alt_text_request( array $request ) {
+			$allowed_fields = array( 'source_artifact_id', 'prompt', 'filename', 'title', 'existing_alt', 'existing_caption', 'locale', 'max_tokens' );
+			if ( array() !== array_diff( array_keys( $request ), $allowed_fields ) ) {
+				return new WP_Error(
+					'cloud_wp_ai_alt_text_request_fields_not_allowed',
+					__( 'WordPress AI alt-text requests accept only an Artifact id and bounded text context.', 'npcink-cloud-addon' ),
+					array( 'status' => 400 )
+				);
+			}
+
+			$source_artifact_id = $request['source_artifact_id'] ?? null;
+			if ( ! is_string( $source_artifact_id ) || 1 !== preg_match( '/^art_[0-9a-f]{32}$/', $source_artifact_id ) ) {
+				return new WP_Error(
+					'cloud_wp_ai_alt_text_source_artifact_id_invalid',
+					__( 'WordPress AI alt-text requests require a valid source_artifact_id.', 'npcink-cloud-addon' ),
+					array( 'status' => 400 )
+				);
+			}
+
+			$prompt = $request['prompt'] ?? null;
+			if ( ! is_string( $prompt ) || '' === trim( $prompt ) || $this->text_length( trim( $prompt ) ) > 500 ) {
+				return new WP_Error(
+					'cloud_wp_ai_alt_text_prompt_invalid',
+					__( 'WordPress AI alt-text prompt must be a nonempty string of at most 500 characters.', 'npcink-cloud-addon' ),
+					array( 'status' => 400 )
+				);
+			}
+
+			$normalized = array(
+				'source_artifact_id' => $source_artifact_id,
+				'prompt'              => trim( $prompt ),
+			);
+			$field_limits = array(
+				'filename'         => 160,
+				'title'            => 160,
+				'existing_alt'     => 240,
+				'existing_caption' => 240,
+				'locale'           => 32,
+			);
+			foreach ( $field_limits as $field => $limit ) {
+				if ( ! array_key_exists( $field, $request ) ) {
+					continue;
+				}
+				if ( ! is_string( $request[ $field ] ) || $this->text_length( $request[ $field ] ) > $limit ) {
+					return new WP_Error(
+						'cloud_wp_ai_alt_text_context_invalid',
+						__( 'WordPress AI alt-text context fields must be bounded strings.', 'npcink-cloud-addon' ),
+						array( 'status' => 400, 'field' => $field )
+					);
+				}
+				$normalized[ $field ] = $request[ $field ];
+			}
+
+			if ( array_key_exists( 'max_tokens', $request ) ) {
+				if ( ! is_int( $request['max_tokens'] ) || $request['max_tokens'] < 1 || $request['max_tokens'] > 96 ) {
+					return new WP_Error(
+						'cloud_wp_ai_alt_text_max_tokens_invalid',
+						__( 'WordPress AI alt-text max_tokens must be an integer from 1 through 96.', 'npcink-cloud-addon' ),
+						array( 'status' => 400 )
+					);
+				}
+				$normalized['max_tokens'] = $request['max_tokens'];
+			}
+
+			return $normalized;
 		}
 
 		/**

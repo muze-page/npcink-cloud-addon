@@ -47,6 +47,7 @@ if ( ! class_exists( 'Npcink_Cloud_Runtime_Endpoint_Policy' ) ) {
 			$exact_paths = array(
 				'POST' => array(
 					'/v1/runtime/execute',
+					'/v1/runtime/media/uploads',
 					'/v1/runtime/media-derivatives',
 					'/v1/observability/plugin-events',
 					'/v1/agent-feedback/events',

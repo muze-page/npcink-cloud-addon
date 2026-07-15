@@ -9,6 +9,32 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/helpers.php';
 
+/**
+ * Extracts one class method up to the next visible static method declaration.
+ *
+ * @param string $source Full PHP source.
+ * @param string $signature Exact method signature.
+ * @return string
+ */
+function maca_extract_class_method_source( string $source, string $signature ): string {
+	$start = strpos( $source, $signature );
+	if ( false === $start ) {
+		return '';
+	}
+
+	$next_method = array();
+	$matched = preg_match(
+		'/\n\s+(?:public|protected|private) static function /',
+		$source,
+		$next_method,
+		PREG_OFFSET_CAPTURE,
+		$start + strlen( $signature )
+	);
+	$end = 1 === $matched ? (int) $next_method[0][1] : strlen( $source );
+
+	return substr( $source, $start, $end - $start );
+}
+
 $root = MACA_TEST_ROOT;
 $plugin_file = maca_read( $root . '/npcink-cloud-addon.php' );
 $wordpress_org_readme = maca_read( $root . '/readme.txt' );
@@ -32,8 +58,11 @@ $site_knowledge_bridge = maca_read( $root . '/includes/class-cloud-site-knowledg
 $site_knowledge_full_index_doc = maca_read( $root . '/docs/site-knowledge-full-index-delivery.md' );
 $site_knowledge_runtime_bridge = maca_read( $root . '/includes/class-cloud-site-knowledge-runtime-bridge.php' );
 $site_knowledge_admin_projection = maca_read( $root . '/includes/class-cloud-site-knowledge-admin-projection.php' );
+$site_knowledge_admin_actions = maca_read( $root . '/includes/class-cloud-site-knowledge-admin-actions.php' );
 $settings = maca_read( $root . '/includes/class-cloud-addon-settings.php' );
 $settings_page = maca_read( $root . '/includes/class-cloud-settings-page.php' );
+$refresh_site_knowledge_handler = maca_extract_class_method_source( $settings_page, 'public static function handle_refresh_site_knowledge(): void' );
+$manage_site_knowledge_index_handler = maca_extract_class_method_source( $settings_page, 'public static function handle_manage_site_knowledge_index(): void' );
 $boundary_doc = maca_read( $root . '/docs/cloud-addon-boundary.md' );
 $runtime_contract = maca_read( $root . '/docs/cloud-runtime-client-contract.md' );
 $adapter_doc = maca_read( $root . '/docs/adapter-integration-seam.md' );
@@ -56,6 +85,7 @@ $zh_cn_po = maca_read( $root . '/languages/npcink-cloud-addon-zh_CN.po' );
 $uninstall = maca_read( $root . '/uninstall.php' );
 
 $projection_require_position = strpos( $bootstrap, "require_once __DIR__ . '/class-cloud-site-knowledge-admin-projection.php';" );
+$admin_actions_require_position = strpos( $bootstrap, "require_once __DIR__ . '/class-cloud-site-knowledge-admin-actions.php';" );
 $settings_page_require_position = strpos( $bootstrap, "require_once __DIR__ . '/class-cloud-settings-page.php';" );
 $projection_forbidden_calls = array(
 	'wp_remote_', 'wp_safe_remote_', 'get_option(', 'update_option(', 'add_option(', 'delete_option(',
@@ -75,6 +105,26 @@ maca_assert(
 	&& false !== strpos( $settings_page, 'return Npcink_Cloud_Site_Knowledge_Admin_Projection::build( $summary );' )
 	&& ! $projection_has_side_effect_call,
 	'Site Knowledge admin quota projection is loaded before the settings facade and remains transport-, persistence-, and hook-free.'
+);
+
+$admin_actions_forbidden_calls = array(
+	'$_POST', '$_GET', '$_REQUEST', '$_SERVER', '$_COOKIE', '$_FILES', 'current_user_can(', 'check_admin_referer(', 'set_admin_notice(', 'redirect_to_page(', 'wp_safe_redirect(',
+	'wp_remote_', 'wp_safe_remote_', 'get_option(', 'update_option(', 'add_option(', 'delete_option(',
+	'get_transient(', 'set_transient(', 'delete_transient(', 'add_action(', 'add_filter(', 'Npcink_Cloud_Runtime_Client',
+);
+$admin_actions_has_forbidden_call = false;
+foreach ( $admin_actions_forbidden_calls as $forbidden_call ) {
+	$admin_actions_has_forbidden_call = $admin_actions_has_forbidden_call || false !== strpos( $site_knowledge_admin_actions, $forbidden_call );
+}
+
+maca_assert(
+	false !== $admin_actions_require_position
+	&& $admin_actions_require_position < $settings_page_require_position
+	&& false !== strpos( $site_knowledge_admin_actions, 'final class Npcink_Cloud_Site_Knowledge_Admin_Actions' )
+	&& false !== strpos( $site_knowledge_admin_actions, 'public static function request_public_refresh(): array' )
+	&& false !== strpos( $site_knowledge_admin_actions, 'public static function request_index_operation( string $operation, string $confirmation = \'\' ): array' )
+	&& ! $admin_actions_has_forbidden_call,
+	'Site Knowledge administrator actions load before the settings facade and remain request-, transport-, persistence-, hook-, and Runtime Client-free.'
 );
 
 $plugin_header_version = array();
@@ -1292,14 +1342,29 @@ maca_assert(
 		&& false !== strpos( $settings_page, "admin_post_' . self::ACTION_MANAGE_SITE_KNOWLEDGE_INDEX" )
 		&& false !== strpos( $settings_page, 'function handle_refresh_site_knowledge' )
 		&& false !== strpos( $settings_page, 'function handle_manage_site_knowledge_index' )
+		&& false !== strpos( $refresh_site_knowledge_handler, 'current_user_can( \'manage_options\' )' )
+		&& false !== strpos( $refresh_site_knowledge_handler, 'check_admin_referer( self::ACTION_REFRESH_SITE_KNOWLEDGE )' )
+		&& false !== strpos( $refresh_site_knowledge_handler, 'Npcink_Cloud_Site_Knowledge_Admin_Actions::request_public_refresh()' )
+		&& false !== strpos( $refresh_site_knowledge_handler, "self::redirect_to_page( 'site_knowledge' )" )
+		&& false === strpos( $refresh_site_knowledge_handler, 'Npcink_Cloud_Site_Knowledge_Admin_Actions::request_index_operation' )
+		&& false !== strpos( $manage_site_knowledge_index_handler, 'current_user_can( \'manage_options\' )' )
+		&& false !== strpos( $manage_site_knowledge_index_handler, 'check_admin_referer( self::ACTION_MANAGE_SITE_KNOWLEDGE_INDEX )' )
+		&& false !== strpos( $manage_site_knowledge_index_handler, "sanitize_key( wp_unslash( \$_POST['site_knowledge_index_action'] ) )" )
+		&& false !== strpos( $manage_site_knowledge_index_handler, "sanitize_text_field( wp_unslash( \$_POST['site_knowledge_confirmation'] ) )" )
+		&& false !== strpos( $manage_site_knowledge_index_handler, 'Npcink_Cloud_Site_Knowledge_Admin_Actions::request_index_operation( $operation, $confirmation )' )
+		&& false !== strpos( $manage_site_knowledge_index_handler, "self::redirect_to_page( 'site_knowledge' )" )
+		&& false === strpos( $manage_site_knowledge_index_handler, 'Npcink_Cloud_Runtime_Client' )
 		&& false !== strpos( $settings_page, "site_knowledge_delivery_enabled" )
 		&& false !== strpos( $settings_page, 'Site Knowledge delivery' )
 		&& false !== strpos( $settings_page, 'Delivery is off; refresh controls and routine delivery rows are hidden.' )
-		&& false !== strpos( $settings_page, 'Npcink_Cloud_Site_Knowledge_Change_Bridge::buffer_recent_public_content()' )
-		&& false !== strpos( $settings_page, 'Npcink_Cloud_Site_Knowledge_Change_Bridge::flush_buffer()' )
+		&& false === strpos( $settings_page, 'Npcink_Cloud_Site_Knowledge_Change_Bridge::buffer_recent_public_content()' )
+		&& false === strpos( $settings_page, 'Npcink_Cloud_Site_Knowledge_Change_Bridge::flush_buffer()' )
 		&& false !== strpos( $settings_page, 'Npcink_Cloud_Site_Knowledge_Change_Bridge::sync_schedule()' )
 		&& false !== strpos( $settings_page, 'Npcink_Cloud_Site_Knowledge_Change_Bridge::resume_pending_delivery()' )
-		&& false !== strpos( $settings_page, 'Npcink_Cloud_Site_Knowledge_Change_Bridge::request_manual_index_operation' )
+		&& false === strpos( $settings_page, 'Npcink_Cloud_Site_Knowledge_Change_Bridge::request_manual_index_operation' )
+		&& false !== strpos( $site_knowledge_admin_actions, 'Npcink_Cloud_Site_Knowledge_Change_Bridge::buffer_recent_public_content()' )
+		&& false !== strpos( $site_knowledge_admin_actions, 'Npcink_Cloud_Site_Knowledge_Change_Bridge::flush_buffer()' )
+		&& false !== strpos( $site_knowledge_admin_actions, 'Npcink_Cloud_Site_Knowledge_Change_Bridge::request_manual_index_operation( $operation )' )
 	&& false !== strpos( $settings_page, 'Request public content refresh' )
 	&& false !== strpos( $settings_page, 'Start indexing' )
 	&& false !== strpos( $settings_page, 'Rebuild index' )

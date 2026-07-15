@@ -301,13 +301,12 @@ msgid "Monitoring is disabled or Cloud is not verified."
 msgstr ""
 
 #: includes/class-cloud-observability-collector.php:198
-#: includes/class-cloud-settings-page.php:471
-#: includes/class-cloud-settings-page.php:513
-#: includes/class-cloud-settings-page.php:549
+#: includes/class-cloud-settings-page.php:475
 #: includes/class-cloud-settings-page.php:579
-#: includes/class-cloud-settings-page.php:667
-#: includes/class-cloud-site-knowledge-change-bridge.php:328
-#: includes/class-cloud-site-knowledge-change-bridge.php:365
+#: includes/class-cloud-site-knowledge-admin-actions.php:26
+#: includes/class-cloud-site-knowledge-admin-actions.php:68
+#: includes/class-cloud-site-knowledge-change-bridge.php:343
+#: includes/class-cloud-site-knowledge-change-bridge.php:387
 msgid "Cloud Addon settings are not verified."
 msgstr ""
 
@@ -798,42 +797,42 @@ msgstr ""
 msgid "disabled"
 msgstr ""
 
-#: includes/class-cloud-settings-page.php:521
+#: includes/class-cloud-site-knowledge-admin-actions.php:36
 msgid "Site Knowledge refresh request failed."
 msgstr ""
 
 #. translators: %d: sent public content count.
-#: includes/class-cloud-settings-page.php:529
+#: includes/class-cloud-site-knowledge-admin-actions.php:51
 #, php-format
 msgid "Site Knowledge refresh requested. Public content items sent: %d."
 msgstr ""
 
-#: includes/class-cloud-settings-page.php:585
-#: includes/class-cloud-site-knowledge-change-bridge.php:374
+#: includes/class-cloud-site-knowledge-admin-actions.php:71
+#: includes/class-cloud-site-knowledge-change-bridge.php:396
 msgid "The requested Site Knowledge index action is not supported."
 msgstr ""
 
-#: includes/class-cloud-settings-page.php:591
+#: includes/class-cloud-site-knowledge-admin-actions.php:74
 msgid "Type the confirmation word before running this Site Knowledge index action."
 msgstr ""
 
 #. translators: 1: public content item count, 2: bounded delivery batch count.
-#: includes/class-cloud-settings-page.php:614
+#: includes/class-cloud-site-knowledge-admin-actions.php:89
 #, php-format
 msgid "Site Knowledge indexing delivery scheduled: %1$d public content items in %2$d batches."
 msgstr ""
 
 #. translators: 1: public content item count, 2: bounded delivery batch count.
-#: includes/class-cloud-settings-page.php:622
+#: includes/class-cloud-site-knowledge-admin-actions.php:98
 #, php-format
 msgid "Site Knowledge rebuild delivery scheduled: %1$d public content items in %2$d batches."
 msgstr ""
 
-#: includes/class-cloud-settings-page.php:618
+#: includes/class-cloud-site-knowledge-admin-actions.php:105
 msgid "Site Knowledge index deletion requested. WordPress content was not changed."
 msgstr ""
 
-#: includes/class-cloud-settings-page.php:621
+#: includes/class-cloud-site-knowledge-admin-actions.php:111
 msgid "Site Knowledge index action requested."
 msgstr ""
 

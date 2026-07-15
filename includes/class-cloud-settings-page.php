@@ -506,101 +506,36 @@ if ( ! class_exists( 'Npcink_Cloud_Settings_Page' ) ) {
 		 *
 		 * @return void
 		 */
-			public static function handle_refresh_site_knowledge(): void {
-				if ( ! current_user_can( 'manage_options' ) ) {
-					wp_die( esc_html__( 'You do not have permission to manage Npcink Cloud settings.', 'npcink-cloud-addon' ) );
-				}
-
-				check_admin_referer( self::ACTION_REFRESH_SITE_KNOWLEDGE );
-
-				if ( ! Npcink_Cloud_Addon_Settings::is_verified() ) {
-					self::set_admin_notice( 'error', __( 'Cloud Addon settings are not verified.', 'npcink-cloud-addon' ) );
-					self::redirect_to_page( 'site_knowledge' );
-				}
-
-				Npcink_Cloud_Site_Knowledge_Change_Bridge::buffer_recent_public_content();
-				$status = Npcink_Cloud_Site_Knowledge_Change_Bridge::flush_buffer();
-				if ( empty( $status['last_delivery_ok'] ) ) {
-					$message = sanitize_text_field( (string) ( $status['last_delivery_error'] ?? '' ) );
-					self::set_admin_notice( 'error', '' !== $message ? $message : __( 'Site Knowledge refresh request failed.', 'npcink-cloud-addon' ) );
-					self::redirect_to_page( 'site_knowledge' );
-				}
-
-				self::set_admin_notice(
-					'success',
-					sprintf(
-						/* translators: %d: sent public content count. */
-						__( 'Site Knowledge refresh requested. Public content items sent: %d.', 'npcink-cloud-addon' ),
-						absint( $status['last_sent_count'] ?? 0 )
-					)
-				);
-				self::redirect_to_page( 'site_knowledge' );
+		public static function handle_refresh_site_knowledge(): void {
+			if ( ! current_user_can( 'manage_options' ) ) {
+				wp_die( esc_html__( 'You do not have permission to manage Npcink Cloud settings.', 'npcink-cloud-addon' ) );
 			}
 
-			/**
-			 * Handles an administrator-requested Site Knowledge index operation.
-			 *
-			 * @return void
-			 */
-			public static function handle_manage_site_knowledge_index(): void {
-				if ( ! current_user_can( 'manage_options' ) ) {
-					wp_die( esc_html__( 'You do not have permission to manage Npcink Cloud settings.', 'npcink-cloud-addon' ) );
-				}
+			check_admin_referer( self::ACTION_REFRESH_SITE_KNOWLEDGE );
 
-				check_admin_referer( self::ACTION_MANAGE_SITE_KNOWLEDGE_INDEX );
+			$result = Npcink_Cloud_Site_Knowledge_Admin_Actions::request_public_refresh();
+			self::set_admin_notice( ! empty( $result['ok'] ) ? 'success' : 'error', (string) $result['message'] );
+			self::redirect_to_page( 'site_knowledge' );
+		}
 
-				if ( ! Npcink_Cloud_Addon_Settings::is_verified() ) {
-					self::set_admin_notice( 'error', __( 'Cloud Addon settings are not verified.', 'npcink-cloud-addon' ) );
-					self::redirect_to_page( 'site_knowledge' );
-				}
-
-				$operation = isset( $_POST['site_knowledge_index_action'] ) ? sanitize_key( wp_unslash( $_POST['site_knowledge_index_action'] ) ) : '';
-				if ( ! in_array( $operation, array( 'start', 'rebuild', 'delete' ), true ) ) {
-					self::set_admin_notice( 'error', __( 'The requested Site Knowledge index action is not supported.', 'npcink-cloud-addon' ) );
-					self::redirect_to_page( 'site_knowledge' );
-				}
-
-				$confirmation = isset( $_POST['site_knowledge_confirmation'] ) ? sanitize_text_field( wp_unslash( $_POST['site_knowledge_confirmation'] ) ) : '';
-				if ( in_array( $operation, array( 'rebuild', 'delete' ), true ) && strtoupper( $confirmation ) !== strtoupper( $operation ) ) {
-					self::set_admin_notice( 'error', __( 'Type the confirmation word before running this Site Knowledge index action.', 'npcink-cloud-addon' ) );
-					self::redirect_to_page( 'site_knowledge' );
-				}
-
-				$status = Npcink_Cloud_Site_Knowledge_Change_Bridge::request_manual_index_operation( $operation );
-				if ( is_wp_error( $status ) ) {
-					self::set_admin_notice( 'error', $status->get_error_message() );
-					self::redirect_to_page( 'site_knowledge' );
-				}
-
-				$selected = is_array( $status ) ? absint( $status['last_index_action_selected_count'] ?? 0 ) : 0;
-				$batch_count = is_array( $status ) ? absint( $status['last_index_action_batch_count'] ?? 0 ) : 0;
-				switch ( $operation ) {
-					case 'start':
-						$message = sprintf(
-							/* translators: 1: public content item count, 2: bounded delivery batch count. */
-							__( 'Site Knowledge indexing delivery scheduled: %1$d public content items in %2$d batches.', 'npcink-cloud-addon' ),
-							$selected,
-							$batch_count
-						);
-						break;
-					case 'rebuild':
-						$message = sprintf(
-							/* translators: 1: public content item count, 2: bounded delivery batch count. */
-							__( 'Site Knowledge rebuild delivery scheduled: %1$d public content items in %2$d batches.', 'npcink-cloud-addon' ),
-							$selected,
-							$batch_count
-						);
-						break;
-					case 'delete':
-						$message = __( 'Site Knowledge index deletion requested. WordPress content was not changed.', 'npcink-cloud-addon' );
-						break;
-					default:
-						$message = __( 'Site Knowledge index action requested.', 'npcink-cloud-addon' );
-				}
-
-				self::set_admin_notice( 'success', $message );
-				self::redirect_to_page( 'site_knowledge' );
+		/**
+		 * Handles an administrator-requested Site Knowledge index operation.
+		 *
+		 * @return void
+		 */
+		public static function handle_manage_site_knowledge_index(): void {
+			if ( ! current_user_can( 'manage_options' ) ) {
+				wp_die( esc_html__( 'You do not have permission to manage Npcink Cloud settings.', 'npcink-cloud-addon' ) );
 			}
+
+			check_admin_referer( self::ACTION_MANAGE_SITE_KNOWLEDGE_INDEX );
+
+			$operation = isset( $_POST['site_knowledge_index_action'] ) ? sanitize_key( wp_unslash( $_POST['site_knowledge_index_action'] ) ) : '';
+			$confirmation = isset( $_POST['site_knowledge_confirmation'] ) ? sanitize_text_field( wp_unslash( $_POST['site_knowledge_confirmation'] ) ) : '';
+			$result = Npcink_Cloud_Site_Knowledge_Admin_Actions::request_index_operation( $operation, $confirmation );
+			self::set_admin_notice( ! empty( $result['ok'] ) ? 'success' : 'error', (string) $result['message'] );
+			self::redirect_to_page( 'site_knowledge' );
+		}
 
 			/**
 			 * Handles an explicit administrator-triggered connector readiness test.

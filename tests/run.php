@@ -13,6 +13,12 @@ if ( 0 !== $performance_guard_status ) {
 	exit( $performance_guard_status );
 }
 
+$site_knowledge_admin_actions_command = escapeshellarg( PHP_BINARY ) . ' ' . escapeshellarg( __DIR__ . '/behavior-site-knowledge-admin-actions.php' );
+passthru( $site_knowledge_admin_actions_command, $site_knowledge_admin_actions_status );
+if ( 0 !== $site_knowledge_admin_actions_status ) {
+	exit( $site_knowledge_admin_actions_status );
+}
+
 require __DIR__ . '/static-contracts.php';
 require __DIR__ . '/behavior-credential-store.php';
 require __DIR__ . '/behavior-outbound-policy.php';

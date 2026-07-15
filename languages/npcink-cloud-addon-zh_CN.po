@@ -597,13 +597,12 @@ msgid "%d days"
 msgstr "%d 天"
 
 #: includes/class-cloud-observability-collector.php:198
-#: includes/class-cloud-settings-page.php:471
-#: includes/class-cloud-settings-page.php:513
-#: includes/class-cloud-settings-page.php:549
+#: includes/class-cloud-settings-page.php:475
 #: includes/class-cloud-settings-page.php:579
-#: includes/class-cloud-settings-page.php:667
-#: includes/class-cloud-site-knowledge-change-bridge.php:328
-#: includes/class-cloud-site-knowledge-change-bridge.php:365
+#: includes/class-cloud-site-knowledge-admin-actions.php:26
+#: includes/class-cloud-site-knowledge-admin-actions.php:68
+#: includes/class-cloud-site-knowledge-change-bridge.php:343
+#: includes/class-cloud-site-knowledge-change-bridge.php:387
 msgid "Cloud Addon settings are not verified."
 msgstr "Cloud Addon 设置尚未验证。"
 
@@ -920,12 +919,12 @@ msgstr "无法编码站点知识库运行时 payload。"
 msgid "Site Knowledge runtime payload exceeds the transport size limit."
 msgstr "站点知识库运行时 payload 超过传输大小限制。"
 
-#: includes/class-cloud-settings-page.php:521
+#: includes/class-cloud-site-knowledge-admin-actions.php:36
 msgid "Site Knowledge refresh request failed."
 msgstr "站点知识库刷新请求失败。"
 
 #. translators: %d: sent public content count.
-#: includes/class-cloud-settings-page.php:529
+#: includes/class-cloud-site-knowledge-admin-actions.php:51
 #, php-format
 msgid "Site Knowledge refresh requested. Public content items sent: %d."
 msgstr "已请求站点知识库刷新。已发送公开内容项：%d。"
@@ -959,32 +958,32 @@ msgstr "上次投递"
 msgid "Last error"
 msgstr "上次错误"
 
-#: includes/class-cloud-settings-page.php:585
-#: includes/class-cloud-site-knowledge-change-bridge.php:374
+#: includes/class-cloud-site-knowledge-admin-actions.php:71
+#: includes/class-cloud-site-knowledge-change-bridge.php:396
 msgid "The requested Site Knowledge index action is not supported."
 msgstr "请求的站点知识库索引操作不受支持。"
 
-#: includes/class-cloud-settings-page.php:591
+#: includes/class-cloud-site-knowledge-admin-actions.php:74
 msgid "Type the confirmation word before running this Site Knowledge index action."
 msgstr "运行此站点知识库索引操作前，请输入确认词。"
 
 #. translators: 1: public content item count, 2: bounded delivery batch count.
-#: includes/class-cloud-settings-page.php:614
+#: includes/class-cloud-site-knowledge-admin-actions.php:89
 #, php-format
 msgid "Site Knowledge indexing delivery scheduled: %1$d public content items in %2$d batches."
 msgstr "Site Knowledge 索引投递已安排：%1$d 项公开内容，共 %2$d 个批次。"
 
 #. translators: 1: public content item count, 2: bounded delivery batch count.
-#: includes/class-cloud-settings-page.php:622
+#: includes/class-cloud-site-knowledge-admin-actions.php:98
 #, php-format
 msgid "Site Knowledge rebuild delivery scheduled: %1$d public content items in %2$d batches."
 msgstr "Site Knowledge 重建投递已安排：%1$d 项公开内容，共 %2$d 个批次。"
 
-#: includes/class-cloud-settings-page.php:618
+#: includes/class-cloud-site-knowledge-admin-actions.php:105
 msgid "Site Knowledge index deletion requested. WordPress content was not changed."
 msgstr "站点知识库索引删除请求已发送。WordPress 内容未被更改。"
 
-#: includes/class-cloud-settings-page.php:621
+#: includes/class-cloud-site-knowledge-admin-actions.php:111
 msgid "Site Knowledge index action requested."
 msgstr "站点知识库索引操作请求已发送。"
 

@@ -320,6 +320,11 @@ Cloud runtime options. Optional watermarks require `cloud_job_payload.watermark`
 in the ability response; the fifth dispatch parameter can then provide a
 watermark upload descriptor or a short TTL watermark artifact id.
 
+Local upload descriptors accept exactly one canonical byte source: `path`,
+`bytes`, or `content`. The only other accepted keys are `filename` and
+`mime_type`; every other key fails closed before Cloud transport. Removed
+aliases `file_path`, `tmp_name`, and `name` retain a dedicated rejection error.
+
 Expired Cloud artifacts are rejected before proposal adoption payloads are
 built. The default action is preview-only and original attachment files are not
 replaced by default.

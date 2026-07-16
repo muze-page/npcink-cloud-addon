@@ -50,6 +50,11 @@ if ( ! class_exists( 'Npcink_Cloud_Media_Derivative_Transport' ) ) {
 				return $validated;
 			}
 
+			$source_descriptor_validation = self::validate_upload_descriptor_legacy_fields( $source_artifact );
+			if ( is_wp_error( $source_descriptor_validation ) ) {
+				return $source_descriptor_validation;
+			}
+
 			if ( self::descriptor_has_upload_file( $source_artifact ) && self::descriptor_has_artifact_id( $source_artifact ) ) {
 				return new WP_Error(
 					'cloud_media_derivative_source_mode_conflict',
@@ -74,6 +79,10 @@ if ( ! class_exists( 'Npcink_Cloud_Media_Derivative_Transport' ) ) {
 			$watermark_upload = array();
 			$watermark_reference = array();
 			if ( ! empty( $watermark_artifact ) ) {
+				$watermark_descriptor_validation = self::validate_upload_descriptor_legacy_fields( $watermark_artifact );
+				if ( is_wp_error( $watermark_descriptor_validation ) ) {
+					return $watermark_descriptor_validation;
+				}
 				if ( self::descriptor_has_upload_file( $watermark_artifact ) && self::descriptor_has_artifact_id( $watermark_artifact ) ) {
 					return new WP_Error(
 						'cloud_media_derivative_watermark_source_conflict',
@@ -1268,15 +1277,61 @@ if ( ! class_exists( 'Npcink_Cloud_Media_Derivative_Transport' ) ) {
 		 * @return array<string,string>|WP_Error
 		 */
 		private static function normalize_upload_file_descriptor( array $descriptor, string $field_name ) {
+			$source_fields = array();
+			foreach ( array( 'path', 'bytes', 'content' ) as $source_field ) {
+				if ( array_key_exists( $source_field, $descriptor ) ) {
+					$source_fields[] = $source_field;
+				}
+			}
+
+			if (
+				empty( $source_fields )
+				&& ( array_key_exists( 'artifact_id', $descriptor ) || array_key_exists( 'expires_at', $descriptor ) )
+			) {
+				return array();
+			}
+
+			$allowed_fields = array( 'path', 'bytes', 'content', 'filename', 'mime_type' );
+			$unknown_fields = array_values( array_diff( array_keys( $descriptor ), $allowed_fields ) );
+			if ( ! empty( $unknown_fields ) ) {
+				return new WP_Error(
+					'cloud_media_derivative_upload_descriptor_unknown_field',
+					__( 'Media upload descriptors contain an unknown field.', 'npcink-cloud-addon' ),
+					array(
+						'status' => 400,
+						'field'  => (string) $unknown_fields[0],
+					)
+				);
+			}
+
+			if ( count( $source_fields ) > 1 ) {
+				return new WP_Error(
+					'cloud_media_derivative_upload_descriptor_ambiguous_source',
+					__( 'Media upload descriptors require exactly one byte source.', 'npcink-cloud-addon' ),
+					array(
+						'status' => 400,
+						'fields' => $source_fields,
+					)
+				);
+			}
+
+			if ( empty( $source_fields ) ) {
+				return array();
+			}
+
 			$contents = '';
-			if ( is_string( $descriptor['bytes'] ?? null ) ) {
+			if ( 'bytes' === $source_fields[0] && is_string( $descriptor['bytes'] ) ) {
 				$contents = (string) $descriptor['bytes'];
-			} elseif ( is_string( $descriptor['content'] ?? null ) ) {
+			} elseif ( 'content' === $source_fields[0] && is_string( $descriptor['content'] ) ) {
 				$contents = (string) $descriptor['content'];
-			} else {
-				$path = sanitize_text_field( (string) ( $descriptor['path'] ?? $descriptor['file_path'] ?? $descriptor['tmp_name'] ?? '' ) );
+			} elseif ( 'path' === $source_fields[0] ) {
+				$path = sanitize_text_field( (string) $descriptor['path'] );
 				if ( '' === $path ) {
-					return array();
+					return new WP_Error(
+						'cloud_media_derivative_upload_file_unreadable',
+						__( 'Media derivative upload file is not readable.', 'npcink-cloud-addon' ),
+						array( 'status' => 400 )
+					);
 				}
 				$real_path = realpath( $path );
 				if ( ! is_string( $real_path ) || ! is_file( $real_path ) || ! is_readable( $real_path ) ) {
@@ -1322,7 +1377,7 @@ if ( ! class_exists( 'Npcink_Cloud_Media_Derivative_Transport' ) ) {
 
 			return array(
 				'field_name' => sanitize_key( $field_name ),
-				'filename'   => sanitize_file_name( (string) ( $descriptor['filename'] ?? $descriptor['name'] ?? $field_name ) ),
+				'filename'   => sanitize_file_name( (string) ( $descriptor['filename'] ?? $field_name ) ),
 				'mime_type'  => sanitize_text_field( (string) ( $descriptor['mime_type'] ?? 'application/octet-stream' ) ),
 				'contents'   => $contents,
 			);
@@ -1368,9 +1423,32 @@ if ( ! class_exists( 'Npcink_Cloud_Media_Derivative_Transport' ) ) {
 		 * @return bool
 		 */
 		private static function descriptor_has_upload_file( array $descriptor ): bool {
-			return is_string( $descriptor['bytes'] ?? null )
-				|| is_string( $descriptor['content'] ?? null )
-				|| '' !== (string) ( $descriptor['path'] ?? $descriptor['file_path'] ?? $descriptor['tmp_name'] ?? '' );
+			return array_key_exists( 'bytes', $descriptor )
+				|| array_key_exists( 'content', $descriptor )
+				|| array_key_exists( 'path', $descriptor );
+		}
+
+		/**
+		 * Rejects removed media upload descriptor aliases.
+		 *
+		 * @param array<string,mixed> $descriptor Artifact or upload descriptor.
+		 * @return true|WP_Error
+		 */
+		private static function validate_upload_descriptor_legacy_fields( array $descriptor ) {
+			foreach ( array( 'file_path', 'tmp_name', 'name' ) as $legacy_field ) {
+				if ( array_key_exists( $legacy_field, $descriptor ) ) {
+					return new WP_Error(
+						'cloud_media_derivative_upload_descriptor_legacy_field',
+						__( 'Legacy media upload descriptor fields are not accepted.', 'npcink-cloud-addon' ),
+						array(
+							'status' => 400,
+							'field'  => $legacy_field,
+						)
+					);
+				}
+			}
+
+			return true;
 		}
 
 		/**

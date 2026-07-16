@@ -169,6 +169,48 @@ function maca_queue_media_ack( array $artifact, string $contents, string $delive
 	);
 }
 
+/**
+ * Queues one successful media upload and derivative job dispatch.
+ *
+ * @param array<string,mixed> $upload_result Exact media upload result.
+ * @param string              $suffix Stable test suffix.
+ * @return void
+ */
+function maca_queue_media_dispatch_success( array $upload_result, string $suffix ): void {
+	$GLOBALS['maca_http_response_queue'][] = array(
+		'response' => array( 'code' => 200 ),
+		'headers'  => array( 'Content-Type' => 'application/json' ),
+		'body'     => wp_json_encode(
+			array(
+				'status' => 'ok',
+				'data'   => array(
+					'run_id'            => 'run_upload_' . $suffix,
+					'status'            => 'succeeded',
+					'trace_id'          => 'trace-upload-' . $suffix,
+					'idempotent_replay' => false,
+					'result'            => $upload_result,
+				),
+			)
+		),
+	);
+	$GLOBALS['maca_http_response_queue'][] = array(
+		'response' => array( 'code' => 200 ),
+		'headers'  => array( 'Content-Type' => 'application/json' ),
+		'body'     => wp_json_encode(
+			array(
+				'status' => 'ok',
+				'data'   => array(
+					'run_id'            => 'run_media_' . $suffix,
+					'status'            => 'queued',
+					'trace_id'          => 'trace-dispatch-' . $suffix,
+					'idempotent_replay' => false,
+					'result'            => array(),
+				),
+			)
+		),
+	);
+}
+
 $png = base64_decode( 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAusB9Y9ZQmcAAAAASUVORK5CYII=', true );
 maca_assert( is_string( $png ), 'Behavior: media test image fixture decodes.' );
 
@@ -269,6 +311,141 @@ maca_assert(
 	&& ! isset( $job_body['source'], $job_body['cloud_job_payload'], $job_body['ttl_minutes'] ),
 	'Behavior: exact11 available image upload and artifact-referenced media job use the exact new resources.'
 );
+
+$legacy_upload_descriptor_cases = array(
+	'file_path' => array(
+		'file_path' => '/tmp/legacy-source.png',
+		'filename'  => 'source.png',
+		'mime_type' => 'image/png',
+	),
+	'tmp_name'  => array(
+		'tmp_name'  => '/tmp/legacy-source.png',
+		'filename'  => 'source.png',
+		'mime_type' => 'image/png',
+	),
+	'name'      => array(
+		'bytes'     => $png,
+		'name'      => 'legacy-source.png',
+		'mime_type' => 'image/png',
+	),
+);
+foreach ( $legacy_upload_descriptor_cases as $legacy_field => $legacy_descriptor ) {
+	maca_reset_test_state();
+	maca_seed_settings( true );
+	$legacy_upload = Npcink_Cloud_Media_Derivative_Transport::dispatch_from_ability_response(
+		maca_ability_fixture(),
+		$legacy_descriptor,
+		'trace-legacy-upload-' . $legacy_field,
+		'legacy-upload-' . $legacy_field
+	);
+	maca_assert(
+		is_wp_error( $legacy_upload )
+		&& 'cloud_media_derivative_upload_descriptor_legacy_field' === $legacy_upload->get_error_code()
+		&& 0 === count( $GLOBALS['maca_http_requests'] ),
+		'Behavior: legacy media upload descriptor field ' . $legacy_field . ' fails closed before Cloud transport.'
+	);
+}
+
+maca_reset_test_state();
+maca_seed_settings( true );
+$unknown_upload = Npcink_Cloud_Media_Derivative_Transport::dispatch_from_ability_response(
+	maca_ability_fixture(),
+	array(
+		'bytes'        => $png,
+		'filename'     => 'source.png',
+		'mime_type'    => 'image/png',
+		'unknown_hint' => 'ignored-before-b5',
+	),
+	'trace-unknown-upload',
+	'unknown-upload'
+);
+maca_assert(
+	is_wp_error( $unknown_upload )
+	&& 'cloud_media_derivative_upload_descriptor_unknown_field' === $unknown_upload->get_error_code()
+	&& 0 === count( $GLOBALS['maca_http_requests'] ),
+	'Behavior: unknown media upload descriptor fields fail closed before Cloud transport.'
+);
+
+$ambiguous_upload_descriptor_cases = array(
+	'bytes-content' => array(
+		'bytes'     => $png,
+		'content'   => $png,
+		'filename'  => 'source.png',
+		'mime_type' => 'image/png',
+	),
+	'bytes-path'    => array(
+		'bytes'     => $png,
+		'path'      => '/tmp/ambiguous-source.png',
+		'filename'  => 'source.png',
+		'mime_type' => 'image/png',
+	),
+	'content-path'  => array(
+		'content'   => $png,
+		'path'      => '/tmp/ambiguous-source.png',
+		'filename'  => 'source.png',
+		'mime_type' => 'image/png',
+	),
+);
+foreach ( $ambiguous_upload_descriptor_cases as $case => $ambiguous_descriptor ) {
+	maca_reset_test_state();
+	maca_seed_settings( true );
+	$ambiguous_upload = Npcink_Cloud_Media_Derivative_Transport::dispatch_from_ability_response(
+		maca_ability_fixture(),
+		$ambiguous_descriptor,
+		'trace-ambiguous-upload-' . $case,
+		'ambiguous-upload-' . $case
+	);
+	maca_assert(
+		is_wp_error( $ambiguous_upload )
+		&& 'cloud_media_derivative_upload_descriptor_ambiguous_source' === $ambiguous_upload->get_error_code()
+		&& 0 === count( $GLOBALS['maca_http_requests'] ),
+		'Behavior: media upload descriptor source combination ' . $case . ' fails closed as ambiguous.'
+	);
+}
+
+$canonical_path = tempnam( sys_get_temp_dir(), 'maca-media-' );
+maca_assert(
+	is_string( $canonical_path ) && false !== file_put_contents( $canonical_path, $png ),
+	'Behavior: canonical path upload fixture is created in the approved temporary directory.'
+);
+$canonical_upload_descriptor_cases = array(
+	'content' => array(
+		'content'   => $png,
+		'filename'  => 'content-source.png',
+		'mime_type' => 'image/png',
+	),
+	'path'    => array(
+		'path'      => $canonical_path,
+		'filename'  => 'path-source.png',
+		'mime_type' => 'image/png',
+	),
+);
+foreach ( $canonical_upload_descriptor_cases as $canonical_source => $canonical_descriptor ) {
+	maca_reset_test_state();
+	maca_seed_settings( true );
+	maca_queue_media_dispatch_success( $upload_result, $canonical_source );
+	$canonical_dispatch = Npcink_Cloud_Media_Derivative_Transport::dispatch_from_ability_response(
+		maca_ability_fixture(),
+		$canonical_descriptor,
+		'trace-canonical-upload-' . $canonical_source,
+		'canonical-upload-' . $canonical_source
+	);
+	$canonical_upload_request = $GLOBALS['maca_http_requests'][0] ?? array();
+	maca_assert(
+		is_array( $canonical_dispatch )
+		&& 'queued' === ( $canonical_dispatch['status'] ?? null )
+		&& 2 === count( $GLOBALS['maca_http_requests'] )
+		&& false !== strpos(
+			(string) ( $canonical_upload_request['args']['body'] ?? '' ),
+			'filename="' . $canonical_source . '-source.png"'
+		),
+		'Behavior: canonical ' . $canonical_source . ' media upload descriptor still dispatches successfully.'
+	);
+}
+if ( is_string( $canonical_path ) && is_file( $canonical_path ) ) {
+	unlink( $canonical_path );
+}
+
 $upload_nonce = (string) ( $upload_request['args']['headers']['X-Npcink-Nonce'] ?? '' );
 $job_nonce    = (string) ( $job_request['args']['headers']['X-Npcink-Nonce'] ?? '' );
 maca_assert(

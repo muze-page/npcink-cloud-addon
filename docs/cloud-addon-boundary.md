@@ -200,13 +200,14 @@ Allowed Cloud contract endpoints:
 
 - `GET /health/live`
 - `POST /v1/runtime/execute`
-- `POST /v1/runtime/media/uploads` for bounded WordPress AI alt-text source uploads only
-- `POST /v1/runtime/media-derivatives`
+- `POST /v1/runtime/media/uploads` for bounded image source uploads only
+- `POST /v1/runtime/media/jobs`
 - `GET /v1/runs/{run_id}`
 - `GET /v1/runs/{run_id}/result`
 - `GET /v1/runs/nightly-inspection/recent`
 - `POST /v1/runs/{run_id}/retry`
-- `GET /v1/runtime/artifacts/{artifact_id}/download`
+- `GET /v1/runtime/media/artifacts/{artifact_id}/download`
+- `POST /v1/runtime/media/artifacts/{artifact_id}/delivery-ack`
 - `GET /v1/entitlements/current`
 - `POST /v1/observability/plugin-events`
 - `POST /v1/agent-feedback/events`
@@ -217,7 +218,8 @@ Forbidden legacy endpoint:
 
 - `/v1/runtime/workflows/runs`
 
-Media derivative transport must use the named runtime media derivative endpoint,
+Media derivative transport must use the named upload, job, signed pull, and
+verified-transfer ACK endpoints,
 run/result endpoints, and explicit derivative artifact download endpoint above.
 The alt-text vision wrapper may use only the named media upload endpoint to
 create one short-TTL image source artifact from an authorized local attachment,

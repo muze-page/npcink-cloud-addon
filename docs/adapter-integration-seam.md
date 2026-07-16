@@ -16,7 +16,7 @@ npcink_cloud_addon_verified_runtime_client(): ?Npcink_Cloud_Runtime_Client
 npcink_cloud_addon_execute_wordpress_ai_connector_runtime(array $request, string $trace_id = '', string $idempotency_key = '')
 npcink_cloud_addon_dispatch_media_derivative_cloud_request(array $ability_response, array $source_artifact, string $trace_id = '', string $idempotency_key = '', array $watermark_artifact = array())
 npcink_cloud_addon_build_media_derivative_proposal_payload(array $ability_response, array $cloud_result, array $derivative_artifact)
-npcink_cloud_addon_download_media_derivative_artifact(array $derivative_artifact, string $trace_id = '')
+npcink_cloud_addon_receive_media_derivative_artifact(array $artifact, string $trace_id = '')
 ```
 
 ## Expected Adapter Flow
@@ -82,19 +82,20 @@ For `npcink-abilities-toolkit/build-media-derivative-cloud-request`:
 1. Host/Adapter calls the local WordPress ability and receives the read-only
    request contract.
 2. Host/Adapter creates or obtains a local source upload descriptor or same-site
-   short TTL source artifact id. The addon does not invent undocumented generic
-   upload/download endpoints.
+   short TTL source artifact id. The addon validates the local plan before any
+   upload, then uses only the named media upload and job resources.
 3. Host/Adapter calls
    `npcink_cloud_addon_dispatch_media_derivative_cloud_request()`.
 4. The addon validates that the ability payload has no credentials,
    Authorization data, or signed headers, and fails closed when Cloud settings
    are not verified.
 5. Host/Adapter polls `get_run()` and `get_run_result()`.
-6. Host/Adapter may call
-   `npcink_cloud_addon_download_media_derivative_artifact()` to serve a
-   same-origin local preview proxy for a non-expired derivative artifact. The
-   addon signs the Cloud download and verifies MIME, size, and optional
-   checksum, but does not persist or register the artifact.
+6. Host/Adapter passes the exact 11-field local proposal artifact to
+   `npcink_cloud_addon_receive_media_derivative_artifact()`. The addon signs the
+   canonical media pull, verifies required delivery headers, bytes, checksum,
+   MIME, dimensions, and decoded image, and only then sends the independent
+   delivery ACK. It returns exact verified-transfer evidence while preserving
+   the reviewed local artifact expiry, but does not persist or register the artifact.
 7. Host/Adapter calls
    `npcink_cloud_addon_build_media_derivative_proposal_payload()` to produce
    Core proposal input.

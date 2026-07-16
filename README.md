@@ -19,13 +19,14 @@ The addon owns:
 - Connectivity probing with `/health/live` and a signed Cloud read.
 - Runtime and read projection calls:
   - `POST /v1/runtime/execute`
-  - `POST /v1/runtime/media/uploads` for bounded WordPress AI alt-text source uploads
-  - `POST /v1/runtime/media-derivatives`
+  - `POST /v1/runtime/media/uploads` for bounded image source uploads
+  - `POST /v1/runtime/media/jobs`
   - `GET /v1/runs/{run_id}`
   - `GET /v1/runs/{run_id}/result`
   - `GET /v1/runs/nightly-inspection/recent`
   - `POST /v1/runs/{run_id}/retry`
-  - `GET /v1/runtime/artifacts/{artifact_id}/download`
+  - `GET /v1/runtime/media/artifacts/{artifact_id}/download`
+  - `POST /v1/runtime/media/artifacts/{artifact_id}/delivery-ack`
   - `GET /v1/entitlements/current`
 - Opt-in plugin observability transport:
   - `POST /v1/observability/plugin-events`
@@ -74,7 +75,7 @@ npcink_cloud_addon_execute_toolbox_web_search_runtime(array $request, string $tr
 npcink_cloud_addon_execute_toolbox_image_source_runtime(array $request, string $trace_id = '', string $idempotency_key = '')
 npcink_cloud_addon_dispatch_site_knowledge_runtime(array $runtime_payload, string $ability_name = '', string $contract_version = '')
 npcink_cloud_addon_build_media_derivative_proposal_payload(array $ability_response, array $cloud_result, array $derivative_artifact)
-npcink_cloud_addon_download_media_derivative_artifact(array $derivative_artifact, string $trace_id = '')
+npcink_cloud_addon_receive_media_derivative_artifact(array $artifact, string $trace_id = '')
 npcink_cloud_addon_site_knowledge_change_bridge_health(): array
 ```
 
@@ -92,12 +93,14 @@ execute_toolbox_site_ops_cloud_analysis_runtime(array $request, string $trace_id
 execute_toolbox_web_search_runtime(array $request, string $trace_id = '', string $idempotency_key = '')
 execute_toolbox_image_source_runtime(array $request, string $trace_id = '', string $idempotency_key = '')
 request_image_context_evidence(array $image_context_evidence_request, string $trace_id = '', string $idempotency_key = '')
-create_media_derivative(array $payload, array $files = array(), string $trace_id = '', string $idempotency_key = '')
+upload_media_artifact(array $file, string $trace_id = '', string $idempotency_key = '')
+create_media_job(array $payload, string $trace_id = '', string $idempotency_key = '')
 get_run(string $run_id, string $trace_id = '')
 get_run_result(string $run_id, string $trace_id = '')
 get_recent_nightly_inspection_runs(int $limit = 5, string $trace_id = '')
 retry_run(string $run_id, array $payload = array(), string $trace_id = '', string $idempotency_key = '')
-download_media_derivative_artifact(string $artifact_id, string $trace_id = '')
+pull_media_artifact(string $artifact_id, string $trace_id = '')
+acknowledge_media_artifact_delivery(string $artifact_id, array $payload, string $trace_id = '', string $idempotency_key = '')
 get_current_entitlement(string $trace_id = '')
 send_observability_events(array $events, string $trace_id = '', string $idempotency_key = '')
 send_agent_feedback_event(array $payload, string $trace_id = '', string $idempotency_key = '')
@@ -300,8 +303,8 @@ The addon can consume the read-only
 `npcink-abilities-toolkit/build-media-derivative-cloud-request` ability output as a transport
 input. It validates that the ability payload has no Cloud credentials,
 Authorization data, or signed headers, requires verified Cloud settings, and
-dispatches through the named `/v1/runtime/media-derivatives` runtime service
-endpoint.
+uploads bounded local image bytes through `/v1/runtime/media/uploads`, then
+dispatches one artifact-referenced job through `/v1/runtime/media/jobs`.
 
 The local host or Adapter still owns the ability call, local source file access,
 short TTL source artifact creation, Core proposal creation, UI display,
@@ -321,12 +324,23 @@ Expired Cloud artifacts are rejected before proposal adoption payloads are
 built. The default action is preview-only and original attachment files are not
 replaced by default.
 
-For local operator previews, the addon may download one non-expired derivative
-artifact by id through the explicit signed
-`GET /v1/runtime/artifacts/{artifact_id}/download` runtime endpoint. The helper
-checks descriptor TTL, supported image MIME type, bounded size, and optional
-SHA-256 checksum, then returns bytes to the trusted local caller. It does not
-persist the artifact, create an artifact registry, or write WordPress media.
+Media job dispatch and run polling expose one exact eight-field status
+projection. Its `artifact` is always empty, even when the status is
+`succeeded`; failed and canceled states retain only bounded lifecycle error
+facts. The exact Cloud 12-field artifact is parsed only by the separate result
+read before it is projected into the local 11-field proposal artifact. Both
+descriptors enforce an 8192-pixel maximum axis and a 16777216-pixel maximum
+area.
+
+For local adoption, the addon accepts only the exact 11-field local proposal
+artifact, pulls bytes through the explicit signed
+`GET /v1/runtime/media/artifacts/{artifact_id}/download` endpoint, verifies the
+required delivery headers, byte length, SHA-256, MIME, dimensions, and decoded
+image, and only then sends
+`POST /v1/runtime/media/artifacts/{artifact_id}/delivery-ack`. The receive
+helper returns exact verified-transfer evidence plus the Cloud ACK projection;
+its top-level expiry remains exactly the reviewed local artifact expiry. It does not persist
+the artifact, create an artifact registry, or write WordPress media.
 
 ## Observability Transport
 

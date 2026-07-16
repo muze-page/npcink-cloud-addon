@@ -19,6 +19,14 @@ if ( ! class_exists( 'Npcink_Cloud_Media_Derivative_Transport' ) ) {
 		private const REQUEST_CONTRACT_VERSION = 'media_derivative_cloud_request.v1';
 		private const PROPOSAL_CONTRACT_VERSION = 'media_derivative_cloud_proposal.v1';
 		private const MAX_UPLOAD_BYTES = 26214400;
+		private const MAX_IMAGE_DIMENSION = 8192;
+		private const MAX_IMAGE_PIXELS = 16777216;
+		private const MAX_SUGGESTED_FILENAME_BYTES = 120;
+		private const MAX_PROCESSING_WARNINGS = 20;
+		private const MAX_PROCESSING_WARNING_BYTES = 200;
+		private const MAX_STATUS_ERROR_CODE_BYTES = 128;
+		private const MAX_STATUS_ERROR_MESSAGE_BYTES = 500;
+		private const MAX_STATUS_ERROR_STAGE_BYTES = 64;
 
 		/**
 		 * Dispatches a Cloud derivative job from an abilities-side request contract.
@@ -85,29 +93,59 @@ if ( ! class_exists( 'Npcink_Cloud_Media_Derivative_Transport' ) ) {
 				}
 			}
 
-			$media_payload = self::build_media_derivative_request_payload(
+			$media_params = self::build_media_job_params(
 				$contract,
+				! empty( $watermark_upload ) || ! empty( $watermark_reference )
+			);
+			if ( is_wp_error( $media_params ) ) {
+				return $media_params;
+			}
+
+			$base_idempotency_key = '' !== $idempotency_key ? $idempotency_key : 'media_derivative_' . wp_generate_uuid4();
+			if ( ! empty( $source_upload ) ) {
+				unset( $source_upload['field_name'] );
+				$uploaded_source = $client->upload_media_artifact(
+					$source_upload,
+					$trace_id,
+					self::media_idempotency_key( $base_idempotency_key, 'source_upload' )
+				);
+				if ( is_wp_error( $uploaded_source ) ) {
+					return $uploaded_source;
+				}
+				$source_reference = $uploaded_source;
+			}
+			if ( ! empty( $watermark_upload ) ) {
+				unset( $watermark_upload['field_name'] );
+				$uploaded_watermark = $client->upload_media_artifact(
+					$watermark_upload,
+					$trace_id,
+					self::media_idempotency_key( $base_idempotency_key, 'watermark_upload' )
+				);
+				if ( is_wp_error( $uploaded_watermark ) ) {
+					return $uploaded_watermark;
+				}
+				$watermark_reference = $uploaded_watermark;
+			}
+
+			$media_payload = self::build_media_job_request(
+				$media_params,
 				$source_reference,
-				$watermark_reference,
-				! empty( $watermark_upload )
+				$watermark_reference
 			);
 			if ( is_wp_error( $media_payload ) ) {
 				return $media_payload;
 			}
 
-			$files = array();
-			if ( ! empty( $source_upload ) ) {
-				$files['source_file'] = $source_upload;
-			}
-			if ( ! empty( $watermark_upload ) ) {
-				$files['watermark_file'] = $watermark_upload;
-			}
-			return $client->create_media_derivative(
+			$result = $client->create_media_job(
 				$media_payload,
-				$files,
 				$trace_id,
-				'' !== $idempotency_key ? $idempotency_key : 'media_derivative_' . wp_generate_uuid4()
+				self::media_idempotency_key( $base_idempotency_key, 'job' )
 			);
+			if ( is_wp_error( $result ) ) {
+				return $result;
+			}
+
+			return self::public_cloud_projection( $result );
 		}
 
 		/**
@@ -149,75 +187,185 @@ if ( ! class_exists( 'Npcink_Cloud_Media_Derivative_Transport' ) ) {
 				return $result;
 			}
 
-			return self::public_cloud_projection( $result );
+			$projection = self::public_cloud_projection( $result );
+			if ( is_wp_error( $projection ) ) {
+				return $projection;
+			}
+
+			$artifact = self::artifact_from_cloud_result( $result );
+			if ( is_wp_error( $artifact ) ) {
+				return $artifact;
+			}
+
+			$projection['artifact'] = $artifact;
+			if ( empty( $projection['warnings'] ) && is_array( $artifact['processing_warnings'] ?? null ) ) {
+				$projection['warnings'] = $artifact['processing_warnings'];
+			}
+
+			return $projection;
 		}
 
 		/**
-		 * Extracts a run id from supported Cloud response shapes.
+		 * Extracts a run id from the exact local public projection.
 		 *
 		 * @param array<string,mixed> $cloud_response Cloud response.
 		 * @return string
 		 */
 		public static function run_id( array $cloud_response ): string {
-			$data = is_array( $cloud_response['data'] ?? null ) ? $cloud_response['data'] : $cloud_response;
-			return sanitize_text_field( (string) ( $data['run_id'] ?? $data['id'] ?? $cloud_response['run_id'] ?? '' ) );
+			return sanitize_text_field( (string) ( $cloud_response['run_id'] ?? '' ) );
 		}
 
 		/**
-		 * Returns a bounded run/result projection for local channel adapters.
+		 * Returns a bounded status-only projection for local channel adapters.
+		 *
+		 * Status resources never carry result artifacts. A succeeded status still
+		 * requires a separate result read before the artifact can be consumed.
 		 *
 		 * @param array<string,mixed> $cloud_response Cloud response.
-		 * @return array<string,mixed>
+		 * @return array<string,mixed>|WP_Error
 		 */
-		public static function public_cloud_projection( array $cloud_response ): array {
-			$data       = is_array( $cloud_response['data'] ?? null ) ? $cloud_response['data'] : $cloud_response;
-			$derivative = self::public_artifact_descriptor( self::artifact_from_cloud_result( $data ) );
-			$error      = is_array( $data['error'] ?? null ) ? $data['error'] : array();
-			$warnings   = is_array( $data['warnings'] ?? null ) ? $data['warnings'] : array();
-			if ( empty( $warnings ) && is_array( $derivative['processing_warnings'] ?? null ) ) {
-				$warnings = $derivative['processing_warnings'];
+		public static function public_cloud_projection( array $cloud_response ) {
+			if ( ! is_array( $cloud_response['data'] ?? null ) ) {
+				return new WP_Error(
+					'cloud_media_derivative_status_contract_invalid',
+					__( 'Cloud media derivative statuses require a data envelope.', 'npcink-cloud-addon' ),
+					array( 'status' => 502 )
+				);
+			}
+
+			$data     = $cloud_response['data'];
+			$run_id   = sanitize_text_field( (string) ( $data['run_id'] ?? '' ) );
+			$status   = sanitize_key( (string) ( $data['status'] ?? '' ) );
+			if ( '' === $run_id || ! in_array( $status, array( 'queued', 'running', 'succeeded', 'failed', 'canceled' ), true ) ) {
+				return new WP_Error(
+					'cloud_media_derivative_status_contract_invalid',
+					__( 'Cloud media derivative statuses require a run id and canonical lifecycle status.', 'npcink-cloud-addon' ),
+					array( 'status' => 502 )
+				);
+			}
+			$warnings = self::bounded_projection_warnings( $data['warnings'] ?? array() );
+			$error    = self::bounded_status_error_projection( $cloud_response, $data );
+
+			return array(
+				'run_id'     => $run_id,
+				'status'     => $status,
+				'job_type'   => sanitize_key( (string) ( $data['job_type'] ?? '' ) ),
+				'created_at' => sanitize_text_field( (string) ( $data['created_at'] ?? '' ) ),
+				'updated_at' => sanitize_text_field( (string) ( $data['updated_at'] ?? '' ) ),
+				'artifact'   => array(),
+				'warnings'   => $warnings,
+				'error'      => $error,
+			);
+		}
+
+		/**
+		 * Projects bounded lifecycle error facts without consuming result data.
+		 *
+		 * @param array<string,mixed> $cloud_response Cloud response envelope.
+		 * @param array<string,mixed> $data Cloud response data.
+		 * @return array<string,string>
+		 */
+		private static function bounded_status_error_projection( array $cloud_response, array $data ): array {
+			$error_code = self::bounded_projection_text(
+				$data['error_code'] ?? ( $cloud_response['error_code'] ?? '' ),
+				self::MAX_STATUS_ERROR_CODE_BYTES
+			);
+			$error_message = self::bounded_projection_text(
+				$data['error_message'] ?? ( $cloud_response['error_message'] ?? '' ),
+				self::MAX_STATUS_ERROR_MESSAGE_BYTES
+			);
+			if ( '' === $error_message && '' !== $error_code ) {
+				$error_message = self::bounded_projection_text(
+					$cloud_response['message'] ?? '',
+					self::MAX_STATUS_ERROR_MESSAGE_BYTES
+				);
+			}
+			$error_stage = sanitize_key(
+				self::bounded_projection_text(
+					$data['error_stage'] ?? ( $cloud_response['error_stage'] ?? '' ),
+					self::MAX_STATUS_ERROR_STAGE_BYTES
+				)
+			);
+
+			if ( '' === $error_code && '' === $error_message && '' === $error_stage ) {
+				return array();
 			}
 
 			return array(
-				'run_id'     => sanitize_text_field( (string) ( $data['run_id'] ?? $data['id'] ?? '' ) ),
-				'status'     => sanitize_key( (string) ( $data['status'] ?? $cloud_response['status'] ?? '' ) ),
-				'job_type'   => sanitize_key( (string) ( $data['job_type'] ?? $data['cloud_job_payload']['job_type'] ?? '' ) ),
-				'created_at' => sanitize_text_field( (string) ( $data['created_at'] ?? '' ) ),
-				'updated_at' => sanitize_text_field( (string) ( $data['updated_at'] ?? '' ) ),
-				'derivative' => $derivative,
-				'warnings'   => array_values( array_map( 'sanitize_text_field', $warnings ) ),
-				'error'      => self::sanitize_projection_value( $error ),
+				'error_code'    => $error_code,
+				'error_message' => $error_message,
+				'error_stage'   => $error_stage,
 			);
+		}
+
+		/**
+		 * Projects a bounded warning list from one status response.
+		 *
+		 * @param mixed $warnings Cloud warnings.
+		 * @return array<int,string>
+		 */
+		private static function bounded_projection_warnings( $warnings ): array {
+			if ( ! is_array( $warnings ) ) {
+				return array();
+			}
+
+			$projection = array();
+			foreach ( array_slice( $warnings, 0, self::MAX_PROCESSING_WARNINGS ) as $warning ) {
+				if ( ! is_string( $warning ) ) {
+					continue;
+				}
+				$value = self::bounded_projection_text( $warning, self::MAX_PROCESSING_WARNING_BYTES );
+				if ( '' !== $value ) {
+					$projection[] = $value;
+				}
+			}
+
+			return array_values( array_unique( $projection ) );
+		}
+
+		/**
+		 * Sanitizes and byte-bounds one public projection string.
+		 *
+		 * @param mixed $value Raw value.
+		 * @param int   $max_bytes Maximum byte length.
+		 * @return string
+		 */
+		private static function bounded_projection_text( $value, int $max_bytes ): string {
+			$text = sanitize_text_field( is_scalar( $value ) ? (string) $value : '' );
+			if ( strlen( $text ) <= $max_bytes ) {
+				return $text;
+			}
+
+			return substr( $text, 0, $max_bytes );
 		}
 
 		/**
 		 * Infers a derivative artifact descriptor from a Cloud result.
 		 *
 		 * @param array<string,mixed> $cloud_result Cloud result.
-		 * @return array<string,mixed>
+		 * @return array<string,mixed>|WP_Error
 		 */
-		public static function artifact_from_cloud_result( array $cloud_result ): array {
-			$data       = is_array( $cloud_result['data'] ?? null ) ? $cloud_result['data'] : $cloud_result;
-			$derivative = is_array( $data['derivative'] ?? null ) ? $data['derivative'] : array();
-			if ( empty( $derivative ) && is_array( $data['result']['artifact'] ?? null ) ) {
-				$derivative = $data['result']['artifact'];
+		public static function artifact_from_cloud_result( array $cloud_result ) {
+			$data   = is_array( $cloud_result['data'] ?? null ) ? $cloud_result['data'] : array();
+			$result = is_array( $data['result'] ?? null ) ? $data['result'] : array();
+			$expected_result_keys = array( 'artifact_type', 'contract_version', 'workflow_metadata', 'artifact' );
+			if (
+				count( $expected_result_keys ) !== count( $result )
+				|| array() !== array_diff( $expected_result_keys, array_keys( $result ) )
+				|| array() !== array_diff( array_keys( $result ), $expected_result_keys )
+				|| 'media_derivative_artifact' !== (string) ( $result['artifact_type'] ?? '' )
+				|| 'media_derivative_result.v1' !== (string) ( $result['contract_version'] ?? '' )
+				|| ! is_array( $result['workflow_metadata'] ?? null )
+				|| ! is_array( $result['artifact'] ?? null )
+			) {
+				return new WP_Error(
+					'cloud_media_derivative_result_contract_invalid',
+					__( 'Cloud media derivative results require the exact media_derivative_result.v1 artifact envelope.', 'npcink-cloud-addon' ),
+					array( 'status' => 502 )
+				);
 			}
 
-			return self::sanitize_descriptor_for_projection( $derivative );
-		}
-
-		/**
-		 * Removes local-only and inline-content artifact fields from projections.
-		 *
-		 * @param array<string,mixed> $artifact Artifact descriptor.
-		 * @return array<string,mixed>
-		 */
-		public static function public_artifact_descriptor( array $artifact ): array {
-			foreach ( array( 'path', 'file_path', 'tmp_name', 'bytes', 'content' ) as $key ) {
-				unset( $artifact[ $key ] );
-			}
-
-			return $artifact;
+			return self::normalize_artifact_descriptor( $result['artifact'], 'derivative' );
 		}
 
 		/**
@@ -238,22 +386,26 @@ if ( ! class_exists( 'Npcink_Cloud_Media_Derivative_Transport' ) ) {
 				return $validated;
 			}
 
-			$artifact = self::normalize_artifact_descriptor( $derivative_artifact, 'derivative' );
-			if ( is_wp_error( $artifact ) ) {
-				return $artifact;
+			$cloud_artifact = self::normalize_artifact_descriptor( $derivative_artifact, 'derivative' );
+			if ( is_wp_error( $cloud_artifact ) ) {
+				return $cloud_artifact;
 			}
 
 			$cloud_data = self::extract_cloud_data( $cloud_result );
-			$binding_valid = self::validate_derivative_artifact_binding( $cloud_data, $artifact );
+			if ( is_wp_error( $cloud_data ) ) {
+				return $cloud_data;
+			}
+			$binding_valid = self::validate_derivative_artifact_binding( $cloud_data, $cloud_artifact );
 			if ( is_wp_error( $binding_valid ) ) {
 				return $binding_valid;
 			}
+			$artifact = self::local_proposal_artifact( $cloud_artifact );
 
 			$original = self::normalize_media_metrics( $contract['cloud_job_payload']['source_asset'] ?? array() );
 			$derivative = self::normalize_media_metrics(
 				array_merge(
-					is_array( $cloud_data['derivative'] ?? null ) ? $cloud_data['derivative'] : array(),
-					$artifact
+					is_array( $cloud_data['artifact'] ?? null ) ? $cloud_data['artifact'] : array(),
+					$cloud_artifact
 				)
 			);
 			$warnings = self::sanitize_string_list( $contract['cloud_job_payload']['warnings'] ?? array() );
@@ -326,7 +478,6 @@ if ( ! class_exists( 'Npcink_Cloud_Media_Derivative_Transport' ) ) {
 				'commit_execution'        => false,
 				'proposal_ready'          => true === (bool) ( $optimization_plan['proposal_ready'] ?? false ),
 				'preferred_core_route'    => 'POST /proposals/from-plan',
-				'legacy_derivative_proposal_payload_available' => true,
 				'required_plan_ability_id' => 'npcink-abilities-toolkit/build-media-optimization-plan',
 			);
 
@@ -344,27 +495,27 @@ if ( ! class_exists( 'Npcink_Cloud_Media_Derivative_Transport' ) ) {
 		}
 
 		/**
-		 * Downloads a derivative artifact for local preview through a signed Cloud request.
+		 * Receives, independently verifies, and acknowledges a Cloud derivative artifact.
 		 *
-		 * This returns bytes only to the trusted local caller. It does not persist,
-		 * register, adopt, or write the artifact into WordPress.
+		 * ACK proves only verified transfer. This helper never persists, approves,
+		 * imports, adopts, or writes the artifact into WordPress.
 		 *
-		 * @param array<string,mixed> $derivative_artifact Cloud derivative artifact descriptor.
+		 * @param array<string,mixed> $derivative_artifact Exact local 11-field proposal artifact.
 		 * @param string              $trace_id Optional trace id.
 		 * @return array<string,mixed>|WP_Error
 		 */
-		public static function download_artifact_preview( array $derivative_artifact, string $trace_id = '' ) {
+		public static function receive_artifact( array $derivative_artifact, string $trace_id = '' ) {
 			$client = self::verified_client();
 			if ( is_wp_error( $client ) ) {
 				return $client;
 			}
 
-			$artifact = self::normalize_artifact_descriptor( $derivative_artifact, 'derivative' );
+			$artifact = self::normalize_local_proposal_artifact( $derivative_artifact );
 			if ( is_wp_error( $artifact ) ) {
 				return $artifact;
 			}
 
-			$download = $client->download_media_derivative_artifact(
+			$download = $client->pull_media_artifact(
 				(string) $artifact['artifact_id'],
 				$trace_id
 			);
@@ -381,9 +532,9 @@ if ( ! class_exists( 'Npcink_Cloud_Media_Derivative_Transport' ) ) {
 				);
 			}
 
-			$artifact_mime = self::normalize_media_type( (string) ( $artifact['mime_type'] ?? '' ) );
+			$artifact_mime = (string) $artifact['mime_type'];
 			$response_mime = self::normalize_response_mime_type( (string) ( $download['content_type'] ?? '' ) );
-			if ( '' !== $artifact_mime && '' !== $response_mime && $artifact_mime !== $response_mime ) {
+			if ( $artifact_mime !== $response_mime ) {
 				return new WP_Error(
 					'cloud_media_derivative_artifact_mime_mismatch',
 					__( 'Cloud derivative artifact mime type does not match the descriptor.', 'npcink-cloud-addon' ),
@@ -391,31 +542,133 @@ if ( ! class_exists( 'Npcink_Cloud_Media_Derivative_Transport' ) ) {
 				);
 			}
 
-			$mime_type = '' !== $artifact_mime ? $artifact_mime : $response_mime;
-			if ( '' === $mime_type ) {
+			$expected_size = (int) $artifact['filesize_bytes'];
+			if ( $expected_size !== (int) ( $download['content_length'] ?? 0 ) || $expected_size !== strlen( $contents ) ) {
 				return new WP_Error(
-					'cloud_media_derivative_artifact_mime_invalid',
-					__( 'Media derivative artifact mime type must be a supported image type.', 'npcink-cloud-addon' ),
-					array( 'status' => 400 )
+					'cloud_media_derivative_artifact_size_mismatch',
+					__( 'Derivative artifact byte size does not match the descriptor and signed response.', 'npcink-cloud-addon' ),
+					array( 'status' => 409 )
 				);
 			}
 
 			$actual_sha256 = hash( 'sha256', $contents );
-			if ( '' !== (string) ( $artifact['sha256'] ?? '' ) && $actual_sha256 !== (string) $artifact['sha256'] ) {
+			$checksum = 'sha256:' . $actual_sha256;
+			if ( $actual_sha256 !== (string) $artifact['sha256'] ) {
 				return new WP_Error(
 					'cloud_media_derivative_artifact_checksum_mismatch',
 					__( 'Derivative artifact checksum does not match the downloaded bytes.', 'npcink-cloud-addon' ),
 					array( 'status' => 409 )
 				);
 			}
+			if (
+				(string) $artifact['artifact_id'] !== (string) ( $download['artifact_id'] ?? '' )
+				|| $checksum !== (string) ( $download['artifact_checksum'] ?? '' )
+			) {
+				return new WP_Error(
+					'cloud_media_derivative_artifact_header_mismatch',
+					__( 'Signed media response headers do not match the requested artifact.', 'npcink-cloud-addon' ),
+					array( 'status' => 409 )
+				);
+			}
+
+			$delivery_id = sanitize_text_field( (string) ( $download['delivery_id'] ?? '' ) );
+			$ack_deadline_at = sanitize_text_field( (string) ( $download['delivery_ack_deadline'] ?? '' ) );
+			$ack_deadline_timestamp = self::strict_timestamp( $ack_deadline_at );
+			if (
+				1 !== preg_match( '/^mdl_[0-9a-f]{32}$/', $delivery_id )
+				|| false === $ack_deadline_timestamp
+				|| $ack_deadline_timestamp <= time()
+				|| $ack_deadline_timestamp > (int) strtotime( (string) $artifact['expires_at'] )
+			) {
+				return new WP_Error(
+					'cloud_media_derivative_delivery_headers_invalid',
+					__( 'Cloud media delivery headers are missing or invalid.', 'npcink-cloud-addon' ),
+					array( 'status' => 502 )
+				);
+			}
+
+			$image_info = function_exists( 'getimagesizefromstring' ) ? @getimagesizefromstring( $contents ) : false;
+			$decoded_mime = is_array( $image_info ) ? self::normalize_media_type( (string) ( $image_info['mime'] ?? '' ) ) : '';
+			$decoded_width = is_array( $image_info ) ? (int) ( $image_info[0] ?? 0 ) : 0;
+			$decoded_height = is_array( $image_info ) ? (int) ( $image_info[1] ?? 0 ) : 0;
+			if (
+				! is_array( $image_info )
+				|| $artifact_mime !== $decoded_mime
+				|| (int) $artifact['width'] !== $decoded_width
+				|| (int) $artifact['height'] !== $decoded_height
+			) {
+				return new WP_Error(
+					'cloud_media_derivative_artifact_decode_mismatch',
+					__( 'Derivative artifact decode facts do not match the Cloud descriptor.', 'npcink-cloud-addon' ),
+					array( 'status' => 409 )
+				);
+			}
+
+			$delivery_ack = $client->acknowledge_media_artifact_delivery(
+				(string) $artifact['artifact_id'],
+				array(
+					'contract_version'   => 'media_artifact_delivery_ack.v1',
+					'delivery_id'        => $delivery_id,
+					'received_byte_size' => $expected_size,
+					'received_checksum'  => $checksum,
+				),
+				$trace_id,
+				'media_delivery_ack_' . wp_generate_uuid4()
+			);
+			if ( is_wp_error( $delivery_ack ) ) {
+				return $delivery_ack;
+			}
+			$acknowledged_timestamp = self::strict_timestamp( (string) ( $delivery_ack['acknowledged_at'] ?? '' ) );
+			$ack_expiry_timestamp   = self::strict_timestamp( (string) ( $delivery_ack['artifact_expires_at'] ?? '' ) );
+			$descriptor_expiry      = self::strict_timestamp( (string) $artifact['expires_at'] );
+			if (
+				(string) ( $delivery_ack['artifact_id'] ?? '' ) !== (string) $artifact['artifact_id']
+				|| (string) ( $delivery_ack['delivery_id'] ?? '' ) !== $delivery_id
+				|| (int) ( $delivery_ack['received_byte_size'] ?? 0 ) !== $expected_size
+				|| (string) ( $delivery_ack['received_checksum'] ?? '' ) !== $checksum
+				|| true !== ( $delivery_ack['byte_size_verified'] ?? null )
+				|| true !== ( $delivery_ack['checksum_verified'] ?? null )
+				|| false === $acknowledged_timestamp
+				|| $acknowledged_timestamp > $ack_deadline_timestamp
+				|| false === $ack_expiry_timestamp
+				|| $ack_expiry_timestamp <= time()
+				|| $ack_expiry_timestamp <= $acknowledged_timestamp
+				|| false === $descriptor_expiry
+				|| (string) ( $delivery_ack['artifact_expires_at'] ?? '' ) !== (string) $artifact['expires_at']
+				|| $ack_expiry_timestamp !== $descriptor_expiry
+			) {
+				return new WP_Error(
+					'cloud_media_derivative_delivery_ack_binding_invalid',
+					__( 'Cloud media delivery acknowledgement does not bind to the verified transfer.', 'npcink-cloud-addon' ),
+					array( 'status' => 502 )
+				);
+			}
+
+			$transfer_evidence = array(
+				'contract_version'      => 'media_artifact_verified_transfer.v1',
+				'artifact_id'           => (string) $artifact['artifact_id'],
+				'delivery_id'           => $delivery_id,
+				'received_byte_size'    => $expected_size,
+				'received_checksum'     => $checksum,
+				'byte_size_verified'    => true,
+				'checksum_verified'     => true,
+				'content_type_verified' => true,
+				'image_decoded'         => true,
+				'dimensions_verified'   => true,
+				'ack_deadline_at'       => $ack_deadline_at,
+			);
 
 			return array(
 				'artifact_id'    => (string) $artifact['artifact_id'],
 				'contents'       => $contents,
-				'mime_type'      => $mime_type,
-				'filesize_bytes' => strlen( $contents ),
+				'mime_type'      => $artifact_mime,
+				'width'          => $decoded_width,
+				'height'         => $decoded_height,
+				'filesize_bytes' => $expected_size,
 				'sha256'         => $actual_sha256,
-				'expires_at'     => (string) $artifact['expires_at'],
+				'expires_at'     => (string) $delivery_ack['artifact_expires_at'],
+				'transfer_evidence' => $transfer_evidence,
+				'delivery_ack'   => $delivery_ack,
 			);
 		}
 
@@ -631,34 +884,6 @@ if ( ! class_exists( 'Npcink_Cloud_Media_Derivative_Transport' ) ) {
 		}
 
 		/**
-		 * Sanitizes a descriptor for projection without enforcing artifact expiry.
-		 *
-		 * @param array<string,mixed> $descriptor Descriptor.
-		 * @return array<string,mixed>
-		 */
-		private static function sanitize_descriptor_for_projection( array $descriptor ): array {
-			$clean = array();
-			foreach ( array( 'artifact_id', 'id', 'download_url', 'url', 'expires_at', 'run_id', 'mime_type', 'format', 'path', 'file_path', 'tmp_name', 'filename', 'name', 'field_name', 'sha256', 'checksum' ) as $key ) {
-				if ( isset( $descriptor[ $key ] ) && is_scalar( $descriptor[ $key ] ) ) {
-					$clean[ $key ] = sanitize_text_field( (string) $descriptor[ $key ] );
-				}
-			}
-			if ( ! isset( $clean['sha256'] ) && isset( $clean['checksum'] ) && 0 === strpos( strtolower( (string) $clean['checksum'] ), 'sha256:' ) ) {
-				$clean['sha256'] = substr( strtolower( (string) $clean['checksum'] ), 7 );
-			}
-			foreach ( array( 'width', 'height', 'filesize_bytes', 'size_bytes' ) as $key ) {
-				if ( isset( $descriptor[ $key ] ) ) {
-					$clean[ $key ] = absint( $descriptor[ $key ] );
-				}
-			}
-			if ( is_array( $descriptor['processing_warnings'] ?? null ) ) {
-				$clean['processing_warnings'] = array_values( array_map( 'sanitize_text_field', $descriptor['processing_warnings'] ) );
-			}
-
-			return $clean;
-		}
-
-		/**
 		 * Sanitizes bounded Cloud projection values recursively.
 		 *
 		 * @param mixed $value Raw value.
@@ -715,13 +940,28 @@ if ( ! class_exists( 'Npcink_Cloud_Media_Derivative_Transport' ) ) {
 		 * Extracts Cloud response data.
 		 *
 		 * @param array<string,mixed> $cloud_result Cloud response envelope.
-		 * @return array<string,mixed>
+		 * @return array<string,mixed>|WP_Error
 		 */
-		private static function extract_cloud_data( array $cloud_result ): array {
-			$data = is_array( $cloud_result['data'] ?? null ) ? $cloud_result['data'] : $cloud_result;
-			if ( empty( $data['derivative'] ) && is_array( $data['result']['artifact'] ?? null ) ) {
-				$data['derivative'] = self::normalize_result_artifact_for_cloud_data( $data['result']['artifact'] );
+		private static function extract_cloud_data( array $cloud_result ) {
+			$expected_keys = array( 'run_id', 'status', 'job_type', 'created_at', 'updated_at', 'artifact', 'warnings', 'error' );
+			if (
+				count( $expected_keys ) !== count( $cloud_result )
+				|| array() !== array_diff( $expected_keys, array_keys( $cloud_result ) )
+				|| array() !== array_diff( array_keys( $cloud_result ), $expected_keys )
+				|| ! is_array( $cloud_result['artifact'] ?? null )
+			) {
+				return new WP_Error(
+					'cloud_media_derivative_projection_invalid',
+					__( 'Local media derivative proposal building requires the exact Addon run-result projection.', 'npcink-cloud-addon' ),
+					array( 'status' => 400 )
+				);
 			}
+			$artifact = self::normalize_artifact_descriptor( $cloud_result['artifact'], 'derivative' );
+			if ( is_wp_error( $artifact ) ) {
+				return $artifact;
+			}
+			$data = $cloud_result;
+			$data['artifact'] = $artifact;
 
 			return $data;
 		}
@@ -789,15 +1029,13 @@ if ( ! class_exists( 'Npcink_Cloud_Media_Derivative_Transport' ) ) {
 		}
 
 		/**
-		 * Builds the strict Cloud media derivative request payload.
+		 * Validates and builds artifact-independent image.transform.v1 parameters.
 		 *
 		 * @param array<string,mixed> $contract Ability contract data.
-		 * @param array<string,mixed> $source_reference Optional source artifact reference.
-		 * @param array<string,mixed> $watermark_reference Optional watermark artifact reference.
-		 * @param bool                $has_watermark_upload Whether a watermark file is attached.
+		 * @param bool                $has_watermark_source Whether the host supplied a watermark artifact/upload.
 		 * @return array<string,mixed>|WP_Error
 		 */
-		private static function build_media_derivative_request_payload( array $contract, array $source_reference, array $watermark_reference, bool $has_watermark_upload ) {
+		private static function build_media_job_params( array $contract, bool $has_watermark_source ) {
 			$job_payload = is_array( $contract['cloud_job_payload'] ?? null ) ? $contract['cloud_job_payload'] : array();
 			$requested = is_array( $job_payload['requested_derivative'] ?? null ) ? $job_payload['requested_derivative'] : array();
 			$watermark = is_array( $job_payload['watermark'] ?? null ) ? $job_payload['watermark'] : array();
@@ -806,28 +1044,21 @@ if ( ! class_exists( 'Npcink_Cloud_Media_Derivative_Transport' ) ) {
 				$watermark_type = 'image';
 			}
 
-			if ( ( ! empty( $watermark_reference ) || $has_watermark_upload ) && empty( $watermark ) ) {
+			if ( $has_watermark_source && empty( $watermark ) ) {
 				return new WP_Error(
 					'cloud_media_derivative_watermark_plan_missing',
 					__( 'Watermark artifact transport requires a watermark plan in the ability response.', 'npcink-cloud-addon' ),
 					array( 'status' => 400 )
 				);
 			}
-			if ( 'text' === $watermark_type && ( $has_watermark_upload || ! empty( $watermark_reference ) || ! empty( $watermark['artifact_id'] ) ) ) {
+			if ( 'text' === $watermark_type && ( $has_watermark_source || ! empty( $watermark['artifact_id'] ) ) ) {
 				return new WP_Error(
 					'cloud_media_derivative_watermark_source_conflict',
 					__( 'Text watermark plans must not include a watermark upload or artifact id.', 'npcink-cloud-addon' ),
 					array( 'status' => 400 )
 				);
 			}
-			if ( 'image' === $watermark_type && $has_watermark_upload && ! empty( $watermark['artifact_id'] ) ) {
-				return new WP_Error(
-					'cloud_media_derivative_watermark_source_conflict',
-					__( 'Watermark upload and watermark artifact id cannot be sent together.', 'npcink-cloud-addon' ),
-					array( 'status' => 400 )
-				);
-			}
-			if ( 'image' === $watermark_type && ! empty( $watermark ) && empty( $watermark['artifact_id'] ) && empty( $watermark_reference ) && ! $has_watermark_upload ) {
+			if ( 'image' === $watermark_type && ! empty( $watermark ) && ! $has_watermark_source ) {
 				return new WP_Error(
 					'cloud_media_derivative_watermark_source_missing',
 					__( 'Watermark plans require a watermark upload or artifact id before Cloud dispatch.', 'npcink-cloud-addon' ),
@@ -862,11 +1093,11 @@ if ( ! class_exists( 'Npcink_Cloud_Media_Derivative_Transport' ) ) {
 				);
 			}
 
-			$cloud_job_payload = array(
-				'job_type'          => 'generate_optimized_media_derivative',
+			$params = array(
 				'target_format'     => $target_format,
 				'max_width'         => max( 1, min( 10000, $max_width ) ),
 				'quality'           => max( 1, min( 100, $quality ) ),
+				'source_media_type' => 'image',
 			);
 			$raw_source_media_type = (string) ( $job_payload['source_media_type'] ?? '' );
 			$source_media_type = self::normalize_media_type( $raw_source_media_type, true );
@@ -877,38 +1108,53 @@ if ( ! class_exists( 'Npcink_Cloud_Media_Derivative_Transport' ) ) {
 					array( 'status' => 400 )
 				);
 			}
-			if ( '' !== $source_media_type ) {
-				$cloud_job_payload['source_media_type'] = $source_media_type;
-			}
 			if ( is_array( $job_payload['crop'] ?? null ) && ! empty( $job_payload['crop'] ) ) {
-				$cloud_job_payload['crop'] = self::sanitize_crop_payload( $job_payload['crop'] );
+				$params['crop'] = self::sanitize_crop_payload( $job_payload['crop'] );
 			}
 			if ( ! empty( $watermark ) ) {
-				$cloud_job_payload['watermark'] = self::sanitize_watermark_payload( $watermark );
-				if ( ! empty( $watermark_reference['artifact_id'] ) ) {
-					if ( ! empty( $cloud_job_payload['watermark']['artifact_id'] ) && $watermark_reference['artifact_id'] !== $cloud_job_payload['watermark']['artifact_id'] ) {
-						return new WP_Error(
-							'cloud_media_derivative_watermark_source_conflict',
-							__( 'Watermark artifact id does not match the ability watermark plan.', 'npcink-cloud-addon' ),
-							array( 'status' => 400 )
-						);
-					}
-					$cloud_job_payload['watermark']['artifact_id'] = $watermark_reference['artifact_id'];
-				}
-				if ( $has_watermark_upload ) {
-					unset( $cloud_job_payload['watermark']['artifact_id'] );
-				}
+				$params['watermark'] = self::sanitize_watermark_payload( $watermark );
+				unset( $params['watermark']['artifact_id'] );
 			}
-			$payload = array(
-				'request_contract_version' => self::REQUEST_CONTRACT_VERSION,
-				'cloud_job_payload'        => $cloud_job_payload,
-				'ttl_minutes'              => 30,
-			);
-			if ( ! empty( $source_reference['artifact_id'] ) ) {
-				$payload['source'] = array(
-					'artifact_id' => $source_reference['artifact_id'],
+
+			return $params;
+		}
+
+		/**
+		 * Builds one exact artifact-referenced media_job_request.v1 body.
+		 *
+		 * @param array<string,mixed> $params Validated operation parameters.
+		 * @param array<string,mixed> $source_reference Uploaded or supplied source artifact.
+		 * @param array<string,mixed> $watermark_reference Optional watermark artifact.
+		 * @return array<string,mixed>|WP_Error
+		 */
+		private static function build_media_job_request( array $params, array $source_reference, array $watermark_reference ) {
+			$source_artifact_id = sanitize_text_field( (string) ( $source_reference['artifact_id'] ?? '' ) );
+			if ( 1 !== preg_match( '/^art_[0-9a-f]{32}$/', $source_artifact_id ) ) {
+				return new WP_Error(
+					'cloud_media_derivative_source_artifact_id_invalid',
+					__( 'Media derivative jobs require a canonical source artifact id.', 'npcink-cloud-addon' ),
+					array( 'status' => 400 )
 				);
 			}
+
+			$payload = array(
+				'request_contract_version' => 'media_job_request.v1',
+				'operation'                => 'image.transform.v1',
+				'source_artifact_id'       => $source_artifact_id,
+			);
+			if ( ! empty( $watermark_reference ) ) {
+				$watermark_artifact_id = sanitize_text_field( (string) ( $watermark_reference['artifact_id'] ?? '' ) );
+				if ( 1 !== preg_match( '/^art_[0-9a-f]{32}$/', $watermark_artifact_id ) ) {
+					return new WP_Error(
+						'cloud_media_derivative_watermark_artifact_id_invalid',
+						__( 'Media derivative image watermarks require a canonical artifact id.', 'npcink-cloud-addon' ),
+						array( 'status' => 400 )
+					);
+				}
+				$payload['watermark_artifact_id'] = $watermark_artifact_id;
+			}
+			$payload['params']             = $params;
+			$payload['result_ttl_minutes'] = 30;
 
 			return $payload;
 		}
@@ -1134,7 +1380,7 @@ if ( ! class_exists( 'Npcink_Cloud_Media_Derivative_Transport' ) ) {
 		 * @return bool
 		 */
 		private static function descriptor_has_artifact_id( array $descriptor ): bool {
-			return '' !== sanitize_text_field( (string) ( $descriptor['artifact_id'] ?? $descriptor['id'] ?? '' ) );
+			return '' !== sanitize_text_field( (string) ( $descriptor['artifact_id'] ?? '' ) );
 		}
 
 		/**
@@ -1145,19 +1391,28 @@ if ( ! class_exists( 'Npcink_Cloud_Media_Derivative_Transport' ) ) {
 		 * @return array<string,mixed>|WP_Error
 		 */
 		private static function normalize_required_artifact_reference( array $artifact, string $role ) {
-			$normalized = self::normalize_artifact_descriptor( $artifact, $role );
-			if ( is_wp_error( $normalized ) ) {
-				return $normalized;
-			}
-			if ( '' === (string) ( $normalized['artifact_id'] ?? '' ) ) {
+			$artifact_id = sanitize_text_field( (string) ( $artifact['artifact_id'] ?? '' ) );
+			$expires_at  = sanitize_text_field( (string) ( $artifact['expires_at'] ?? '' ) );
+			if ( 1 !== preg_match( '/^art_[0-9a-f]{32}$/', $artifact_id ) ) {
 				return new WP_Error(
-					'cloud_media_derivative_artifact_id_missing',
-					__( 'Media derivative runtime artifacts require an artifact id.', 'npcink-cloud-addon' ),
+					'cloud_media_derivative_artifact_id_invalid',
+					__( 'Media derivative runtime artifacts require a canonical artifact id.', 'npcink-cloud-addon' ),
 					array( 'status' => 400 )
 				);
 			}
+			if ( '' === $expires_at || self::is_expired( $expires_at ) ) {
+				return new WP_Error(
+					'cloud_media_derivative_artifact_expired',
+					__( 'Media derivative runtime artifacts require a valid future expiry.', 'npcink-cloud-addon' ),
+					array( 'status' => 409 )
+				);
+			}
 
-			return $normalized;
+			return array(
+				'artifact_id' => $artifact_id,
+				'expires_at'  => $expires_at,
+				'role'        => sanitize_key( $role ),
+			);
 		}
 
 		/**
@@ -1168,11 +1423,38 @@ if ( ! class_exists( 'Npcink_Cloud_Media_Derivative_Transport' ) ) {
 		 * @return array<string,mixed>|WP_Error
 		 */
 		private static function normalize_artifact_descriptor( array $artifact, string $role ) {
+			unset( $role );
+			$expected_keys = array(
+				'artifact_id',
+				'artifact_reference',
+				'expires_at',
+				'suggested_filename',
+				'filename_basis',
+				'mime_type',
+				'format',
+				'width',
+				'height',
+				'filesize_bytes',
+				'checksum',
+				'processing_warnings',
+			);
+			if (
+				count( $expected_keys ) !== count( $artifact )
+				|| array() !== array_diff( $expected_keys, array_keys( $artifact ) )
+				|| array() !== array_diff( array_keys( $artifact ), $expected_keys )
+			) {
+				return new WP_Error(
+					'cloud_media_derivative_artifact_contract_invalid',
+					__( 'Media derivative artifacts require the exact 12-field Cloud descriptor.', 'npcink-cloud-addon' ),
+					array( 'status' => 502 )
+				);
+			}
+
 			$expires_at = sanitize_text_field( (string) ( $artifact['expires_at'] ?? '' ) );
-			if ( '' === $expires_at ) {
+			if ( false === self::strict_timestamp( $expires_at ) ) {
 				return new WP_Error(
 					'cloud_media_derivative_artifact_expiry_missing',
-					__( 'Media derivative artifact expiry is required.', 'npcink-cloud-addon' ),
+					__( 'Media derivative artifact expiry must be a strict ISO-8601 timestamp.', 'npcink-cloud-addon' ),
 					array( 'status' => 400 )
 				);
 			}
@@ -1184,44 +1466,234 @@ if ( ! class_exists( 'Npcink_Cloud_Media_Derivative_Transport' ) ) {
 				);
 			}
 
-			$artifact_id = sanitize_text_field( (string) ( $artifact['artifact_id'] ?? $artifact['id'] ?? '' ) );
-			if ( 'derivative' === $role && '' === $artifact_id ) {
+			$artifact_id = sanitize_text_field( (string) ( $artifact['artifact_id'] ?? '' ) );
+			if ( 1 !== preg_match( '/^art_[0-9a-f]{32}$/', $artifact_id ) ) {
 				return new WP_Error(
-					'cloud_media_derivative_derivative_artifact_id_missing',
-					__( 'Derivative Cloud artifacts require an artifact id before local proposal adoption.', 'npcink-cloud-addon' ),
+					'cloud_media_derivative_artifact_id_invalid',
+					__( 'Derivative Cloud artifacts require a canonical artifact id.', 'npcink-cloud-addon' ),
 					array( 'status' => 400 )
+				);
+			}
+			$artifact_reference = $artifact['artifact_reference'] ?? null;
+			if ( ! is_array( $artifact_reference ) || 1 !== count( $artifact_reference ) || ! array_key_exists( 'artifact_id', $artifact_reference ) || $artifact_id !== ( $artifact_reference['artifact_id'] ?? null ) ) {
+				return new WP_Error(
+					'cloud_media_derivative_artifact_reference_invalid',
+					__( 'Media derivative artifact reference must bind to the canonical artifact id.', 'npcink-cloud-addon' ),
+					array( 'status' => 502 )
+				);
+			}
+			$filename_basis = $artifact['filename_basis'] ?? null;
+			if (
+				! is_array( $filename_basis )
+				|| 3 !== count( $filename_basis )
+				|| array() !== array_diff( array( 'owner', 'strategy', 'final_sanitize_unique_required' ), array_keys( $filename_basis ) )
+				|| array() !== array_diff( array_keys( $filename_basis ), array( 'owner', 'strategy', 'final_sanitize_unique_required' ) )
+				|| 'wordpress_write_ability_final' !== ( $filename_basis['owner'] ?? null )
+				|| 'format_checksum' !== ( $filename_basis['strategy'] ?? null )
+				|| true !== ( $filename_basis['final_sanitize_unique_required'] ?? null )
+			) {
+				return new WP_Error(
+					'cloud_media_derivative_filename_basis_invalid',
+					__( 'Media derivative filename basis is invalid.', 'npcink-cloud-addon' ),
+					array( 'status' => 502 )
+				);
+			}
+			$suggested_filename = (string) ( $artifact['suggested_filename'] ?? '' );
+			if ( '' === $suggested_filename || sanitize_file_name( $suggested_filename ) !== $suggested_filename || strlen( $suggested_filename ) > self::MAX_SUGGESTED_FILENAME_BYTES ) {
+				return new WP_Error(
+					'cloud_media_derivative_suggested_filename_invalid',
+					__( 'Media derivative suggested filename is invalid.', 'npcink-cloud-addon' ),
+					array( 'status' => 502 )
 				);
 			}
 
-			$download_url = esc_url_raw( (string) ( $artifact['download_url'] ?? $artifact['url'] ?? '' ) );
-			if ( '' === $artifact_id && '' === $download_url ) {
-				return new WP_Error(
-					'cloud_media_derivative_artifact_ref_missing',
-					__( 'Media derivative artifact requires an artifact id or download URL.', 'npcink-cloud-addon' ),
-					array( 'status' => 400 )
-				);
-			}
-			$raw_mime_type = (string) ( $artifact['mime_type'] ?? '' );
-			$mime_type = self::normalize_media_type( $raw_mime_type );
-			if ( '' !== trim( $raw_mime_type ) && '' === $mime_type ) {
+			$mime_type = self::normalize_media_type( (string) ( $artifact['mime_type'] ?? '' ) );
+			$format    = sanitize_key( (string) ( $artifact['format'] ?? '' ) );
+			$mime_by_format = array(
+				'avif' => 'image/avif',
+				'jpeg' => 'image/jpeg',
+				'png'  => 'image/png',
+				'webp' => 'image/webp',
+			);
+			if ( '' === $mime_type || ! isset( $mime_by_format[ $format ] ) || $mime_type !== $mime_by_format[ $format ] ) {
 				return new WP_Error(
 					'cloud_media_derivative_artifact_mime_invalid',
-					__( 'Media derivative artifact mime type must be a supported image type.', 'npcink-cloud-addon' ),
-					array( 'status' => 400 )
+					__( 'Media derivative artifact MIME and format must agree.', 'npcink-cloud-addon' ),
+					array( 'status' => 502 )
 				);
+			}
+			$width = $artifact['width'] ?? null;
+			$height = $artifact['height'] ?? null;
+			$filesize_bytes = $artifact['filesize_bytes'] ?? null;
+			$checksum = (string) ( $artifact['checksum'] ?? '' );
+			$warnings = $artifact['processing_warnings'] ?? null;
+			if (
+				! is_int( $width ) || $width <= 0 || $width > self::MAX_IMAGE_DIMENSION
+				|| ! is_int( $height ) || $height <= 0 || $height > self::MAX_IMAGE_DIMENSION
+				|| $width * $height > self::MAX_IMAGE_PIXELS
+				|| ! is_int( $filesize_bytes ) || $filesize_bytes <= 0 || $filesize_bytes > self::MAX_UPLOAD_BYTES
+				|| 1 !== preg_match( '/^sha256:[0-9a-f]{64}$/', $checksum )
+				|| ! is_array( $warnings ) || count( $warnings ) > self::MAX_PROCESSING_WARNINGS
+			) {
+				return new WP_Error(
+					'cloud_media_derivative_artifact_facts_invalid',
+					__( 'Media derivative artifact facts are invalid.', 'npcink-cloud-addon' ),
+					array( 'status' => 502 )
+				);
+			}
+			foreach ( $warnings as $warning ) {
+				if ( ! is_string( $warning ) || strlen( $warning ) > self::MAX_PROCESSING_WARNING_BYTES ) {
+					return new WP_Error(
+						'cloud_media_derivative_artifact_warnings_invalid',
+						__( 'Media derivative processing warnings are invalid.', 'npcink-cloud-addon' ),
+						array( 'status' => 502 )
+					);
+				}
 			}
 
 			return array(
-				'role'           => sanitize_key( $role ),
 				'artifact_id'    => $artifact_id,
-				'download_url'   => $download_url,
+				'artifact_reference' => array( 'artifact_id' => $artifact_id ),
 				'expires_at'     => $expires_at,
-				'run_id'         => sanitize_text_field( (string) ( $artifact['run_id'] ?? '' ) ),
+				'suggested_filename' => $suggested_filename,
+				'filename_basis' => $filename_basis,
 				'mime_type'      => $mime_type,
-				'width'          => absint( $artifact['width'] ?? 0 ),
-				'height'         => absint( $artifact['height'] ?? 0 ),
-				'filesize_bytes' => absint( $artifact['filesize_bytes'] ?? $artifact['size_bytes'] ?? 0 ),
-				'sha256'         => self::normalize_sha256( (string) ( $artifact['sha256'] ?? $artifact['checksum'] ?? '' ) ),
+				'format'         => $format,
+				'width'          => $width,
+				'height'         => $height,
+				'filesize_bytes' => $filesize_bytes,
+				'checksum'       => $checksum,
+				'processing_warnings' => array_values( array_map( 'sanitize_text_field', $warnings ) ),
+			);
+		}
+
+		/**
+		 * Projects the Cloud descriptor into the minimal local Toolkit artifact contract.
+		 *
+		 * @param array<string,mixed> $artifact Strict Cloud descriptor.
+		 * @return array<string,mixed>
+		 */
+		private static function local_proposal_artifact( array $artifact ): array {
+			return array(
+				'artifact_id'    => (string) $artifact['artifact_id'],
+				'expires_at'     => (string) $artifact['expires_at'],
+				'mime_type'      => (string) $artifact['mime_type'],
+				'format'         => (string) $artifact['format'],
+				'width'          => (int) $artifact['width'],
+				'height'         => (int) $artifact['height'],
+				'filesize_bytes' => (int) $artifact['filesize_bytes'],
+				'sha256'         => self::normalize_sha256( (string) $artifact['checksum'] ),
+				'suggested_filename' => (string) $artifact['suggested_filename'],
+				'filename_basis' => $artifact['filename_basis'],
+				'processing_warnings' => $artifact['processing_warnings'],
+			);
+		}
+
+		/**
+		 * Validates the exact local 11-field artifact passed through Core/Toolkit.
+		 *
+		 * @param array<string,mixed> $artifact Local proposal artifact.
+		 * @return array<string,mixed>|WP_Error
+		 */
+		private static function normalize_local_proposal_artifact( array $artifact ) {
+			$expected_keys = array(
+				'artifact_id',
+				'expires_at',
+				'mime_type',
+				'format',
+				'width',
+				'height',
+				'filesize_bytes',
+				'sha256',
+				'suggested_filename',
+				'filename_basis',
+				'processing_warnings',
+			);
+			if (
+				count( $expected_keys ) !== count( $artifact )
+				|| array() !== array_diff( $expected_keys, array_keys( $artifact ) )
+				|| array() !== array_diff( array_keys( $artifact ), $expected_keys )
+			) {
+				return new WP_Error(
+					'cloud_media_derivative_local_artifact_contract_invalid',
+					__( 'Local media derivative artifacts require the exact 11-field proposal contract.', 'npcink-cloud-addon' ),
+					array( 'status' => 400 )
+				);
+			}
+
+			$artifact_id = sanitize_text_field( (string) $artifact['artifact_id'] );
+			$expires_at  = sanitize_text_field( (string) $artifact['expires_at'] );
+			$mime_type   = self::normalize_media_type( (string) $artifact['mime_type'] );
+			$format      = sanitize_key( (string) $artifact['format'] );
+			$sha256      = (string) $artifact['sha256'];
+			$mime_by_format = array(
+				'avif' => 'image/avif',
+				'jpeg' => 'image/jpeg',
+				'png'  => 'image/png',
+				'webp' => 'image/webp',
+			);
+			if (
+				1 !== preg_match( '/^art_[0-9a-f]{32}$/', $artifact_id )
+				|| false === self::strict_timestamp( $expires_at )
+				|| self::is_expired( $expires_at )
+				|| ! isset( $mime_by_format[ $format ] )
+				|| $mime_by_format[ $format ] !== $mime_type
+				|| ! is_int( $artifact['width'] ) || $artifact['width'] <= 0 || $artifact['width'] > self::MAX_IMAGE_DIMENSION
+				|| ! is_int( $artifact['height'] ) || $artifact['height'] <= 0 || $artifact['height'] > self::MAX_IMAGE_DIMENSION
+				|| $artifact['width'] * $artifact['height'] > self::MAX_IMAGE_PIXELS
+				|| ! is_int( $artifact['filesize_bytes'] ) || $artifact['filesize_bytes'] <= 0 || $artifact['filesize_bytes'] > self::MAX_UPLOAD_BYTES
+				|| 1 !== preg_match( '/^[0-9a-f]{64}$/', $sha256 )
+			) {
+				return new WP_Error(
+					'cloud_media_derivative_local_artifact_facts_invalid',
+					__( 'Local media derivative artifact facts are invalid.', 'npcink-cloud-addon' ),
+					array( 'status' => 400 )
+				);
+			}
+			$suggested_filename = (string) $artifact['suggested_filename'];
+			$filename_basis = $artifact['filename_basis'];
+			$warnings = $artifact['processing_warnings'];
+			if (
+				'' === $suggested_filename
+				|| sanitize_file_name( $suggested_filename ) !== $suggested_filename
+				|| strlen( $suggested_filename ) > self::MAX_SUGGESTED_FILENAME_BYTES
+				|| ! is_array( $filename_basis )
+				|| 3 !== count( $filename_basis )
+				|| array() !== array_diff( array( 'owner', 'strategy', 'final_sanitize_unique_required' ), array_keys( $filename_basis ) )
+				|| array() !== array_diff( array_keys( $filename_basis ), array( 'owner', 'strategy', 'final_sanitize_unique_required' ) )
+				|| 'wordpress_write_ability_final' !== ( $filename_basis['owner'] ?? null )
+				|| 'format_checksum' !== ( $filename_basis['strategy'] ?? null )
+				|| true !== ( $filename_basis['final_sanitize_unique_required'] ?? null )
+				|| ! is_array( $warnings ) || count( $warnings ) > self::MAX_PROCESSING_WARNINGS
+			) {
+				return new WP_Error(
+					'cloud_media_derivative_local_artifact_metadata_invalid',
+					__( 'Local media derivative artifact metadata is invalid.', 'npcink-cloud-addon' ),
+					array( 'status' => 400 )
+				);
+			}
+			foreach ( $warnings as $warning ) {
+				if ( ! is_string( $warning ) || strlen( $warning ) > self::MAX_PROCESSING_WARNING_BYTES ) {
+					return new WP_Error(
+						'cloud_media_derivative_local_artifact_metadata_invalid',
+						__( 'Local media derivative processing warnings are invalid.', 'npcink-cloud-addon' ),
+						array( 'status' => 400 )
+					);
+				}
+			}
+
+			return array(
+				'artifact_id'    => $artifact_id,
+				'expires_at'     => $expires_at,
+				'mime_type'      => $mime_type,
+				'format'         => $format,
+				'width'          => $artifact['width'],
+				'height'         => $artifact['height'],
+				'filesize_bytes' => $artifact['filesize_bytes'],
+				'sha256'         => $sha256,
+				'suggested_filename' => $suggested_filename,
+				'filename_basis' => $filename_basis,
+				'processing_warnings' => array_values( array_map( 'sanitize_text_field', $warnings ) ),
 			);
 		}
 
@@ -1232,12 +1704,56 @@ if ( ! class_exists( 'Npcink_Cloud_Media_Derivative_Transport' ) ) {
 		 * @return bool
 		 */
 		private static function is_expired( string $expires_at ): bool {
-			$timestamp = strtotime( $expires_at );
+			$timestamp = self::strict_timestamp( $expires_at );
 			if ( false === $timestamp ) {
 				return true;
 			}
 
 			return $timestamp <= time();
+		}
+
+		/**
+		 * Parses exact canonical UTC RFC3339 without normalizing invalid dates.
+		 *
+		 * @param string $value Timestamp.
+		 * @return int|false
+		 */
+		private static function strict_timestamp( string $value ) {
+			$utc = new DateTimeZone( 'UTC' );
+			$formats = array(
+				'!Y-m-d\TH:i:s\Z'   => 'Y-m-d\TH:i:s\Z',
+				'!Y-m-d\TH:i:sP'    => 'Y-m-d\TH:i:sP',
+				'!Y-m-d\TH:i:s.u\Z' => 'Y-m-d\TH:i:s.u\Z',
+				'!Y-m-d\TH:i:s.uP'  => 'Y-m-d\TH:i:s.uP',
+			);
+
+			foreach ( $formats as $parse_format => $roundtrip_format ) {
+				$timestamp = DateTimeImmutable::createFromFormat( $parse_format, $value, $utc );
+				$errors    = DateTimeImmutable::getLastErrors();
+				if (
+					false === $timestamp
+					|| ( is_array( $errors ) && ( $errors['warning_count'] > 0 || $errors['error_count'] > 0 ) )
+					|| 0 !== $timestamp->getOffset()
+					|| $value !== $timestamp->format( $roundtrip_format )
+				) {
+					continue;
+				}
+
+				return $timestamp->getTimestamp();
+			}
+
+			return false;
+		}
+
+		/**
+		 * Derives bounded resource-specific idempotency while every request uses a fresh nonce.
+		 *
+		 * @param string $base Caller operation identity.
+		 * @param string $stage Media resource stage.
+		 * @return string
+		 */
+		private static function media_idempotency_key( string $base, string $stage ): string {
+			return 'media_' . sanitize_key( $stage ) . '_' . substr( hash( 'sha256', $base . '|' . $stage ), 0, 40 );
 		}
 
 		/**
@@ -1304,30 +1820,17 @@ if ( ! class_exists( 'Npcink_Cloud_Media_Derivative_Transport' ) ) {
 		 * @return true|WP_Error
 		 */
 		private static function validate_derivative_artifact_binding( array $cloud_data, array $artifact ) {
-			$derivative = is_array( $cloud_data['derivative'] ?? null ) ? $cloud_data['derivative'] : array();
-			$result_artifact_id = sanitize_text_field( (string) ( $derivative['artifact_id'] ?? $derivative['id'] ?? '' ) );
-			$artifact_id = sanitize_text_field( (string) ( $artifact['artifact_id'] ?? '' ) );
-			if ( '' !== $result_artifact_id && '' !== $artifact_id && $result_artifact_id !== $artifact_id ) {
-				return new WP_Error(
-					'cloud_media_derivative_artifact_binding_mismatch',
-					__( 'Derivative artifact id does not match the Cloud result.', 'npcink-cloud-addon' ),
-					array( 'status' => 409 )
-				);
+			$result_artifact = is_array( $cloud_data['artifact'] ?? null ) ? $cloud_data['artifact'] : array();
+			foreach ( array( 'artifact_id', 'expires_at', 'mime_type', 'format', 'width', 'height', 'filesize_bytes', 'checksum' ) as $field ) {
+				if ( ! array_key_exists( $field, $result_artifact ) || $result_artifact[ $field ] !== ( $artifact[ $field ] ?? null ) ) {
+					return new WP_Error(
+						'cloud_media_derivative_artifact_binding_mismatch',
+						__( 'Derivative artifact facts do not match the Cloud result.', 'npcink-cloud-addon' ),
+						array( 'status' => 409 )
+					);
+				}
 			}
-
-			$result_run_id = sanitize_text_field( (string) ( $cloud_data['run_id'] ?? '' ) );
-			$artifact_run_id = sanitize_text_field( (string) ( $artifact['run_id'] ?? '' ) );
-			if ( '' !== $result_run_id && '' !== $artifact_run_id && $result_run_id !== $artifact_run_id ) {
-				return new WP_Error(
-					'cloud_media_derivative_artifact_run_mismatch',
-					__( 'Derivative artifact run_id does not match the Cloud result.', 'npcink-cloud-addon' ),
-					array( 'status' => 409 )
-				);
-			}
-
-			$result_sha256 = self::normalize_sha256( (string) ( $derivative['sha256'] ?? $derivative['checksum'] ?? '' ) );
-			$artifact_sha256 = self::normalize_sha256( (string) ( $artifact['sha256'] ?? $artifact['checksum'] ?? '' ) );
-			if ( '' !== $result_sha256 && '' !== $artifact_sha256 && $result_sha256 !== $artifact_sha256 ) {
+			if ( self::normalize_sha256( (string) $result_artifact['checksum'] ) !== self::normalize_sha256( (string) $artifact['checksum'] ) ) {
 				return new WP_Error(
 					'cloud_media_derivative_artifact_checksum_mismatch',
 					__( 'Derivative artifact checksum does not match the Cloud result.', 'npcink-cloud-addon' ),
@@ -1434,34 +1937,13 @@ if ( ! class_exists( 'Npcink_Cloud_Media_Derivative_Transport' ) ) {
 		 * @return array<string,mixed>
 		 */
 		private static function sanitize_cloud_result_summary( array $cloud_data ): array {
-			$derivative = is_array( $cloud_data['derivative'] ?? null ) ? $cloud_data['derivative'] : array();
+			$artifact = is_array( $cloud_data['artifact'] ?? null ) ? $cloud_data['artifact'] : array();
 
 			return array(
 				'run_id' => sanitize_text_field( (string) ( $cloud_data['run_id'] ?? '' ) ),
 				'status' => sanitize_key( (string) ( $cloud_data['status'] ?? '' ) ),
 				'warnings' => self::sanitize_string_list( $cloud_data['warnings'] ?? array() ),
-				'derivative_artifact_id' => sanitize_text_field( (string) ( $derivative['artifact_id'] ?? $derivative['id'] ?? '' ) ),
-			);
-		}
-
-		/**
-		 * Normalizes a runtime result artifact into the derivative summary shape.
-		 *
-		 * @param array<string,mixed> $artifact Runtime result artifact.
-		 * @return array<string,mixed>
-		 */
-		private static function normalize_result_artifact_for_cloud_data( array $artifact ): array {
-			return array(
-				'artifact_id'    => sanitize_text_field( (string) ( $artifact['artifact_id'] ?? $artifact['id'] ?? '' ) ),
-				'download_url'   => esc_url_raw( (string) ( $artifact['download_url'] ?? $artifact['url'] ?? '' ) ),
-				'expires_at'     => sanitize_text_field( (string) ( $artifact['expires_at'] ?? '' ) ),
-				'mime_type'      => self::normalize_media_type( (string) ( $artifact['mime_type'] ?? '' ) ),
-				'format'         => sanitize_key( (string) ( $artifact['format'] ?? '' ) ),
-				'width'          => absint( $artifact['width'] ?? 0 ),
-				'height'         => absint( $artifact['height'] ?? 0 ),
-				'filesize_bytes' => absint( $artifact['filesize_bytes'] ?? $artifact['size_bytes'] ?? 0 ),
-				'sha256'         => self::normalize_sha256( (string) ( $artifact['sha256'] ?? $artifact['checksum'] ?? '' ) ),
-				'processing_warnings' => self::sanitize_string_list( $artifact['processing_warnings'] ?? array() ),
+				'artifact_id' => sanitize_text_field( (string) ( $artifact['artifact_id'] ?? '' ) ),
 			);
 		}
 

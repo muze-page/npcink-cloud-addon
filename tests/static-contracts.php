@@ -42,7 +42,6 @@ $pot = maca_read( $root . '/languages/npcink-cloud-addon.pot' );
 $bootstrap = maca_read( $root . '/includes/bootstrap.php' );
 $credential_store = maca_read( $root . '/includes/class-cloud-credential-store.php' );
 $outbound_policy = maca_read( $root . '/includes/class-cloud-outbound-policy.php' );
-$runtime_artifact_url_normalizer = maca_read( $root . '/includes/class-cloud-runtime-artifact-url-normalizer.php' );
 $runtime_endpoint_policy = maca_read( $root . '/includes/class-cloud-runtime-endpoint-policy.php' );
 $transport = maca_read( $root . '/includes/class-cloud-media-derivative-transport.php' );
 $runtime_client = maca_read( $root . '/includes/class-cloud-runtime-client.php' );
@@ -72,19 +71,6 @@ $adapter_doc = maca_read( $root . '/docs/adapter-integration-seam.md' );
 $complexity_doc = maca_read( $root . '/docs/cloud-addon-complexity-budget.md' );
 $test_helpers = maca_read( $root . '/tests/helpers.php' );
 $test_runner = maca_read( $root . '/tests/run.php' );
-
-$runtime_artifact_url_normalizer_forbidden = array(
-	'Npcink_Cloud_Runtime_Client', 'Npcink_Cloud_Addon_Settings', 'Npcink_Cloud_Outbound_Policy', 'wp_remote_', 'wp_safe_remote_', 'curl_',
-	'WP_Error', '__(', '_x(', 'esc_html__(', 'hash_hmac', 'secret', 'signature', 'nonce', 'trace',
-	'get_option(', 'update_option(', 'add_option(', 'delete_option(', 'get_transient(', 'set_transient(', 'delete_transient(',
-	'add_action(', 'add_filter(', 'do_action(', 'apply_filters(', '$_GET', '$_POST', '$_REQUEST', '$_SERVER', '$_COOKIE', '$_FILES',
-	'wp_json_encode(', 'json_encode(', 'json_decode(', 'wp_insert_' . 'post(', 'wp_update_' . 'post(', 'update_post_meta(',
-);
-$runtime_artifact_url_normalizer_has_forbidden = false;
-foreach ( $runtime_artifact_url_normalizer_forbidden as $forbidden_normalizer_dependency ) {
-	$runtime_artifact_url_normalizer_has_forbidden = $runtime_artifact_url_normalizer_has_forbidden
-		|| false !== strpos( $runtime_artifact_url_normalizer, $forbidden_normalizer_dependency );
-}
 
 $runtime_endpoint_policy_forbidden = array(
 	'Npcink_Cloud_Runtime_Client', 'Npcink_Cloud_Outbound_Policy', 'wp_remote_', 'wp_safe_remote_', 'curl_',
@@ -381,8 +367,9 @@ maca_assert(
 	&& false !== strpos( $bootstrap, 'npcink_cloud_addon_get_media_derivative_run_result' )
 	&& false !== strpos( $bootstrap, 'npcink_cloud_addon_public_media_derivative_cloud_projection' )
 	&& false !== strpos( $bootstrap, 'npcink_cloud_addon_build_media_derivative_optimization_payload' )
-	&& false !== strpos( $bootstrap, 'npcink_cloud_addon_download_media_derivative_artifact' ),
-	'Bootstrap exposes verified runtime and media derivative transport helpers with optional watermark transport, projections, optimization payloads, and signed preview download.'
+	&& false !== strpos( $bootstrap, 'npcink_cloud_addon_receive_media_derivative_artifact' )
+	&& false === strpos( $bootstrap, 'npcink_cloud_addon_download_media_derivative_artifact' ),
+	'Bootstrap exposes verified runtime and exact media delivery helpers without the legacy preview download seam.'
 );
 
 maca_assert(
@@ -422,7 +409,7 @@ maca_assert(
 	&& false !== strpos( $runtime_client, "'request_contract_version' => 'media_upload_request.v1'" )
 	&& false !== strpos( $runtime_client, "'media_kind'              => 'image'" )
 	&& false !== strpos( $runtime_client, "'ttl_minutes'             => 30" )
-	&& false !== strpos( $runtime_client, 'build_wordpress_ai_alt_text_upload_multipart_body' )
+	&& false !== strpos( $runtime_client, 'build_media_upload_multipart_body' )
 	&& false !== strpos( $runtime_client, 'name="file"; filename="' )
 	&& false !== strpos( $runtime_client, "'/^art_[0-9a-f]{32}$/'" )
 	&& false !== strpos( $runtime_client, "'sha256:' . hash( 'sha256', \$contents )" )
@@ -687,14 +674,16 @@ maca_assert(
 );
 
 maca_assert(
-	false !== strpos( $runtime_client, 'function create_media_derivative' )
-	&& false !== strpos( $runtime_client, "'/v1/runtime/media-derivatives'" )
-	&& false !== strpos( $runtime_client, 'build_media_derivative_multipart_body' )
-	&& false !== strpos( $runtime_client, "'source_file'" )
-	&& false !== strpos( $runtime_client, "'watermark_file'" )
-	&& false !== strpos( $runtime_client, "'cloud_runtime_media_derivative_file_field_not_allowed'" )
-	&& false !== strpos( $runtime_client, 'Only source_file and watermark_file uploads are allowed' ),
-	'Runtime client exposes a named media derivative endpoint with bounded multipart files.'
+	false !== strpos( $runtime_client, 'function upload_media_artifact' )
+	&& false !== strpos( $runtime_client, 'function create_media_job' )
+	&& false !== strpos( $runtime_client, "'/v1/runtime/media/uploads'" )
+	&& false !== strpos( $runtime_client, "'/v1/runtime/media/jobs'" )
+	&& false !== strpos( $runtime_client, 'media_upload_request.v1' )
+	&& false !== strpos( $runtime_client, 'media_job_request.v1' )
+	&& false !== strpos( $runtime_client, "'checksum', 'expires_at', 'purged_at'" )
+	&& false !== strpos( $runtime_client, "null === ( \$artifact['purged_at'] ?? null )" )
+	&& false === strpos( $runtime_client, '/v1/runtime/media-derivatives' ),
+	'Runtime client hard-cuts media work to exact11 available uploads followed by artifact-referenced jobs.'
 );
 
 maca_assert(
@@ -724,24 +713,29 @@ maca_assert(
 );
 
 maca_assert(
-	false !== strpos( $runtime_client, 'function download_media_derivative_artifact' )
-	&& false !== strpos( $runtime_client, "'/v1/runtime/artifacts/'" )
-	&& false !== strpos( $runtime_client, "'/download'" )
+	false !== strpos( $runtime_client, 'function pull_media_artifact' )
+	&& false !== strpos( $runtime_client, 'function acknowledge_media_artifact_delivery' )
+	&& false !== strpos( $runtime_client, "'/v1/runtime/media/artifacts/'" )
+	&& false !== strpos( $runtime_client, "'/delivery-ack'" )
 	&& false !== strpos( $runtime_client, 'request_raw' )
 	&& false !== strpos( $runtime_client, 'MAX_DOWNLOAD_BYTES = 26214400' )
-	&& false !== strpos( $transport, 'download_artifact_preview' )
+	&& false !== strpos( $transport, 'receive_artifact' )
+	&& false !== strpos( $transport, 'media_artifact_verified_transfer.v1' )
 	&& false !== strpos( $transport, 'cloud_media_derivative_artifact_mime_mismatch' )
-	&& false !== strpos( $transport, 'Derivative artifact checksum does not match the downloaded bytes.' ),
-	'Runtime client and transport expose only a bounded signed media derivative artifact preview download.'
+	&& false !== strpos( $transport, 'Derivative artifact checksum does not match the downloaded bytes.' )
+	&& false === strpos( $runtime_client, '/v1/runtime/artifacts/' ),
+	'Runtime client and transport expose canonical signed pull, independent verification, and transfer-only ACK.'
 );
 
 maca_assert(
-	false !== strpos( $transport, 'create_media_derivative' )
+	false !== strpos( $transport, 'upload_media_artifact' )
+	&& false !== strpos( $transport, 'create_media_job' )
 	&& false !== strpos( $transport, 'get_run_projection' )
 	&& false !== strpos( $transport, 'get_run_result_projection' )
 	&& false !== strpos( $transport, 'public_cloud_projection' )
 	&& false !== strpos( $transport, 'build_media_optimization_payload' )
-	&& false !== strpos( $transport, 'build_media_derivative_request_payload' )
+	&& false !== strpos( $transport, 'build_media_job_params' )
+	&& false !== strpos( $transport, 'build_media_job_request' )
 	&& false !== strpos( $transport, 'normalize_upload_file_descriptor' )
 	&& false !== strpos( $transport, 'normalize_required_artifact_reference' ),
 	'Media derivative transport shapes strict Cloud requests, projections, and Core-ready optimization payloads from ability contracts and host artifacts.'
@@ -776,9 +770,8 @@ maca_assert(
 
 maca_assert(
 	false !== strpos( $transport, 'cloud_media_derivative_artifact_expired' )
-	&& false !== strpos( $transport, 'cloud_media_derivative_derivative_artifact_id_missing' )
+	&& false !== strpos( $transport, 'cloud_media_derivative_artifact_id_invalid' )
 	&& false !== strpos( $transport, 'cloud_media_derivative_artifact_binding_mismatch' )
-	&& false !== strpos( $transport, 'cloud_media_derivative_artifact_run_mismatch' )
 	&& false !== strpos( $transport, 'cloud_media_derivative_artifact_checksum_mismatch' )
 	&& false !== strpos( $transport, 'Expired Cloud artifacts cannot be adopted.' )
 	&& false !== strpos( $transport, 'return $timestamp <= time();' ),
@@ -811,7 +804,8 @@ maca_assert(
 maca_assert(
 	false !== strpos( $runtime_client, "'POST', '/v1/runtime/execute'" )
 	&& false !== strpos( $runtime_client, "'/v1/runtime/media/uploads'" )
-	&& false !== strpos( $runtime_client, "'POST', '/v1/runtime/media-derivatives'" )
+	&& false !== strpos( $runtime_client, "'/v1/runtime/media/jobs'" )
+	&& false !== strpos( $runtime_client, "'/v1/runtime/media/artifacts/'" )
 	&& false !== strpos( $runtime_client, "'GET', '/v1/runs/'" )
 	&& false !== strpos( $runtime_client, 'get_recent_nightly_inspection_runs' )
 	&& false !== strpos( $runtime_client, "'GET', '/v1/runs/nightly-inspection/recent?limit='" )
@@ -830,7 +824,8 @@ maca_assert(
 	&& strpos( $runtime_endpoint_policy, "'/v1/runs/nightly-inspection/recent'" )
 		< strpos( $runtime_endpoint_policy, '#^/v1/runs/[A-Za-z0-9._:-]+(?:/result)?$#' )
 	&& false !== strpos( $runtime_endpoint_policy, '#^/v1/runs/[A-Za-z0-9._:-]+/retry$#' )
-	&& false !== strpos( $runtime_endpoint_policy, '#^/v1/runtime/artifacts/[A-Za-z0-9._:-]+/download$#' )
+	&& false !== strpos( $runtime_endpoint_policy, '#^/v1/runtime/media/artifacts/art_[0-9a-f]{32}/download$#' )
+	&& false !== strpos( $runtime_endpoint_policy, '#^/v1/runtime/media/artifacts/art_[0-9a-f]{32}/delivery-ack$#' )
 	&& false === strpos( $runtime_endpoint_policy, '/v1/stats/' )
 	&& false === strpos( $runtime_client, 'function get_profile_stats' )
 	&& false === strpos( $runtime_client, 'function get_instance_stats' )
@@ -845,38 +840,15 @@ maca_assert(
 	'Runtime client keeps Cloud calls on named allowlisted contract surfaces.'
 );
 
-$runtime_decode_start = strpos( $runtime_client, 'private function decode_response' );
-$runtime_raw_decode_start = strpos( $runtime_client, 'private function decode_raw_response' );
-$runtime_artifact_normalizer_call = strpos( $runtime_client, 'Npcink_Cloud_Runtime_Artifact_Url_Normalizer::normalize' );
-$runtime_artifact_normalizer_bootstrap_position = strpos( $bootstrap, 'class-cloud-runtime-artifact-url-normalizer.php' );
-$runtime_client_bootstrap_position = strpos( $bootstrap, 'class-cloud-runtime-client.php' );
-$runtime_artifact_normalizer_helper_position = strpos( $test_helpers, 'class-cloud-runtime-artifact-url-normalizer.php' );
-$runtime_client_helper_position = strpos( $test_helpers, 'class-cloud-runtime-client.php' );
 maca_assert(
-	! $runtime_artifact_url_normalizer_has_forbidden
-	&& false !== strpos( $runtime_artifact_url_normalizer, 'final class Npcink_Cloud_Runtime_Artifact_Url_Normalizer' )
-	&& false !== strpos( $runtime_artifact_url_normalizer, 'public static function normalize' )
-	&& 1 === substr_count( $runtime_artifact_url_normalizer, 'public static function' )
-	&& false !== strpos( $runtime_artifact_url_normalizer, 'private static function normalize_value' )
-	&& false !== strpos( $runtime_artifact_url_normalizer, 'private static function absolute_url' )
-	&& false !== strpos( $runtime_artifact_url_normalizer, '#^/v1/runtime/artifacts/[A-Za-z0-9._:-]+/(?:download|public-download)(?:\\\\?token=[A-Za-z0-9._~-]+)?$#' )
-	&& 1 === substr_count( $runtime_client, 'Npcink_Cloud_Runtime_Artifact_Url_Normalizer::normalize' )
-	&& false === strpos( $runtime_client, 'normalize_runtime_artifact_urls' )
-	&& false === strpos( $runtime_client, 'absolute_runtime_artifact_url' )
-	&& false === strpos( $runtime_client, '#^/v1/runtime/artifacts/[A-Za-z0-9._:-]+/(?:download|public-download)' )
-	&& false !== $runtime_decode_start
-	&& false !== $runtime_raw_decode_start
-	&& false !== $runtime_artifact_normalizer_call
-	&& $runtime_decode_start < $runtime_artifact_normalizer_call
-	&& $runtime_artifact_normalizer_call < $runtime_raw_decode_start
-	&& false !== $runtime_artifact_normalizer_bootstrap_position
-	&& false !== $runtime_client_bootstrap_position
-	&& $runtime_artifact_normalizer_bootstrap_position < $runtime_client_bootstrap_position
-	&& false !== $runtime_artifact_normalizer_helper_position
-	&& false !== $runtime_client_helper_position
-	&& $runtime_artifact_normalizer_helper_position < $runtime_client_helper_position
-	&& false !== strpos( $test_runner, 'behavior-runtime-artifact-url-normalizer.php' ),
-	'Runtime artifact URL normalization is a pure helper loaded before the client and used only by successful JSON response decoding.'
+	false === strpos( $runtime_client, 'Npcink_Cloud_Runtime_Artifact_Url_Normalizer' )
+	&& false === strpos( $bootstrap, 'class-cloud-runtime-artifact-url-normalizer.php' )
+	&& false === strpos( $test_helpers, 'class-cloud-runtime-artifact-url-normalizer.php' )
+	&& false === strpos( $test_runner, 'behavior-runtime-artifact-url-normalizer.php' )
+	&& ! file_exists( $root . '/includes/class-cloud-runtime-artifact-url-normalizer.php' )
+	&& ! file_exists( $root . '/tests/behavior-runtime-artifact-url-normalizer.php' )
+	,
+	'Legacy runtime artifact URL normalization and compatibility tests are removed.'
 );
 
 maca_assert(
@@ -1011,8 +983,10 @@ maca_assert(
 maca_assert(
 	false === strpos( $readme, 'request(string $method' )
 	&& false === strpos( $runtime_contract, 'request(string $method' )
-	&& false !== strpos( $runtime_contract, 'create_media_derivative(array $payload, array $files = array(), string $trace_id = \'\', string $idempotency_key = \'\')' )
-	&& false !== strpos( $runtime_contract, 'download_media_derivative_artifact(string $artifact_id, string $trace_id = \'\')' )
+	&& false !== strpos( $runtime_contract, 'upload_media_artifact(array $file, string $trace_id = \'\', string $idempotency_key = \'\')' )
+	&& false !== strpos( $runtime_contract, 'create_media_job(array $payload, string $trace_id = \'\', string $idempotency_key = \'\')' )
+	&& false !== strpos( $runtime_contract, 'pull_media_artifact(string $artifact_id, string $trace_id = \'\')' )
+	&& false !== strpos( $runtime_contract, 'acknowledge_media_artifact_delivery(string $artifact_id, array $payload, string $trace_id = \'\', string $idempotency_key = \'\')' )
 	&& false !== strpos( $readme, 'low-level signed request method is private and endpoint-allowlisted' )
 	&& false !== strpos( $runtime_contract, 'must enforce the endpoint allowlist' )
 	&& false !== strpos( $runtime_contract, 'must not be exposed as a generic public Cloud proxy' ),
@@ -1038,15 +1012,17 @@ maca_assert(
 );
 
 maca_assert(
-	false !== strpos( $boundary_doc, 'POST /v1/runtime/media-derivatives' )
-	&& false !== strpos( $boundary_doc, 'GET /v1/runtime/artifacts/{artifact_id}/download' )
+	false !== strpos( $boundary_doc, 'POST /v1/runtime/media/jobs' )
+	&& false !== strpos( $boundary_doc, 'GET /v1/runtime/media/artifacts/{artifact_id}/download' )
+	&& false !== strpos( $boundary_doc, 'POST /v1/runtime/media/artifacts/{artifact_id}/delivery-ack' )
 	&& false !== strpos( $boundary_doc, 'logo registry' )
 	&& false !== strpos( $boundary_doc, 'watermark plan' )
 	&& false !== strpos( $adapter_doc, 'Expired Cloud artifacts must not be adopted.' )
 	&& false !== strpos( $adapter_doc, 'final_write_owner=local_wordpress_host' )
 	&& false !== strpos( $adapter_doc, 'watermark_artifact' )
-	&& false !== strpos( $agents, 'POST /v1/runtime/media-derivatives' )
-	&& false !== strpos( $agents, 'GET /v1/runtime/artifacts/{artifact_id}/download' )
+	&& false !== strpos( $agents, 'POST /v1/runtime/media/jobs' )
+	&& false !== strpos( $agents, 'GET /v1/runtime/media/artifacts/{artifact_id}/download' )
+	&& false !== strpos( $agents, 'POST /v1/runtime/media/artifacts/{artifact_id}/delivery-ack' )
 	&& false !== strpos( $agents, 'POST /v1/agent-feedback/events' ),
 	'Boundary, adapter integration, and AGENTS docs describe derivative transport ownership.'
 );
@@ -1824,7 +1800,7 @@ foreach ( array( 'npcink-governance-core', 'npcink-abilities-toolkit', 'npcink-a
 	);
 }
 
-foreach ( array( 'Cloud Addon Contract Reuse Readiness', 'signed_transport', 'ability_contracts', 'proposal_handoff', 'execution_profiles', 'product_surface', 'runtime_detail', 'Reference-Plugin Learning', 'Jetpack', 'Site Kit by Google', 'WP Mail SMTP', 'Health Check & Troubleshooting', 'WordPress Application Passwords', 'No new Cloud Addon endpoint', 'workflow runtime', 'scheduler truth', 'WordPress write executor is needed for this pass', 'contract_reuse', 'mak1_{base64url(json)}', 'POST /v1/runtime/execute', 'POST /v1/runtime/media-derivatives', 'GET /v1/runs/{run_id}', 'GET /v1/runs/{run_id}/result', 'GET /v1/runs/nightly-inspection/recent', 'POST /v1/runs/{run_id}/retry', 'GET /v1/runtime/artifacts/{artifact_id}/download', 'GET /v1/entitlements/current', 'POST /v1/observability/plugin-events', 'GET /v1/observability/plugin-summary', 'POST /v1/agent-feedback/events', 'GET /v1/agent-feedback/summary', 'site_knowledge_change_bridge_status.v1', 'cloud_connector_runtime.v1', 'wordpress_operation.v1', 'cloud_connector_result.v1', 'image_context_evidence_request.v1', 'cloud_agent_feedback.v1', 'Stop and write a boundary note or ADR', 'generic Cloud proxy routes', 'raw request/response', 'provider credentials', 'npcink-ai-cloud', 'composer run test:all' ) as $required_contract_reuse_text ) {
+foreach ( array( 'Cloud Addon Contract Reuse Readiness', 'signed_transport', 'ability_contracts', 'proposal_handoff', 'execution_profiles', 'product_surface', 'runtime_detail', 'Reference-Plugin Learning', 'Jetpack', 'Site Kit by Google', 'WP Mail SMTP', 'Health Check & Troubleshooting', 'WordPress Application Passwords', 'No new Cloud Addon endpoint', 'workflow runtime', 'scheduler truth', 'WordPress write executor is needed for this pass', 'contract_reuse', 'mak1_{base64url(json)}', 'POST /v1/runtime/execute', 'POST /v1/runtime/media/uploads', 'POST /v1/runtime/media/jobs', 'GET /v1/runs/{run_id}', 'GET /v1/runs/{run_id}/result', 'GET /v1/runs/nightly-inspection/recent', 'POST /v1/runs/{run_id}/retry', 'GET /v1/runtime/media/artifacts/{artifact_id}/download', 'POST /v1/runtime/media/artifacts/{artifact_id}/delivery-ack', 'GET /v1/entitlements/current', 'POST /v1/observability/plugin-events', 'GET /v1/observability/plugin-summary', 'POST /v1/agent-feedback/events', 'GET /v1/agent-feedback/summary', 'site_knowledge_change_bridge_status.v1', 'cloud_connector_runtime.v1', 'wordpress_operation.v1', 'cloud_connector_result.v1', 'image_context_evidence_request.v1', 'cloud_agent_feedback.v1', 'Stop and write a boundary note or ADR', 'generic Cloud proxy routes', 'raw request/response', 'provider credentials', 'npcink-ai-cloud', 'composer run test:all' ) as $required_contract_reuse_text ) {
 	maca_assert(
 		false !== strpos( $contract_reuse_readiness_doc, $required_contract_reuse_text ),
 		'Cloud Addon contract reuse readiness preserves: ' . $required_contract_reuse_text

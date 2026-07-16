@@ -48,7 +48,7 @@ if ( ! class_exists( 'Npcink_Cloud_Runtime_Endpoint_Policy' ) ) {
 				'POST' => array(
 					'/v1/runtime/execute',
 					'/v1/runtime/media/uploads',
-					'/v1/runtime/media-derivatives',
+					'/v1/runtime/media/jobs',
 					'/v1/observability/plugin-events',
 					'/v1/agent-feedback/events',
 				),
@@ -69,7 +69,10 @@ if ( ! class_exists( 'Npcink_Cloud_Runtime_Endpoint_Policy' ) ) {
 			if ( 'POST' === $method && 1 === preg_match( '#^/v1/runs/[A-Za-z0-9._:-]+/retry$#', $path_only ) ) {
 				return true;
 			}
-			if ( 'GET' === $method && 1 === preg_match( '#^/v1/runtime/artifacts/[A-Za-z0-9._:-]+/download$#', $path_only ) ) {
+			if ( 'GET' === $method && $path === $path_only && 1 === preg_match( '#^/v1/runtime/media/artifacts/art_[0-9a-f]{32}/download$#', $path_only ) ) {
+				return true;
+			}
+			if ( 'POST' === $method && $path === $path_only && 1 === preg_match( '#^/v1/runtime/media/artifacts/art_[0-9a-f]{32}/delivery-ack$#', $path_only ) ) {
 				return true;
 			}
 			return false;

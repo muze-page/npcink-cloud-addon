@@ -54,13 +54,14 @@ runtime truth rules here beyond addon-owned connector contracts.
 Allowed runtime/read endpoints:
 
 - `POST /v1/runtime/execute`
-- `POST /v1/runtime/media/uploads` for bounded WordPress AI alt-text source uploads only
-- `POST /v1/runtime/media-derivatives`
+- `POST /v1/runtime/media/uploads` for bounded image source uploads only
+- `POST /v1/runtime/media/jobs`
 - `GET /v1/runs/{run_id}`
 - `GET /v1/runs/{run_id}/result`
 - `GET /v1/runs/nightly-inspection/recent`
 - `POST /v1/runs/{run_id}/retry` for bounded runtime retry only
-- `GET /v1/runtime/artifacts/{artifact_id}/download` for bounded preview downloads
+- `GET /v1/runtime/media/artifacts/{artifact_id}/download` for bounded verified delivery
+- `POST /v1/runtime/media/artifacts/{artifact_id}/delivery-ack` after byte and image verification only
 - `GET /v1/entitlements/current`
 - `POST /v1/observability/plugin-events`
 - `GET /v1/observability/plugin-summary`

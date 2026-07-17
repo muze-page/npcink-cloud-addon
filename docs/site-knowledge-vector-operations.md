@@ -15,7 +15,8 @@ rebuild, delete, or collection lifecycle actions.
 The `Enable Site Knowledge delivery` setting is local delivery consent only. It
 controls whether this WordPress site sends future public content changes and
 administrator start/rebuild requests to Cloud Site Knowledge. It is not a vector
-collection lifecycle switch.
+collection lifecycle switch. The setting defaults to disabled: verifying or
+reconnecting Cloud credentials alone never grants content-delivery consent.
 
 ## Allowed Addon Operations
 
@@ -28,6 +29,9 @@ collection lifecycle switch.
 - Persist only a bounded local delivery cursor, submit one batch through the
   existing runtime worker, poll that run to success, and then submit the next
   batch. This cursor is not index lifecycle, queue, or scheduler truth.
+- Use that same cursor for administrator start/rebuild requests so the admin
+  request performs no Cloud batch loop. Reject overlapping full-index actions
+  instead of replacing an active cursor.
 - Reuse the existing reconciliation hook hourly to discover Cloud maintenance
   intent; no separate maintenance scheduler or push channel is introduced.
 - Let a present administrator enable or disable local Site Knowledge delivery
@@ -50,6 +54,13 @@ collection lifecycle switch.
 - Show shallow connector state, buffered public changes, last delivery, last
   error, next flush, last local index action, and a link to Cloud Site
   Knowledge detail.
+
+Administrator and automatic full-index delivery use the same cursor and flush
+hook. Each invocation performs at most one Cloud POST or run-status GET. Manual
+start uses `refresh` for every batch; manual and automatic rebuild use
+`rebuild` for the first batch and `refresh` thereafter. A Cloud run that remains
+pending is subject to a finite polling window and the existing three-attempt
+delivery stop.
 
 Automatic maintenance uses the same local delivery consent. It never bypasses
 the disabled state, never lets WordPress choose a model, dimension, metric,
@@ -106,10 +117,11 @@ Dedicated Cloud comment admission, when explicitly enabled by a future bounded
 contract, must use a separate top-level `comments[]` shape rather than nesting
 comment content inside `documents[]`.
 
-Each Site Knowledge search, status, or refresh dispatch uses one fresh operation
-id for its trace and idempotency key. This prevents a later user action from
-replaying stale index state or an older queued refresh while preserving stable
-identity inside that single signed dispatch.
+Each Site Knowledge search or status action uses a fresh operation id. Ordinary
+change delivery derives a stable key from the exact public payload, while each
+full-index cursor derives one stable key per request and batch. This prevents
+uncertain retries from duplicating Cloud work without replaying a later user
+action as an older request.
 
 Refresh payloads must not contain:
 

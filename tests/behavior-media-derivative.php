@@ -1,6 +1,6 @@
 <?php
 /**
- * Behavior tests for media derivative Cloud transport.
+ * Behavior tests for the artifact-referenced media delivery contract.
  *
  * @package NpcinkCloudAddon
  */
@@ -11,659 +11,896 @@ require_once __DIR__ . '/helpers.php';
 
 maca_load_addon_classes();
 
-$GLOBALS['maca_options'][ Npcink_Cloud_Addon_Settings::option_name() ] = array(
-	'base_url' => 'https://cloud.example.test',
-	'site_id' => 'npcink_site',
-	'key_id' => 'npcink_key',
-	'secret' => 'npcink_secret',
-	'timeout' => 12,
-	'verified' => true,
-	'verified_at' => '2026-06-20 00:00:00 UTC',
-	'last_verification_error' => '',
-	'monitoring_enabled' => true,
-);
-$stored_settings = Npcink_Cloud_Addon_Settings::get_settings();
-maca_assert(
-	'https://cloud.example.test' === $stored_settings['base_url']
-	&& 'npcink_site' === $stored_settings['site_id']
-	&& isset( $GLOBALS['maca_options'][ Npcink_Cloud_Addon_Settings::option_name() ] ),
-	'Behavior: Npcink Cloud Addon settings read from the current option.'
-);
-maca_reset_test_state();
+/**
+ * Returns one exact Cloud 12-field media derivative descriptor.
+ *
+ * @param string $artifact_id Artifact id.
+ * @param string $contents Image bytes.
+ * @param string $expires_at Expiry.
+ * @return array<string,mixed>
+ */
+function maca_cloud_derivative_artifact( string $artifact_id, string $contents, string $expires_at ): array {
+	$checksum = hash( 'sha256', $contents );
 
+	return array(
+		'artifact_id'        => $artifact_id,
+		'artifact_reference' => array( 'artifact_id' => $artifact_id ),
+		'expires_at'         => $expires_at,
+		'suggested_filename' => 'media-derivative-png-' . substr( $checksum, 0, 8 ) . '.png',
+		'filename_basis'     => array(
+			'owner'                          => 'wordpress_write_ability_final',
+			'strategy'                       => 'format_checksum',
+			'final_sanitize_unique_required' => true,
+		),
+		'mime_type'          => 'image/png',
+		'format'             => 'png',
+		'width'              => 1,
+		'height'             => 1,
+		'filesize_bytes'     => strlen( $contents ),
+		'checksum'           => 'sha256:' . $checksum,
+		'processing_warnings' => array(),
+	);
+}
+
+/**
+ * Returns one exact raw run-result HTTP response.
+ *
+ * @param array<string,mixed> $artifact Cloud descriptor.
+ * @return array<string,mixed>
+ */
+function maca_cloud_run_result_response( array $artifact ): array {
+	return array(
+		'response' => array( 'code' => 200 ),
+		'headers'  => array( 'Content-Type' => 'application/json' ),
+		'body'     => wp_json_encode(
+			array(
+				'status' => 'ok',
+				'data'   => array(
+					'run_id'     => 'run_media_1',
+					'status'     => 'succeeded',
+					'job_type'   => 'generate_optimized_media_derivative',
+					'created_at' => '2026-07-16T00:00:00+00:00',
+					'updated_at' => '2026-07-16T00:00:01+00:00',
+					'result'     => array(
+						'artifact_type'    => 'media_derivative_artifact',
+						'contract_version' => 'media_derivative_result.v1',
+						'workflow_metadata' => array( 'operation' => 'image.transform.v1' ),
+						'artifact'         => $artifact,
+					),
+				),
+			)
+		),
+	);
+}
+
+/**
+ * Returns one exact raw status HTTP response without a result field.
+ *
+ * @param string              $run_id Run id.
+ * @param string              $status Lifecycle status.
+ * @param array<string,mixed> $data_error Data-level lifecycle error facts.
+ * @param array<string,mixed> $envelope_error Envelope-level lifecycle error facts.
+ * @return array<string,mixed>
+ */
+function maca_cloud_run_status_response( string $run_id, string $status, array $data_error = array(), array $envelope_error = array() ): array {
+	$data = array_merge(
+		array(
+			'run_id'     => $run_id,
+			'status'     => $status,
+			'job_type'   => 'generate_optimized_media_derivative',
+			'created_at' => '2026-07-16T00:00:00+00:00',
+			'updated_at' => '2026-07-16T00:00:01+00:00',
+		),
+		$data_error
+	);
+
+	return array(
+		'response' => array( 'code' => 200 ),
+		'headers'  => array( 'Content-Type' => 'application/json' ),
+		'body'     => wp_json_encode(
+			array_merge(
+				array(
+					'status' => 'ok',
+					'data'   => $data,
+				),
+				$envelope_error
+			)
+		),
+	);
+}
+
+/**
+ * Queues one exact pull response.
+ *
+ * @param array<string,mixed> $artifact Local 11-field artifact.
+ * @param string              $contents Image bytes.
+ * @param string              $delivery_id Delivery id.
+ * @param string              $ack_deadline Ack deadline.
+ * @return void
+ */
+function maca_queue_media_pull( array $artifact, string $contents, string $delivery_id, string $ack_deadline ): void {
+	$GLOBALS['maca_http_response_queue'][] = array(
+		'response' => array( 'code' => 200 ),
+		'headers'  => array(
+			'Content-Type'                   => $artifact['mime_type'],
+			'Content-Length'                 => (string) strlen( $contents ),
+			'X-Npcink-Artifact-Id'           => $artifact['artifact_id'],
+			'X-Npcink-Artifact-Checksum'     => 'sha256:' . hash( 'sha256', $contents ),
+			'X-Npcink-Delivery-Id'           => $delivery_id,
+			'X-Npcink-Delivery-Ack-Deadline' => $ack_deadline,
+		),
+		'body'     => $contents,
+	);
+}
+
+/**
+ * Queues one exact ACK response.
+ *
+ * @param array<string,mixed> $artifact Local artifact.
+ * @param string              $contents Received bytes.
+ * @param string              $delivery_id Delivery id.
+ * @param string              $acknowledged_at Acknowledgement time.
+ * @param string              $artifact_expires_at Artifact expiry.
+ * @return void
+ */
+function maca_queue_media_ack( array $artifact, string $contents, string $delivery_id, string $acknowledged_at, string $artifact_expires_at ): void {
+	$GLOBALS['maca_http_response_queue'][] = array(
+		'response' => array( 'code' => 200 ),
+		'headers'  => array( 'Content-Type' => 'application/json' ),
+		'body'     => wp_json_encode(
+			array(
+				'status' => 'ok',
+				'data'   => array(
+					'contract_version'     => 'media_artifact_delivery_ack.v1',
+					'delivery_id'          => $delivery_id,
+					'artifact_id'          => $artifact['artifact_id'],
+					'status'               => 'acknowledged',
+					'received_byte_size'   => strlen( $contents ),
+					'received_checksum'    => 'sha256:' . hash( 'sha256', $contents ),
+					'byte_size_verified'   => true,
+					'checksum_verified'    => true,
+					'acknowledged_at'      => $acknowledged_at,
+					'artifact_expires_at'  => $artifact_expires_at,
+					'idempotent_replay'    => false,
+					'acknowledgement_scope' => 'verified_transfer_only',
+				),
+			)
+		),
+	);
+}
+
+/**
+ * Queues one successful media upload and derivative job dispatch.
+ *
+ * @param array<string,mixed> $upload_result Exact media upload result.
+ * @param string              $suffix Stable test suffix.
+ * @return void
+ */
+function maca_queue_media_dispatch_success( array $upload_result, string $suffix ): void {
+	$GLOBALS['maca_http_response_queue'][] = array(
+		'response' => array( 'code' => 200 ),
+		'headers'  => array( 'Content-Type' => 'application/json' ),
+		'body'     => wp_json_encode(
+			array(
+				'status' => 'ok',
+				'data'   => array(
+					'run_id'            => 'run_upload_' . $suffix,
+					'status'            => 'succeeded',
+					'trace_id'          => 'trace-upload-' . $suffix,
+					'idempotent_replay' => false,
+					'result'            => $upload_result,
+				),
+			)
+		),
+	);
+	$GLOBALS['maca_http_response_queue'][] = array(
+		'response' => array( 'code' => 200 ),
+		'headers'  => array( 'Content-Type' => 'application/json' ),
+		'body'     => wp_json_encode(
+			array(
+				'status' => 'ok',
+				'data'   => array(
+					'run_id'            => 'run_media_' . $suffix,
+					'status'            => 'queued',
+					'trace_id'          => 'trace-dispatch-' . $suffix,
+					'idempotent_replay' => false,
+					'result'            => array(),
+				),
+			)
+		),
+	);
+}
+
+$png = base64_decode( 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAusB9Y9ZQmcAAAAASUVORK5CYII=', true );
+maca_assert( is_string( $png ), 'Behavior: media test image fixture decodes.' );
+
+maca_reset_test_state();
 maca_seed_settings( false );
 $unverified = Npcink_Cloud_Media_Derivative_Transport::dispatch_from_ability_response(
 	maca_ability_fixture(),
 	array(
-		'artifact_id' => 'source_artifact',
-		'expires_at' => maca_future_expiry(),
+		'artifact_id' => 'art_' . str_repeat( '1', 32 ),
+		'expires_at'  => maca_future_expiry(),
 	)
 );
 maca_assert(
 	is_wp_error( $unverified ) && 'cloud_runtime_unverified' === $unverified->get_error_code(),
-	'Behavior: media derivative dispatch fails closed before verified Cloud credentials.'
-);
-
-maca_seed_settings( true );
-$credential_payload = maca_ability_fixture();
-$credential_payload['cloud_job_payload']['signed_headers'] = array( 'Authorization' => 'Bearer secret' );
-$credential_result = Npcink_Cloud_Media_Derivative_Transport::dispatch_from_ability_response(
-	$credential_payload,
-	array(
-		'artifact_id' => 'source_artifact',
-		'expires_at' => maca_future_expiry(),
-	)
-);
-maca_assert(
-	is_wp_error( $credential_result ) && 'cloud_media_derivative_credentials_present' === $credential_result->get_error_code(),
-	'Behavior: ability credentials and signed headers are rejected before Cloud dispatch.'
-);
-
-$tmp_source = tempnam( sys_get_temp_dir(), 'maca-source-' );
-file_put_contents( $tmp_source, 'source-image-bytes' );
-$tmp_source_result = Npcink_Cloud_Media_Derivative_Transport::dispatch_from_ability_response(
-	maca_ability_fixture(),
-	array(
-		'path'      => $tmp_source,
-		'filename'  => 'source.jpg',
-		'mime_type' => 'image/jpeg',
-	)
-);
-unlink( $tmp_source );
-$tmp_source_request = end( $GLOBALS['maca_http_requests'] );
-maca_assert(
-	is_array( $tmp_source_result )
-	&& false !== strpos( (string) ( $tmp_source_request['args']['body'] ?? '' ), 'name="source_file"; filename="source.jpg"' ),
-	'Behavior: media derivative upload files may come from a local temporary directory.'
-);
-
-$unsafe_local_source = Npcink_Cloud_Media_Derivative_Transport::dispatch_from_ability_response(
-	maca_ability_fixture(),
-	array(
-		'path'      => __FILE__,
-		'filename'  => 'source.jpg',
-		'mime_type' => 'image/jpeg',
-	)
-);
-maca_assert(
-	is_wp_error( $unsafe_local_source ) && 'cloud_media_derivative_upload_file_path_not_allowed' === $unsafe_local_source->get_error_code(),
-	'Behavior: media derivative upload paths outside uploads or temp directories fail closed.'
-);
-
-$watermark_without_plan = Npcink_Cloud_Media_Derivative_Transport::dispatch_from_ability_response(
-	maca_ability_fixture(),
-	array(
-		'artifact_id' => 'source_artifact',
-		'expires_at' => maca_future_expiry(),
-	),
-	'',
-	'',
-	array(
-		'artifact_id' => 'watermark_artifact',
-		'expires_at' => maca_future_expiry(),
-	)
-);
-maca_assert(
-	is_wp_error( $watermark_without_plan ) && 'cloud_media_derivative_watermark_plan_missing' === $watermark_without_plan->get_error_code(),
-	'Behavior: watermark artifacts require a local ability watermark plan.'
-);
-
-$watermark_payload = maca_ability_fixture();
-$watermark_payload['cloud_job_payload']['watermark'] = array(
-	'type' => 'image',
-	'position' => 'bottom_right',
-);
-$watermark_missing_source = Npcink_Cloud_Media_Derivative_Transport::dispatch_from_ability_response(
-	$watermark_payload,
-	array(
-		'artifact_id' => 'source_artifact',
-		'expires_at' => maca_future_expiry(),
-	)
-);
-maca_assert(
-	is_wp_error( $watermark_missing_source ) && 'cloud_media_derivative_watermark_source_missing' === $watermark_missing_source->get_error_code(),
-	'Behavior: watermark plans require a watermark upload or artifact id.'
-);
-
-$watermark_artifact_result = Npcink_Cloud_Media_Derivative_Transport::dispatch_from_ability_response(
-	$watermark_payload,
-	array(
-		'artifact_id' => 'source_artifact',
-		'expires_at' => maca_future_expiry(),
-	),
-	'trace-watermark',
-	'idempotency-watermark',
-	array(
-		'artifact_id' => 'watermark_artifact',
-		'expires_at' => maca_future_expiry(),
-	)
-);
-maca_assert(
-	is_array( $watermark_artifact_result ) && 'ok' === (string) ( $watermark_artifact_result['status'] ?? '' ),
-	'Behavior: watermark artifact references dispatch through the media derivative endpoint.'
-);
-
-$text_watermark_payload = maca_ability_fixture();
-$text_watermark_payload['cloud_job_payload']['watermark'] = array(
-	'type' => 'text',
-	'text' => 'AI',
-	'position' => 'top_right',
-	'opacity' => 0.75,
-	'font_size' => 48,
-	'color' => '#FFFFFF',
-	'background' => 'rgba(0,0,0,0.35)',
-	'margin_px' => 24,
-);
-$text_watermark_result = Npcink_Cloud_Media_Derivative_Transport::dispatch_from_ability_response(
-	$text_watermark_payload,
-	array(
-		'artifact_id' => 'source_artifact',
-		'expires_at' => maca_future_expiry(),
-	),
-	'trace-text-watermark',
-	'idempotency-text-watermark'
-);
-$text_watermark_request = end( $GLOBALS['maca_http_requests'] );
-$text_watermark_body = json_decode( (string) ( $text_watermark_request['args']['body'] ?? '' ), true );
-maca_assert(
-	is_array( $text_watermark_result )
-	&& 'ok' === (string) ( $text_watermark_result['status'] ?? '' )
-	&& 'text' === (string) ( $text_watermark_body['cloud_job_payload']['watermark']['type'] ?? '' )
-	&& 'AI' === (string) ( $text_watermark_body['cloud_job_payload']['watermark']['text'] ?? '' )
-	&& empty( $text_watermark_body['cloud_job_payload']['watermark']['artifact_id'] ),
-	'Behavior: text watermark plans dispatch without a watermark upload or artifact id.'
-);
-
-$crop_payload = maca_ability_fixture();
-$crop_payload['cloud_job_payload']['crop'] = array(
-	'type'         => 'aspect_ratio',
-	'aspect_ratio' => '16:9',
-	'position'     => 'center',
-);
-$crop_result = Npcink_Cloud_Media_Derivative_Transport::dispatch_from_ability_response(
-	$crop_payload,
-	array(
-		'artifact_id' => 'source_artifact',
-		'expires_at' => maca_future_expiry(),
-	),
-	'trace-crop',
-	'idempotency-crop'
-);
-$crop_request = end( $GLOBALS['maca_http_requests'] );
-$crop_body = json_decode( (string) ( $crop_request['args']['body'] ?? '' ), true );
-maca_assert(
-	is_array( $crop_result )
-	&& 'ok' === (string) ( $crop_result['status'] ?? '' )
-	&& 'aspect_ratio' === (string) ( $crop_body['cloud_job_payload']['crop']['type'] ?? '' )
-	&& '16:9' === (string) ( $crop_body['cloud_job_payload']['crop']['aspect_ratio'] ?? '' )
-	&& 'center' === (string) ( $crop_body['cloud_job_payload']['crop']['position'] ?? '' ),
-	'Behavior: aspect-ratio crop plans are forwarded to Cloud media derivative requests.'
-);
-
-$text_watermark_source_conflict = Npcink_Cloud_Media_Derivative_Transport::dispatch_from_ability_response(
-	$text_watermark_payload,
-	array(
-		'artifact_id' => 'source_artifact',
-		'expires_at' => maca_future_expiry(),
-	),
-	'',
-	'',
-	array(
-		'artifact_id' => 'watermark_artifact',
-		'expires_at' => maca_future_expiry(),
-	)
-);
-maca_assert(
-	is_wp_error( $text_watermark_source_conflict ) && 'cloud_media_derivative_watermark_source_conflict' === $text_watermark_source_conflict->get_error_code(),
-	'Behavior: text watermark plans reject watermark upload or artifact sources.'
-);
-
-$client = new Npcink_Cloud_Runtime_Client( Npcink_Cloud_Addon_Settings::get_settings() );
-$watermark_file_result = $client->create_media_derivative(
-	array( 'request_contract_version' => 'media_derivative_cloud_request.v1' ),
-	array( 'watermark_file' => array( 'contents' => 'x' ) )
-);
-maca_assert(
-	is_array( $watermark_file_result ) && 'ok' === (string) ( $watermark_file_result['status'] ?? '' ),
-	'Behavior: runtime client accepts bounded watermark_file multipart transport.'
+	'Behavior: media dispatch fails closed before verified Cloud credentials.'
 );
 
 maca_reset_test_state();
 maca_seed_settings( true );
-$GLOBALS['maca_http_response_queue'][] = array(
-	'response' => array( 'code' => 422 ),
-	'body'     => wp_json_encode(
-		array(
-			'code'    => 'image_source_provider_error',
-			'message' => array(
-				array(
-					'loc' => array( 'body', 'input', 'provider' ),
-					'msg' => array( 'Unsplash provider failed.', 'Check Cloud provider key or runtime availability.' ),
-				),
-			),
-		)
+$source_artifact_id = 'art_' . str_repeat( '1', 32 );
+$upload_result = array(
+	'artifact_type'    => 'media_upload_artifact',
+	'contract_version' => 'media_upload_result.v1',
+	'artifact'         => array(
+		'artifact_id'    => $source_artifact_id,
+		'media_kind'     => 'image',
+		'status'         => 'available',
+		'content_type'   => 'image/png',
+		'format'         => 'png',
+		'width'          => 1,
+		'height'         => 1,
+		'filesize_bytes' => strlen( $png ),
+		'checksum'       => 'sha256:' . hash( 'sha256', $png ),
+		'expires_at'     => maca_future_expiry(),
+		'purged_at'      => null,
 	),
 );
-$nested_error_result = $client->execute_runtime( array( 'ability_name' => 'npcink-toolbox/search-image-source' ) );
-maca_assert(
-	is_wp_error( $nested_error_result )
-	&& false !== strpos( $nested_error_result->get_error_message(), 'body.input.provider: Unsplash provider failed.' )
-	&& false === strpos( $nested_error_result->get_error_message(), 'Array' ),
-	'Behavior: runtime client renders nested Cloud error payloads without Array-to-string collapse.'
-);
-
-maca_reset_test_state();
-maca_seed_settings( true );
-$client = new Npcink_Cloud_Runtime_Client( Npcink_Cloud_Addon_Settings::get_settings() );
-$runtime_timeout_result = $client->execute_runtime(
-	array(
-		'ability_name'    => 'npcink-cloud/generate-image',
-		'timeout_seconds' => 60,
-	)
-);
-$runtime_timeout_request = end( $GLOBALS['maca_http_requests'] );
-maca_assert(
-	is_array( $runtime_timeout_result )
-	&& 60 === (int) ( $runtime_timeout_request['args']['timeout'] ?? 0 )
-	&& 1048576 === (int) ( $runtime_timeout_request['args']['limit_response_size'] ?? 0 ),
-	'Behavior: runtime execute honors bounded payload timeout for longer hosted image generation.'
-);
-
-maca_reset_test_state();
-maca_seed_settings( true );
-$client = new Npcink_Cloud_Runtime_Client( Npcink_Cloud_Addon_Settings::get_settings() );
 $GLOBALS['maca_http_response_queue'][] = array(
 	'response' => array( 'code' => 200 ),
-	'headers'  => array(
-		'Content-Length' => '1048577',
-	),
-	'body'     => str_repeat( 'x', 1048577 ),
-);
-$large_response = $client->execute_runtime( array( 'ability_name' => 'npcink-cloud/generate-audio' ) );
-maca_assert(
-	is_wp_error( $large_response ) && 'cloud_runtime_response_too_large' === $large_response->get_error_code(),
-	'Behavior: runtime JSON responses fail closed when Cloud exceeds the local size limit.'
-);
-
-$GLOBALS['maca_http_response_queue'][] = array(
-	'response' => array( 'code' => 200 ),
-	'body'     => str_repeat( 'x', 1048576 ),
-);
-$truncated_response = $client->execute_runtime( array( 'ability_name' => 'npcink-cloud/generate-audio' ) );
-maca_assert(
-	is_wp_error( $truncated_response ) && 'cloud_runtime_response_too_large' === $truncated_response->get_error_code(),
-	'Behavior: runtime JSON responses fail closed when the local HTTP layer returns a truncated non-JSON body.'
-);
-
-maca_reset_test_state();
-maca_seed_settings( true, 'https://cloud.example.test' );
-$client = new Npcink_Cloud_Runtime_Client( Npcink_Cloud_Addon_Settings::get_settings() );
-$GLOBALS['maca_http_response_queue'][] = array(
-	'response' => array( 'code' => 200 ),
+	'headers'  => array( 'Content-Type' => 'application/json' ),
 	'body'     => wp_json_encode(
 		array(
 			'status' => 'ok',
 			'data'   => array(
-				'result' => array(
-					'artifact_type' => 'audio_generation_candidates',
-					'audios'        => array(
-						array(
-							'url'      => '/v1/runtime/artifacts/audio_artifact/public-download?token=audio_token',
-							'artifact' => array(
-								'download_url' => '/v1/runtime/artifacts/audio_artifact/public-download?token=audio_token',
-							),
-						),
-					),
-				),
+				'run_id'            => 'run_upload_1',
+				'status'            => 'succeeded',
+				'trace_id'          => 'trace-upload',
+				'idempotent_replay' => false,
+				'result'            => $upload_result,
 			),
 		)
 	),
 );
-$audio_artifact_result = $client->execute_runtime( array( 'ability_name' => 'npcink-cloud/generate-audio' ) );
+$GLOBALS['maca_http_response_queue'][] = array(
+	'response' => array( 'code' => 200 ),
+	'headers'  => array( 'Content-Type' => 'application/json' ),
+	'body'     => wp_json_encode(
+		array(
+			'status' => 'ok',
+			'data'   => array(
+				'run_id'            => 'run_media_1',
+				'status'            => 'queued',
+				'trace_id'          => 'trace-dispatch',
+				'idempotent_replay' => false,
+				'result'            => array(),
+			),
+		)
+	),
+);
+$dispatch = Npcink_Cloud_Media_Derivative_Transport::dispatch_from_ability_response(
+	maca_ability_fixture(),
+	array(
+		'bytes'     => $png,
+		'filename'  => 'source.png',
+		'mime_type' => 'image/png',
+	),
+	'trace-dispatch',
+	'operation-identity'
+);
+$upload_request = $GLOBALS['maca_http_requests'][0] ?? array();
+$job_request    = $GLOBALS['maca_http_requests'][1] ?? array();
+$job_body       = json_decode( (string) ( $job_request['args']['body'] ?? '' ), true );
 maca_assert(
-	is_array( $audio_artifact_result )
-	&& 'https://cloud.example.test/v1/runtime/artifacts/audio_artifact/public-download?token=audio_token' === (string) ( $audio_artifact_result['data']['result']['audios'][0]['url'] ?? '' )
-	&& 'https://cloud.example.test/v1/runtime/artifacts/audio_artifact/public-download?token=audio_token' === (string) ( $audio_artifact_result['data']['result']['audios'][0]['artifact']['download_url'] ?? '' ),
-	'Behavior: runtime execute normalizes Cloud artifact paths to absolute URLs for media previews.'
+	is_array( $dispatch )
+	&& 2 === count( $GLOBALS['maca_http_requests'] )
+	&& array( 'run_id', 'status', 'job_type', 'created_at', 'updated_at', 'artifact', 'warnings', 'error' ) === array_keys( $dispatch )
+	&& 'run_media_1' === ( $dispatch['run_id'] ?? null )
+	&& 'queued' === ( $dispatch['status'] ?? null )
+	&& array() === ( $dispatch['artifact'] ?? null )
+	&& str_ends_with( (string) ( $upload_request['url'] ?? '' ), '/v1/runtime/media/uploads' )
+	&& false !== strpos( (string) ( $upload_request['args']['body'] ?? '' ), 'name="file"; filename="source.png"' )
+	&& str_ends_with( (string) ( $job_request['url'] ?? '' ), '/v1/runtime/media/jobs' )
+	&& array( 'request_contract_version', 'operation', 'source_artifact_id', 'params', 'result_ttl_minutes' ) === array_keys( $job_body )
+	&& 'media_job_request.v1' === ( $job_body['request_contract_version'] ?? null )
+	&& 'image.transform.v1' === ( $job_body['operation'] ?? null )
+	&& $source_artifact_id === ( $job_body['source_artifact_id'] ?? null )
+	&& 'image' === ( $job_body['params']['source_media_type'] ?? null )
+	&& ! isset( $job_body['source'], $job_body['cloud_job_payload'], $job_body['ttl_minutes'] ),
+	'Behavior: exact11 available image upload and artifact-referenced media job use the exact new resources.'
+);
+
+$legacy_upload_descriptor_cases = array(
+	'file_path' => array(
+		'file_path' => '/tmp/legacy-source.png',
+		'filename'  => 'source.png',
+		'mime_type' => 'image/png',
+	),
+	'tmp_name'  => array(
+		'tmp_name'  => '/tmp/legacy-source.png',
+		'filename'  => 'source.png',
+		'mime_type' => 'image/png',
+	),
+	'name'      => array(
+		'bytes'     => $png,
+		'name'      => 'legacy-source.png',
+		'mime_type' => 'image/png',
+	),
+);
+foreach ( $legacy_upload_descriptor_cases as $legacy_field => $legacy_descriptor ) {
+	maca_reset_test_state();
+	maca_seed_settings( true );
+	$legacy_upload = Npcink_Cloud_Media_Derivative_Transport::dispatch_from_ability_response(
+		maca_ability_fixture(),
+		$legacy_descriptor,
+		'trace-legacy-upload-' . $legacy_field,
+		'legacy-upload-' . $legacy_field
+	);
+	maca_assert(
+		is_wp_error( $legacy_upload )
+		&& 'cloud_media_derivative_upload_descriptor_legacy_field' === $legacy_upload->get_error_code()
+		&& 0 === count( $GLOBALS['maca_http_requests'] ),
+		'Behavior: legacy media upload descriptor field ' . $legacy_field . ' fails closed before Cloud transport.'
+	);
+}
+
+maca_reset_test_state();
+maca_seed_settings( true );
+$unknown_upload = Npcink_Cloud_Media_Derivative_Transport::dispatch_from_ability_response(
+	maca_ability_fixture(),
+	array(
+		'bytes'        => $png,
+		'filename'     => 'source.png',
+		'mime_type'    => 'image/png',
+		'unknown_hint' => 'ignored-before-b5',
+	),
+	'trace-unknown-upload',
+	'unknown-upload'
+);
+maca_assert(
+	is_wp_error( $unknown_upload )
+	&& 'cloud_media_derivative_upload_descriptor_unknown_field' === $unknown_upload->get_error_code()
+	&& 0 === count( $GLOBALS['maca_http_requests'] ),
+	'Behavior: unknown media upload descriptor fields fail closed before Cloud transport.'
+);
+
+$ambiguous_upload_descriptor_cases = array(
+	'bytes-content' => array(
+		'bytes'     => $png,
+		'content'   => $png,
+		'filename'  => 'source.png',
+		'mime_type' => 'image/png',
+	),
+	'bytes-path'    => array(
+		'bytes'     => $png,
+		'path'      => '/tmp/ambiguous-source.png',
+		'filename'  => 'source.png',
+		'mime_type' => 'image/png',
+	),
+	'content-path'  => array(
+		'content'   => $png,
+		'path'      => '/tmp/ambiguous-source.png',
+		'filename'  => 'source.png',
+		'mime_type' => 'image/png',
+	),
+);
+foreach ( $ambiguous_upload_descriptor_cases as $case => $ambiguous_descriptor ) {
+	maca_reset_test_state();
+	maca_seed_settings( true );
+	$ambiguous_upload = Npcink_Cloud_Media_Derivative_Transport::dispatch_from_ability_response(
+		maca_ability_fixture(),
+		$ambiguous_descriptor,
+		'trace-ambiguous-upload-' . $case,
+		'ambiguous-upload-' . $case
+	);
+	maca_assert(
+		is_wp_error( $ambiguous_upload )
+		&& 'cloud_media_derivative_upload_descriptor_ambiguous_source' === $ambiguous_upload->get_error_code()
+		&& 0 === count( $GLOBALS['maca_http_requests'] ),
+		'Behavior: media upload descriptor source combination ' . $case . ' fails closed as ambiguous.'
+	);
+}
+
+$canonical_path = tempnam( sys_get_temp_dir(), 'maca-media-' );
+maca_assert(
+	is_string( $canonical_path ) && false !== file_put_contents( $canonical_path, $png ),
+	'Behavior: canonical path upload fixture is created in the approved temporary directory.'
+);
+$canonical_upload_descriptor_cases = array(
+	'content' => array(
+		'content'   => $png,
+		'filename'  => 'content-source.png',
+		'mime_type' => 'image/png',
+	),
+	'path'    => array(
+		'path'      => $canonical_path,
+		'filename'  => 'path-source.png',
+		'mime_type' => 'image/png',
+	),
+);
+foreach ( $canonical_upload_descriptor_cases as $canonical_source => $canonical_descriptor ) {
+	maca_reset_test_state();
+	maca_seed_settings( true );
+	maca_queue_media_dispatch_success( $upload_result, $canonical_source );
+	$canonical_dispatch = Npcink_Cloud_Media_Derivative_Transport::dispatch_from_ability_response(
+		maca_ability_fixture(),
+		$canonical_descriptor,
+		'trace-canonical-upload-' . $canonical_source,
+		'canonical-upload-' . $canonical_source
+	);
+	$canonical_upload_request = $GLOBALS['maca_http_requests'][0] ?? array();
+	maca_assert(
+		is_array( $canonical_dispatch )
+		&& 'queued' === ( $canonical_dispatch['status'] ?? null )
+		&& 2 === count( $GLOBALS['maca_http_requests'] )
+		&& false !== strpos(
+			(string) ( $canonical_upload_request['args']['body'] ?? '' ),
+			'filename="' . $canonical_source . '-source.png"'
+		),
+		'Behavior: canonical ' . $canonical_source . ' media upload descriptor still dispatches successfully.'
+	);
+}
+if ( is_string( $canonical_path ) && is_file( $canonical_path ) ) {
+	unlink( $canonical_path );
+}
+
+$upload_nonce = (string) ( $upload_request['args']['headers']['X-Npcink-Nonce'] ?? '' );
+$job_nonce    = (string) ( $job_request['args']['headers']['X-Npcink-Nonce'] ?? '' );
+maca_assert(
+	'' !== $upload_nonce
+	&& '' !== $job_nonce
+	&& $upload_nonce !== $job_nonce
+	&& ( $upload_request['args']['headers']['Idempotency-Key'] ?? '' ) !== ( $job_request['args']['headers']['Idempotency-Key'] ?? '' ),
+	'Behavior: upload and job POST calls use fresh nonces and resource-specific idempotency keys.'
 );
 
 maca_reset_test_state();
 maca_seed_settings( true );
-$preview_bytes = 'derivative-preview-bytes';
-$GLOBALS['maca_http_response_queue'][] = array(
-	'response' => array( 'code' => 200 ),
-	'headers'  => array(
-		'Content-Type'   => 'image/webp',
-		'Content-Length' => (string) strlen( $preview_bytes ),
-	),
-	'body'     => $preview_bytes,
+$invalid_upload_lifecycle_artifacts = array(
+	'legacy exact10 without purged_at' => static function ( array $artifact ) {
+		unset( $artifact['purged_at'] );
+		return $artifact;
+	},
+	'non-null purged_at while available' => static function ( array $artifact ) {
+		$artifact['purged_at'] = gmdate( 'c', time() );
+		return $artifact;
+	},
+	'unknown lifecycle alias' => static function ( array $artifact ) {
+		$artifact['purged'] = false;
+		return $artifact;
+	},
 );
-$artifact_preview = Npcink_Cloud_Media_Derivative_Transport::download_artifact_preview(
-	array(
-		'artifact_id' => 'derivative_artifact',
-		'expires_at' => maca_future_expiry(),
-		'mime_type'  => 'image/webp',
-		'sha256'     => hash( 'sha256', $preview_bytes ),
-	),
-	'trace-preview'
-);
-$preview_request = end( $GLOBALS['maca_http_requests'] );
-maca_assert(
-	is_array( $artifact_preview )
-	&& 'derivative_artifact' === $artifact_preview['artifact_id']
-	&& $preview_bytes === $artifact_preview['contents']
-	&& false !== strpos( (string) ( $preview_request['url'] ?? '' ), '/v1/runtime/artifacts/derivative_artifact/download' )
-	&& 26214400 === (int) ( $preview_request['args']['limit_response_size'] ?? 0 )
-	&& 'image/*' === (string) ( $preview_request['args']['headers']['Accept'] ?? '' ),
-	'Behavior: derivative artifact preview downloads through the explicit signed runtime artifact endpoint.'
-);
-
-$expired_preview = Npcink_Cloud_Media_Derivative_Transport::download_artifact_preview(
-	array(
-		'artifact_id' => 'derivative_artifact',
-		'expires_at' => gmdate( 'c', time() - 60 ),
-		'mime_type'  => 'image/webp',
-	)
-);
-maca_assert(
-	is_wp_error( $expired_preview ) && 'cloud_media_derivative_artifact_expired' === $expired_preview->get_error_code(),
-	'Behavior: expired Cloud artifacts cannot be downloaded for local preview.'
-);
-
-$GLOBALS['maca_http_response_queue'][] = array(
-	'response' => array( 'code' => 200 ),
-	'headers'  => array( 'Content-Type' => 'image/webp' ),
-	'body'     => 'different-bytes',
-);
-$checksum_mismatch_preview = Npcink_Cloud_Media_Derivative_Transport::download_artifact_preview(
-	array(
-		'artifact_id' => 'derivative_artifact',
-		'expires_at' => maca_future_expiry(),
-		'mime_type'  => 'image/webp',
-		'sha256'     => hash( 'sha256', $preview_bytes ),
-	)
-);
-maca_assert(
-	is_wp_error( $checksum_mismatch_preview ) && 'cloud_media_derivative_artifact_checksum_mismatch' === $checksum_mismatch_preview->get_error_code(),
-	'Behavior: derivative preview download rejects checksum mismatches.'
-);
-
-$expired_proposal = Npcink_Cloud_Media_Derivative_Transport::build_local_proposal_payload(
-	maca_ability_fixture(),
-	array( 'data' => array( 'run_id' => 'run_media_1' ) ),
-	array(
-		'artifact_id' => 'derivative_artifact',
-		'expires_at' => gmdate( 'c', time() - 60 ),
-		'mime_type' => 'image/webp',
-	)
-);
-maca_assert(
-	is_wp_error( $expired_proposal ) && 'cloud_media_derivative_artifact_expired' === $expired_proposal->get_error_code(),
-	'Behavior: expired Cloud artifacts cannot produce proposal payloads.'
-);
-
-$missing_artifact_id = Npcink_Cloud_Media_Derivative_Transport::build_local_proposal_payload(
-	maca_ability_fixture(),
-	array( 'data' => array( 'run_id' => 'run_media_1' ) ),
-	array(
-		'download_url' => 'https://cloud.example.test/artifacts/derivative',
-		'expires_at' => maca_future_expiry(),
-		'mime_type' => 'image/webp',
-	)
-);
-maca_assert(
-	is_wp_error( $missing_artifact_id ) && 'cloud_media_derivative_derivative_artifact_id_missing' === $missing_artifact_id->get_error_code(),
-	'Behavior: derivative proposal adoption requires a Cloud artifact id.'
-);
-
-$mismatched_artifact = Npcink_Cloud_Media_Derivative_Transport::build_local_proposal_payload(
-	maca_ability_fixture(),
-	array(
-		'data' => array(
-			'run_id' => 'run_media_1',
-			'derivative' => array(
-				'artifact_id' => 'expected_artifact',
-				'sha256' => str_repeat( 'a', 64 ),
-			),
+foreach ( $invalid_upload_lifecycle_artifacts as $case => $mutate_artifact ) {
+	$invalid_upload_result             = $upload_result;
+	$invalid_upload_result['artifact'] = $mutate_artifact( $invalid_upload_result['artifact'] );
+	$GLOBALS['maca_http_response_queue'][] = array(
+		'response' => array( 'code' => 200 ),
+		'headers'  => array( 'Content-Type' => 'application/json' ),
+		'body'     => wp_json_encode(
+			array(
+				'status' => 'ok',
+				'data'   => array(
+					'run_id'            => 'run_upload_invalid',
+					'status'            => 'succeeded',
+					'trace_id'          => 'trace-upload-invalid',
+					'idempotent_replay' => false,
+					'result'            => $invalid_upload_result,
+				),
+			)
 		),
-	),
+	);
+	$invalid_upload_client = new Npcink_Cloud_Runtime_Client( Npcink_Cloud_Addon_Settings::get_settings() );
+	$invalid_upload = $invalid_upload_client->upload_media_artifact(
+		array(
+			'contents'  => $png,
+			'filename'  => 'source.png',
+			'mime_type' => 'image/png',
+		),
+		'trace-upload-invalid',
+		'upload-invalid-' . sanitize_key( $case )
+	);
+	maca_assert(
+		is_wp_error( $invalid_upload )
+		&& 'cloud_media_upload_artifact_invalid' === $invalid_upload->get_error_code(),
+		'Behavior: media upload exact11 validation rejects ' . $case . '.'
+	);
+}
+
+maca_reset_test_state();
+maca_seed_settings( true );
+foreach ( array( 'run_media_repeat_1', 'run_media_repeat_2' ) as $repeat_run_id ) {
+	$GLOBALS['maca_http_response_queue'][] = array(
+		'response' => array( 'code' => 200 ),
+		'headers'  => array( 'Content-Type' => 'application/json' ),
+		'body'     => wp_json_encode(
+			array(
+				'status' => 'ok',
+				'data'   => array(
+					'run_id'            => $repeat_run_id,
+					'status'            => 'queued',
+					'trace_id'          => 'trace-repeat',
+					'idempotent_replay' => false,
+					'result'            => array(),
+				),
+			)
+		),
+	);
+}
+$repeat_client = new Npcink_Cloud_Runtime_Client( Npcink_Cloud_Addon_Settings::get_settings() );
+$repeat_client->create_media_job( $job_body, 'trace-repeat', 'same-operation-identity' );
+$repeat_client->create_media_job( $job_body, 'trace-repeat', 'same-operation-identity' );
+$repeat_nonce_one = (string) ( $GLOBALS['maca_http_requests'][0]['args']['headers']['X-Npcink-Nonce'] ?? '' );
+$repeat_nonce_two = (string) ( $GLOBALS['maca_http_requests'][1]['args']['headers']['X-Npcink-Nonce'] ?? '' );
+maca_assert(
+	'' !== $repeat_nonce_one
+	&& '' !== $repeat_nonce_two
+	&& $repeat_nonce_one !== $repeat_nonce_two
+	&& 'same-operation-identity' === ( $GLOBALS['maca_http_requests'][0]['args']['headers']['Idempotency-Key'] ?? null )
+	&& 'same-operation-identity' === ( $GLOBALS['maca_http_requests'][1]['args']['headers']['Idempotency-Key'] ?? null ),
+	'Behavior: repeated POSTs with the same trace and idempotency key still receive fresh independent nonces.'
+);
+
+maca_reset_test_state();
+maca_seed_settings( true );
+foreach ( array( 'queued', 'running', 'succeeded' ) as $index => $status ) {
+	$GLOBALS['maca_http_response_queue'][] = maca_cloud_run_status_response( 'run_status_' . ( $index + 1 ), $status );
+}
+$status_projections = array(
+	Npcink_Cloud_Media_Derivative_Transport::get_run_projection( 'run_status_1', 'trace-status-queued' ),
+	Npcink_Cloud_Media_Derivative_Transport::get_run_projection( 'run_status_2', 'trace-status-running' ),
+	Npcink_Cloud_Media_Derivative_Transport::get_run_projection( 'run_status_3', 'trace-status-succeeded' ),
+);
+foreach ( $status_projections as $index => $status_projection ) {
+	maca_assert(
+		is_array( $status_projection )
+		&& array( 'run_id', 'status', 'job_type', 'created_at', 'updated_at', 'artifact', 'warnings', 'error' ) === array_keys( $status_projection )
+		&& array() === $status_projection['artifact']
+		&& array() === $status_projection['error']
+		&& array( 'queued', 'running', 'succeeded' )[ $index ] === $status_projection['status'],
+		'Behavior: queued, running, and succeeded status reads remain exact public8 projections without result artifacts.'
+	);
+}
+
+maca_reset_test_state();
+maca_seed_settings( true );
+$GLOBALS['maca_http_response_queue'][] = maca_cloud_run_status_response(
+	'run_status_failed',
+	'failed',
 	array(
-		'artifact_id' => 'other_artifact',
-		'run_id' => 'run_media_1',
-		'expires_at' => maca_future_expiry(),
-		'mime_type' => 'image/webp',
-		'sha256' => str_repeat( 'a', 64 ),
+		'error_code'    => 'provider.timeout',
+		'error_message' => 'Provider timed out.',
+		'error_stage'   => 'provider',
 	)
 );
+$GLOBALS['maca_http_response_queue'][] = maca_cloud_run_status_response(
+	'run_status_canceled',
+	'canceled',
+	array(),
+	array(
+		'error_code'    => 'runtime.canceled',
+		'error_message' => 'Run canceled before execution completed.',
+		'error_stage'   => 'runtime',
+	)
+);
+$failed_projection   = Npcink_Cloud_Media_Derivative_Transport::get_run_projection( 'run_status_failed', 'trace-status-failed' );
+$canceled_projection = Npcink_Cloud_Media_Derivative_Transport::get_run_projection( 'run_status_canceled', 'trace-status-canceled' );
 maca_assert(
-	is_wp_error( $mismatched_artifact ) && 'cloud_media_derivative_artifact_binding_mismatch' === $mismatched_artifact->get_error_code(),
-	'Behavior: derivative artifact id must match the Cloud result when provided.'
+	is_array( $failed_projection )
+	&& 'failed' === ( $failed_projection['status'] ?? null )
+	&& array() === ( $failed_projection['artifact'] ?? null )
+	&& array(
+		'error_code'    => 'provider.timeout',
+		'error_message' => 'Provider timed out.',
+		'error_stage'   => 'provider',
+	) === ( $failed_projection['error'] ?? null ),
+	'Behavior: failed status remains public8 and preserves bounded data-level lifecycle errors.'
+);
+maca_assert(
+	is_array( $canceled_projection )
+	&& 'canceled' === ( $canceled_projection['status'] ?? null )
+	&& array() === ( $canceled_projection['artifact'] ?? null )
+	&& array(
+		'error_code'    => 'runtime.canceled',
+		'error_message' => 'Run canceled before execution completed.',
+		'error_stage'   => 'runtime',
+	) === ( $canceled_projection['error'] ?? null ),
+	'Behavior: canceled status remains public8 and preserves bounded envelope-level lifecycle errors.'
+);
+
+maca_reset_test_state();
+maca_seed_settings( true );
+$artifact_id       = 'art_' . str_repeat( 'a', 32 );
+$descriptor_expiry = gmdate( 'Y-m-d\TH:i:s\Z', time() + 3600 );
+$cloud_artifact    = maca_cloud_derivative_artifact( $artifact_id, $png, $descriptor_expiry );
+$GLOBALS['maca_http_response_queue'][] = maca_cloud_run_result_response( $cloud_artifact );
+$projection = Npcink_Cloud_Media_Derivative_Transport::get_run_result_projection( 'run_media_1', 'trace-result' );
+maca_assert(
+	is_array( $projection )
+	&& array( 'run_id', 'status', 'job_type', 'created_at', 'updated_at', 'artifact', 'warnings', 'error' ) === array_keys( $projection )
+	&& $cloud_artifact === $projection['artifact']
+	&& ! isset( $projection['derivative'] ),
+	'Behavior: raw data.result is accepted only as exact media_derivative_result.v1 and projected once.'
 );
 
 $proposal = Npcink_Cloud_Media_Derivative_Transport::build_local_proposal_payload(
 	maca_ability_fixture(),
-	array(
-		'data' => array(
-			'run_id' => 'run_media_1',
-			'derivative' => array(
-				'artifact_id' => 'derivative_artifact',
-				'width' => 1200,
-				'height' => 675,
-				'filesize_bytes' => 180000,
-				'mime_type' => 'image/webp',
-			),
-		),
-	),
-	array(
-		'artifact_id' => 'derivative_artifact',
-		'run_id' => 'run_media_1',
-		'expires_at' => maca_future_expiry(),
-		'mime_type' => 'image/webp',
-		'width' => 1200,
-		'height' => 675,
-		'filesize_bytes' => 180000,
-	)
+	$projection,
+	$projection['artifact']
 );
+$proposal_artifact = is_array( $proposal ) ? ( $proposal['artifact'] ?? array() ) : array();
 maca_assert(
 	is_array( $proposal )
-	&& 'local_wordpress_host' === $proposal['final_write_owner']
-	&& 'preview_only' === $proposal['default_action']
-	&& false === $proposal['local_adoption']['replace_original_default']
-	&& false === $proposal['local_adoption']['attachment_metadata_write_included'],
-	'Behavior: valid Cloud artifacts become preview-only local WordPress host proposals.'
+	&& array( 'artifact_id', 'expires_at', 'mime_type', 'format', 'width', 'height', 'filesize_bytes', 'sha256', 'suggested_filename', 'filename_basis', 'processing_warnings' ) === array_keys( $proposal_artifact )
+	&& hash( 'sha256', $png ) === ( $proposal_artifact['sha256'] ?? null )
+	&& ! isset( $proposal_artifact['checksum'], $proposal_artifact['artifact_reference'] )
+	&& 'local_wordpress_host' === ( $proposal['final_write_owner'] ?? null ),
+	'Behavior: exact Addon projection builds an exact 11-field local proposal artifact without Cloud-only fields.'
 );
 
-$projection = Npcink_Cloud_Media_Derivative_Transport::public_cloud_projection(
-	array(
-		'data' => array(
-			'run_id' => 'run_media_1',
-			'status' => 'succeeded',
-			'job_type' => 'generate_optimized_media_derivative',
-			'derivative' => array(
-				'artifact_id' => 'derivative_artifact',
-				'expires_at' => maca_future_expiry(),
-				'mime_type' => 'image/webp',
-				'width' => 1200,
-				'height' => 675,
-				'filesize_bytes' => 180000,
-				'path' => '/tmp/private.webp',
-				'content' => 'private-bytes',
-			),
-		),
-	)
-);
+maca_reset_test_state();
+maca_seed_settings( true );
+$oversized_cloud_artifact = $cloud_artifact;
+$oversized_cloud_artifact['width'] = 8193;
+$GLOBALS['maca_http_response_queue'][] = maca_cloud_run_result_response( $oversized_cloud_artifact );
+$oversized_cloud_result = Npcink_Cloud_Media_Derivative_Transport::get_run_result_projection( 'run_media_1', 'trace-oversized-dimension' );
 maca_assert(
-	is_array( $projection )
-	&& 'run_media_1' === $projection['run_id']
-	&& 'derivative_artifact' === $projection['derivative']['artifact_id']
-	&& ! isset( $projection['derivative']['path'] )
-	&& ! isset( $projection['derivative']['content'] ),
-	'Behavior: media derivative projections strip local-only artifact fields.'
+	is_wp_error( $oversized_cloud_result )
+	&& 'cloud_media_derivative_artifact_facts_invalid' === $oversized_cloud_result->get_error_code(),
+	'Behavior: the Cloud 12-field descriptor rejects a single axis above 8192 pixels.'
 );
 
-$optimization_payload = Npcink_Cloud_Media_Derivative_Transport::build_media_optimization_payload(
-	maca_ability_fixture(),
-	array(
-		'data' => array(
-			'run_id' => 'run_media_1',
-			'derivative' => array(
-				'artifact_id' => 'derivative_artifact',
-				'width' => 1200,
-				'height' => 675,
-				'filesize_bytes' => 180000,
-				'mime_type' => 'image/webp',
-			),
-		),
-	),
-	array(
-		'artifact_id' => 'derivative_artifact',
-		'run_id' => 'run_media_1',
-		'expires_at' => maca_future_expiry(),
-		'mime_type' => 'image/webp',
-		'width' => 1200,
-		'height' => 675,
-		'filesize_bytes' => 180000,
-	),
-	array(
-		'title' => 'Reviewed media title',
-		'alt' => 'Reviewed media alt',
-		'source_type' => 'owned',
-	)
-);
+maca_reset_test_state();
+maca_seed_settings( true );
+$oversized_area_cloud_artifact = $cloud_artifact;
+$oversized_area_cloud_artifact['width']  = 4097;
+$oversized_area_cloud_artifact['height'] = 4096;
+$GLOBALS['maca_http_response_queue'][] = maca_cloud_run_result_response( $oversized_area_cloud_artifact );
+$oversized_area_cloud_result = Npcink_Cloud_Media_Derivative_Transport::get_run_result_projection( 'run_media_1', 'trace-oversized-area' );
 maca_assert(
-	is_array( $optimization_payload )
-	&& true === (bool) $optimization_payload['proposal_ready']
-	&& 'npcink-abilities-toolkit/build-media-optimization-plan' === (string) $optimization_payload['from_plan_request']['plan_ability_id']
-	&& 2 === (int) $optimization_payload['media_optimization_plan']['action_count']
-	&& in_array( 'npcink-abilities-toolkit/adopt-cloud-media-derivative', $optimization_payload['media_optimization_plan']['target_ability_ids'], true ),
-	'Behavior: Cloud Addon builds the media optimization from-plan payload without storing or executing a proposal.'
+	is_wp_error( $oversized_area_cloud_result )
+	&& 'cloud_media_derivative_artifact_facts_invalid' === $oversized_area_cloud_result->get_error_code(),
+	'Behavior: the Cloud 12-field descriptor rejects an image area above 16777216 pixels.'
 );
 
-$proposal_from_runtime_artifact = Npcink_Cloud_Media_Derivative_Transport::build_local_proposal_payload(
-	maca_ability_fixture(),
-	array(
-		'data' => array(
-			'run_id' => 'run_media_1',
-			'status' => 'succeeded',
-			'result' => array(
-				'artifact' => array(
-					'artifact_id' => 'derivative_artifact',
-					'download_url' => '/v1/runtime/artifacts/derivative_artifact/download',
-					'expires_at' => maca_future_expiry(),
-					'mime_type' => 'image/webp',
-					'format' => 'webp',
-					'width' => 1200,
-					'height' => 675,
-					'filesize_bytes' => 180000,
-					'checksum' => 'sha256:' . str_repeat( 'a', 64 ),
-					'processing_warnings' => array(),
-				),
-			),
-		),
-	),
-	array(
-		'artifact_id' => 'derivative_artifact',
-		'run_id' => 'run_media_1',
-		'expires_at' => maca_future_expiry(),
-		'mime_type' => 'image/webp',
-		'width' => 1200,
-		'height' => 675,
-		'filesize_bytes' => 180000,
-		'checksum' => 'sha256:' . str_repeat( 'a', 64 ),
+maca_reset_test_state();
+maca_seed_settings( true );
+$boundary_cloud_artifact = $cloud_artifact;
+$boundary_cloud_artifact['width']  = 8192;
+$boundary_cloud_artifact['height'] = 2048;
+$GLOBALS['maca_http_response_queue'][] = maca_cloud_run_result_response( $boundary_cloud_artifact );
+$boundary_cloud_result = Npcink_Cloud_Media_Derivative_Transport::get_run_result_projection( 'run_media_1', 'trace-boundary-area' );
+$boundary_proposal = is_array( $boundary_cloud_result )
+	? Npcink_Cloud_Media_Derivative_Transport::build_local_proposal_payload(
+		maca_ability_fixture(),
+		$boundary_cloud_result,
+		$boundary_cloud_result['artifact']
 	)
-);
+	: $boundary_cloud_result;
 maca_assert(
-	is_array( $proposal_from_runtime_artifact )
-	&& 'derivative_artifact' === $proposal_from_runtime_artifact['artifact']['artifact_id']
-	&& str_repeat( 'a', 64 ) === $proposal_from_runtime_artifact['artifact']['sha256'],
-	'Behavior: runtime result artifact shape can become a local proposal payload.'
+	is_array( $boundary_cloud_result )
+	&& is_array( $boundary_proposal )
+	&& 8192 === ( $boundary_proposal['artifact']['width'] ?? null )
+	&& 2048 === ( $boundary_proposal['artifact']['height'] ?? null ),
+	'Behavior: exact 8192-axis and 16777216-area boundary facts pass Cloud12 to local11 projection.'
 );
 
-$incomplete_metrics = maca_ability_fixture();
-unset( $incomplete_metrics['cloud_job_payload']['source_asset']['width'] );
-$proposal_with_warnings = Npcink_Cloud_Media_Derivative_Transport::build_local_proposal_payload(
-	$incomplete_metrics,
-	array(
-		'data' => array(
-			'run_id' => 'run_media_1',
-			'derivative' => array(
-				'artifact_id' => 'derivative_artifact',
-				'width' => 1200,
-				'height' => 675,
-				'filesize_bytes' => 180000,
-				'mime_type' => 'image/webp',
-			),
-		),
-	),
-	array(
-		'artifact_id' => 'derivative_artifact',
-		'run_id' => 'run_media_1',
-		'expires_at' => maca_future_expiry(),
-		'mime_type' => 'image/webp',
-		'width' => 1200,
-		'height' => 675,
-		'filesize_bytes' => 180000,
-	)
-);
+maca_reset_test_state();
+maca_seed_settings( true );
+$impossible_expiry_artifact = $cloud_artifact;
+$impossible_expiry_artifact['expires_at'] = '2027-02-31T00:00:00Z';
+$GLOBALS['maca_http_response_queue'][] = maca_cloud_run_result_response( $impossible_expiry_artifact );
+$impossible_expiry_result = Npcink_Cloud_Media_Derivative_Transport::get_run_result_projection( 'run_media_1', 'trace-impossible-expiry' );
 maca_assert(
-	is_array( $proposal_with_warnings )
-	&& in_array( 'Original media metrics are incomplete.', $proposal_with_warnings['warnings'], true ),
-	'Behavior: proposal payload warns when original or derivative metrics are incomplete.'
+	is_wp_error( $impossible_expiry_result )
+	&& 'cloud_media_derivative_artifact_expiry_missing' === $impossible_expiry_result->get_error_code(),
+	'Behavior: impossible calendar dates fail strict artifact timestamp validation.'
 );
 
-$invalid_source_type = maca_ability_fixture();
-$invalid_source_type['cloud_job_payload']['source_media_type'] = 'text/html';
-$invalid_source_result = Npcink_Cloud_Media_Derivative_Transport::dispatch_from_ability_response(
-	$invalid_source_type,
-	array(
-		'artifact_id' => 'source_artifact',
-		'expires_at' => maca_future_expiry(),
-	)
-);
+maca_reset_test_state();
+maca_seed_settings( true );
+$non_utc_expiry_artifact = $cloud_artifact;
+$non_utc_expiry_artifact['expires_at'] = '2030-01-01T08:00:00+08:00';
+$GLOBALS['maca_http_response_queue'][] = maca_cloud_run_result_response( $non_utc_expiry_artifact );
+$non_utc_expiry_result = Npcink_Cloud_Media_Derivative_Transport::get_run_result_projection( 'run_media_1', 'trace-non-utc-expiry' );
 maca_assert(
-	is_wp_error( $invalid_source_result ) && 'cloud_media_derivative_source_media_type_invalid' === $invalid_source_result->get_error_code(),
-	'Behavior: unsupported source media types fail closed.'
+	is_wp_error( $non_utc_expiry_result )
+	&& 'cloud_media_derivative_artifact_expiry_missing' === $non_utc_expiry_result->get_error_code(),
+	'Behavior: non-UTC RFC3339 offsets fail the canonical UTC artifact contract.'
 );
 
-$generic_source_type = maca_ability_fixture();
-$generic_source_type['cloud_job_payload']['source_media_type'] = 'image';
-$generic_source_result = Npcink_Cloud_Media_Derivative_Transport::dispatch_from_ability_response(
-	$generic_source_type,
-	array(
-		'artifact_id' => 'source_artifact',
-		'expires_at' => maca_future_expiry(),
-	)
-);
+maca_reset_test_state();
+maca_seed_settings( true );
+$utc_offset_expiry_artifact = $cloud_artifact;
+$utc_offset_expiry_artifact['expires_at'] = gmdate( 'Y-m-d\TH:i:s', time() + 3600 ) . '+00:00';
+$GLOBALS['maca_http_response_queue'][] = maca_cloud_run_result_response( $utc_offset_expiry_artifact );
+$utc_offset_expiry_result = Npcink_Cloud_Media_Derivative_Transport::get_run_result_projection( 'run_media_1', 'trace-utc-offset-expiry' );
 maca_assert(
-	! is_wp_error( $generic_source_result ),
-	'Behavior: generic image source media type is accepted for ability contracts.'
+	is_array( $utc_offset_expiry_result )
+	&& $utc_offset_expiry_artifact === ( $utc_offset_expiry_result['artifact'] ?? null ),
+	'Behavior: the Cloud canonical +00:00 UTC RFC3339 form remains accepted without date normalization.'
 );
 
-$wrapped_key = 'mak1_eyJzaXRlX2lkIjoic2l0ZV90ZXN0Iiwia2V5X2lkIjoia2V5X3Rlc3QiLCJzZWNyZXQiOiJzZWNyZXRfdGVzdCJ9';
-$unsafe_url = Npcink_Cloud_Addon_Settings::build_settings_from_admin_payload(
-	array(
-		'base_url' => 'http://cloud.example.test',
-		'api_key' => $wrapped_key,
-	)
+maca_reset_test_state();
+maca_seed_settings( true );
+$oversized_local_artifact = $proposal_artifact;
+$oversized_local_artifact['width'] = 8193;
+$oversized_local_receive = Npcink_Cloud_Media_Derivative_Transport::receive_artifact( $oversized_local_artifact, 'trace-local-oversized-dimension' );
+maca_assert(
+	is_wp_error( $oversized_local_receive )
+	&& 'cloud_media_derivative_local_artifact_facts_invalid' === $oversized_local_receive->get_error_code()
+	&& array() === $GLOBALS['maca_http_requests'],
+	'Behavior: the local11 receive boundary rejects an axis above 8192 before pull or ACK.'
 );
-$local_url = Npcink_Cloud_Addon_Settings::build_settings_from_admin_payload(
-	array(
-		'base_url' => 'http://127.0.0.1:8787',
-		'api_key' => $wrapped_key,
-	)
+
+maca_reset_test_state();
+maca_seed_settings( true );
+$oversized_area_local_artifact = $proposal_artifact;
+$oversized_area_local_artifact['width']  = 4097;
+$oversized_area_local_artifact['height'] = 4096;
+$oversized_area_local_receive = Npcink_Cloud_Media_Derivative_Transport::receive_artifact( $oversized_area_local_artifact, 'trace-local-oversized-area' );
+maca_assert(
+	is_wp_error( $oversized_area_local_receive )
+	&& 'cloud_media_derivative_local_artifact_facts_invalid' === $oversized_area_local_receive->get_error_code()
+	&& array() === $GLOBALS['maca_http_requests'],
+	'Behavior: the local11 receive boundary rejects an area above 16777216 before pull or ACK.'
 );
-$split_payload = Npcink_Cloud_Addon_Settings::build_settings_from_admin_payload(
-	array(
-		'base_url' => 'http://127.0.0.1:8787',
-		'api_key' => '{"site_id":"site_test","key_id":"key_test","secret":"secret_test"}',
-	)
+
+maca_reset_test_state();
+maca_seed_settings( true );
+$excess_warning_artifact = $proposal_artifact;
+$excess_warning_artifact['processing_warnings'] = array_fill( 0, 21, 'bounded_warning' );
+$excess_warning_receive = Npcink_Cloud_Media_Derivative_Transport::receive_artifact( $excess_warning_artifact, 'trace-excess-warnings' );
+maca_assert(
+	is_wp_error( $excess_warning_receive )
+	&& 'cloud_media_derivative_local_artifact_metadata_invalid' === $excess_warning_receive->get_error_code()
+	&& array() === $GLOBALS['maca_http_requests'],
+	'Behavior: local artifacts exceeding the Toolkit 20-warning limit fail before pull or ACK.'
+);
+
+maca_reset_test_state();
+maca_seed_settings( true );
+$delivery_id       = 'mdl_' . str_repeat( 'b', 32 );
+$ack_deadline      = gmdate( 'Y-m-d\TH:i:s\Z', time() + 900 );
+$acknowledged_at   = gmdate( 'Y-m-d\TH:i:s\Z', time() + 1 );
+$preserved_expiry  = (string) $proposal_artifact['expires_at'];
+maca_queue_media_pull( $proposal_artifact, $png, $delivery_id, $ack_deadline );
+maca_queue_media_ack( $proposal_artifact, $png, $delivery_id, $acknowledged_at, $preserved_expiry );
+$received = Npcink_Cloud_Media_Derivative_Transport::receive_artifact( $proposal_artifact, 'trace-receive' );
+$pull_request = $GLOBALS['maca_http_requests'][0] ?? array();
+$ack_request  = $GLOBALS['maca_http_requests'][1] ?? array();
+maca_assert(
+	is_array( $received )
+	&& array( 'artifact_id', 'contents', 'mime_type', 'width', 'height', 'filesize_bytes', 'sha256', 'expires_at', 'transfer_evidence', 'delivery_ack' ) === array_keys( $received )
+	&& $png === $received['contents']
+	&& $preserved_expiry === $received['expires_at']
+	&& 'media_artifact_verified_transfer.v1' === ( $received['transfer_evidence']['contract_version'] ?? null )
+	&& true === ( $received['transfer_evidence']['image_decoded'] ?? null )
+	&& 'verified_transfer_only' === ( $received['delivery_ack']['acknowledgement_scope'] ?? null ),
+	'Behavior: exact 11-field proposal artifact produces exact 10-field verified receive output while preserving expiry.'
 );
 maca_assert(
-	is_wp_error( $unsafe_url )
-	&& 'invalid_cloud_base_url' === $unsafe_url->get_error_code()
-	&& is_array( $local_url )
-	&& 'http://127.0.0.1:8787' === $local_url['base_url']
-	&& is_wp_error( $split_payload )
-	&& 'invalid_cloud_api_key' === $split_payload->get_error_code(),
-	'Behavior: Cloud Base URL requires HTTPS except localhost URLs and admin payloads reject split credential JSON.'
+	str_ends_with( (string) ( $pull_request['url'] ?? '' ), '/v1/runtime/media/artifacts/' . $artifact_id . '/download' )
+	&& 'GET' === ( $pull_request['args']['method'] ?? null )
+	&& '' !== ( $pull_request['args']['headers']['X-Npcink-Nonce'] ?? '' )
+	&& ! isset( $pull_request['args']['headers']['Idempotency-Key'] )
+	&& str_ends_with( (string) ( $ack_request['url'] ?? '' ), '/v1/runtime/media/artifacts/' . $artifact_id . '/delivery-ack' )
+	&& 'POST' === ( $ack_request['args']['method'] ?? null )
+	&& '' !== ( $ack_request['args']['headers']['X-Npcink-Nonce'] ?? '' )
+	&& '' !== ( $ack_request['args']['headers']['Idempotency-Key'] ?? '' )
+	&& ( $pull_request['args']['headers']['X-Npcink-Nonce'] ?? '' ) !== ( $ack_request['args']['headers']['X-Npcink-Nonce'] ?? '' ),
+	'Behavior: signed media pull and ACK use canonical paths, fresh nonces, and ACK-only idempotency.'
+);
+
+maca_reset_test_state();
+maca_seed_settings( true );
+$legacy_local_artifact = $proposal_artifact;
+$legacy_local_artifact['checksum'] = 'sha256:' . $legacy_local_artifact['sha256'];
+$legacy_receive = Npcink_Cloud_Media_Derivative_Transport::receive_artifact( $legacy_local_artifact );
+maca_assert(
+	is_wp_error( $legacy_receive )
+	&& 'cloud_media_derivative_local_artifact_contract_invalid' === $legacy_receive->get_error_code()
+	&& array() === $GLOBALS['maca_http_requests'],
+	'Behavior: receive rejects legacy checksum or extra-field artifact shapes before HTTP.'
+);
+
+maca_reset_test_state();
+maca_seed_settings( true );
+maca_queue_media_pull( $proposal_artifact, $png, $delivery_id, $ack_deadline );
+maca_queue_media_ack(
+	$proposal_artifact,
+	$png,
+	$delivery_id,
+	$acknowledged_at,
+	gmdate( 'Y-m-d\TH:i:s\Z', strtotime( $proposal_artifact['expires_at'] ) + 60 )
+);
+$extended_ack = Npcink_Cloud_Media_Derivative_Transport::receive_artifact( $proposal_artifact, 'trace-extended-ack' );
+maca_assert(
+	is_wp_error( $extended_ack ) && 'cloud_media_derivative_delivery_ack_binding_invalid' === $extended_ack->get_error_code(),
+	'Behavior: receive rejects ACK evidence that extends the proposal artifact expiry.'
+);
+
+maca_reset_test_state();
+maca_seed_settings( true );
+$shortened_ack_expiry = gmdate( 'Y-m-d\TH:i:s\Z', time() + 300 );
+maca_queue_media_pull( $proposal_artifact, $png, $delivery_id, $ack_deadline );
+maca_queue_media_ack( $proposal_artifact, $png, $delivery_id, $acknowledged_at, $shortened_ack_expiry );
+$shortened_ack = Npcink_Cloud_Media_Derivative_Transport::receive_artifact( $proposal_artifact, 'trace-shortened-ack' );
+maca_assert(
+	is_wp_error( $shortened_ack ) && 'cloud_media_derivative_delivery_ack_binding_invalid' === $shortened_ack->get_error_code(),
+	'Behavior: receive rejects ACK evidence that shortens the original local11 artifact expiry.'
+);
+
+maca_reset_test_state();
+maca_seed_settings( true );
+$late_ack_deadline     = gmdate( 'Y-m-d\TH:i:s\Z', time() + 60 );
+$late_acknowledged_at  = gmdate( 'Y-m-d\TH:i:s\Z', time() + 59 );
+$late_preserved_expiry = (string) $proposal_artifact['expires_at'];
+maca_queue_media_pull( $proposal_artifact, $png, $delivery_id, $late_ack_deadline );
+maca_queue_media_ack(
+	$proposal_artifact,
+	$png,
+	$delivery_id,
+	$late_acknowledged_at,
+	$late_preserved_expiry
+);
+$late_expiry_ack = Npcink_Cloud_Media_Derivative_Transport::receive_artifact( $proposal_artifact, 'trace-late-expiry-ack' );
+maca_assert(
+	is_array( $late_expiry_ack )
+	&& $late_preserved_expiry === ( $late_expiry_ack['expires_at'] ?? null )
+	&& strtotime( $late_preserved_expiry ) > strtotime( $late_acknowledged_at ) + 360,
+	'Behavior: a late valid ACK preserves an artifact expiry more than six minutes after acknowledgement.'
+);
+
+maca_reset_test_state();
+maca_seed_settings( true );
+$ack_request = array(
+	'contract_version'   => 'media_artifact_delivery_ack.v1',
+	'delivery_id'        => $delivery_id,
+	'received_byte_size' => strlen( $png ),
+	'received_checksum'  => 'sha256:' . hash( 'sha256', $png ),
+);
+$client = Npcink_Cloud_Media_Derivative_Transport::verified_client();
+maca_queue_media_ack( $proposal_artifact, $png, $delivery_id, '2027-02-31T12:00:00Z', (string) $proposal_artifact['expires_at'] );
+$invalid_calendar_ack = is_wp_error( $client ) ? $client : $client->acknowledge_media_artifact_delivery( $artifact_id, $ack_request, 'trace-invalid-calendar-ack', 'invalid-calendar-ack' );
+maca_assert(
+	is_wp_error( $invalid_calendar_ack ) && 'cloud_media_delivery_ack_response_invalid' === $invalid_calendar_ack->get_error_code(),
+	'Behavior: the direct ACK12 normalizer rejects impossible calendar timestamps.'
+);
+
+maca_reset_test_state();
+maca_seed_settings( true );
+$client = Npcink_Cloud_Media_Derivative_Transport::verified_client();
+maca_queue_media_ack( $proposal_artifact, $png, $delivery_id, $acknowledged_at, '2099-01-01T08:00:00+08:00' );
+$non_utc_ack = is_wp_error( $client ) ? $client : $client->acknowledge_media_artifact_delivery( $artifact_id, $ack_request, 'trace-non-utc-ack', 'non-utc-ack' );
+maca_assert(
+	is_wp_error( $non_utc_ack ) && 'cloud_media_delivery_ack_response_invalid' === $non_utc_ack->get_error_code(),
+	'Behavior: the direct ACK12 normalizer rejects non-UTC RFC3339 timestamps.'
+);
+
+maca_reset_test_state();
+maca_seed_settings( true );
+$bad_decode = str_repeat( 'x', strlen( $png ) );
+maca_queue_media_pull( $proposal_artifact, $bad_decode, $delivery_id, $ack_deadline );
+$decode_rejected = Npcink_Cloud_Media_Derivative_Transport::receive_artifact( $proposal_artifact, 'trace-bad-decode' );
+maca_assert(
+	is_wp_error( $decode_rejected )
+	&& in_array( $decode_rejected->get_error_code(), array( 'cloud_media_derivative_artifact_checksum_mismatch', 'cloud_media_derivative_artifact_decode_mismatch' ), true )
+	&& 1 === count( $GLOBALS['maca_http_requests'] ),
+	'Behavior: corrupt bytes fail before delivery ACK is sent.'
+);
+
+maca_reset_test_state();
+maca_seed_settings( true );
+$invalid_result = maca_cloud_run_result_response( $cloud_artifact );
+$invalid_body   = json_decode( (string) $invalid_result['body'], true );
+$invalid_body['data']['result']['derivative'] = $invalid_body['data']['result']['artifact'];
+unset( $invalid_body['data']['result']['artifact'] );
+$invalid_result['body'] = wp_json_encode( $invalid_body );
+$GLOBALS['maca_http_response_queue'][] = $invalid_result;
+$legacy_result = Npcink_Cloud_Media_Derivative_Transport::get_run_result_projection( 'run_media_1' );
+maca_assert(
+	is_wp_error( $legacy_result ) && 'cloud_media_derivative_result_contract_invalid' === $legacy_result->get_error_code(),
+	'Behavior: legacy derivative result keys are not consumed.'
 );

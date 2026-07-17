@@ -18,8 +18,9 @@ When not configured or not verified, the default page should prioritize:
 - one primary action to add the current WordPress site in Npcink Cloud;
 - the resolved Cloud base URL and current site URL as context only.
 
-Cloud Base URL must use HTTPS except for local development hosts (`localhost`,
-`127.0.0.1`, or `::1`). The environment default is
+Cloud Base URL must use HTTPS except for exact local development hosts
+(`localhost`, `127.0.0.1`, or `::1`) when WordPress explicitly reports the
+local environment (or the local-development constant opts in). The environment default is
 `http://localhost:8010/` for local WordPress environments and
 `https://cloud.npc.ink/` otherwise. Manual Base URL and Cloud API Key wrapper
 entry belong in `Connection Management > Manual fallback` as a recovery

@@ -2,7 +2,7 @@
 
 Standalone WordPress plugin for connecting a local Npcink installation to `npcink-cloud`.
 
-The addon is a thin Cloud connector. It stores the Cloud Base URL and Cloud API Key returned by Cloud site authorization, parses the key into signing credentials, sends signed runtime requests, reads health and entitlement status, transports opt-in metadata-only plugin observability and Agent feedback data, bridges public Site Knowledge change hints to Cloud, and exposes a minimal PHP interface for local plugins.
+The addon is a thin Cloud connector. It stores the Cloud Base URL and the Cloud API Key signing credentials returned by Cloud site authorization, sends signed runtime requests, reads health and entitlement status, transports opt-in metadata-only plugin observability and Agent feedback data, bridges public Site Knowledge change hints to Cloud, and exposes a minimal PHP interface for local plugins. Signing credentials are persisted as one authenticated encrypted envelope rather than plaintext option fields.
 
 Cross-project platform coordination starts from
 `/Users/muze/gitee/npcink-workflow-toolbox/docs/platform/README.md`. This
@@ -13,20 +13,20 @@ bounded signed transport.
 
 The addon owns:
 
-- Cloud Base URL and Cloud API Key wrapper storage.
+- Cloud Base URL and authenticated encrypted signing credential storage.
 - Cloud site authorization callback exchange and `mak1_{base64url(json)}` parsing.
 - HMAC signing, trace headers, idempotency headers, and Cloud error mapping.
 - Connectivity probing with `/health/live` and a signed Cloud read.
 - Runtime and read projection calls:
   - `POST /v1/runtime/execute`
-  - `POST /v1/runtime/media-derivatives`
+  - `POST /v1/runtime/media/uploads` for bounded image source uploads
+  - `POST /v1/runtime/media/jobs`
   - `GET /v1/runs/{run_id}`
   - `GET /v1/runs/{run_id}/result`
   - `GET /v1/runs/nightly-inspection/recent`
   - `POST /v1/runs/{run_id}/retry`
-  - `GET /v1/runtime/artifacts/{artifact_id}/download`
-  - `GET /v1/stats/profiles/{profile_id}`
-  - `GET /v1/stats/instances/{instance_id}`
+  - `GET /v1/runtime/media/artifacts/{artifact_id}/download`
+  - `POST /v1/runtime/media/artifacts/{artifact_id}/delivery-ack`
   - `GET /v1/entitlements/current`
 - Opt-in plugin observability transport:
   - `POST /v1/observability/plugin-events`
@@ -75,7 +75,7 @@ npcink_cloud_addon_execute_toolbox_web_search_runtime(array $request, string $tr
 npcink_cloud_addon_execute_toolbox_image_source_runtime(array $request, string $trace_id = '', string $idempotency_key = '')
 npcink_cloud_addon_dispatch_site_knowledge_runtime(array $runtime_payload, string $ability_name = '', string $contract_version = '')
 npcink_cloud_addon_build_media_derivative_proposal_payload(array $ability_response, array $cloud_result, array $derivative_artifact)
-npcink_cloud_addon_download_media_derivative_artifact(array $derivative_artifact, string $trace_id = '')
+npcink_cloud_addon_receive_media_derivative_artifact(array $artifact, string $trace_id = '')
 npcink_cloud_addon_site_knowledge_change_bridge_health(): array
 ```
 
@@ -93,15 +93,15 @@ execute_toolbox_site_ops_cloud_analysis_runtime(array $request, string $trace_id
 execute_toolbox_web_search_runtime(array $request, string $trace_id = '', string $idempotency_key = '')
 execute_toolbox_image_source_runtime(array $request, string $trace_id = '', string $idempotency_key = '')
 request_image_context_evidence(array $image_context_evidence_request, string $trace_id = '', string $idempotency_key = '')
-create_media_derivative(array $payload, array $files = array(), string $trace_id = '', string $idempotency_key = '')
+upload_media_artifact(array $file, string $trace_id = '', string $idempotency_key = '')
+create_media_job(array $payload, string $trace_id = '', string $idempotency_key = '')
 get_run(string $run_id, string $trace_id = '')
 get_run_result(string $run_id, string $trace_id = '')
 get_recent_nightly_inspection_runs(int $limit = 5, string $trace_id = '')
 retry_run(string $run_id, array $payload = array(), string $trace_id = '', string $idempotency_key = '')
-download_media_derivative_artifact(string $artifact_id, string $trace_id = '')
+pull_media_artifact(string $artifact_id, string $trace_id = '')
+acknowledge_media_artifact_delivery(string $artifact_id, array $payload, string $trace_id = '', string $idempotency_key = '')
 get_current_entitlement(string $trace_id = '')
-get_profile_stats(string $profile_id, string $trace_id = '')
-get_instance_stats(string $instance_id, string $trace_id = '')
 send_observability_events(array $events, string $trace_id = '', string $idempotency_key = '')
 send_agent_feedback_event(array $payload, string $trace_id = '', string $idempotency_key = '')
 get_agent_feedback_summary(int $window_hours = 24, string $trace_id = '')
@@ -111,6 +111,18 @@ get_observability_summary(int $window_hours = 24, string $trace_id = '')
 The low-level signed request method is private and endpoint-allowlisted. New
 callers should use the named methods above instead of sending arbitrary Cloud
 paths through the addon.
+
+All Cloud HTTP calls share one local outbound policy. Production targets must
+resolve only to public IP addresses, signed requests never follow redirects,
+TLS verification remains enabled, JSON responses must declare a JSON media
+type, and response bodies are capped by request class. Exact loopback targets
+are available only when WordPress explicitly reports a local environment or a
+local-development constant opts in.
+
+Hostname validation is performed before dispatch and WordPress safe HTTP
+validation runs again at dispatch, but the connector does not pin a DNS answer
+to a transport connection. Operators must therefore configure trusted Cloud
+hostnames and DNS; sub-second DNS rebinding remains a documented residual risk.
 
 `manual_readiness_test()` reuses the existing `/health/live` plus signed
 `GET /v1/entitlements/current` probe and returns
@@ -146,6 +158,15 @@ Returned evidence is candidate basis only and must still be visually confirmed
 by the local operator before any future governed apply path.
 
 `npcink_cloud_addon_get_settings()` returns server-side settings, including the stored secret. Do not print it into HTML or logs.
+
+The public PHP settings shape still contains `site_id`, `key_id`, and `secret`
+for server-side signing, but the WordPress option contains only a versioned
+authenticated credential envelope. Its key is derived from the WordPress
+authentication salt. Changing security salts makes the existing envelope
+unreadable and requires reconnecting the site; decryption or authentication
+failure is treated as unconfigured. This protects database-at-rest credentials,
+but it does not protect against a fully compromised server that can execute
+WordPress code and access the salts.
 
 ## WordPress AI Connector Runtime
 
@@ -214,8 +235,15 @@ When the PHP AI Client is available, the addon registers scene-gated text,
 vision, and image models. The text model only forwards calls that originate from known
 WordPress AI plugin Ability classes, such as title, excerpt, metadata, summary,
 classification, moderation, or rewrite. The vision model only forwards
-WordPress AI alt-text generation calls that can be represented as a fetchable
-image URL plus bounded media metadata. The image model only forwards
+WordPress AI alt-text generation calls with an editable local image attachment.
+It captures the attachment id through WordPress's post-validation,
+post-permission `wp_before_execute_ability` hook, validates the attachment and
+local upload path, binds the opened file handle to the checked file metadata,
+detects MIME from the bytes actually read, sends bounded JPEG, PNG, or WebP
+bytes to the named short-TTL Cloud upload endpoint, then executes
+`alt_text_suggest` with the returned same-site `source_artifact_id`. It never
+forwards an attachment URL, Data URL, caller-supplied base64, or arbitrary file
+path. The image model only forwards
 text-to-image calls from the WordPress AI image generation feature and rejects
 reference-image refinement. Direct `wp_ai_client_prompt()` usage outside
 supported scenes is rejected before a Cloud request is made.
@@ -229,14 +257,33 @@ underlying provider/model. The bounded vision wrapper is only for
 `alt_text_suggest`; it does not make the addon a generic vision provider,
 router, media metadata writer, or approval owner.
 
-The request must use `wp_ai_connector_runtime.v1` and one supported task
-surface, such as `title_generation`, `excerpt_generation`, `meta_description`,
-`content_summary`, `content_rewrite`, `content_classification`,
-`comment_moderation`, `comment_reply_suggest`, or `alt_text_suggest`. The addon
-projects the request into `ability_name=npcink-cloud/wp-ai-connector`,
-`channel=wordpress_ai_connector`, `execution_kind=wordpress_ai_connector`,
-`write_posture=suggestion_only`, `direct_wordpress_write=false`, and
-`no_conversation=true`.
+The current upstream WordPress AI alt-text ability still materializes its
+local image as a Data URL before it calls the selected AI Client model. The
+addon intentionally does not intercept `wp_pre_execute_ability` or replace that
+ability callback, because doing so would duplicate the upstream ability's input
+validation, permission, and result truth. Removing that transient upstream
+base64 allocation requires an upstream attachment-reference model seam; the
+Addon transport itself never sends or persists the Data URL.
+
+The transport request uses the platform-neutral
+`cloud_connector_runtime.v1` envelope with
+`ability_name=npcink-cloud/connector-runtime`, `channel=editor`, a verified
+top-level `site_id`, and an input connector identity containing canonical
+`site_url`, `platform_kind=wordpress`, `connector_id=npcink-cloud-addon`, the
+active connector version, and `suggestion_only=true`. WordPress-specific task
+semantics live only in the nested `wordpress_operation.v1` contract. Text tasks
+use `execution_kind=text`; the bounded alt-text scene uses
+`execution_kind=vision`.
+
+`title_generation`, `content_summary`, and `content_rewrite` send the actual
+AI Client user message as `source_text`, with an optional
+`system_instruction`. They do not send legacy `prompt`, `post_title`, or
+`post_excerpt` fields. Embedded content tags remain opaque source text. A
+successful response must expose `cloud_connector_result.v1`,
+`suggestion_only=true`, `connector_id=npcink-cloud-addon`, and a matching
+`wordpress_operation.v1` task before text is read from
+`response.data.result.output.output_text`; the addon does not dual-read legacy
+result shapes.
 
 This helper rejects generic chat or provider-control shapes such as `messages`,
 `conversation_id`, `session_id`, `thread_id`, `tools`, `tool_calls`, `functions`,
@@ -256,8 +303,8 @@ The addon can consume the read-only
 `npcink-abilities-toolkit/build-media-derivative-cloud-request` ability output as a transport
 input. It validates that the ability payload has no Cloud credentials,
 Authorization data, or signed headers, requires verified Cloud settings, and
-dispatches through the named `/v1/runtime/media-derivatives` runtime service
-endpoint.
+uploads bounded local image bytes through `/v1/runtime/media/uploads`, then
+dispatches one artifact-referenced job through `/v1/runtime/media/jobs`.
 
 The local host or Adapter still owns the ability call, local source file access,
 short TTL source artifact creation, Core proposal creation, UI display,
@@ -273,16 +320,32 @@ Cloud runtime options. Optional watermarks require `cloud_job_payload.watermark`
 in the ability response; the fifth dispatch parameter can then provide a
 watermark upload descriptor or a short TTL watermark artifact id.
 
+Local upload descriptors accept exactly one canonical byte source: `path`,
+`bytes`, or `content`. The only other accepted keys are `filename` and
+`mime_type`; every other key fails closed before Cloud transport. Removed
+aliases `file_path`, `tmp_name`, and `name` retain a dedicated rejection error.
+
 Expired Cloud artifacts are rejected before proposal adoption payloads are
 built. The default action is preview-only and original attachment files are not
 replaced by default.
 
-For local operator previews, the addon may download one non-expired derivative
-artifact by id through the explicit signed
-`GET /v1/runtime/artifacts/{artifact_id}/download` runtime endpoint. The helper
-checks descriptor TTL, supported image MIME type, bounded size, and optional
-SHA-256 checksum, then returns bytes to the trusted local caller. It does not
-persist the artifact, create an artifact registry, or write WordPress media.
+Media job dispatch and run polling expose one exact eight-field status
+projection. Its `artifact` is always empty, even when the status is
+`succeeded`; failed and canceled states retain only bounded lifecycle error
+facts. The exact Cloud 12-field artifact is parsed only by the separate result
+read before it is projected into the local 11-field proposal artifact. Both
+descriptors enforce an 8192-pixel maximum axis and a 16777216-pixel maximum
+area.
+
+For local adoption, the addon accepts only the exact 11-field local proposal
+artifact, pulls bytes through the explicit signed
+`GET /v1/runtime/media/artifacts/{artifact_id}/download` endpoint, verifies the
+required delivery headers, byte length, SHA-256, MIME, dimensions, and decoded
+image, and only then sends
+`POST /v1/runtime/media/artifacts/{artifact_id}/delivery-ack`. The receive
+helper returns exact verified-transfer evidence plus the Cloud ACK projection;
+its top-level expiry remains exactly the reviewed local artifact expiry. It does not persist
+the artifact, create an artifact registry, or write WordPress media.
 
 ## Observability Transport
 
@@ -309,7 +372,8 @@ configure router, prompt, or preset behavior.
 ## Site Knowledge Change Bridge
 
 When Cloud settings are verified, the addon listens for public post/page and
-approved comment changes, stores a bounded local delivery buffer, and sends a
+approved comment changes only after an administrator explicitly enables Site
+Knowledge delivery, stores a bounded local delivery buffer, and sends a
 Cloud Site Knowledge refresh request through the existing
 `POST /v1/runtime/execute` runtime contract.
 
@@ -355,8 +419,11 @@ state token. After Cloud returns a code, the addon exchanges it at
 `/portal/v1/addon-connections/exchange`, stores the returned Cloud API Key
 wrapper and base URL, and verifies the signed connection immediately.
 
-Cloud Base URL must use `https://` unless it points to local development hosts
-such as `localhost`, `127.0.0.1`, or `::1`. Timeout and manual recovery key
+Cloud Base URL must use `https://` unless it points to an exact local
+development host (`localhost`, `127.0.0.1`, or `::1`) and WordPress explicitly
+reports a local environment (or the local-request opt-in constant is enabled).
+Site Knowledge delivery is disabled until an administrator explicitly enables
+that local consent. Timeout and manual recovery key
 entry are kept in `Connection Management > Manual fallback` for local debugging
 or authorization outages.
 

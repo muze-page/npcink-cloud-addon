@@ -21,7 +21,9 @@ index, freshness, and collection lifecycle owner.
 - Cloud-side site authorization entry for the current WordPress site.
 - Connection Management manual fallback Cloud API Key wrapper entry.
 - `mak1_{base64url(json)}` key parsing.
-- Internal `site_id`, `key_id`, and `secret` storage for server-side signing.
+- Authenticated encrypted storage of the internal `site_id`, `key_id`, and
+  `secret` envelope for server-side signing; split plaintext fields are never
+  persisted in the WordPress option.
 - HMAC signatures, trace headers, idempotency headers, and request nonce headers.
 - Health and signed connectivity checks.
 - Bounded manual connector readiness/test results with non-secret support facts.
@@ -72,6 +74,14 @@ status projections, and bounded delivery buffers. The observability buffer and
 Site Knowledge change buffer are local delivery durability only: they help the
 addon survive temporary upload failures and expose health counts, but they are
 not queue truth, run truth, billing truth, indexing truth, approval truth, or audit truth.
+
+The addon derives its credential-encryption key from the WordPress
+authentication salt and fails closed when the credential envelope cannot be
+authenticated or decrypted. Security salt rotation therefore requires the site
+to reconnect. The envelope reduces plaintext exposure in database backups and
+option inspection; it is not a defense against complete server compromise,
+because code executing inside WordPress can access both the salts and runtime
+credentials.
 
 The addon must not create WordPress custom tables for workflow runs, Cloud
 runtime history, provider request logs, Site Knowledge indexing jobs,
@@ -157,6 +167,8 @@ executor and index lifecycle owner.
 
 The local delivery consent setting controls future public content delivery and
 administrator start/rebuild requests only. It is not index lifecycle truth.
+It defaults to disabled and must be explicitly enabled by an administrator;
+successful Cloud credential verification does not enable delivery.
 Turning it off does not delete existing Cloud index data; the explicit delete
 action remains available as a confirmed cleanup path.
 
@@ -188,14 +200,14 @@ Allowed Cloud contract endpoints:
 
 - `GET /health/live`
 - `POST /v1/runtime/execute`
-- `POST /v1/runtime/media-derivatives`
+- `POST /v1/runtime/media/uploads` for bounded image source uploads only
+- `POST /v1/runtime/media/jobs`
 - `GET /v1/runs/{run_id}`
 - `GET /v1/runs/{run_id}/result`
 - `GET /v1/runs/nightly-inspection/recent`
 - `POST /v1/runs/{run_id}/retry`
-- `GET /v1/runtime/artifacts/{artifact_id}/download`
-- `GET /v1/stats/profiles/{profile_id}`
-- `GET /v1/stats/instances/{instance_id}`
+- `GET /v1/runtime/media/artifacts/{artifact_id}/download`
+- `POST /v1/runtime/media/artifacts/{artifact_id}/delivery-ack`
 - `GET /v1/entitlements/current`
 - `POST /v1/observability/plugin-events`
 - `POST /v1/agent-feedback/events`
@@ -206,10 +218,20 @@ Forbidden legacy endpoint:
 
 - `/v1/runtime/workflows/runs`
 
-Media derivative transport must use the named runtime media derivative endpoint,
+Media derivative transport must use the named upload, job, signed pull, and
+verified-transfer ACK endpoints,
 run/result endpoints, and explicit derivative artifact download endpoint above.
-Do not silently add ad hoc artifact upload, generic download, source registry,
-or logo registry endpoints to the addon.
+The alt-text vision wrapper may use only the named media upload endpoint to
+create one short-TTL image source artifact from an authorized local attachment,
+then pass only its `source_artifact_id` to the existing execute endpoint. Do
+not silently add ad hoc artifact upload, generic download, source registry, or
+logo registry endpoints to the addon.
+
+The wrapper may capture attachment input only after WordPress Ability
+validation and permission checks. It must not replace or short-circuit the
+upstream ability callback, inspect its call stack, or become a second Ability
+validation/result owner merely to avoid upstream Data URL allocation. That
+performance improvement requires an upstream attachment-reference seam.
 
 Observability transport must use only the observability endpoints above. Do not
 add ad hoc log upload, support bundle, file upload, database export, or raw
@@ -237,6 +259,8 @@ Image context evidence transport must use the existing
 and normalize `image_context_evidence.v1` as suggestion-only evidence. It must
 not add a local image recognition model, local queue, proposal creation,
 approval, media metadata write path, or generic image upload/download endpoint.
+The dedicated WordPress AI alt-text attachment upload is a separate named
+transport and must not be reused by this evidence seam.
 
 Agent feedback transport must use only `POST /v1/agent-feedback/events` for
 `cloud_agent_feedback.v1` local operator feedback and

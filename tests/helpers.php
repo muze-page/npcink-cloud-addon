@@ -11,6 +11,10 @@ if ( ! defined( 'MACA_TEST_ROOT' ) ) {
 	define( 'MACA_TEST_ROOT', dirname( __DIR__ ) );
 }
 
+if ( ! defined( 'NPCINK_CLOUD_ADDON_VERSION' ) ) {
+	define( 'NPCINK_CLOUD_ADDON_VERSION', '0.1.3-test' );
+}
+
 /**
  * Assertion helper.
  *
@@ -55,6 +59,8 @@ if ( ! function_exists( 'wp_parse_url' ) ) {
 if ( ! defined( 'ABSPATH' ) ) {
 	define( 'ABSPATH', MACA_TEST_ROOT . '/tests/wordpress-stub/' );
 }
+
+require_once MACA_TEST_ROOT . '/includes/class-cloud-outbound-policy.php';
 
 if ( ! defined( 'HOUR_IN_SECONDS' ) ) {
 	define( 'HOUR_IN_SECONDS', 3600 );
@@ -196,6 +202,12 @@ if ( ! function_exists( 'untrailingslashit' ) ) {
 	}
 }
 
+if ( ! function_exists( 'home_url' ) ) {
+	function home_url( string $path = '' ): string {
+		return 'https://wordpress.example.test/' . ltrim( $path, '/' );
+	}
+}
+
 if ( ! function_exists( 'wp_strip_all_tags' ) ) {
 	function wp_strip_all_tags( $value ): string {
 		return strip_tags( (string) $value );
@@ -207,10 +219,19 @@ $GLOBALS['maca_option_update_counts'] = array();
 $GLOBALS['maca_transients'] = array();
 $GLOBALS['maca_http_requests'] = array();
 $GLOBALS['maca_http_response_queue'] = array();
+$GLOBALS['maca_actions'] = array();
 $GLOBALS['maca_filters'] = array();
+$GLOBALS['maca_wp_salt'] = 'maca-test-auth-salt';
+
+if ( ! function_exists( 'wp_salt' ) ) {
+	function wp_salt( string $scheme = 'auth' ): string {
+		return (string) ( $GLOBALS['maca_wp_salt'] ?? '' );
+	}
+}
 
 if ( ! function_exists( 'get_option' ) ) {
 	function get_option( string $name, $default = false ) {
+		$GLOBALS['maca_option_read_counts'][ $name ] = absint( $GLOBALS['maca_option_read_counts'][ $name ] ?? 0 ) + 1;
 		return array_key_exists( $name, $GLOBALS['maca_options'] ) ? $GLOBALS['maca_options'][ $name ] : $default;
 	}
 }
@@ -235,8 +256,10 @@ if ( ! function_exists( 'add_option' ) ) {
 }
 
 if ( ! function_exists( 'delete_option' ) ) {
-	function delete_option( string $name ): void {
+	function delete_option( string $name ): bool {
+		$existed = array_key_exists( $name, $GLOBALS['maca_options'] );
 		unset( $GLOBALS['maca_options'][ $name ] );
+		return $existed;
 	}
 }
 
@@ -260,7 +283,13 @@ if ( ! function_exists( 'delete_transient' ) ) {
 }
 
 if ( ! function_exists( 'add_action' ) ) {
-	function add_action(): void {}
+	function add_action( string $hook_name, $callback, int $priority = 10, int $accepted_args = 1 ): bool {
+		$GLOBALS['maca_actions'][ $hook_name ][ $priority ][] = array(
+			'callback'      => $callback,
+			'accepted_args' => $accepted_args,
+		);
+		return true;
+	}
 }
 
 if ( ! function_exists( 'add_filter' ) ) {
@@ -302,17 +331,73 @@ if ( ! function_exists( 'register_setting' ) ) {
 	function register_setting(): void {}
 }
 
+if ( ! function_exists( 'wp_next_scheduled' ) ) {
+	function wp_next_scheduled( string $hook, array $args = array() ) {
+		unset( $args );
+		return $GLOBALS['maca_scheduled_events'][ $hook ] ?? false;
+	}
+}
+
+if ( ! function_exists( 'wp_get_schedule' ) ) {
+	function wp_get_schedule( string $hook, array $args = array() ) {
+		unset( $args );
+		return $GLOBALS['maca_scheduled_event_schedules'][ $hook ] ?? false;
+	}
+}
+
+if ( ! function_exists( 'wp_schedule_event' ) ) {
+	function wp_schedule_event( int $timestamp, string $recurrence, string $hook, array $args = array() ): bool {
+		unset( $args );
+		$GLOBALS['maca_scheduled_events'][ $hook ] = $timestamp;
+		$GLOBALS['maca_scheduled_event_schedules'][ $hook ] = $recurrence;
+		$GLOBALS['maca_schedule_call_counts'][ $hook ] = absint( $GLOBALS['maca_schedule_call_counts'][ $hook ] ?? 0 ) + 1;
+		return true;
+	}
+}
+
+if ( ! function_exists( 'wp_schedule_single_event' ) ) {
+	function wp_schedule_single_event( int $timestamp, string $hook, array $args = array() ): bool {
+		unset( $args );
+		$GLOBALS['maca_schedule_call_counts'][ $hook ] = absint( $GLOBALS['maca_schedule_call_counts'][ $hook ] ?? 0 ) + 1;
+		if ( absint( $GLOBALS['maca_schedule_single_failures_remaining'] ?? 0 ) > 0 ) {
+			--$GLOBALS['maca_schedule_single_failures_remaining'];
+			return false;
+		}
+		$GLOBALS['maca_scheduled_events'][ $hook ] = $timestamp;
+		$GLOBALS['maca_scheduled_event_schedules'][ $hook ] = 'single';
+		return true;
+	}
+}
+
+if ( ! function_exists( 'wp_clear_scheduled_hook' ) ) {
+	function wp_clear_scheduled_hook( string $hook, array $args = array() ): void {
+		unset( $args );
+		unset( $GLOBALS['maca_scheduled_events'][ $hook ], $GLOBALS['maca_scheduled_event_schedules'][ $hook ] );
+	}
+}
+
 if ( ! function_exists( 'wp_remote_request' ) ) {
 	function wp_remote_request( string $url, array $args = array() ) {
 		$GLOBALS['maca_http_requests'][] = array(
 			'url'  => $url,
 			'args' => $args,
 		);
+		if ( str_ends_with( $url, '/health/live' ) ) {
+			return array(
+				'response' => array( 'code' => 200 ),
+				'headers'  => array( 'Content-Type' => 'application/json' ),
+				'body'     => wp_json_encode( array( 'message' => 'ok' ) ),
+			);
+		}
 
 		if ( ! empty( $GLOBALS['maca_http_response_queue'] ) ) {
 			$response = array_shift( $GLOBALS['maca_http_response_queue'] );
 			if ( is_callable( $response ) ) {
-				return $response( $url, $args );
+				$response = $response( $url, $args );
+			}
+
+			if ( is_array( $response ) && ! array_key_exists( 'headers', $response ) ) {
+				$response['headers'] = array( 'Content-Type' => 'application/json' );
 			}
 
 			return $response;
@@ -320,6 +405,7 @@ if ( ! function_exists( 'wp_remote_request' ) ) {
 
 		return array(
 			'response' => array( 'code' => 200 ),
+			'headers'  => array( 'Content-Type' => 'application/json' ),
 			'body'     => wp_json_encode(
 				array(
 					'status' => 'ok',
@@ -329,6 +415,12 @@ if ( ! function_exists( 'wp_remote_request' ) ) {
 				)
 			),
 		);
+	}
+}
+
+if ( ! function_exists( 'wp_safe_remote_request' ) ) {
+	function wp_safe_remote_request( string $url, array $args = array() ) {
+		return wp_remote_request( $url, $args );
 	}
 }
 
@@ -347,8 +439,28 @@ if ( ! function_exists( 'wp_remote_get' ) ) {
 
 		return array(
 			'response' => array( 'code' => 200 ),
+			'headers'  => array( 'Content-Type' => 'application/json' ),
 			'body'     => wp_json_encode( array( 'message' => 'ok' ) ),
 		);
+	}
+}
+
+if ( ! function_exists( 'wp_remote_retrieve_header' ) ) {
+	function wp_remote_retrieve_header( array $response, string $name ): string {
+		$headers = is_array( $response['headers'] ?? null ) ? $response['headers'] : array();
+		foreach ( $headers as $key => $value ) {
+			if ( strtolower( (string) $key ) === strtolower( $name ) ) {
+				return is_scalar( $value ) ? (string) $value : '';
+			}
+		}
+
+		return '';
+	}
+}
+
+if ( ! function_exists( 'wp_get_environment_type' ) ) {
+	function wp_get_environment_type(): string {
+		return (string) ( $GLOBALS['maca_wp_environment_type'] ?? 'local' );
 	}
 }
 
@@ -370,6 +482,9 @@ if ( ! function_exists( 'wp_remote_retrieve_body' ) ) {
  * @return void
  */
 function maca_load_addon_classes(): void {
+	require_once MACA_TEST_ROOT . '/includes/class-cloud-credential-store.php';
+	require_once MACA_TEST_ROOT . '/includes/class-cloud-outbound-policy.php';
+	require_once MACA_TEST_ROOT . '/includes/class-cloud-runtime-endpoint-policy.php';
 	require_once MACA_TEST_ROOT . '/includes/class-cloud-addon-settings.php';
 	require_once MACA_TEST_ROOT . '/includes/class-cloud-ai-task-contract.php';
 	require_once MACA_TEST_ROOT . '/includes/class-cloud-runtime-client.php';
@@ -377,6 +492,9 @@ function maca_load_addon_classes(): void {
 	require_once MACA_TEST_ROOT . '/includes/class-cloud-media-derivative-transport.php';
 	require_once MACA_TEST_ROOT . '/includes/class-cloud-observability-collector.php';
 	require_once MACA_TEST_ROOT . '/includes/class-cloud-site-knowledge-runtime-bridge.php';
+	require_once MACA_TEST_ROOT . '/includes/class-cloud-site-knowledge-admin-projection.php';
+	require_once MACA_TEST_ROOT . '/includes/class-cloud-site-knowledge-admin-actions.php';
+	require_once MACA_TEST_ROOT . '/includes/class-cloud-runtime-runs-presenter.php';
 }
 
 /**
@@ -387,7 +505,8 @@ function maca_load_addon_classes(): void {
  * @return void
  */
 function maca_seed_settings( bool $verified, string $base_url = 'https://cloud.example.test' ): void {
-	$GLOBALS['maca_options'][ Npcink_Cloud_Addon_Settings::option_name() ] = array(
+	Npcink_Cloud_Addon_Settings::write_settings(
+		array(
 		'base_url' => $base_url,
 		'site_id' => 'site_test',
 		'key_id' => 'key_test',
@@ -400,6 +519,7 @@ function maca_seed_settings( bool $verified, string $base_url = 'https://cloud.e
 		'site_knowledge_delivery_enabled' => true,
 		'site_knowledge_generation_reference_enabled' => false,
 		'wordpress_ai_connector_enabled' => true,
+		)
 	);
 }
 
@@ -412,7 +532,7 @@ function maca_seed_settings( bool $verified, string $base_url = 'https://cloud.e
 function maca_set_monitoring_enabled( bool $enabled ): void {
 	$settings = Npcink_Cloud_Addon_Settings::get_settings();
 	$settings['monitoring_enabled'] = $enabled;
-	$GLOBALS['maca_options'][ Npcink_Cloud_Addon_Settings::option_name() ] = $settings;
+	Npcink_Cloud_Addon_Settings::write_settings( $settings );
 }
 
 /**
@@ -424,7 +544,7 @@ function maca_set_monitoring_enabled( bool $enabled ): void {
 function maca_set_site_knowledge_delivery_enabled( bool $enabled ): void {
 	$settings = Npcink_Cloud_Addon_Settings::get_settings();
 	$settings['site_knowledge_delivery_enabled'] = $enabled;
-	$GLOBALS['maca_options'][ Npcink_Cloud_Addon_Settings::option_name() ] = $settings;
+	Npcink_Cloud_Addon_Settings::write_settings( $settings );
 }
 
 /**
@@ -436,7 +556,7 @@ function maca_set_site_knowledge_delivery_enabled( bool $enabled ): void {
 function maca_set_site_knowledge_generation_reference_enabled( bool $enabled ): void {
 	$settings = Npcink_Cloud_Addon_Settings::get_settings();
 	$settings['site_knowledge_generation_reference_enabled'] = $enabled;
-	$GLOBALS['maca_options'][ Npcink_Cloud_Addon_Settings::option_name() ] = $settings;
+	Npcink_Cloud_Addon_Settings::write_settings( $settings );
 }
 
 /**
@@ -448,7 +568,7 @@ function maca_set_site_knowledge_generation_reference_enabled( bool $enabled ): 
 function maca_set_wordpress_ai_connector_enabled( bool $enabled ): void {
 	$settings = Npcink_Cloud_Addon_Settings::get_settings();
 	$settings['wordpress_ai_connector_enabled'] = $enabled;
-	$GLOBALS['maca_options'][ Npcink_Cloud_Addon_Settings::option_name() ] = $settings;
+	Npcink_Cloud_Addon_Settings::write_settings( $settings );
 }
 
 /**
@@ -459,11 +579,42 @@ function maca_set_wordpress_ai_connector_enabled( bool $enabled ): void {
 function maca_reset_test_state(): void {
 	$GLOBALS['maca_options'] = array();
 	$GLOBALS['maca_option_update_counts'] = array();
+	$GLOBALS['maca_option_read_counts'] = array();
 	$GLOBALS['maca_transients'] = array();
 	$GLOBALS['maca_http_requests'] = array();
 	$GLOBALS['maca_http_response_queue'] = array();
+	$GLOBALS['maca_actions'] = array();
 	$GLOBALS['maca_filters'] = array();
+	$GLOBALS['maca_scheduled_events'] = array();
+	$GLOBALS['maca_scheduled_event_schedules'] = array();
+	$GLOBALS['maca_schedule_call_counts'] = array();
+	$GLOBALS['maca_schedule_single_failures_remaining'] = 0;
+	$GLOBALS['maca_wp_salt'] = 'maca-test-auth-salt';
+	$GLOBALS['maca_wp_environment_type'] = 'local';
+	maca_register_default_outbound_filters();
 }
+
+/**
+ * Registers deterministic public DNS results for behavior-test hostnames.
+ *
+ * @return void
+ */
+function maca_register_default_outbound_filters(): void {
+	add_filter(
+		'npcink_cloud_addon_resolved_host_ips',
+		static function ( $ips, string $host ): array {
+			if ( str_ends_with( $host, '.example.test' ) ) {
+				return array( '1.1.1.1' );
+			}
+
+			return is_array( $ips ) ? $ips : array();
+		},
+		10,
+		2
+	);
+}
+
+maca_register_default_outbound_filters();
 
 /**
  * Returns a valid local ability response fixture.

@@ -11,6 +11,9 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
+require_once __DIR__ . '/class-cloud-credential-store.php';
+require_once __DIR__ . '/class-cloud-outbound-policy.php';
+require_once __DIR__ . '/class-cloud-runtime-endpoint-policy.php';
 require_once __DIR__ . '/class-cloud-addon-settings.php';
 require_once __DIR__ . '/class-cloud-ai-task-contract.php';
 require_once __DIR__ . '/class-cloud-runtime-client.php';
@@ -19,6 +22,9 @@ require_once __DIR__ . '/class-cloud-entitlement-summary.php';
 require_once __DIR__ . '/class-cloud-observability-collector.php';
 require_once __DIR__ . '/class-cloud-site-knowledge-change-bridge.php';
 require_once __DIR__ . '/class-cloud-site-knowledge-runtime-bridge.php';
+require_once __DIR__ . '/class-cloud-site-knowledge-admin-projection.php';
+require_once __DIR__ . '/class-cloud-site-knowledge-admin-actions.php';
+require_once __DIR__ . '/class-cloud-runtime-runs-presenter.php';
 require_once __DIR__ . '/class-cloud-addon-localization.php';
 require_once __DIR__ . '/class-ai-plugin-localization.php';
 require_once __DIR__ . '/class-cloud-wordpress-ai-connector.php';
@@ -213,22 +219,33 @@ if ( ! function_exists( 'npcink_cloud_addon_execute_registered_ai_task_runtime' 
 			return $task_contract;
 		}
 
-		$request['contract_version'] = 'wp_ai_connector_runtime.v1';
-		$request['task']             = $task_contract['task'];
-		$request['task_contract']    = $task_contract;
+		$request['task_contract'] = $task_contract;
 		$supports_generation_reference = in_array(
 			(string) $task_contract['task'],
 			array( 'title_generation', 'content_summary' ),
 			true
 		);
 		if ( $supports_generation_reference && Npcink_Cloud_Addon_Settings::is_site_knowledge_generation_reference_enabled() ) {
-			$request['input'] = is_array( $request['input'] ?? null ) ? $request['input'] : array();
-			if ( ! isset( $request['input']['site_knowledge_reference'] ) ) {
-				$request['input']['site_knowledge_reference'] = array( 'enabled' => true );
+			if ( ! isset( $request['site_knowledge_reference'] ) ) {
+				$request['site_knowledge_reference'] = array( 'enabled' => true );
 			}
 		}
 
-		return npcink_cloud_addon_execute_wordpress_ai_connector_runtime( $request, $trace_id, $idempotency_key );
+		return npcink_cloud_addon_execute_wordpress_ai_connector_runtime(
+			array(
+				'contract_version'   => 'cloud_connector_runtime.v1',
+				'operation_contract' => array(
+					'contract_version' => 'wordpress_operation.v1',
+					'task'             => $task_contract['task'],
+					'request'          => $request,
+				),
+				'timeout_seconds'    => 60,
+				'retention_ttl'      => 86400,
+				'retry_max'          => 0,
+			),
+			$trace_id,
+			$idempotency_key
+		);
 	}
 }
 
@@ -487,7 +504,7 @@ if ( ! function_exists( 'npcink_cloud_addon_get_media_derivative_run_result' ) )
 
 if ( ! function_exists( 'npcink_cloud_addon_media_derivative_run_id' ) ) {
 	/**
-	 * Extracts a media derivative run id from supported Cloud response shapes.
+	 * Extracts a media derivative run id from the exact local public projection.
 	 *
 	 * @param array<string,mixed> $cloud_response Cloud response.
 	 * @return string
@@ -499,12 +516,12 @@ if ( ! function_exists( 'npcink_cloud_addon_media_derivative_run_id' ) ) {
 
 if ( ! function_exists( 'npcink_cloud_addon_public_media_derivative_cloud_projection' ) ) {
 	/**
-	 * Returns a bounded media derivative Cloud run/result projection.
+	 * Returns a bounded media derivative Cloud status projection.
 	 *
 	 * @param array<string,mixed> $cloud_response Cloud response.
-	 * @return array<string,mixed>
+	 * @return array<string,mixed>|WP_Error
 	 */
-	function npcink_cloud_addon_public_media_derivative_cloud_projection( array $cloud_response ): array {
+	function npcink_cloud_addon_public_media_derivative_cloud_projection( array $cloud_response ) {
 		return Npcink_Cloud_Media_Derivative_Transport::public_cloud_projection( $cloud_response );
 	}
 }
@@ -514,9 +531,9 @@ if ( ! function_exists( 'npcink_cloud_addon_media_derivative_artifact_from_cloud
 	 * Extracts a derivative artifact descriptor from a Cloud result payload.
 	 *
 	 * @param array<string,mixed> $cloud_result Cloud result.
-	 * @return array<string,mixed>
+	 * @return array<string,mixed>|WP_Error
 	 */
-	function npcink_cloud_addon_media_derivative_artifact_from_cloud_result( array $cloud_result ): array {
+	function npcink_cloud_addon_media_derivative_artifact_from_cloud_result( array $cloud_result ) {
 		return Npcink_Cloud_Media_Derivative_Transport::artifact_from_cloud_result( $cloud_result );
 	}
 }
@@ -543,19 +560,19 @@ if ( ! function_exists( 'npcink_cloud_addon_build_media_derivative_optimization_
 	}
 }
 
-if ( ! function_exists( 'npcink_cloud_addon_download_media_derivative_artifact' ) ) {
+if ( ! function_exists( 'npcink_cloud_addon_receive_media_derivative_artifact' ) ) {
 	/**
-	 * Downloads a short-TTL derivative artifact for a trusted local preview.
+	 * Receives and verifies one short-TTL derivative artifact, then ACKs transfer.
 	 *
-	 * This does not store, register, adopt, or write the artifact.
+	 * This does not store, register, approve, adopt, or write the artifact.
 	 *
 	 * @param array<string,mixed> $derivative_artifact Cloud derivative artifact descriptor.
 	 * @param string              $trace_id Optional trace id.
 	 * @return array<string,mixed>|WP_Error
 	 */
-	function npcink_cloud_addon_download_media_derivative_artifact( array $derivative_artifact, string $trace_id = '' ) {
-		return Npcink_Cloud_Media_Derivative_Transport::download_artifact_preview(
-			$derivative_artifact,
+	function npcink_cloud_addon_receive_media_derivative_artifact( array $artifact, string $trace_id = '' ) {
+		return Npcink_Cloud_Media_Derivative_Transport::receive_artifact(
+			$artifact,
 			$trace_id
 		);
 	}

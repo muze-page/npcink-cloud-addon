@@ -8,6 +8,7 @@
 declare(strict_types=1);
 
 require_once __DIR__ . '/helpers.php';
+require_once MACA_TEST_ROOT . '/includes/class-cloud-credential-store.php';
 require_once MACA_TEST_ROOT . '/includes/class-cloud-addon-settings.php';
 require_once MACA_TEST_ROOT . '/includes/class-cloud-wordpress-ai-connector.php';
 

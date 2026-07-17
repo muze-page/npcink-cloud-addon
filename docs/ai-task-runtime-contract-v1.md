@@ -27,8 +27,8 @@ An Ability may include this metadata when it is registered:
 ```
 
 The Addon projects the registered Ability name and output schema itself. It
-always forces `write_posture=suggestion_only`. Current ai-wp-admin abilities use
-a temporary compatibility projection until they publish equivalent metadata.
+always forces `write_posture=suggestion_only`. Current ai-wp-admin abilities
+without metadata use the Addon's bounded built-in projection.
 
 Public PHP seams:
 
@@ -40,6 +40,25 @@ Public PHP seams:
 The execution helper does not execute the Ability or bypass its permission
 callback. Callers must perform normal Ability permission and input handling
 before invoking the model-runtime seam.
+
+## Connector runtime envelope
+
+The execution helper sends the task projection through
+`cloud_connector_runtime.v1` with verified top-level `site_id`,
+`ability_name=npcink-cloud/connector-runtime`, `channel=editor`, and a connector
+identity containing canonical `site_url`, `platform_kind=wordpress`,
+`connector_id=npcink-cloud-addon`, connector version, and
+`suggestion_only=true`.
+
+The WordPress task is nested as `wordpress_operation.v1` with exactly
+`contract_version`, `task`, and `request`. For `title_generation`,
+`content_summary`, and `content_rewrite`, the request uses the actual single AI
+Client user message as `source_text` plus optional `system_instruction`; legacy
+prompt and post fields are rejected. Text results use
+`cloud_connector_result.v1` and must remain `suggestion_only=true`, identify
+`connector_id=npcink-cloud-addon`, and carry a matching
+`wordpress_operation.v1` task before output is read from
+`response.data.result.output.output_text`.
 
 ## Fixed vocabulary and boundary
 

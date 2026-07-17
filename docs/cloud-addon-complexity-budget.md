@@ -17,10 +17,14 @@ rollback, and all WordPress writes.
 Keep these even if they make the code less minimal:
 
 - HMAC signing, trace headers, idempotency headers, and endpoint allowlists.
+- Authenticated encryption for addon-owned signing credentials at rest, with
+  fail-closed handling for tampering, decryption failure, or salt rotation.
 - Save-and-Verify gating before media derivative dispatch.
 - Ability payload checks that reject credentials, Authorization data, signed
   headers, tokens, and Cloud signing fields.
 - Bounded source and watermark media derivative multipart transport.
+- Bounded WordPress AI alt-text attachment validation and one-purpose,
+  short-TTL image upload transport followed by Artifact-id-only execution.
 - Image watermark/logo fail-closed behavior unless the local ability supplies a
   watermark plan and the host supplies one short TTL artifact or upload; text
   watermark plans must remain structured options without a watermark source.
@@ -70,9 +74,52 @@ Tests are split by purpose:
   forbidden surfaces and required contracts.
 - `tests/behavior-media-derivative.php` calls public PHP APIs with WordPress
   stubs to prove fail-closed behavior and proposal payload shape.
+- WordPress AI connector behavior tests prove the alt-text path requires an
+  authorized local attachment, validates its short-TTL Artifact, and never
+  falls back to URLs, Data URLs, base64, or WordPress writes.
 - `tests/helpers.php` contains shared assertions, file readers, WordPress stubs,
   HTTP stubs, settings seed helpers, and media derivative fixtures.
 - `tests/run.php` is only the aggregate entry point used by Composer.
 
 Keep new tests in the narrowest matching file. Do not add product workflow
 simulation to the helper layer.
+
+## Deterministic Performance And Safety Baseline
+
+The current pre-user baseline favors deterministic work-amplification guards
+over wall-clock thresholds that vary with the WordPress host:
+
+- plugin file load and `npcink_cloud_addon_bootstrap()` must issue zero outbound
+  HTTP requests;
+- repeated bootstrap schedule synchronization must not read the normally absent
+  Site Knowledge cursor or change-buffer options; explicit permission changes
+  own the low-frequency resume check;
+- repeated schedule synchronization must retain exactly one hourly
+  observability event and one hourly Site Knowledge reconciliation event;
+- an unexpected recurring interval must be corrected once, without network
+  traffic;
+- observability remains capped at 200 buffered events and 50 events per
+  request; Site Knowledge remains capped at 500 post IDs, 25 change IDs per
+  request, and three delivery attempts;
+- uncertain retries of an unchanged observability or Site Knowledge change
+  payload must reuse its content-addressed idempotency key. An unchanged Site
+  Knowledge document payload intentionally does not create duplicate Cloud
+  indexing work; changed document content produces a different key.
+- successful flushes must re-read the latest local buffer and remove only the
+  exact event identities or Site Knowledge document fingerprints that Cloud
+  accepted, preserving changes captured while HTTP was in flight.
+
+These guards run under `composer run test:all`. Endpoint latency sampling stays
+outside this connector because Toolbox owns the operator-facing request surface
+and the Cloud service owns hosted runtime latency.
+
+Do not add a distributed lock or a new async scheduler to satisfy hypothetical
+traffic. Revisit cross-request locking only after overlapping Cron execution is
+observed in profiling. Administrator full-index delivery reuses the existing
+bounded cursor and flush hook because the prior synchronous path amplified one
+admin request into as many as 50 sequential Cloud calls. The cursor remains
+delivery durability only and must not grow into workflow or scheduler truth.
+The existing cursor option is claimed atomically for a new request, and later
+cursor transitions use exact-version conditional writes so a stale Cron callback
+cannot replace a newer request. Stable per-batch idempotency remains the Cloud
+protection against overlapping delivery.

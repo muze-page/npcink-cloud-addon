@@ -16,7 +16,7 @@ npcink_cloud_addon_verified_runtime_client(): ?Npcink_Cloud_Runtime_Client
 npcink_cloud_addon_execute_wordpress_ai_connector_runtime(array $request, string $trace_id = '', string $idempotency_key = '')
 npcink_cloud_addon_dispatch_media_derivative_cloud_request(array $ability_response, array $source_artifact, string $trace_id = '', string $idempotency_key = '', array $watermark_artifact = array())
 npcink_cloud_addon_build_media_derivative_proposal_payload(array $ability_response, array $cloud_result, array $derivative_artifact)
-npcink_cloud_addon_download_media_derivative_artifact(array $derivative_artifact, string $trace_id = '')
+npcink_cloud_addon_receive_media_derivative_artifact(array $artifact, string $trace_id = '')
 ```
 
 ## Expected Adapter Flow
@@ -47,10 +47,26 @@ For the WordPress AI connector/provider flow:
    scenes or `npcink_cloud_addon_execute_wordpress_ai_image_generation_runtime()`
    for the WordPress AI image generation feature.
 3. The addon rejects generic chat message/session/tool/stream shapes and
-   projects the request into `wp_ai_connector_runtime.v1` or Cloud's existing
+   projects text and alt-text requests into `cloud_connector_runtime.v1` with
+   `ability_name=npcink-cloud/connector-runtime`, `channel=editor`, connector
+   identity, and a nested `wordpress_operation.v1` task contract. WordPress AI
+   image generation continues to use its existing
    `image_generation_request.v1` runtime contract.
-4. Cloud returns suggestion-only runtime output.
-5. Host/provider code maps the output back into the WordPress AI feature
+4. Alt text requires an editable local image attachment. The addon validates
+   input through the post-validation `wp_before_execute_ability` hook, binds
+   the uploads-directory path check to the opened file handle, detects MIME
+   from the bytes read, sends bounded JPEG, PNG, or WebP bytes through
+   `POST /v1/runtime/media/uploads`, validates the short-TTL Artifact, and then
+   executes with only its `source_artifact_id` plus bounded text context. URL,
+   Data URL, base64, arbitrary path, and call-stack fallbacks are not supported.
+5. Title, summary, and rewrite pass the single AI Client user message as
+   `source_text` and may include `system_instruction`; they do not pass legacy
+   prompt or post fields.
+6. Cloud returns `cloud_connector_result.v1` with `suggestion_only=true`,
+   `connector_id=npcink-cloud-addon`, and a matching `wordpress_operation.v1`
+   task; connector text is then read only from
+   `response.data.result.output.output_text`.
+7. Host/provider code maps the output back into the WordPress AI feature
    response shape.
 
 This connector flow must not expose an OpenAI-compatible endpoint, a human chat
@@ -66,19 +82,20 @@ For `npcink-abilities-toolkit/build-media-derivative-cloud-request`:
 1. Host/Adapter calls the local WordPress ability and receives the read-only
    request contract.
 2. Host/Adapter creates or obtains a local source upload descriptor or same-site
-   short TTL source artifact id. The addon does not invent undocumented generic
-   upload/download endpoints.
+   short TTL source artifact id. The addon validates the local plan before any
+   upload, then uses only the named media upload and job resources.
 3. Host/Adapter calls
    `npcink_cloud_addon_dispatch_media_derivative_cloud_request()`.
 4. The addon validates that the ability payload has no credentials,
    Authorization data, or signed headers, and fails closed when Cloud settings
    are not verified.
 5. Host/Adapter polls `get_run()` and `get_run_result()`.
-6. Host/Adapter may call
-   `npcink_cloud_addon_download_media_derivative_artifact()` to serve a
-   same-origin local preview proxy for a non-expired derivative artifact. The
-   addon signs the Cloud download and verifies MIME, size, and optional
-   checksum, but does not persist or register the artifact.
+6. Host/Adapter passes the exact 11-field local proposal artifact to
+   `npcink_cloud_addon_receive_media_derivative_artifact()`. The addon signs the
+   canonical media pull, verifies required delivery headers, bytes, checksum,
+   MIME, dimensions, and decoded image, and only then sends the independent
+   delivery ACK. It returns exact verified-transfer evidence while preserving
+   the reviewed local artifact expiry, but does not persist or register the artifact.
 7. Host/Adapter calls
    `npcink_cloud_addon_build_media_derivative_proposal_payload()` to produce
    Core proposal input.

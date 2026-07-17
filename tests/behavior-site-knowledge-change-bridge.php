@@ -163,6 +163,40 @@ function maca_add_public_post_fixture( int $post_id, string $type = 'post' ): vo
 	);
 }
 
+/**
+ * Queues deterministic inline Cloud successes for Site Knowledge delivery.
+ *
+ * @param int $count Response count.
+ * @return void
+ */
+function maca_queue_site_knowledge_inline_success( int $count = 1 ): void {
+	for ( $index = 0; $index < $count; $index++ ) {
+		$GLOBALS['maca_http_response_queue'][] = array(
+			'response' => array( 'code' => 200 ),
+			'body' => wp_json_encode(
+				array(
+					'status' => 'ok',
+					'data' => array( 'status' => 'succeeded' ),
+				)
+			),
+		);
+	}
+}
+
+/**
+ * Simulates WordPress consuming one scheduled single Cron event before callback.
+ *
+ * @return array<string,mixed>
+ */
+function maca_run_site_knowledge_flush(): array {
+	unset(
+		$GLOBALS['maca_scheduled_events'][ Npcink_Cloud_Site_Knowledge_Change_Bridge::FLUSH_HOOK ],
+		$GLOBALS['maca_scheduled_event_schedules'][ Npcink_Cloud_Site_Knowledge_Change_Bridge::FLUSH_HOOK ]
+	);
+
+	return Npcink_Cloud_Site_Knowledge_Change_Bridge::flush_buffer();
+}
+
 maca_reset_site_knowledge_bridge_state();
 Npcink_Cloud_Site_Knowledge_Change_Bridge::handle_comment_posted(
 	101,
@@ -339,6 +373,73 @@ maca_assert(
 
 maca_reset_site_knowledge_bridge_state();
 maca_seed_settings( true );
+maca_add_public_post_fixture( 708 );
+update_option(
+	Npcink_Cloud_Site_Knowledge_Change_Bridge::BUFFER_OPTION,
+	array(
+		'post_ids' => array( 708 ),
+		'attempts' => 0,
+	),
+	false
+);
+$GLOBALS['maca_http_response_queue'][] = new WP_Error( 'http_request_failed', 'Connection outcome was uncertain.' );
+Npcink_Cloud_Site_Knowledge_Change_Bridge::flush_buffer();
+$first_change_key = (string) ( $GLOBALS['maca_http_requests'][0]['args']['headers']['Idempotency-Key'] ?? '' );
+maca_add_public_post_fixture( 709 );
+$GLOBALS['maca_http_response_queue'][] = static function ( string $url, array $args ): array {
+	unset( $url, $args );
+	$GLOBALS['maca_posts'][708]->post_content = 'Changed while the original Site Knowledge payload was in flight.';
+	Npcink_Cloud_Site_Knowledge_Change_Bridge::handle_saved_post( 708, $GLOBALS['maca_posts'][708] );
+	Npcink_Cloud_Site_Knowledge_Change_Bridge::handle_saved_post( 709, $GLOBALS['maca_posts'][709] );
+
+	return array(
+		'response' => array( 'code' => 200 ),
+		'body' => wp_json_encode( array( 'status' => 'ok', 'data' => array() ) ),
+	);
+};
+Npcink_Cloud_Site_Knowledge_Change_Bridge::flush_buffer();
+$retry_change_key = (string) ( $GLOBALS['maca_http_requests'][1]['args']['headers']['Idempotency-Key'] ?? '' );
+$change_buffer = get_option( Npcink_Cloud_Site_Knowledge_Change_Bridge::BUFFER_OPTION, array() );
+maca_assert(
+	'' !== $first_change_key
+	&& $first_change_key === $retry_change_key
+	&& array( 708, 709 ) === (array) ( $change_buffer['post_ids'] ?? array() ),
+	'Behavior: an uncertain Site Knowledge retry preserves same-id content changes and new ids buffered during HTTP.'
+);
+Npcink_Cloud_Site_Knowledge_Change_Bridge::flush_buffer();
+$changed_payload_key = (string) ( $GLOBALS['maca_http_requests'][2]['args']['headers']['Idempotency-Key'] ?? '' );
+$change_buffer = get_option( Npcink_Cloud_Site_Knowledge_Change_Bridge::BUFFER_OPTION, array() );
+maca_assert(
+	$changed_payload_key !== $retry_change_key
+	&& array() === (array) ( $change_buffer['post_ids'] ?? array() ),
+	'Behavior: changed Site Knowledge content receives a new key and clears only after that version is delivered.'
+);
+
+maca_reset_site_knowledge_bridge_state();
+maca_seed_settings( true );
+for ( $post_id = 8000; $post_id <= 8025; $post_id++ ) {
+	maca_add_public_post_fixture( $post_id );
+}
+update_option(
+	Npcink_Cloud_Site_Knowledge_Change_Bridge::BUFFER_OPTION,
+	array(
+		'post_ids' => range( 8000, 8025 ),
+		'attempts' => 2,
+	),
+	false
+);
+$GLOBALS['maca_http_response_queue'][] = new WP_Error( 'http_request_failed', 'Final bounded attempt failed.' );
+$exhausted = Npcink_Cloud_Site_Knowledge_Change_Bridge::flush_buffer();
+$exhausted_buffer = get_option( Npcink_Cloud_Site_Knowledge_Change_Bridge::BUFFER_OPTION, array() );
+maca_assert(
+	'delivery_attempts_exhausted' === (string) ( $exhausted['last_error_code'] ?? '' )
+	&& array( 8025 ) === (array) ( $exhausted_buffer['post_ids'] ?? array() )
+	&& 0 === absint( $exhausted_buffer['attempts'] ?? 0 ),
+	'Behavior: exhausting one Site Knowledge batch preserves later buffered work.'
+);
+
+maca_reset_site_knowledge_bridge_state();
+maca_seed_settings( true );
 maca_set_site_knowledge_delivery_enabled( false );
 maca_add_public_post_fixture( 750 );
 $disabled_start = Npcink_Cloud_Site_Knowledge_Change_Bridge::request_manual_index_operation( 'start' );
@@ -384,6 +485,11 @@ $GLOBALS['maca_post_terms'][801] = array(
 	'post_tag' => array( 'Site Knowledge', 'Writing' ),
 );
 $start_status = Npcink_Cloud_Site_Knowledge_Change_Bridge::request_manual_index_operation( 'start' );
+$start_http_after_queue = count( $GLOBALS['maca_http_requests'] );
+$start_cursor = get_option( Npcink_Cloud_Site_Knowledge_Change_Bridge::MAINTENANCE_OPTION, array() );
+$start_health = Npcink_Cloud_Site_Knowledge_Change_Bridge::health_snapshot();
+maca_queue_site_knowledge_inline_success();
+maca_run_site_knowledge_flush();
 $start_request = $GLOBALS['maca_http_requests'][0] ?? array();
 $start_body = json_decode( (string) ( $start_request['args']['body'] ?? '' ), true );
 $start_body = is_array( $start_body ) ? $start_body : array();
@@ -391,6 +497,13 @@ $start_documents = (array) ( $start_body['input']['documents'] ?? array() );
 $first_start_document = is_array( $start_documents[0] ?? null ) ? $start_documents[0] : array();
 maca_assert(
 	is_array( $start_status )
+	&& 0 === $start_http_after_queue
+	&& 'queued' === (string) ( $start_cursor['status'] ?? '' )
+	&& 'start' === (string) ( $start_cursor['operation'] ?? '' )
+	&& 'admin_start' === (string) ( $start_cursor['operation_source'] ?? '' )
+	&& 1 === absint( $start_cursor['batch_count'] ?? 0 )
+	&& 'queued' === (string) ( $start_health['status'] ?? '' )
+	&& 'queued' === (string) ( $start_health['maintenance_status'] ?? '' )
 	&& false !== strpos( (string) ( $start_request['url'] ?? '' ), '/v1/runtime/execute' )
 	&& 'refresh' === (string) ( $start_body['input']['sync_mode'] ?? '' )
 	&& 'admin_start' === (string) ( $start_body['input']['operation_source'] ?? '' )
@@ -403,25 +516,33 @@ maca_assert(
 	&& ! array_key_exists( 'body', $first_start_document )
 	&& ! array_key_exists( 'comments', $first_start_document )
 	&& 'start' === (string) ( $start_status['last_index_action'] ?? '' )
-	&& 2 === absint( $start_status['last_index_action_sent_count'] ?? 0 ),
-	'Behavior: administrator can start Site Knowledge indexing with the canonical Cloud public document contract.'
+	&& 'queued' === (string) ( $start_status['last_index_action_status'] ?? '' )
+	&& 2 === absint( $start_status['last_index_action_selected_count'] ?? 0 )
+	&& 0 === absint( $start_status['last_index_action_sent_count'] ?? 99 )
+	&& array() === get_option( Npcink_Cloud_Site_Knowledge_Change_Bridge::MAINTENANCE_OPTION, array() ),
+	'Behavior: administrator start queues zero-HTTP bounded delivery, then sends the canonical public document contract through Cron.'
 );
 
 maca_reset_site_knowledge_bridge_state();
 maca_seed_settings( true );
 maca_add_public_post_fixture( 901 );
 $rebuild_status = Npcink_Cloud_Site_Knowledge_Change_Bridge::request_manual_index_operation( 'rebuild' );
+$rebuild_http_after_queue = count( $GLOBALS['maca_http_requests'] );
+maca_queue_site_knowledge_inline_success();
+maca_run_site_knowledge_flush();
 $rebuild_request = $GLOBALS['maca_http_requests'][0] ?? array();
 $rebuild_body = json_decode( (string) ( $rebuild_request['args']['body'] ?? '' ), true );
 $rebuild_body = is_array( $rebuild_body ) ? $rebuild_body : array();
 maca_assert(
 	is_array( $rebuild_status )
+	&& 0 === $rebuild_http_after_queue
 	&& 'rebuild' === (string) ( $rebuild_body['input']['sync_mode'] ?? '' )
 	&& 'admin_rebuild' === (string) ( $rebuild_body['input']['operation_source'] ?? '' )
 	&& 'suggestion_only' === (string) ( $rebuild_body['input']['write_posture'] ?? '' )
 	&& false === (bool) ( $rebuild_body['input']['direct_wordpress_write'] ?? true )
-	&& 'rebuild' === (string) ( $rebuild_status['last_index_action'] ?? '' ),
-	'Behavior: administrator rebuild request forwards only public manifests and no-write posture to Cloud.'
+	&& 'rebuild' === (string) ( $rebuild_status['last_index_action'] ?? '' )
+	&& 0 === absint( $rebuild_status['last_index_action_sent_count'] ?? 99 ),
+	'Behavior: administrator rebuild queues first, then forwards only public manifests and no-write posture to Cloud.'
 );
 
 maca_reset_site_knowledge_bridge_state();
@@ -431,6 +552,14 @@ for ( $post_id = 10000; $post_id < 10605; $post_id++ ) {
 	$GLOBALS['maca_posts'][ $post_id ]->post_content = str_repeat( '中', 2000 );
 }
 $full_rebuild_status = Npcink_Cloud_Site_Knowledge_Change_Bridge::request_manual_index_operation( 'rebuild' );
+$full_rebuild_cursor = get_option( Npcink_Cloud_Site_Knowledge_Change_Bridge::MAINTENANCE_OPTION, array() );
+$full_rebuild_http_increments = array();
+maca_queue_site_knowledge_inline_success( 4 );
+for ( $batch_index = 0; $batch_index < 4; $batch_index++ ) {
+	$request_count = count( $GLOBALS['maca_http_requests'] );
+	$full_rebuild_final_status = maca_run_site_knowledge_flush();
+	$full_rebuild_http_increments[] = count( $GLOBALS['maca_http_requests'] ) - $request_count;
+}
 $full_rebuild_bodies = array_map(
 	static function ( array $request ): array {
 		$body = json_decode( (string) ( $request['args']['body'] ?? '' ), true );
@@ -448,6 +577,9 @@ foreach ( $full_rebuild_bodies as $body ) {
 }
 maca_assert(
 	is_array( $full_rebuild_status )
+	&& array() === $GLOBALS['maca_http_response_queue']
+	&& 4 === absint( $full_rebuild_cursor['batch_count'] ?? 0 )
+	&& array( 1, 1, 1, 1 ) === $full_rebuild_http_increments
 	&& 4 === count( $full_rebuild_bodies )
 	&& 'rebuild' === (string) ( $full_rebuild_bodies[0]['input']['sync_mode'] ?? '' )
 	&& array() === (array) ( $full_rebuild_bodies[0]['input']['post_ids'] ?? array() )
@@ -461,9 +593,361 @@ maca_assert(
 	&& 605 === count( $full_rebuild_document_ids )
 	&& 605 === count( array_unique( $full_rebuild_document_ids ) )
 	&& max( $full_rebuild_body_sizes ) < 900000
-	&& 605 === absint( $full_rebuild_status['last_index_action_sent_count'] ?? 0 )
-	&& 4 === absint( $full_rebuild_status['last_index_action_batch_count'] ?? 0 ),
-	'Behavior: administrator rebuild covers the bounded full public corpus across Cloud-owned rebuild plus refresh batches.'
+	&& 0 === absint( $full_rebuild_status['last_index_action_sent_count'] ?? 99 )
+	&& 605 === absint( $full_rebuild_final_status['last_index_action_sent_count'] ?? 0 )
+	&& 'completed' === (string) ( $full_rebuild_final_status['last_index_action_status'] ?? '' )
+	&& 4 === absint( $full_rebuild_final_status['last_index_action_batch_count'] ?? 0 ),
+	'Behavior: administrator rebuild covers the bounded full public corpus with at most one Cloud request per Cron invocation.'
+);
+
+maca_reset_site_knowledge_bridge_state();
+maca_seed_settings( true );
+maca_add_public_post_fixture( 10999 );
+wp_schedule_single_event( time() + 180, Npcink_Cloud_Site_Knowledge_Change_Bridge::FLUSH_HOOK );
+$expedite_started_at = time();
+Npcink_Cloud_Site_Knowledge_Change_Bridge::request_manual_index_operation( 'start' );
+$expedited_flush = wp_next_scheduled( Npcink_Cloud_Site_Knowledge_Change_Bridge::FLUSH_HOOK );
+maca_assert(
+	false !== $expedited_flush
+	&& (int) $expedited_flush <= $expedite_started_at + 2
+	&& 2 === absint( $GLOBALS['maca_schedule_call_counts'][ Npcink_Cloud_Site_Knowledge_Change_Bridge::FLUSH_HOOK ] ?? 0 )
+	&& array() === $GLOBALS['maca_http_requests'],
+	'Behavior: an administrator full-index request advances a later debounce event without synchronous Cloud HTTP.'
+);
+
+maca_reset_site_knowledge_bridge_state();
+maca_seed_settings( true );
+maca_add_public_post_fixture( 11000 );
+$preserved_flush = time() + 180;
+wp_schedule_single_event( $preserved_flush, Npcink_Cloud_Site_Knowledge_Change_Bridge::FLUSH_HOOK );
+$GLOBALS['maca_schedule_single_failures_remaining'] = 1;
+Npcink_Cloud_Site_Knowledge_Change_Bridge::request_manual_index_operation( 'start' );
+maca_assert(
+	$preserved_flush === wp_next_scheduled( Npcink_Cloud_Site_Knowledge_Change_Bridge::FLUSH_HOOK )
+	&& array() === $GLOBALS['maca_http_requests'],
+	'Behavior: a failed attempt to advance the flush restores the existing scheduled event.'
+);
+
+maca_reset_site_knowledge_bridge_state();
+maca_seed_settings( true );
+maca_add_public_post_fixture( 11001 );
+$active_status = Npcink_Cloud_Site_Knowledge_Change_Bridge::request_manual_index_operation( 'start' );
+$active_cursor = get_option( Npcink_Cloud_Site_Knowledge_Change_Bridge::MAINTENANCE_OPTION, array() );
+$overlap_rebuild = Npcink_Cloud_Site_Knowledge_Change_Bridge::request_manual_index_operation( 'rebuild' );
+$overlap_delete = Npcink_Cloud_Site_Knowledge_Change_Bridge::request_manual_index_operation( 'delete' );
+Npcink_Cloud_Site_Knowledge_Change_Bridge::maybe_schedule_automatic_rebuild(
+	array(
+		'maintenance' => array(
+			'action' => 'full_sync',
+			'automatic' => true,
+			'status' => 'awaiting_site',
+			'request_id' => 'skm_overlap_automatic',
+		),
+	)
+);
+maca_assert(
+	is_array( $active_status )
+	&& is_wp_error( $overlap_rebuild )
+	&& 'cloud_site_knowledge_delivery_in_progress' === $overlap_rebuild->get_error_code()
+	&& is_wp_error( $overlap_delete )
+	&& 'cloud_site_knowledge_delivery_in_progress' === $overlap_delete->get_error_code()
+	&& $active_cursor === get_option( Npcink_Cloud_Site_Knowledge_Change_Bridge::MAINTENANCE_OPTION, array() )
+	&& array() === $GLOBALS['maca_http_requests'],
+	'Behavior: active full-index delivery cannot be overwritten by manual or automatic operations.'
+);
+
+maca_reset_site_knowledge_bridge_state();
+maca_seed_settings( true );
+for ( $post_id = 11010; $post_id <= 11210; $post_id++ ) {
+	maca_add_public_post_fixture( $post_id );
+}
+Npcink_Cloud_Site_Knowledge_Change_Bridge::request_manual_index_operation( 'start' );
+$stale_cursor = get_option( Npcink_Cloud_Site_Knowledge_Change_Bridge::MAINTENANCE_OPTION, array() );
+$replacement_cursor = array(
+	'status' => 'queued',
+	'request_id' => 'newer_admin_request',
+	'operation' => 'rebuild',
+	'operation_source' => 'admin_rebuild',
+	'post_ids' => array( 11010 ),
+	'next_batch' => 0,
+	'batch_count' => 1,
+	'attempts' => 0,
+	'created_at' => gmdate( 'c' ),
+);
+$GLOBALS['maca_http_response_queue'][] = static function () use ( $replacement_cursor ): array {
+	delete_option( Npcink_Cloud_Site_Knowledge_Change_Bridge::MAINTENANCE_OPTION );
+	add_option( Npcink_Cloud_Site_Knowledge_Change_Bridge::MAINTENANCE_OPTION, $replacement_cursor, '', false );
+	wp_schedule_single_event( time() + 1, Npcink_Cloud_Site_Knowledge_Change_Bridge::FLUSH_HOOK );
+
+	return array(
+		'response' => array( 'code' => 200 ),
+		'body' => wp_json_encode(
+			array(
+				'status' => 'ok',
+				'data' => array( 'status' => 'succeeded' ),
+			)
+		),
+	);
+};
+$stale_flush_status = maca_run_site_knowledge_flush();
+maca_assert(
+	2 === absint( $stale_cursor['batch_count'] ?? 0 )
+	&& $replacement_cursor === get_option( Npcink_Cloud_Site_Knowledge_Change_Bridge::MAINTENANCE_OPTION, array() )
+	&& false !== wp_next_scheduled( Npcink_Cloud_Site_Knowledge_Change_Bridge::FLUSH_HOOK )
+	&& 0 === absint( $stale_flush_status['last_index_action_sent_count'] ?? 0 ),
+	'Behavior: a stale Cron callback cannot overwrite a newer full-index cursor after Cloud returns.'
+);
+
+maca_reset_site_knowledge_bridge_state();
+maca_seed_settings( true );
+maca_add_public_post_fixture( 11101 );
+Npcink_Cloud_Site_Knowledge_Change_Bridge::request_manual_index_operation( 'start' );
+$GLOBALS['maca_http_response_queue'][] = new WP_Error( 'http_request_failed', 'Retry this exact batch.' );
+maca_run_site_knowledge_flush();
+$first_manual_key = (string) ( $GLOBALS['maca_http_requests'][0]['args']['headers']['Idempotency-Key'] ?? '' );
+maca_queue_site_knowledge_inline_success();
+$manual_retry_status = maca_run_site_knowledge_flush();
+$second_manual_key = (string) ( $GLOBALS['maca_http_requests'][1]['args']['headers']['Idempotency-Key'] ?? '' );
+maca_assert(
+	'' !== $first_manual_key
+	&& $first_manual_key === $second_manual_key
+	&& 'completed' === (string) ( $manual_retry_status['last_index_action_status'] ?? '' )
+	&& array() === get_option( Npcink_Cloud_Site_Knowledge_Change_Bridge::MAINTENANCE_OPTION, array() ),
+	'Behavior: uncertain manual full-index retries reuse the exact batch idempotency key.'
+);
+
+maca_reset_site_knowledge_bridge_state();
+maca_seed_settings( true );
+maca_add_public_post_fixture( 111015 );
+Npcink_Cloud_Site_Knowledge_Change_Bridge::request_manual_index_operation( 'start' );
+$GLOBALS['maca_http_response_queue'][] = array(
+	'response' => array( 'code' => 200 ),
+	'body' => wp_json_encode(
+		array(
+			'status' => 'ok',
+			'data' => array( 'run_id' => 'Run.Manual_Mixed-Case.1' ),
+		)
+	),
+);
+maca_run_site_knowledge_flush();
+$accepted_run_cursor = get_option( Npcink_Cloud_Site_Knowledge_Change_Bridge::MAINTENANCE_OPTION, array() );
+$GLOBALS['maca_http_response_queue'][] = array(
+	'response' => array( 'code' => 200 ),
+	'body' => wp_json_encode(
+		array(
+			'status' => 'ok',
+			'data' => array(
+				'run' => array( 'status' => 'submitted' ),
+			),
+		)
+	),
+);
+$submitted_poll_status = maca_run_site_knowledge_flush();
+$submitted_poll_cursor = get_option( Npcink_Cloud_Site_Knowledge_Change_Bridge::MAINTENANCE_OPTION, array() );
+$submitted_poll_request = $GLOBALS['maca_http_requests'][1] ?? array();
+$GLOBALS['maca_http_response_queue'][] = array(
+	'response' => array( 'code' => 200 ),
+	'body' => wp_json_encode(
+		array(
+			'status' => 'ok',
+			'data' => array(
+				'run' => array( 'status' => 'running' ),
+			),
+		)
+	),
+);
+$running_poll_status = maca_run_site_knowledge_flush();
+$running_poll_cursor = get_option( Npcink_Cloud_Site_Knowledge_Change_Bridge::MAINTENANCE_OPTION, array() );
+$running_poll_scheduled = wp_next_scheduled( Npcink_Cloud_Site_Knowledge_Change_Bridge::FLUSH_HOOK );
+$running_poll_request = $GLOBALS['maca_http_requests'][2] ?? array();
+$GLOBALS['maca_http_response_queue'][] = array(
+	'response' => array( 'code' => 200 ),
+	'body' => wp_json_encode(
+		array(
+			'status' => 'ok',
+			'data' => array(
+				'run' => array( 'status' => 'completed' ),
+			),
+		)
+	),
+);
+$running_poll_final_status = maca_run_site_knowledge_flush();
+maca_assert(
+	'Run.Manual_Mixed-Case.1' === (string) ( $accepted_run_cursor['pending_run_id'] ?? '' )
+	&& 'Run.Manual_Mixed-Case.1' === (string) ( $submitted_poll_cursor['pending_run_id'] ?? '' )
+	&& 1 === absint( $submitted_poll_cursor['poll_generation'] ?? 0 )
+	&& 'delivering' === (string) ( $submitted_poll_status['last_index_action_status'] ?? '' )
+	&& 'https://cloud.example.test/v1/runs/Run.Manual_Mixed-Case.1' === (string) ( $submitted_poll_request['url'] ?? '' )
+	&& 'Run.Manual_Mixed-Case.1' === (string) ( $running_poll_cursor['pending_run_id'] ?? '' )
+	&& 2 === absint( $running_poll_cursor['poll_generation'] ?? 0 )
+	&& '' !== (string) ( $running_poll_cursor['last_polled_at'] ?? '' )
+	&& false !== $running_poll_scheduled
+	&& 'delivering' === (string) ( $running_poll_status['last_index_action_status'] ?? '' )
+	&& 'https://cloud.example.test/v1/runs/Run.Manual_Mixed-Case.1' === (string) ( $running_poll_request['url'] ?? '' )
+	&& 'completed' === (string) ( $running_poll_final_status['last_index_action_status'] ?? '' )
+	&& array() === get_option( Npcink_Cloud_Site_Knowledge_Change_Bridge::MAINTENANCE_OPTION, array() )
+	&& 4 === count( $GLOBALS['maca_http_requests'] ),
+	'Behavior: submitted and running Cloud states preserve a mixed-case run id until the bounded poll completes.'
+);
+
+maca_reset_site_knowledge_bridge_state();
+maca_seed_settings( true );
+maca_add_public_post_fixture( 1110151 );
+Npcink_Cloud_Site_Knowledge_Change_Bridge::request_manual_index_operation( 'start' );
+$invalid_pending_cursor = get_option( Npcink_Cloud_Site_Knowledge_Change_Bridge::MAINTENANCE_OPTION, array() );
+$invalid_pending_cursor['pending_run_id'] = 'Run/ABC';
+update_option( Npcink_Cloud_Site_Knowledge_Change_Bridge::MAINTENANCE_OPTION, $invalid_pending_cursor, false );
+$invalid_pending_status = maca_run_site_knowledge_flush();
+$invalid_pending_cursor = get_option( Npcink_Cloud_Site_Knowledge_Change_Bridge::MAINTENANCE_OPTION, array() );
+maca_assert(
+	array() === $GLOBALS['maca_http_requests']
+	&& 'retrying' === (string) ( $invalid_pending_cursor['status'] ?? '' )
+	&& 1 === absint( $invalid_pending_cursor['attempts'] ?? 0 )
+	&& ! isset( $invalid_pending_cursor['pending_run_id'] )
+	&& 'full_index_delivery_retry_scheduled' === (string) ( $invalid_pending_status['last_error_code'] ?? '' ),
+	'Behavior: an invalid pending run id fails closed instead of being rewritten and queried.'
+);
+
+maca_reset_site_knowledge_bridge_state();
+maca_seed_settings( true );
+maca_add_public_post_fixture( 1110152 );
+Npcink_Cloud_Site_Knowledge_Change_Bridge::request_manual_index_operation( 'start' );
+$GLOBALS['maca_http_response_queue'][] = array(
+	'response' => array( 'code' => 200 ),
+	'body' => wp_json_encode(
+		array(
+			'status' => 'ok',
+			'data' => array( 'run_id' => 'Run/ABC' ),
+		)
+	),
+);
+$invalid_response_status = maca_run_site_knowledge_flush();
+$invalid_response_cursor = get_option( Npcink_Cloud_Site_Knowledge_Change_Bridge::MAINTENANCE_OPTION, array() );
+maca_assert(
+	1 === count( $GLOBALS['maca_http_requests'] )
+	&& 'retrying' === (string) ( $invalid_response_cursor['status'] ?? '' )
+	&& 1 === absint( $invalid_response_cursor['attempts'] ?? 0 )
+	&& ! isset( $invalid_response_cursor['pending_run_id'] )
+	&& 'full_index_delivery_retry_scheduled' === (string) ( $invalid_response_status['last_error_code'] ?? '' ),
+	'Behavior: an explicit invalid Cloud run id cannot complete or advance a full-index batch.'
+);
+
+maca_reset_site_knowledge_bridge_state();
+maca_seed_settings( true );
+maca_add_public_post_fixture( 111016 );
+Npcink_Cloud_Site_Knowledge_Change_Bridge::request_manual_index_operation( 'start' );
+$bounded_run_acceptance = array(
+	'response' => array( 'code' => 200 ),
+	'body' => wp_json_encode(
+		array(
+			'status' => 'ok',
+			'data' => array( 'run_id' => 'run_manual_never_finishes' ),
+		)
+	),
+);
+$bounded_running_response = array(
+	'response' => array( 'code' => 200 ),
+	'body' => wp_json_encode(
+		array(
+			'status' => 'ok',
+			'data' => array(
+				'run' => array( 'status' => 'running' ),
+			),
+		)
+	),
+);
+$GLOBALS['maca_http_response_queue'][] = $bounded_run_acceptance;
+maca_run_site_knowledge_flush();
+$max_run_polls = absint( Npcink_Cloud_Site_Knowledge_Change_Bridge::health_snapshot()['max_run_polls'] ?? 0 );
+for ( $attempt = 1; $attempt <= 3; $attempt++ ) {
+	$never_finishes_cursor = get_option( Npcink_Cloud_Site_Knowledge_Change_Bridge::MAINTENANCE_OPTION, array() );
+	$never_finishes_cursor['poll_generation'] = max( 0, $max_run_polls - 1 );
+	update_option( Npcink_Cloud_Site_Knowledge_Change_Bridge::MAINTENANCE_OPTION, $never_finishes_cursor, false );
+	$GLOBALS['maca_http_response_queue'][] = $bounded_running_response;
+	$never_finishes_status = maca_run_site_knowledge_flush();
+	if ( $attempt < 3 ) {
+		$GLOBALS['maca_http_response_queue'][] = $bounded_run_acceptance;
+		maca_run_site_knowledge_flush();
+	}
+}
+$never_finishes_cursor = get_option( Npcink_Cloud_Site_Knowledge_Change_Bridge::MAINTENANCE_OPTION, array() );
+maca_assert(
+	$max_run_polls > 0
+	&& 'blocked' === (string) ( $never_finishes_cursor['status'] ?? '' )
+	&& 3 === absint( $never_finishes_cursor['attempts'] ?? 0 )
+	&& 'full_index_delivery_blocked' === (string) ( $never_finishes_status['last_error_code'] ?? '' )
+	&& false === wp_next_scheduled( Npcink_Cloud_Site_Knowledge_Change_Bridge::FLUSH_HOOK )
+	&& 6 === count( $GLOBALS['maca_http_requests'] ),
+	'Behavior: a Cloud run that never finishes consumes bounded polling attempts and stops without another scheduled request.'
+);
+
+maca_reset_site_knowledge_bridge_state();
+maca_seed_settings( true );
+maca_add_public_post_fixture( 11102 );
+Npcink_Cloud_Site_Knowledge_Change_Bridge::request_manual_index_operation( 'start' );
+for ( $attempt = 1; $attempt <= 3; $attempt++ ) {
+	$GLOBALS['maca_http_response_queue'][] = array(
+		'response' => array( 'code' => 200 ),
+		'body' => wp_json_encode(
+			array(
+				'status' => 'ok',
+				'data' => array( 'run_id' => 'run_manual_poll_failure' ),
+			)
+		),
+	);
+	$GLOBALS['maca_http_response_queue'][] = new WP_Error( 'http_request_failed', 'Cloud run status is temporarily unavailable.' );
+	maca_run_site_knowledge_flush();
+	$poll_failure_status = maca_run_site_knowledge_flush();
+}
+$poll_failure_cursor = get_option( Npcink_Cloud_Site_Knowledge_Change_Bridge::MAINTENANCE_OPTION, array() );
+$poll_failure_post_keys = array_map(
+	static fn( array $request ): string => (string) ( $request['args']['headers']['Idempotency-Key'] ?? '' ),
+	array_values(
+		array_filter(
+			$GLOBALS['maca_http_requests'],
+			static fn( array $request ): bool => 'POST' === (string) ( $request['args']['method'] ?? '' )
+		)
+	)
+);
+maca_assert(
+	'blocked' === (string) ( $poll_failure_cursor['status'] ?? '' )
+	&& 3 === absint( $poll_failure_cursor['attempts'] ?? 0 )
+	&& 'full_index_delivery_blocked' === (string) ( $poll_failure_status['last_error_code'] ?? '' )
+	&& 1 === count( array_unique( $poll_failure_post_keys ) )
+	&& false === wp_next_scheduled( Npcink_Cloud_Site_Knowledge_Change_Bridge::FLUSH_HOOK ),
+	'Behavior: alternating accepted runs and failed status polls stop after the bounded full-index retry limit.'
+);
+
+maca_reset_site_knowledge_bridge_state();
+maca_seed_settings( true );
+maca_add_public_post_fixture( 11201 );
+Npcink_Cloud_Site_Knowledge_Change_Bridge::request_manual_index_operation( 'start' );
+maca_add_public_post_fixture( 11202 );
+Npcink_Cloud_Site_Knowledge_Change_Bridge::handle_saved_post( 11202, $GLOBALS['maca_posts'][11202] );
+maca_queue_site_knowledge_inline_success();
+maca_run_site_knowledge_flush();
+$buffer_after_full_index = get_option( Npcink_Cloud_Site_Knowledge_Change_Bridge::BUFFER_OPTION, array() );
+maca_assert(
+	array( 11202 ) === (array) ( $buffer_after_full_index['post_ids'] ?? array() )
+	&& false !== wp_next_scheduled( Npcink_Cloud_Site_Knowledge_Change_Bridge::FLUSH_HOOK ),
+	'Behavior: completing a full-index cursor wakes ordinary public changes buffered while Cloud delivery was in flight.'
+);
+
+maca_reset_site_knowledge_bridge_state();
+maca_seed_settings( true );
+maca_add_public_post_fixture( 11301 );
+Npcink_Cloud_Site_Knowledge_Change_Bridge::request_manual_index_operation( 'start' );
+maca_set_site_knowledge_delivery_enabled( false );
+Npcink_Cloud_Site_Knowledge_Change_Bridge::sync_schedule();
+$paused_flush = wp_next_scheduled( Npcink_Cloud_Site_Knowledge_Change_Bridge::FLUSH_HOOK );
+maca_set_site_knowledge_delivery_enabled( true );
+Npcink_Cloud_Site_Knowledge_Change_Bridge::sync_schedule();
+Npcink_Cloud_Site_Knowledge_Change_Bridge::resume_pending_delivery();
+maca_assert(
+	false === $paused_flush
+	&& false !== wp_next_scheduled( Npcink_Cloud_Site_Knowledge_Change_Bridge::FLUSH_HOOK )
+	&& array() === $GLOBALS['maca_http_requests'],
+	'Behavior: disabling delivery pauses a full-index cursor and enabling delivery schedules it to resume without HTTP in settings save.'
 );
 
 maca_reset_site_knowledge_bridge_state();
@@ -599,6 +1083,8 @@ maca_add_public_post_fixture( 10901 );
 $GLOBALS['maca_posts'][10901]->post_title = 'Contact editor@example.test or 138 0013 8000';
 $GLOBALS['maca_posts'][10901]->post_content = 'Public guide https://example.test/private-path email editor@example.test phone 138 0013 8000 useful ending.';
 Npcink_Cloud_Site_Knowledge_Change_Bridge::request_manual_index_operation( 'start' );
+maca_queue_site_knowledge_inline_success();
+maca_run_site_knowledge_flush();
 $redacted_request = $GLOBALS['maca_http_requests'][0] ?? array();
 $redacted_body = json_decode( (string) ( $redacted_request['args']['body'] ?? '' ), true );
 $redacted_document = (array) ( $redacted_body['input']['documents'][0] ?? array() );
@@ -625,4 +1111,34 @@ maca_assert(
 	&& false === (bool) ( $delete_body['input']['direct_wordpress_write'] ?? true )
 	&& 'delete' === (string) ( $delete_status['last_index_action'] ?? '' ),
 	'Behavior: administrator delete request asks Cloud to remove the site index without WordPress writes.'
+);
+
+maca_reset_site_knowledge_bridge_state();
+maca_seed_settings( true );
+$GLOBALS['wpdb'] = new class() {
+	public string $options = 'wp_options';
+
+	public function delete(): int {
+		return 0;
+	}
+
+	public function update(): int {
+		return 0;
+	}
+};
+maca_queue_site_knowledge_inline_success();
+$delete_with_failed_release = Npcink_Cloud_Site_Knowledge_Change_Bridge::request_manual_index_operation( 'delete' );
+$orphaned_delete_cursor = get_option( Npcink_Cloud_Site_Knowledge_Change_Bridge::MAINTENANCE_OPTION, array() );
+$delete_cleanup_scheduled = wp_next_scheduled( Npcink_Cloud_Site_Knowledge_Change_Bridge::FLUSH_HOOK );
+unset( $GLOBALS['wpdb'] );
+$delete_cleanup_status = maca_run_site_knowledge_flush();
+maca_assert(
+	is_array( $delete_with_failed_release )
+	&& 'delete' === (string) ( $orphaned_delete_cursor['operation'] ?? '' )
+	&& 'admin_delete' === (string) ( $orphaned_delete_cursor['operation_source'] ?? '' )
+	&& false !== $delete_cleanup_scheduled
+	&& 1 === count( $GLOBALS['maca_http_requests'] )
+	&& array() === get_option( Npcink_Cloud_Site_Knowledge_Change_Bridge::MAINTENANCE_OPTION, array() )
+	&& true === (bool) ( $delete_cleanup_status['last_delivery_ok'] ?? false ),
+	'Behavior: a failed manual-delete cursor release retries local cleanup without starting a rebuild or another Cloud request.'
 );

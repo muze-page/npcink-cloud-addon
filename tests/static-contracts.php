@@ -9,11 +9,40 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/helpers.php';
 
+/**
+ * Extracts one class method up to the next visible static method declaration.
+ *
+ * @param string $source Full PHP source.
+ * @param string $signature Exact method signature.
+ * @return string
+ */
+function maca_extract_class_method_source( string $source, string $signature ): string {
+	$start = strpos( $source, $signature );
+	if ( false === $start ) {
+		return '';
+	}
+
+	$next_method = array();
+	$matched = preg_match(
+		'/\n\s+(?:public|protected|private) static function /',
+		$source,
+		$next_method,
+		PREG_OFFSET_CAPTURE,
+		$start + strlen( $signature )
+	);
+	$end = 1 === $matched ? (int) $next_method[0][1] : strlen( $source );
+
+	return substr( $source, $start, $end - $start );
+}
+
 $root = MACA_TEST_ROOT;
 $plugin_file = maca_read( $root . '/npcink-cloud-addon.php' );
 $wordpress_org_readme = maca_read( $root . '/readme.txt' );
 $pot = maca_read( $root . '/languages/npcink-cloud-addon.pot' );
 $bootstrap = maca_read( $root . '/includes/bootstrap.php' );
+$credential_store = maca_read( $root . '/includes/class-cloud-credential-store.php' );
+$outbound_policy = maca_read( $root . '/includes/class-cloud-outbound-policy.php' );
+$runtime_endpoint_policy = maca_read( $root . '/includes/class-cloud-runtime-endpoint-policy.php' );
 $transport = maca_read( $root . '/includes/class-cloud-media-derivative-transport.php' );
 $runtime_client = maca_read( $root . '/includes/class-cloud-runtime-client.php' );
 $ai_task_contract = maca_read( $root . '/includes/class-cloud-ai-task-contract.php' );
@@ -29,12 +58,32 @@ $observability = maca_read( $root . '/includes/class-cloud-observability-collect
 $site_knowledge_bridge = maca_read( $root . '/includes/class-cloud-site-knowledge-change-bridge.php' );
 $site_knowledge_full_index_doc = maca_read( $root . '/docs/site-knowledge-full-index-delivery.md' );
 $site_knowledge_runtime_bridge = maca_read( $root . '/includes/class-cloud-site-knowledge-runtime-bridge.php' );
+$site_knowledge_admin_projection = maca_read( $root . '/includes/class-cloud-site-knowledge-admin-projection.php' );
+$site_knowledge_admin_actions = maca_read( $root . '/includes/class-cloud-site-knowledge-admin-actions.php' );
+$runtime_runs_presenter = maca_read( $root . '/includes/class-cloud-runtime-runs-presenter.php' );
 $settings = maca_read( $root . '/includes/class-cloud-addon-settings.php' );
 $settings_page = maca_read( $root . '/includes/class-cloud-settings-page.php' );
+$refresh_site_knowledge_handler = maca_extract_class_method_source( $settings_page, 'public static function handle_refresh_site_knowledge(): void' );
+$manage_site_knowledge_index_handler = maca_extract_class_method_source( $settings_page, 'public static function handle_manage_site_knowledge_index(): void' );
 $boundary_doc = maca_read( $root . '/docs/cloud-addon-boundary.md' );
 $runtime_contract = maca_read( $root . '/docs/cloud-runtime-client-contract.md' );
 $adapter_doc = maca_read( $root . '/docs/adapter-integration-seam.md' );
 $complexity_doc = maca_read( $root . '/docs/cloud-addon-complexity-budget.md' );
+$test_helpers = maca_read( $root . '/tests/helpers.php' );
+$test_runner = maca_read( $root . '/tests/run.php' );
+
+$runtime_endpoint_policy_forbidden = array(
+	'Npcink_Cloud_Runtime_Client', 'Npcink_Cloud_Outbound_Policy', 'wp_remote_', 'wp_safe_remote_', 'curl_',
+	'WP_Error', '__(', '_x(', 'esc_html__(', 'hash_hmac', 'secret', 'signature', 'nonce', 'trace',
+	'get_option(', 'update_option(', 'add_option(', 'delete_option(', 'get_transient(', 'set_transient(', 'delete_transient(',
+	'add_action(', 'add_filter(', 'do_action(', 'apply_filters(', '$_GET', '$_POST', '$_REQUEST', '$_SERVER', '$_COOKIE', '$_FILES',
+	'wp_json_encode(', 'json_encode(', 'json_decode(', 'payload', 'response', 'base_url',
+);
+$runtime_endpoint_policy_has_forbidden = false;
+foreach ( $runtime_endpoint_policy_forbidden as $forbidden_policy_dependency ) {
+	$runtime_endpoint_policy_has_forbidden = $runtime_endpoint_policy_has_forbidden
+		|| false !== strpos( $runtime_endpoint_policy, $forbidden_policy_dependency );
+}
 $contract_reuse_readiness_doc = maca_read( $root . '/docs/cloud-addon-contract-reuse-readiness-2026-07-08.md' );
 $cloud_bulk_article_doc = maca_read( $root . '/docs/cloud-bulk-article-run-seam.md' );
 $admin_surface_standard = maca_read( $root . '/docs/admin-surface-standard.md' );
@@ -50,6 +99,74 @@ $wp_ai_smoke = maca_read( $root . '/scripts/smoke-wordpress-ai-abilities.php' );
 $wp_ai_editor_smoke = maca_read( $root . '/scripts/smoke-wordpress-ai-editor.php' );
 $wp_ai_generation_eval = maca_read( $root . '/scripts/eval-wordpress-ai-generation-reference.php' );
 $zh_cn_po = maca_read( $root . '/languages/npcink-cloud-addon-zh_CN.po' );
+$uninstall = maca_read( $root . '/uninstall.php' );
+
+$projection_require_position = strpos( $bootstrap, "require_once __DIR__ . '/class-cloud-site-knowledge-admin-projection.php';" );
+$admin_actions_require_position = strpos( $bootstrap, "require_once __DIR__ . '/class-cloud-site-knowledge-admin-actions.php';" );
+$runtime_presenter_require_position = strpos( $bootstrap, "require_once __DIR__ . '/class-cloud-runtime-runs-presenter.php';" );
+$settings_page_require_position = strpos( $bootstrap, "require_once __DIR__ . '/class-cloud-settings-page.php';" );
+$projection_forbidden_calls = array(
+	'wp_remote_', 'wp_safe_remote_', 'get_option(', 'update_option(', 'add_option(', 'delete_option(',
+	'get_transient(', 'set_transient(', 'delete_transient(', 'add_action(', 'add_filter(',
+);
+$projection_has_side_effect_call = false;
+foreach ( $projection_forbidden_calls as $forbidden_call ) {
+	$projection_has_side_effect_call = $projection_has_side_effect_call || false !== strpos( $site_knowledge_admin_projection, $forbidden_call );
+}
+
+maca_assert(
+	false !== $projection_require_position
+	&& false !== $settings_page_require_position
+	&& $projection_require_position < $settings_page_require_position
+	&& false !== strpos( $site_knowledge_admin_projection, 'final class Npcink_Cloud_Site_Knowledge_Admin_Projection' )
+	&& false !== strpos( $site_knowledge_admin_projection, 'public static function build' )
+	&& false !== strpos( $settings_page, 'return Npcink_Cloud_Site_Knowledge_Admin_Projection::build( $summary );' )
+	&& ! $projection_has_side_effect_call,
+	'Site Knowledge admin quota projection is loaded before the settings facade and remains transport-, persistence-, and hook-free.'
+);
+
+$admin_actions_forbidden_calls = array(
+	'$_POST', '$_GET', '$_REQUEST', '$_SERVER', '$_COOKIE', '$_FILES', 'current_user_can(', 'check_admin_referer(', 'set_admin_notice(', 'redirect_to_page(', 'wp_safe_redirect(',
+	'wp_remote_', 'wp_safe_remote_', 'get_option(', 'update_option(', 'add_option(', 'delete_option(',
+	'get_transient(', 'set_transient(', 'delete_transient(', 'add_action(', 'add_filter(', 'Npcink_Cloud_Runtime_Client',
+);
+$admin_actions_has_forbidden_call = false;
+foreach ( $admin_actions_forbidden_calls as $forbidden_call ) {
+	$admin_actions_has_forbidden_call = $admin_actions_has_forbidden_call || false !== strpos( $site_knowledge_admin_actions, $forbidden_call );
+}
+
+maca_assert(
+	false !== $admin_actions_require_position
+	&& $admin_actions_require_position < $settings_page_require_position
+	&& false !== strpos( $site_knowledge_admin_actions, 'final class Npcink_Cloud_Site_Knowledge_Admin_Actions' )
+	&& false !== strpos( $site_knowledge_admin_actions, 'public static function request_public_refresh(): array' )
+	&& false !== strpos( $site_knowledge_admin_actions, 'public static function request_index_operation( string $operation, string $confirmation = \'\' ): array' )
+	&& ! $admin_actions_has_forbidden_call,
+	'Site Knowledge administrator actions load before the settings facade and remain request-, transport-, persistence-, hook-, and Runtime Client-free.'
+);
+
+$runtime_presenter_forbidden_calls = array(
+	'wp_remote_', 'wp_safe_remote_', 'get_option(', 'update_option(', 'add_option(', 'delete_option(', 'get_transient(', 'set_transient(', 'delete_transient(',
+	'add_action(', 'add_filter(', '$_GET', '$_POST', '$_REQUEST', '$_SERVER', '$_COOKIE', '$_FILES', 'current_user_can(', 'check_admin_referer(', 'wp_create_nonce(', 'wp_verify_nonce(', 'wp_nonce_', 'wp_safe_redirect(', 'wp_redirect(', 'Npcink_Cloud_Runtime_Client', 'echo ', 'exit;',
+);
+$runtime_presenter_has_forbidden_call = false;
+foreach ( $runtime_presenter_forbidden_calls as $forbidden_call ) {
+	$runtime_presenter_has_forbidden_call = $runtime_presenter_has_forbidden_call || false !== strpos( $runtime_runs_presenter, $forbidden_call );
+}
+maca_assert(
+	false !== $runtime_presenter_require_position && $runtime_presenter_require_position < $settings_page_require_position
+	&& false !== strpos( $runtime_runs_presenter, 'final class Npcink_Cloud_Runtime_Runs_Presenter' )
+	&& false !== strpos( $runtime_runs_presenter, 'public static function recent_rows' )
+	&& false !== strpos( $runtime_runs_presenter, 'public static function detail' )
+	&& false !== strpos( $runtime_runs_presenter, 'public static function normalize_run_id' )
+	&& false !== strpos( $settings_page, 'Npcink_Cloud_Runtime_Runs_Presenter::recent_rows' )
+	&& false !== strpos( $settings_page, 'Npcink_Cloud_Runtime_Runs_Presenter::detail' )
+	&& false === strpos( $settings_page, 'function format_runtime_status_label' )
+	&& false === strpos( $settings_page, 'function runtime_runs_from_response' )
+	&& false === strpos( $settings_page, 'function normalize_run_id' ) && false === strpos( $settings_page, 'function runtime_scalar' ) && false === strpos( $settings_page, 'function runtime_pick' )
+	&& ! $runtime_presenter_has_forbidden_call,
+	'Runtime Runs presenter loads before the settings facade and remains read-only, side-effect-free response projection.'
+);
 
 $plugin_header_version = array();
 $plugin_constant_version = array();
@@ -172,6 +289,16 @@ maca_assert(
 );
 
 maca_assert(
+	false !== strpos( $bootstrap, 'class-cloud-credential-store.php' )
+	&& false !== strpos( $credential_store, "ALGORITHM_SODIUM = 'sodium_secretbox'" )
+	&& false !== strpos( $credential_store, "ALGORITHM_OPENSSL = 'aes-256-gcm'" )
+	&& false !== strpos( $credential_store, "wp_salt( 'auth' )" )
+	&& false !== strpos( $settings, "'sanitize_callback' => array( __CLASS__, 'sanitize_option_value' )" )
+	&& false !== strpos( $settings, "unset( \$settings['site_id'], \$settings['key_id'], \$settings['secret'] )" ),
+	'Cloud signing credentials use authenticated encrypted option storage and every Settings API write emits the at-rest envelope.'
+);
+
+maca_assert(
 	false !== strpos( $bootstrap, 'npcink_cloud_addon_get_manual_readiness_result' )
 	&& false !== strpos( $bootstrap, 'does not create runtime work, queues, registries' )
 	&& false !== strpos( $runtime_client, 'manual_readiness_test' )
@@ -221,7 +348,10 @@ maca_assert(
 	&& false !== strpos( $zh_cn_po, 'msgstr "高级与排查"' )
 	&& false !== strpos( $zh_cn_po, 'msgstr "技术投递详情"' )
 	&& false !== strpos( $zh_cn_po, 'msgstr "更多本地授权"' )
-	&& false !== strpos( $zh_cn_po, 'msgstr "Cloud 错误分类"' ),
+	&& false !== strpos( $zh_cn_po, 'msgstr "Cloud 错误分类"' )
+	&& false !== strpos( $pot, 'Cloud credentials could not be stored or read securely.' )
+	&& false !== strpos( $zh_cn_po, 'msgstr "无法安全存储或读取 Cloud 凭据。请检查 WordPress 安全盐后重新连接此站点。"' )
+	&& false !== strpos( $zh_cn_po, 'msgstr "无法安全存储 Cloud 凭据。现有连接未更改。请检查 WordPress 安全盐并重新连接。"' ),
 	'Chinese localization translates fixed Cloud Addon admin terminology without translating dynamic metadata.'
 );
 
@@ -237,28 +367,57 @@ maca_assert(
 	&& false !== strpos( $bootstrap, 'npcink_cloud_addon_get_media_derivative_run_result' )
 	&& false !== strpos( $bootstrap, 'npcink_cloud_addon_public_media_derivative_cloud_projection' )
 	&& false !== strpos( $bootstrap, 'npcink_cloud_addon_build_media_derivative_optimization_payload' )
-	&& false !== strpos( $bootstrap, 'npcink_cloud_addon_download_media_derivative_artifact' ),
-	'Bootstrap exposes verified runtime and media derivative transport helpers with optional watermark transport, projections, optimization payloads, and signed preview download.'
+	&& false !== strpos( $bootstrap, 'npcink_cloud_addon_receive_media_derivative_artifact' )
+	&& false === strpos( $bootstrap, 'npcink_cloud_addon_download_media_derivative_artifact' ),
+	'Bootstrap exposes verified runtime and exact media delivery helpers without the legacy preview download seam.'
 );
 
 maca_assert(
 	false !== strpos( $runtime_client, 'function execute_wordpress_ai_connector_runtime' )
 	&& false !== strpos( $runtime_client, 'normalize_wordpress_ai_connector_request' )
-	&& false !== strpos( $runtime_client, "WP_AI_CONNECTOR_CONTRACT = 'wp_ai_connector_runtime.v1'" )
-	&& false !== strpos( $runtime_client, "'ability_name'        => 'npcink-cloud/wp-ai-connector'" )
-	&& false !== strpos( $runtime_client, "'channel'             => 'wordpress_ai_connector'" )
-	&& false !== strpos( $runtime_client, "'execution_kind'      => 'wordpress_ai_connector'" )
-	&& false !== strpos( $runtime_client, "'write_posture'               => 'suggestion_only'" )
-	&& false !== strpos( $runtime_client, "'direct_wordpress_write'      => false" )
-	&& false !== strpos( $runtime_client, "'no_conversation'             => true" )
+	&& false !== strpos( $runtime_client, "CLOUD_CONNECTOR_RUNTIME_CONTRACT = 'cloud_connector_runtime.v1'" )
+	&& false !== strpos( $runtime_client, "WORDPRESS_OPERATION_CONTRACT = 'wordpress_operation.v1'" )
+	&& false !== strpos( $runtime_client, "'ability_name'        => 'npcink-cloud/connector-runtime'" )
+	&& false !== strpos( $runtime_client, "'channel'             => 'editor'" )
+	&& false !== strpos( $runtime_client, "'execution_kind'      => \$is_alt_text ? 'vision' : 'text'" )
+	&& false !== strpos( $runtime_client, "'site_id'             => \$site_id" )
+	&& false !== strpos( $runtime_client, "'site_url'           => \$site_url" )
+	&& false !== strpos( $runtime_client, "'platform_kind'      => 'wordpress'" )
+	&& false !== strpos( $runtime_client, "'connector_id'       => 'npcink-cloud-addon'" )
+	&& false !== strpos( $runtime_client, "'connector_version'  => \$connector_version" )
+	&& false !== strpos( $runtime_client, "'suggestion_only'    => true" )
+	&& false !== strpos( $runtime_client, "array( 'prompt', 'post_title', 'post_excerpt' )" )
+	&& false !== strpos( $runtime_client, "\$scene_request['source_text']" )
 	&& false !== strpos( $runtime_client, 'WP_AI_CONNECTOR_FORBIDDEN_KEYS' )
 	&& false !== strpos( $runtime_client, "'credentials'" )
 	&& false !== strpos( $runtime_client, "'api_key'" )
 	&& false !== strpos( $runtime_client, "'messages'" )
 	&& false !== strpos( $runtime_client, "'conversation_id'" )
 	&& false !== strpos( $runtime_client, "'tool_calls'" )
-	&& false !== strpos( $runtime_client, "'stream'" ),
-	'Runtime client exposes a bounded WordPress AI connector scene runtime, not a generic chat shape.'
+	&& false !== strpos( $runtime_client, "'stream'" )
+	&& false === strpos( $runtime_client, 'wp_ai_connector_' . 'runtime.v1' )
+	&& false === strpos( $runtime_client, 'npcink-cloud/wp-ai-' . 'connector' ),
+	'Runtime client exposes the bounded cross-platform connector envelope and rejects legacy WordPress text shapes.'
+);
+
+maca_assert(
+	false !== strpos( $runtime_client, 'function upload_wordpress_ai_alt_text_source' )
+	&& false !== strpos( $runtime_client, "'/v1/runtime/media/uploads'" )
+	&& false !== strpos( $runtime_client, 'WP_AI_ALT_TEXT_MAX_UPLOAD_BYTES = 8388608' )
+	&& false !== strpos( $runtime_client, 'WP_AI_ALT_TEXT_MIN_ARTIFACT_TTL_SECONDS = 120' )
+	&& false !== strpos( $runtime_client, "Npcink_Cloud_Addon_Settings::is_verified()" )
+	&& false !== strpos( $runtime_client, "'request_contract_version' => 'media_upload_request.v1'" )
+	&& false !== strpos( $runtime_client, "'media_kind'              => 'image'" )
+	&& false !== strpos( $runtime_client, "'ttl_minutes'             => 30" )
+	&& false !== strpos( $runtime_client, 'build_media_upload_multipart_body' )
+	&& false !== strpos( $runtime_client, 'name="file"; filename="' )
+	&& false !== strpos( $runtime_client, "'/^art_[0-9a-f]{32}$/'" )
+	&& false !== strpos( $runtime_client, "'sha256:' . hash( 'sha256', \$contents )" )
+	&& false !== strpos( $runtime_client, "'artifact_id'    => \$artifact['artifact_id']" )
+	&& false !== strpos( $runtime_client, "array( 'source_artifact_id', 'prompt', 'filename', 'title', 'existing_alt', 'existing_caption', 'locale', 'max_tokens' )" )
+	&& false !== strpos( $runtime_client, "'data_classification' => \$is_alt_text ? 'internal' : 'public_site_content'" )
+	&& false === strpos( $runtime_client, 'WP_AI_CONNECTOR_ALT_TEXT_MAX_REQUEST_BYTES' ),
+	'Runtime client keeps WordPress AI alt-text upload and execution on the dedicated Artifact-id-only contract.'
 );
 
 maca_assert(
@@ -400,7 +559,16 @@ maca_assert(
 	&& false !== strpos( $wordpress_ai_connector, 'CapabilityEnum::imageGeneration()' )
 	&& false !== strpos( $wordpress_ai_connector, 'wpai_preferred_image_models' )
 	&& false !== strpos( $wordpress_ai_connector, 'wpai_preferred_vision_models' )
-	&& false !== strpos( $wordpress_ai_connector, 'requires a public image URL for alt text generation' )
+	&& false !== strpos( $wordpress_ai_connector, 'class Npcink_Cloud_WordPress_AI_Alt_Text_Handoff' )
+	&& false !== strpos( $wordpress_ai_connector, 'upload_wordpress_ai_alt_text_source' )
+	&& false !== strpos( $wordpress_ai_connector, "add_action( 'wp_before_execute_ability'" )
+	&& false !== strpos( $wordpress_ai_connector, "'ai/alt-text-generation' === \$ability_name" )
+	&& false !== strpos( $wordpress_ai_connector, 'consume_alt_text_ability_context' )
+	&& false !== strpos( $wordpress_ai_connector, 'fstat( $handle )' )
+	&& false !== strpos( $wordpress_ai_connector, 'getimagesizefromstring( $contents )' )
+	&& false === strpos( $wordpress_ai_connector, 'WordPress\\AI\\Abilities\\Image\\Alt_Text_Generation' )
+	&& false !== strpos( $wordpress_ai_connector, "'source_artifact_id' => \$artifact_id" )
+	&& false !== strpos( $wordpress_ai_connector, 'requires a local WordPress attachment' )
 	&& false !== strpos( $wordpress_ai_connector, "'task'             => 'alt_text_suggest'" )
 	&& false !== strpos( $wordpress_ai_connector, 'npcink_cloud_addon_execute_wordpress_ai_image_generation_runtime' )
 	&& false !== strpos( $wordpress_ai_connector, 'does not support reference image refinement yet' )
@@ -409,10 +577,20 @@ maca_assert(
 	&& false !== strpos( $wordpress_ai_connector, 'Npcink Cloud AI connector only accepts known WordPress AI ability scene calls' )
 	&& false !== strpos( $wordpress_ai_connector, 'does not support chat history' )
 	&& false !== strpos( $wordpress_ai_connector, 'does not support tools or web search' )
-	&& false !== strpos( $wordpress_ai_connector, 'npcink_cloud_addon_execute_wordpress_ai_connector_runtime' )
+	&& false !== strpos( $wordpress_ai_connector, "method_exists( \$client, 'execute_wordpress_ai_connector_runtime' )" )
+	&& false !== strpos( $wordpress_ai_connector, '$client->execute_wordpress_ai_connector_runtime(' )
+	&& false !== strpos( $wordpress_ai_connector, "\$scene_input['source_text'] = \$text" )
+	&& false !== strpos( $wordpress_ai_connector, "'cloud_connector_result.v1'" )
+	&& false !== strpos( $wordpress_ai_connector, "\$response['data']['result']" )
+	&& false !== strpos( $wordpress_ai_connector, "true !== ( \$result['suggestion_only'] ?? null )" )
+	&& false !== strpos( $wordpress_ai_connector, "'npcink-cloud-addon' !== (string) ( \$result['connector_id'] ?? '' )" )
+	&& false !== strpos( $wordpress_ai_connector, "'wordpress_operation.v1' !== (string) ( \$operation_contract['contract_version'] ?? '' )" )
+	&& false !== strpos( $wordpress_ai_connector, "\$expected_task !== (string) ( \$operation_contract['task'] ?? '' )" )
+	&& false !== strpos( $wordpress_ai_connector, "\$output['output_text']" )
 	&& false !== strpos( $wordpress_ai_connector, "'response_format'    => \$this->response_format_hint( \$task )" )
 	&& false !== strpos( $wordpress_ai_connector, 'function response_format_hint' )
 	&& false === strpos( $wordpress_ai_connector, "'output_schema'      =>" )
+	&& false === strpos( $wordpress_ai_connector, 'wp_ai_connector_' . 'result.v1' )
 	&& false === strpos( $wordpress_ai_connector, 'chat/completions' )
 	&& false === strpos( $wordpress_ai_connector, 'OpenAiCompatible' ),
 	'AI Client provider is scene-gated to known WordPress AI abilities and does not expose an OpenAI-compatible chat proxy or deep schema payload.'
@@ -425,7 +603,9 @@ maca_assert(
 	&& false !== strpos( $wp_ai_smoke, "'ai/meta-description'" )
 	&& false !== strpos( $wp_ai_smoke, "'ai/alt-text-generation'" )
 	&& false !== strpos( $wp_ai_smoke, 'WP_AI_SMOKE_IMAGE' )
-	&& false !== strpos( $wp_ai_smoke, 'WP_AI_SMOKE_ALT_TEXT_URL' )
+	&& false !== strpos( $wp_ai_smoke, 'WP_AI_SMOKE_ALT_TEXT_ATTACHMENT_ID' )
+	&& false !== strpos( $wp_ai_smoke, "'attachment_id' => \$alt_text_attachment_id" )
+	&& false === strpos( $wp_ai_smoke, 'WP_AI_SMOKE_ALT_TEXT_URL' )
 	&& false === strpos( $wp_ai_smoke, '/wp-abilities/v1/abilities/ai/image-import/run' ),
 	'WordPress AI smoke gate verifies discovery and bounded runs without default media writes.'
 );
@@ -434,6 +614,10 @@ maca_assert(
 	false !== strpos( $wordpress_ai_connector, 'maybe_log_wordpress_ai_request_evidence' )
 	&& false !== strpos( $wordpress_ai_connector, 'AI_Request_Log_Manager' )
 	&& false !== strpos( $wordpress_ai_connector, 'omitted_metadata_only' )
+	&& false !== strpos( $wordpress_ai_connector, "'operation'                  => 'npcink-cloud/connector-runtime'" )
+	&& false !== strpos( $wordpress_ai_connector, "'operation_contract_version' => 'wordpress_operation.v1'" )
+	&& false !== strpos( $wordpress_ai_connector, "'channel'                    => 'editor'" )
+	&& false !== strpos( $wordpress_ai_connector, "'connector_id'               => 'npcink-cloud-addon'" )
 	&& false === strpos( $wordpress_ai_connector, "'input_preview'" )
 	&& false === strpos( $wordpress_ai_connector, "'output_preview'" ),
 	'WordPress AI request log bridge is metadata-only and does not persist prompt or output previews.'
@@ -442,6 +626,9 @@ maca_assert(
 maca_assert(
 	false !== strpos( $readme, 'WordPress AI Connector Runtime' )
 	&& false !== strpos( $readme, 'OpenAI-compatible provider' )
+	&& false !== strpos( $readme, '`cloud_connector_runtime.v1` envelope' )
+	&& false !== strpos( $readme, '`wordpress_operation.v1` contract' )
+	&& false !== strpos( $readme, '`response.data.result.output.output_text`' )
 	&& false !== strpos( $readme, 'npcink_cloud_addon_execute_toolbox_image_generation_runtime()' )
 	&& false !== strpos( $readme, 'npcink_cloud_addon_execute_toolbox_site_ops_cloud_analysis_runtime()' )
 	&& false !== strpos( $readme, 'npcink_cloud_addon_execute_toolbox_web_search_runtime()' )
@@ -452,6 +639,9 @@ maca_assert(
 	&& false !== strpos( $readme, 'reference-image refinement' )
 	&& false !== strpos( $runtime_contract, 'WordPress AI Connector Runtime' )
 	&& false !== strpos( $runtime_contract, 'generic chat provider' )
+	&& false !== strpos( $runtime_contract, '`contract_version=cloud_connector_runtime.v1`' )
+	&& false !== strpos( $runtime_contract, '`input.operation_contract.contract_version=wordpress_operation.v1`' )
+	&& false !== strpos( $runtime_contract, '`response.data.result.contract_version=cloud_connector_result.v1`' )
 	&& false !== strpos( $runtime_contract, 'image_generation_request.v1' )
 	&& false !== strpos( $runtime_contract, 'execute_toolbox_image_generation_runtime()' )
 	&& false !== strpos( $runtime_contract, 'execute_toolbox_site_ops_cloud_analysis_runtime()' )
@@ -463,9 +653,14 @@ maca_assert(
 	&& false !== strpos( $runtime_contract, 'channel=toolbox_image_source' )
 	&& false !== strpos( $runtime_contract, 'scene wrapper' )
 	&& false !== strpos( $runtime_contract, 'registers a bounded `wpai_preferred_vision_models` override' )
+	&& false !== strpos( $runtime_contract, '`wp_before_execute_ability`' )
+	&& false !== strpos( $runtime_contract, 'future public' )
 	&& false !== strpos( $runtime_contract, 'does not support reference-image refinement' )
 	&& false !== strpos( $runtime_contract, 'Direct free-form `wp_ai_client_prompt()`' )
 	&& false !== strpos( $adapter_doc, 'WordPress AI Connector Flow' )
+	&& false !== strpos( $adapter_doc, '`cloud_connector_runtime.v1`' )
+	&& false !== strpos( $adapter_doc, '`wordpress_operation.v1`' )
+	&& false !== strpos( $adapter_doc, '`cloud_connector_result.v1`' )
 	&& false !== strpos( $adapter_doc, 'must not expose an OpenAI-compatible endpoint' )
 	&& false !== strpos( $adapter_doc, 'image provider proxy' )
 	&& false !== strpos( $adapter_doc, 'human chat' ),
@@ -479,14 +674,16 @@ maca_assert(
 );
 
 maca_assert(
-	false !== strpos( $runtime_client, 'function create_media_derivative' )
-	&& false !== strpos( $runtime_client, "'/v1/runtime/media-derivatives'" )
-	&& false !== strpos( $runtime_client, 'build_media_derivative_multipart_body' )
-	&& false !== strpos( $runtime_client, "'source_file'" )
-	&& false !== strpos( $runtime_client, "'watermark_file'" )
-	&& false !== strpos( $runtime_client, "'cloud_runtime_media_derivative_file_field_not_allowed'" )
-	&& false !== strpos( $runtime_client, 'Only source_file and watermark_file uploads are allowed' ),
-	'Runtime client exposes a named media derivative endpoint with bounded multipart files.'
+	false !== strpos( $runtime_client, 'function upload_media_artifact' )
+	&& false !== strpos( $runtime_client, 'function create_media_job' )
+	&& false !== strpos( $runtime_client, "'/v1/runtime/media/uploads'" )
+	&& false !== strpos( $runtime_client, "'/v1/runtime/media/jobs'" )
+	&& false !== strpos( $runtime_client, 'media_upload_request.v1' )
+	&& false !== strpos( $runtime_client, 'media_job_request.v1' )
+	&& false !== strpos( $runtime_client, "'checksum', 'expires_at', 'purged_at'" )
+	&& false !== strpos( $runtime_client, "null === ( \$artifact['purged_at'] ?? null )" )
+	&& false === strpos( $runtime_client, '/v1/runtime/media-derivatives' ),
+	'Runtime client hard-cuts media work to exact11 available uploads followed by artifact-referenced jobs.'
 );
 
 maca_assert(
@@ -516,24 +713,29 @@ maca_assert(
 );
 
 maca_assert(
-	false !== strpos( $runtime_client, 'function download_media_derivative_artifact' )
-	&& false !== strpos( $runtime_client, "'/v1/runtime/artifacts/'" )
-	&& false !== strpos( $runtime_client, "'/download'" )
+	false !== strpos( $runtime_client, 'function pull_media_artifact' )
+	&& false !== strpos( $runtime_client, 'function acknowledge_media_artifact_delivery' )
+	&& false !== strpos( $runtime_client, "'/v1/runtime/media/artifacts/'" )
+	&& false !== strpos( $runtime_client, "'/delivery-ack'" )
 	&& false !== strpos( $runtime_client, 'request_raw' )
 	&& false !== strpos( $runtime_client, 'MAX_DOWNLOAD_BYTES = 26214400' )
-	&& false !== strpos( $transport, 'download_artifact_preview' )
+	&& false !== strpos( $transport, 'receive_artifact' )
+	&& false !== strpos( $transport, 'media_artifact_verified_transfer.v1' )
 	&& false !== strpos( $transport, 'cloud_media_derivative_artifact_mime_mismatch' )
-	&& false !== strpos( $transport, 'Derivative artifact checksum does not match the downloaded bytes.' ),
-	'Runtime client and transport expose only a bounded signed media derivative artifact preview download.'
+	&& false !== strpos( $transport, 'Derivative artifact checksum does not match the downloaded bytes.' )
+	&& false === strpos( $runtime_client, '/v1/runtime/artifacts/' ),
+	'Runtime client and transport expose canonical signed pull, independent verification, and transfer-only ACK.'
 );
 
 maca_assert(
-	false !== strpos( $transport, 'create_media_derivative' )
+	false !== strpos( $transport, 'upload_media_artifact' )
+	&& false !== strpos( $transport, 'create_media_job' )
 	&& false !== strpos( $transport, 'get_run_projection' )
 	&& false !== strpos( $transport, 'get_run_result_projection' )
 	&& false !== strpos( $transport, 'public_cloud_projection' )
 	&& false !== strpos( $transport, 'build_media_optimization_payload' )
-	&& false !== strpos( $transport, 'build_media_derivative_request_payload' )
+	&& false !== strpos( $transport, 'build_media_job_params' )
+	&& false !== strpos( $transport, 'build_media_job_request' )
 	&& false !== strpos( $transport, 'normalize_upload_file_descriptor' )
 	&& false !== strpos( $transport, 'normalize_required_artifact_reference' ),
 	'Media derivative transport shapes strict Cloud requests, projections, and Core-ready optimization payloads from ability contracts and host artifacts.'
@@ -568,9 +770,8 @@ maca_assert(
 
 maca_assert(
 	false !== strpos( $transport, 'cloud_media_derivative_artifact_expired' )
-	&& false !== strpos( $transport, 'cloud_media_derivative_derivative_artifact_id_missing' )
+	&& false !== strpos( $transport, 'cloud_media_derivative_artifact_id_invalid' )
 	&& false !== strpos( $transport, 'cloud_media_derivative_artifact_binding_mismatch' )
-	&& false !== strpos( $transport, 'cloud_media_derivative_artifact_run_mismatch' )
 	&& false !== strpos( $transport, 'cloud_media_derivative_artifact_checksum_mismatch' )
 	&& false !== strpos( $transport, 'Expired Cloud artifacts cannot be adopted.' )
 	&& false !== strpos( $transport, 'return $timestamp <= time();' ),
@@ -602,25 +803,52 @@ maca_assert(
 
 maca_assert(
 	false !== strpos( $runtime_client, "'POST', '/v1/runtime/execute'" )
-	&& false !== strpos( $runtime_client, "'POST', '/v1/runtime/media-derivatives'" )
+	&& false !== strpos( $runtime_client, "'/v1/runtime/media/uploads'" )
+	&& false !== strpos( $runtime_client, "'/v1/runtime/media/jobs'" )
+	&& false !== strpos( $runtime_client, "'/v1/runtime/media/artifacts/'" )
 	&& false !== strpos( $runtime_client, "'GET', '/v1/runs/'" )
 	&& false !== strpos( $runtime_client, 'get_recent_nightly_inspection_runs' )
 	&& false !== strpos( $runtime_client, "'GET', '/v1/runs/nightly-inspection/recent?limit='" )
 	&& false !== strpos( $runtime_client, 'public function retry_run' )
 	&& false !== strpos( $runtime_client, "rawurlencode( \$run_id ) . '/retry'" )
 	&& false !== strpos( $runtime_client, 'private function request' )
-	&& false !== strpos( $runtime_client, 'is_allowed_request_path' )
+	&& 2 === substr_count( $runtime_client, 'Npcink_Cloud_Runtime_Endpoint_Policy::allows' )
+	&& false === strpos( $runtime_client, 'is_allowed_request_path' )
 	&& false !== strpos( $runtime_client, "'cloud_runtime_endpoint_not_allowed'" )
-	&& false !== strpos( $runtime_client, '#^/v1/runs/[A-Za-z0-9._:-]+(?:/result)?$#' )
-	&& false !== strpos( $runtime_client, "'/v1/runs/nightly-inspection/recent' === \$path_only" )
-	&& false !== strpos( $runtime_client, '#^/v1/runs/[A-Za-z0-9._:-]+/retry$#' )
-	&& false !== strpos( $runtime_client, '#^/v1/runtime/artifacts/[A-Za-z0-9._:-]+/download$#' )
-	&& false !== strpos( $runtime_client, '#^/v1/stats/(?:profiles|instances)/[A-Za-z0-9._:-]+$#' )
+	&& false === strpos( $runtime_endpoint_policy, 'cloud_runtime_endpoint_not_allowed' )
+	&& ! $runtime_endpoint_policy_has_forbidden
+	&& false !== strpos( $runtime_endpoint_policy, 'public static function allows' )
+	&& false !== strpos( $runtime_endpoint_policy, 'private static function path_only' )
+	&& false !== strpos( $runtime_endpoint_policy, "'/v1/runtime/media/uploads'" )
+	&& false !== strpos( $runtime_endpoint_policy, '#^/v1/runs/[A-Za-z0-9._:-]+(?:/result)?$#' )
+	&& strpos( $runtime_endpoint_policy, "'/v1/runs/nightly-inspection/recent'" )
+		< strpos( $runtime_endpoint_policy, '#^/v1/runs/[A-Za-z0-9._:-]+(?:/result)?$#' )
+	&& false !== strpos( $runtime_endpoint_policy, '#^/v1/runs/[A-Za-z0-9._:-]+/retry$#' )
+	&& false !== strpos( $runtime_endpoint_policy, '#^/v1/runtime/media/artifacts/art_[0-9a-f]{32}/download$#' )
+	&& false !== strpos( $runtime_endpoint_policy, '#^/v1/runtime/media/artifacts/art_[0-9a-f]{32}/delivery-ack$#' )
+	&& false === strpos( $runtime_endpoint_policy, '/v1/stats/' )
+	&& false === strpos( $runtime_client, 'function get_profile_stats' )
+	&& false === strpos( $runtime_client, 'function get_instance_stats' )
+	&& false !== strpos( $bootstrap, 'class-cloud-runtime-endpoint-policy.php' )
+	&& false !== strpos( $bootstrap, 'class-cloud-runtime-client.php' )
+	&& strpos( $bootstrap, 'class-cloud-runtime-endpoint-policy.php' )
+		< strpos( $bootstrap, 'class-cloud-runtime-client.php' )
 	&& false !== strpos( $runtime_client, 'MAX_JSON_RESPONSE_BYTES = 1048576' )
 	&& false !== strpos( $runtime_client, 'limit_response_size' )
 	&& false === strpos( $transport, '/v1/runtime/workflows/' . 'runs' )
 	&& false === strpos( $transport, '/v1/artifacts' ),
 	'Runtime client keeps Cloud calls on named allowlisted contract surfaces.'
+);
+
+maca_assert(
+	false === strpos( $runtime_client, 'Npcink_Cloud_Runtime_Artifact_Url_Normalizer' )
+	&& false === strpos( $bootstrap, 'class-cloud-runtime-artifact-url-normalizer.php' )
+	&& false === strpos( $test_helpers, 'class-cloud-runtime-artifact-url-normalizer.php' )
+	&& false === strpos( $test_runner, 'behavior-runtime-artifact-url-normalizer.php' )
+	&& ! file_exists( $root . '/includes/class-cloud-runtime-artifact-url-normalizer.php' )
+	&& ! file_exists( $root . '/tests/behavior-runtime-artifact-url-normalizer.php' )
+	,
+	'Legacy runtime artifact URL normalization and compatibility tests are removed.'
 );
 
 maca_assert(
@@ -755,8 +983,10 @@ maca_assert(
 maca_assert(
 	false === strpos( $readme, 'request(string $method' )
 	&& false === strpos( $runtime_contract, 'request(string $method' )
-	&& false !== strpos( $runtime_contract, 'create_media_derivative(array $payload, array $files = array(), string $trace_id = \'\', string $idempotency_key = \'\')' )
-	&& false !== strpos( $runtime_contract, 'download_media_derivative_artifact(string $artifact_id, string $trace_id = \'\')' )
+	&& false !== strpos( $runtime_contract, 'upload_media_artifact(array $file, string $trace_id = \'\', string $idempotency_key = \'\')' )
+	&& false !== strpos( $runtime_contract, 'create_media_job(array $payload, string $trace_id = \'\', string $idempotency_key = \'\')' )
+	&& false !== strpos( $runtime_contract, 'pull_media_artifact(string $artifact_id, string $trace_id = \'\')' )
+	&& false !== strpos( $runtime_contract, 'acknowledge_media_artifact_delivery(string $artifact_id, array $payload, string $trace_id = \'\', string $idempotency_key = \'\')' )
 	&& false !== strpos( $readme, 'low-level signed request method is private and endpoint-allowlisted' )
 	&& false !== strpos( $runtime_contract, 'must enforce the endpoint allowlist' )
 	&& false !== strpos( $runtime_contract, 'must not be exposed as a generic public Cloud proxy' ),
@@ -765,20 +995,34 @@ maca_assert(
 
 maca_assert(
 	false !== strpos( $settings, 'invalid_cloud_base_url' )
-	&& false !== strpos( $settings, 'is_local_http_base_url' ),
+	&& false !== strpos( $settings, 'Npcink_Cloud_Outbound_Policy::normalize_base_url' )
+	&& false !== strpos( $outbound_policy, "'https' === \$scheme" )
+	&& false !== strpos( $outbound_policy, 'local_requests_allowed' )
+	&& false !== strpos( $outbound_policy, 'host_resolves_publicly' )
+	&& false !== strpos( $outbound_policy, "'redirection'" )
+	&& false !== strpos( $outbound_policy, 'wp_safe_remote_request' )
+	&& false !== strpos( $outbound_policy, 'MAX_AUTH_RESPONSE_BYTES = 65536' )
+	&& false !== strpos( $runtime_client, 'Npcink_Cloud_Outbound_Policy::request_json' )
+	&& false !== strpos( $runtime_client, 'Npcink_Cloud_Outbound_Policy::request_raw' )
+	&& false !== strpos( $settings_page, 'Npcink_Cloud_Outbound_Policy::request_json' )
+	&& false === strpos( $runtime_client, 'wp_remote_request(' )
+	&& false === strpos( $runtime_client, 'wp_remote_get(' )
+	&& false === strpos( $settings_page, 'wp_remote_post(' ),
 	'Cloud Base URL normalization requires HTTPS except local development hosts.'
 );
 
 maca_assert(
-	false !== strpos( $boundary_doc, 'POST /v1/runtime/media-derivatives' )
-	&& false !== strpos( $boundary_doc, 'GET /v1/runtime/artifacts/{artifact_id}/download' )
+	false !== strpos( $boundary_doc, 'POST /v1/runtime/media/jobs' )
+	&& false !== strpos( $boundary_doc, 'GET /v1/runtime/media/artifacts/{artifact_id}/download' )
+	&& false !== strpos( $boundary_doc, 'POST /v1/runtime/media/artifacts/{artifact_id}/delivery-ack' )
 	&& false !== strpos( $boundary_doc, 'logo registry' )
 	&& false !== strpos( $boundary_doc, 'watermark plan' )
 	&& false !== strpos( $adapter_doc, 'Expired Cloud artifacts must not be adopted.' )
 	&& false !== strpos( $adapter_doc, 'final_write_owner=local_wordpress_host' )
 	&& false !== strpos( $adapter_doc, 'watermark_artifact' )
-	&& false !== strpos( $agents, 'POST /v1/runtime/media-derivatives' )
-	&& false !== strpos( $agents, 'GET /v1/runtime/artifacts/{artifact_id}/download' )
+	&& false !== strpos( $agents, 'POST /v1/runtime/media/jobs' )
+	&& false !== strpos( $agents, 'GET /v1/runtime/media/artifacts/{artifact_id}/download' )
+	&& false !== strpos( $agents, 'POST /v1/runtime/media/artifacts/{artifact_id}/delivery-ack' )
 	&& false !== strpos( $agents, 'POST /v1/agent-feedback/events' ),
 	'Boundary, adapter integration, and AGENTS docs describe derivative transport ownership.'
 );
@@ -967,9 +1211,14 @@ maca_assert(
 	false !== strpos( $site_knowledge_bridge, 'request_site_knowledge_sync' )
 	&& false !== strpos( $site_knowledge_bridge, 'request_manual_index_operation' )
 	&& false !== strpos( $site_knowledge_bridge, "'site_knowledge_sync.v1'" )
-	&& false !== strpos( $site_knowledge_bridge, 'array_chunk( $post_ids, self::MANUAL_INDEX_POSTS )' )
+	&& false !== strpos( $site_knowledge_bridge, 'MAINTENANCE_OPTION' )
+	&& false !== strpos( $site_knowledge_bridge, 'flush_full_index_delivery' )
+	&& false !== strpos( $site_knowledge_bridge, 'is_active_full_index_delivery' )
+	&& false !== strpos( $site_knowledge_bridge, 'add_option( self::MAINTENANCE_OPTION' )
+	&& false !== strpos( $site_knowledge_bridge, 'compare_and_swap_full_index_delivery_cursor' )
+	&& false !== strpos( $site_knowledge_bridge, "'operation_source' => 'admin_' . \$operation" )
 	&& false !== strpos( $site_knowledge_bridge, "\$is_first_rebuild_batch = 'rebuild' === \$operation && 0 === \$batch_index;" )
-	&& false !== strpos( $site_knowledge_bridge, "\$request_post_ids = \$is_first_rebuild_batch ? array() : \$batch;" )
+	&& false !== strpos( $site_knowledge_bridge, "\$is_first_rebuild_batch ? array() : \$batch" )
 	&& false !== strpos( $site_knowledge_bridge, "'sync_mode' => \$sync_mode" )
 	&& false !== strpos( $site_knowledge_bridge, "array( 'refresh', 'rebuild', 'delete' )" )
 	&& false !== strpos( $site_knowledge_bridge, "'delete' !== \$operation && ! self::is_enabled()" )
@@ -1109,6 +1358,15 @@ maca_assert(
 	&& false !== strpos( $settings_page, "ACTION_UPDATE_LOCAL_PERMISSION = 'npcink_cloud_addon_update_local_permission'" )
 	&& false !== strpos( $settings_page, "admin_post_' . self::ACTION_UPDATE_LOCAL_PERMISSION" )
 	&& false !== strpos( $settings_page, 'function handle_update_local_permission' )
+	&& false !== strpos( $settings_page, 'check_admin_referer( self::ACTION_UPDATE_LOCAL_PERMISSION )' )
+	&& false !== strpos( $settings_page, 'Npcink_Cloud_Addon_Settings::write_settings( $settings );' )
+	&& false !== strpos( $settings_page, "'site_knowledge_delivery_enabled' => array(" )
+	&& false !== strpos( $settings_page, "if ( 'site_knowledge_delivery_enabled' === \$permission )" )
+	&& false !== strpos( $settings_page, 'Npcink_Cloud_Site_Knowledge_Change_Bridge::sync_schedule()' )
+	&& false !== strpos( $settings_page, 'Npcink_Cloud_Site_Knowledge_Change_Bridge::resume_pending_delivery()' )
+	&& false === strpos( $settings_page, 'ACTION_UPDATE_SITE_KNOWLEDGE_DELIVERY' )
+	&& false === strpos( $settings_page, 'npcink_cloud_addon_update_site_knowledge_delivery' )
+	&& false === strpos( $settings_page, 'function handle_update_site_knowledge_delivery' )
 	&& false !== strpos( $settings_page, 'function render_local_permissions' )
 	&& false !== strpos( $settings_page, 'function render_local_permission_switch' )
 	&& false !== strpos( $settings_page, 'self::render_local_permissions( $settings, $is_verified );' )
@@ -1192,21 +1450,34 @@ maca_assert(
 
 	maca_assert(
 		false !== strpos( $settings_page, "ACTION_REFRESH_SITE_KNOWLEDGE = 'npcink_cloud_addon_refresh_site_knowledge'" )
-		&& false !== strpos( $settings_page, "ACTION_UPDATE_SITE_KNOWLEDGE_DELIVERY = 'npcink_cloud_addon_update_site_knowledge_delivery'" )
 		&& false !== strpos( $settings_page, "ACTION_MANAGE_SITE_KNOWLEDGE_INDEX = 'npcink_cloud_addon_manage_site_knowledge_index'" )
 		&& false !== strpos( $settings_page, "admin_post_' . self::ACTION_REFRESH_SITE_KNOWLEDGE" )
-		&& false !== strpos( $settings_page, "admin_post_' . self::ACTION_UPDATE_SITE_KNOWLEDGE_DELIVERY" )
 		&& false !== strpos( $settings_page, "admin_post_' . self::ACTION_MANAGE_SITE_KNOWLEDGE_INDEX" )
 		&& false !== strpos( $settings_page, 'function handle_refresh_site_knowledge' )
-		&& false !== strpos( $settings_page, 'function handle_update_site_knowledge_delivery' )
 		&& false !== strpos( $settings_page, 'function handle_manage_site_knowledge_index' )
+		&& false !== strpos( $refresh_site_knowledge_handler, 'current_user_can( \'manage_options\' )' )
+		&& false !== strpos( $refresh_site_knowledge_handler, 'check_admin_referer( self::ACTION_REFRESH_SITE_KNOWLEDGE )' )
+		&& false !== strpos( $refresh_site_knowledge_handler, 'Npcink_Cloud_Site_Knowledge_Admin_Actions::request_public_refresh()' )
+		&& false !== strpos( $refresh_site_knowledge_handler, "self::redirect_to_page( 'site_knowledge' )" )
+		&& false === strpos( $refresh_site_knowledge_handler, 'Npcink_Cloud_Site_Knowledge_Admin_Actions::request_index_operation' )
+		&& false !== strpos( $manage_site_knowledge_index_handler, 'current_user_can( \'manage_options\' )' )
+		&& false !== strpos( $manage_site_knowledge_index_handler, 'check_admin_referer( self::ACTION_MANAGE_SITE_KNOWLEDGE_INDEX )' )
+		&& false !== strpos( $manage_site_knowledge_index_handler, "sanitize_key( wp_unslash( \$_POST['site_knowledge_index_action'] ) )" )
+		&& false !== strpos( $manage_site_knowledge_index_handler, "sanitize_text_field( wp_unslash( \$_POST['site_knowledge_confirmation'] ) )" )
+		&& false !== strpos( $manage_site_knowledge_index_handler, 'Npcink_Cloud_Site_Knowledge_Admin_Actions::request_index_operation( $operation, $confirmation )' )
+		&& false !== strpos( $manage_site_knowledge_index_handler, "self::redirect_to_page( 'site_knowledge' )" )
+		&& false === strpos( $manage_site_knowledge_index_handler, 'Npcink_Cloud_Runtime_Client' )
 		&& false !== strpos( $settings_page, "site_knowledge_delivery_enabled" )
 		&& false !== strpos( $settings_page, 'Site Knowledge delivery' )
 		&& false !== strpos( $settings_page, 'Delivery is off; refresh controls and routine delivery rows are hidden.' )
-		&& false !== strpos( $settings_page, 'Npcink_Cloud_Site_Knowledge_Change_Bridge::buffer_recent_public_content()' )
-		&& false !== strpos( $settings_page, 'Npcink_Cloud_Site_Knowledge_Change_Bridge::flush_buffer()' )
+		&& false === strpos( $settings_page, 'Npcink_Cloud_Site_Knowledge_Change_Bridge::buffer_recent_public_content()' )
+		&& false === strpos( $settings_page, 'Npcink_Cloud_Site_Knowledge_Change_Bridge::flush_buffer()' )
 		&& false !== strpos( $settings_page, 'Npcink_Cloud_Site_Knowledge_Change_Bridge::sync_schedule()' )
-		&& false !== strpos( $settings_page, 'Npcink_Cloud_Site_Knowledge_Change_Bridge::request_manual_index_operation' )
+		&& false !== strpos( $settings_page, 'Npcink_Cloud_Site_Knowledge_Change_Bridge::resume_pending_delivery()' )
+		&& false === strpos( $settings_page, 'Npcink_Cloud_Site_Knowledge_Change_Bridge::request_manual_index_operation' )
+		&& false !== strpos( $site_knowledge_admin_actions, 'Npcink_Cloud_Site_Knowledge_Change_Bridge::buffer_recent_public_content()' )
+		&& false !== strpos( $site_knowledge_admin_actions, 'Npcink_Cloud_Site_Knowledge_Change_Bridge::flush_buffer()' )
+		&& false !== strpos( $site_knowledge_admin_actions, 'Npcink_Cloud_Site_Knowledge_Change_Bridge::request_manual_index_operation( $operation )' )
 	&& false !== strpos( $settings_page, 'Request public content refresh' )
 	&& false !== strpos( $settings_page, 'Start indexing' )
 	&& false !== strpos( $settings_page, 'Rebuild index' )
@@ -1296,26 +1567,6 @@ maca_assert(
 	&& false !== strpos( $admin_css, '.npcink-cloud-site-knowledge-progress--warning' )
 	&& false !== strpos( $admin_css, '.npcink-cloud-site-knowledge-progress--error' ),
 	'Site Knowledge shows one auto-refreshed document quota with visible numbers and keeps lower-frequency Cloud quota fields in technical detail.'
-);
-
-$overview_method_start = strpos( $settings_page, 'private static function render_overview_page' );
-$overview_method_end = strpos( $settings_page, 'private static function render_advanced_page' );
-$site_knowledge_method_start = strpos( $settings_page, 'private static function render_site_knowledge_summary' );
-$site_knowledge_method_end = strpos( $settings_page, 'private static function render_site_knowledge_cloud_quota_detail' );
-$overview_method = false !== $overview_method_start && false !== $overview_method_end
-	? substr( $settings_page, $overview_method_start, $overview_method_end - $overview_method_start )
-	: '';
-$site_knowledge_method = false !== $site_knowledge_method_start && false !== $site_knowledge_method_end
-	? substr( $settings_page, $site_knowledge_method_start, $site_knowledge_method_end - $site_knowledge_method_start )
-	: '';
-maca_assert(
-	false !== strpos( $overview_method, "<?php if ( \$site_knowledge_delivery_enabled ) : ?>" )
-	&& false !== strpos( $overview_method, "esc_html_e( 'Available knowledge documents'" )
-	&& false !== strpos( $overview_method, 'data-npcink-site-knowledge-usage' )
-	&& false === strpos( $site_knowledge_method, "esc_html_e( 'Available knowledge documents'" )
-	&& false !== strpos( $site_knowledge_method, 'data-npcink-site-knowledge-refresh' )
-	&& false !== strpos( $site_knowledge_method, 'render_site_knowledge_cloud_quota_detail' ),
-	'Site Knowledge document usage belongs to Overview service summary when delivery is enabled, while the Site Knowledge page keeps only low-frequency Cloud index detail.'
 );
 
 maca_assert(
@@ -1536,6 +1787,12 @@ maca_assert(
 	'Complexity budget document records what complexity is worth keeping and where tests belong.'
 );
 
+maca_assert(
+	false !== strpos( $uninstall, "delete_option( 'npcink_cloud_addon_agent_feedback_summary' )" )
+	&& false !== strpos( $uninstall, "delete_option( 'npcink_cloud_addon_site_knowledge_maintenance_cursor' )" ),
+	'Uninstall removes all addon-owned bounded summary and Site Knowledge maintenance state.'
+);
+
 foreach ( array( 'npcink-governance-core', 'npcink-abilities-toolkit', 'npcink-ai-client-adapter', 'npcink-workflow-toolbox', 'npcink-cloud-addon', 'npcink-ai-cloud' ) as $contract_reuse_repo_name ) {
 	maca_assert(
 		false !== strpos( $contract_reuse_readiness_doc, $contract_reuse_repo_name ),
@@ -1543,7 +1800,7 @@ foreach ( array( 'npcink-governance-core', 'npcink-abilities-toolkit', 'npcink-a
 	);
 }
 
-foreach ( array( 'Cloud Addon Contract Reuse Readiness', 'signed_transport', 'ability_contracts', 'proposal_handoff', 'execution_profiles', 'product_surface', 'runtime_detail', 'Reference-Plugin Learning', 'Jetpack', 'Site Kit by Google', 'WP Mail SMTP', 'Health Check & Troubleshooting', 'WordPress Application Passwords', 'No new Cloud Addon endpoint', 'workflow runtime', 'scheduler truth', 'WordPress write executor is needed for this pass', 'contract_reuse', 'mak1_{base64url(json)}', 'POST /v1/runtime/execute', 'POST /v1/runtime/media-derivatives', 'GET /v1/runs/{run_id}', 'GET /v1/runs/{run_id}/result', 'GET /v1/runs/nightly-inspection/recent', 'POST /v1/runs/{run_id}/retry', 'GET /v1/runtime/artifacts/{artifact_id}/download', 'GET /v1/entitlements/current', 'POST /v1/observability/plugin-events', 'GET /v1/observability/plugin-summary', 'POST /v1/agent-feedback/events', 'GET /v1/agent-feedback/summary', 'site_knowledge_change_bridge_status.v1', 'wp_ai_connector_runtime.v1', 'image_context_evidence_request.v1', 'cloud_agent_feedback.v1', 'Stop and write a boundary note or ADR', 'generic Cloud proxy routes', 'raw request/response', 'provider credentials', 'npcink-ai-cloud', 'composer run test:all' ) as $required_contract_reuse_text ) {
+foreach ( array( 'Cloud Addon Contract Reuse Readiness', 'signed_transport', 'ability_contracts', 'proposal_handoff', 'execution_profiles', 'product_surface', 'runtime_detail', 'Reference-Plugin Learning', 'Jetpack', 'Site Kit by Google', 'WP Mail SMTP', 'Health Check & Troubleshooting', 'WordPress Application Passwords', 'No new Cloud Addon endpoint', 'workflow runtime', 'scheduler truth', 'WordPress write executor is needed for this pass', 'contract_reuse', 'mak1_{base64url(json)}', 'POST /v1/runtime/execute', 'POST /v1/runtime/media/uploads', 'POST /v1/runtime/media/jobs', 'GET /v1/runs/{run_id}', 'GET /v1/runs/{run_id}/result', 'GET /v1/runs/nightly-inspection/recent', 'POST /v1/runs/{run_id}/retry', 'GET /v1/runtime/media/artifacts/{artifact_id}/download', 'POST /v1/runtime/media/artifacts/{artifact_id}/delivery-ack', 'GET /v1/entitlements/current', 'POST /v1/observability/plugin-events', 'GET /v1/observability/plugin-summary', 'POST /v1/agent-feedback/events', 'GET /v1/agent-feedback/summary', 'site_knowledge_change_bridge_status.v1', 'cloud_connector_runtime.v1', 'wordpress_operation.v1', 'cloud_connector_result.v1', 'image_context_evidence_request.v1', 'cloud_agent_feedback.v1', 'Stop and write a boundary note or ADR', 'generic Cloud proxy routes', 'raw request/response', 'provider credentials', 'npcink-ai-cloud', 'composer run test:all' ) as $required_contract_reuse_text ) {
 	maca_assert(
 		false !== strpos( $contract_reuse_readiness_doc, $required_contract_reuse_text ),
 		'Cloud Addon contract reuse readiness preserves: ' . $required_contract_reuse_text

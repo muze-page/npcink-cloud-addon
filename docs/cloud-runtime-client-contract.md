@@ -41,12 +41,13 @@ execute_toolbox_site_ops_cloud_analysis_runtime(array $request, string $trace_id
 execute_toolbox_web_search_runtime(array $request, string $trace_id = '', string $idempotency_key = '')
 execute_toolbox_image_source_runtime(array $request, string $trace_id = '', string $idempotency_key = '')
 request_image_context_evidence(array $image_context_evidence_request, string $trace_id = '', string $idempotency_key = '')
-create_media_derivative(array $payload, array $files = array(), string $trace_id = '', string $idempotency_key = '')
+upload_media_artifact(array $file, string $trace_id = '', string $idempotency_key = '')
+create_media_job(array $payload, string $trace_id = '', string $idempotency_key = '')
 get_run(string $run_id, string $trace_id = '')
 get_run_result(string $run_id, string $trace_id = '')
+pull_media_artifact(string $artifact_id, string $trace_id = '')
+acknowledge_media_artifact_delivery(string $artifact_id, array $payload, string $trace_id = '', string $idempotency_key = '')
 get_current_entitlement(string $trace_id = '')
-get_profile_stats(string $profile_id, string $trace_id = '')
-get_instance_stats(string $instance_id, string $trace_id = '')
 send_observability_events(array $events, string $trace_id = '', string $idempotency_key = '')
 send_agent_feedback_event(array $payload, string $trace_id = '', string $idempotency_key = '')
 get_agent_feedback_summary(int $window_hours = 24, string $trace_id = '')
@@ -54,6 +55,18 @@ get_observability_summary(int $window_hours = 24, string $trace_id = '')
 ```
 
 The low-level signed `request()` helper is private implementation detail. It must enforce the endpoint allowlist in this contract and must not be exposed as a generic public Cloud proxy.
+
+Every runtime, liveness, artifact, and authorization-exchange request also
+passes through the shared Addon outbound policy. Non-local targets require
+HTTPS and public-only DNS results; redirects are disabled because signatures
+bind the original request path; TLS verification stays enabled; JSON calls
+require a JSON response media type. JSON runtime responses are limited to 1
+MiB, authorization responses to 64 KiB, and raw artifact previews to 25 MiB.
+Only exact loopback hosts may use the explicit local-development exception.
+The Addon does not pin the pre-dispatch DNS answer to the eventual transport
+connection. WordPress safe HTTP validation and HTTPS certificate verification
+remain mandatory, but trusted Cloud DNS is still an operational requirement
+and sub-second DNS rebinding is a residual risk rather than a solved guarantee.
 
 For Cloud jobs that move local media bytes or downloadable artifacts, host code
 should use the verified helper:
@@ -71,6 +84,7 @@ It returns `null` until the addon settings have passed Save and Verify.
 | `probe_connectivity()` | `GET /health/live`, then signed `GET /v1/entitlements/current` |
 | `manual_readiness_test()` | Reuses `probe_connectivity()` and returns bounded local result shape |
 | `execute_runtime()` | `POST /v1/runtime/execute` |
+| `upload_wordpress_ai_alt_text_source()` (internal attachment handoff only) | `POST /v1/runtime/media/uploads` |
 | `execute_wordpress_ai_connector_runtime()` | `POST /v1/runtime/execute` |
 | `execute_wordpress_ai_image_generation_runtime()` | `POST /v1/runtime/execute` |
 | `execute_toolbox_image_generation_runtime()` | `POST /v1/runtime/execute` |
@@ -80,15 +94,15 @@ It returns `null` until the addon settings have passed Save and Verify.
 | `execute_toolbox_image_source_runtime()` | `POST /v1/runtime/execute` |
 | `npcink_cloud_addon_dispatch_site_knowledge_runtime()` | `POST /v1/runtime/execute` |
 | `request_image_context_evidence()` | `POST /v1/runtime/execute` |
-| `create_media_derivative()` | `POST /v1/runtime/media-derivatives` |
+| `upload_media_artifact()` | `POST /v1/runtime/media/uploads` |
+| `create_media_job()` | `POST /v1/runtime/media/jobs` |
 | `get_run()` | `GET /v1/runs/{run_id}` |
 | `get_run_result()` | `GET /v1/runs/{run_id}/result` |
 | `get_recent_nightly_inspection_runs()` | `GET /v1/runs/nightly-inspection/recent` |
 | `retry_run()` | `POST /v1/runs/{run_id}/retry` |
-| `download_media_derivative_artifact()` | `GET /v1/runtime/artifacts/{artifact_id}/download` |
+| `pull_media_artifact()` | `GET /v1/runtime/media/artifacts/{artifact_id}/download` |
+| `acknowledge_media_artifact_delivery()` | `POST /v1/runtime/media/artifacts/{artifact_id}/delivery-ack` |
 | `get_current_entitlement()` | `GET /v1/entitlements/current` |
-| `get_profile_stats()` | `GET /v1/stats/profiles/{profile_id}` |
-| `get_instance_stats()` | `GET /v1/stats/instances/{instance_id}` |
 | `send_observability_events()` | `POST /v1/observability/plugin-events` |
 | `send_agent_feedback_event()` | `POST /v1/agent-feedback/events` |
 | `get_agent_feedback_summary()` | `GET /v1/agent-feedback/summary` |
@@ -337,17 +351,49 @@ order. Bottom-level provider/model routing stays with Cloud hosted runtime
 profiles.
 
 The addon registers a bounded `wpai_preferred_vision_models` override only for
-WordPress AI alt-text generation. It projects a fetchable image URL and bounded
-media metadata to Cloud `alt_text_suggest`; it does not accept arbitrary base64
-image payloads, become a generic vision provider or router, write media
-metadata, or own final approval. For local or private attachment URLs that an
-external vision provider cannot fetch, the provider wrapper may generate a
-bounded `data:image/...;base64,...` URL from the local WordPress attachment
-file; this fallback is limited to the alt-text scene and is not exposed as a
-generic image upload channel.
+WordPress AI alt-text generation. The scene must carry a local WordPress
+`attachment_id` that the current user may edit. The provider wrapper verifies
+that the attachment resolves to a regular readable file under the WordPress
+uploads directory, limits the source to 8 MiB, and accepts only detected JPEG,
+PNG, or WebP content whose MIME matches WordPress attachment metadata.
 
-Input must use `contract_version=wp_ai_connector_runtime.v1` and one of the
-supported task surfaces:
+The attachment id is captured only from `wp_before_execute_ability`, after
+WordPress Ability input validation and permission checks. The wrapper rejects
+stack inspection and binds the checked path metadata to the opened file with
+`stat()`/`fstat()` before reading. MIME is detected from the bounded bytes that
+were actually read. The transport also requires current Save-and-Verify state
+and rejects returned artifacts whose remaining lifetime cannot cover the
+bounded execution window.
+
+The wrapper then calls the dedicated
+`upload_wordpress_ai_alt_text_source()` transport. That method sends one
+short-TTL `media_upload_request.v1` image upload through
+`POST /v1/runtime/media/uploads`, validates the returned same-site available
+artifact against its media kind, MIME, byte size, checksum, identifier, and
+expiry, and returns only the bounded artifact descriptor. It is not a generic
+upload API or artifact registry. External image URLs, attachment URLs, Data
+URLs, caller-supplied base64, arbitrary file paths, and compatibility fallback
+shapes are rejected before Cloud execution.
+
+The installed upstream WordPress AI alt-text ability currently converts its
+local file reference to a Data URL before selecting an AI Client model. The
+addon must not override or short-circuit that ability through
+`wp_pre_execute_ability`, because that would make the addon responsible for
+upstream validation, permission, and result semantics. Eliminating the
+upstream transient base64 allocation therefore depends on a future public
+attachment-reference model seam. This known upstream cost does not change the
+Addon transport contract: no Data URL or base64 crosses the Cloud boundary.
+
+Only after upload succeeds may `alt_text_suggest` execute. Its scene request
+contains exactly `source_artifact_id`, `prompt`, and the optional bounded
+`filename`, `title`, `existing_alt`, `existing_caption`, `locale`, and
+`max_tokens` fields. Alt-text requests use `data_classification=internal` and
+remain `suggestion_only`; the addon does not become a generic vision provider
+or router, write media metadata, or own final approval.
+
+Input must use the platform-neutral
+`contract_version=cloud_connector_runtime.v1` envelope and one of the supported
+WordPress task surfaces:
 
 - `title_generation`
 - `excerpt_generation`
@@ -361,21 +407,41 @@ supported task surfaces:
 
 The method projects accepted requests into a fixed runtime payload:
 
-- `ability_name=npcink-cloud/wp-ai-connector`
-- `channel=wordpress_ai_connector`
-- `execution_kind=wordpress_ai_connector`
+- verified top-level `site_id`
+- `ability_name=npcink-cloud/connector-runtime`
+- `channel=editor`
+- `execution_kind=text` for text tasks or `vision` for `alt_text_suggest`
 - `execution_pattern=inline`
 - `storage_mode=result_only`
-- `write_posture=suggestion_only`
-- `direct_wordpress_write=false`
-- `no_conversation=true`
+- `input.site_url=untrailingslashit(home_url('/'))`
+- `input.platform_kind=wordpress`
+- `input.connector_id=npcink-cloud-addon`
+- `input.connector_version=<active addon version>`
+- `input.suggestion_only=true`
+- `input.operation_contract.contract_version=wordpress_operation.v1`
 - `policy.allow_fallback=false`
+
+The nested operation contract has exactly `contract_version`, `task`, and
+`request`. Platform identity stays in the connector envelope; WordPress task
+semantics stay in `wordpress_operation.v1`. For `title_generation`,
+`content_summary`, and `content_rewrite`, `request.source_text` is the actual
+single AI Client user message. `request.system_instruction` is optional. Those
+three tasks reject legacy `prompt`, `post_title`, and `post_excerpt` fields;
+embedded content tags are transported as opaque text. Other bounded tasks such
+as alt text may keep their task-specific prompt field.
 
 The method rejects generic chat or provider-control fields such as `messages`,
 `conversation_id`, `session_id`, `thread_id`, `tools`, `tool_calls`,
 `functions`, `function_call`, `stream`, credentials, cookies, nonces, and signed
-headers. It also bounds prompt/body size and clamps timeout to 60 seconds,
-retention, and retry values.
+headers. It also bounds source/prompt/body size and clamps timeout to 60
+seconds, retention, and retry values.
+
+Text and alt-text consumers accept one result shape only:
+`response.data.result.contract_version=cloud_connector_result.v1`,
+`suggestion_only=true`, `connector_id=npcink-cloud-addon`, and an
+`operation_contract` whose `contract_version=wordpress_operation.v1` and task
+matches the current request. Only then is output read from
+`response.data.result.output.output_text`. Legacy result layouts are not read.
 
 For quality-accepted editor tasks, the scene request may carry the optional
 bounded shape `site_knowledge_reference={enabled:boolean,mode:string}`. The
@@ -466,9 +532,11 @@ mutation, preset mutation, or WordPress write methods.
 
 The private request helper must reject any signed path outside the endpoint
 mapping above. In particular, it must reject workflow runtime, generic artifact,
-support-bundle, file-upload, database-export, raw-payload, approval, proposal,
-billing-mutation, prompt, router, preset, and WordPress write endpoints unless a
-future boundary update explicitly adds a named public method.
+support-bundle, generic file-upload, database-export, raw-payload, approval,
+proposal, billing-mutation, prompt, router, preset, and WordPress write
+endpoints. The sole upload exception is the named, image-only, short-TTL
+`upload_wordpress_ai_alt_text_source()` method above; it must not be widened
+into a caller-selected endpoint, media kind, retention policy, or registry.
 
 ## Media Derivative Transport
 
@@ -484,13 +552,23 @@ It may:
 - attach a host-supplied source upload or short TTL source artifact id;
 - attach an optional host-supplied watermark upload or short TTL watermark
   artifact id when the ability response includes a watermark plan;
-- dispatch through `POST /v1/runtime/media-derivatives`;
-- download one non-expired derivative artifact for local preview through
-  `download_media_derivative_artifact(string $artifact_id, string $trace_id = '')`
-  and the explicit signed
-  `GET /v1/runtime/artifacts/{artifact_id}/download` endpoint;
+- upload bounded source bytes through `POST /v1/runtime/media/uploads` and
+  dispatch the artifact-referenced job through `POST /v1/runtime/media/jobs`;
+- pull one non-expired derivative artifact through
+  `pull_media_artifact(string $artifact_id, string $trace_id = '')` and the
+  explicit signed `GET /v1/runtime/media/artifacts/{artifact_id}/download`
+  endpoint, verify its bytes and decoded image, and only then call
+  `acknowledge_media_artifact_delivery()` through the independent
+  `POST /v1/runtime/media/artifacts/{artifact_id}/delivery-ack` resource;
 - convert a Cloud derivative artifact descriptor into a Core-ready local
   proposal payload.
+
+The upload response must be the exact 11-field `media_upload_result.v1`
+artifact: `artifact_id`, `media_kind`, `status`, `content_type`, `format`,
+`width`, `height`, `filesize_bytes`, `checksum`, `expires_at`, and `purged_at`.
+An upload accepted for a new media job must report `status=available` and
+`purged_at=null`; the former exact 10-field shape, lifecycle aliases, and
+additional fields fail closed.
 
 It must not:
 
@@ -505,6 +583,28 @@ It must not:
 
 The proposal payload generated by this helper always reports
 `final_write_owner=local_wordpress_host` and `default_action=preview_only`.
-Derivative proposal adoption requires a non-expired Cloud artifact id. If the
-Cloud result includes a derivative artifact id, run id, or checksum, it must
-match the derivative artifact descriptor before the helper returns a proposal.
+Dispatch and run-status reads return the exact eight-field public projection
+`run_id`, `status`, `job_type`, `created_at`, `updated_at`, `artifact`,
+`warnings`, and `error`. Status projections always set `artifact=[]`, including
+for `succeeded`, `failed`, and `canceled`; terminal error facts remain bounded
+inside `error`. Only the separate run-result read may populate `artifact`.
+The final Cloud result is accepted only as the exact
+`media_derivative_result.v1` envelope with
+`artifact_type`, `contract_version`, `workflow_metadata`, and `artifact`.
+Its artifact is the exact 12-field Cloud descriptor: `artifact_id`,
+`artifact_reference`, `expires_at`, `suggested_filename`, `filename_basis`,
+`mime_type`, `format`, `width`, `height`, `filesize_bytes`, `checksum`, and
+`processing_warnings`. Image facts are rejected when either axis exceeds 8192
+pixels or total area exceeds 16777216 pixels. The Addon projects that once into the exact local
+11-field proposal descriptor by removing `artifact_reference` and replacing
+the prefixed checksum with lowercase bare `sha256`.
+
+`npcink_cloud_addon_receive_media_derivative_artifact()` accepts only that
+exact local 11-field descriptor and returns exactly `artifact_id`, `contents`,
+`mime_type`, `width`, `height`, `filesize_bytes`, `sha256`, `expires_at`,
+`transfer_evidence`, and `delivery_ack`. Every media POST and signed pull uses
+a fresh nonce independent from trace and idempotency. The ACK uses its own
+idempotency key, has scope `verified_transfer_only`, and must return
+`artifact_expires_at` exactly equal to the reviewed local 11-field descriptor
+expiry. It may neither shorten nor extend that expiry, including when the
+preserved artifact lifetime exceeds six minutes after acknowledgement.

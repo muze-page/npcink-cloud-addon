@@ -18,12 +18,27 @@ if ( ! class_exists( 'Npcink_Cloud_Runtime_Client' ) ) {
 	final class Npcink_Cloud_Runtime_Client {
 		private const MAX_JSON_RESPONSE_BYTES = 1048576;
 		private const MAX_DOWNLOAD_BYTES = 26214400;
-		private const WP_AI_CONNECTOR_CONTRACT = 'wp_ai_connector_runtime.v1';
+		private const MEDIA_ARTIFACT_ID_PATTERN = '/^art_[0-9a-f]{32}$/';
+		private const MEDIA_DELIVERY_ID_PATTERN = '/^mdl_[0-9a-f]{32}$/';
+		private const MEDIA_UPLOAD_FORMATS = array(
+			'image/avif' => 'avif',
+			'image/jpeg' => 'jpeg',
+			'image/png'  => 'png',
+			'image/webp' => 'webp',
+		);
+		private const CLOUD_CONNECTOR_RUNTIME_CONTRACT = 'cloud_connector_runtime.v1';
+		private const WORDPRESS_OPERATION_CONTRACT = 'wordpress_operation.v1';
 		private const WP_AI_CONNECTOR_MAX_REQUEST_BYTES = 24000;
-		private const WP_AI_CONNECTOR_ALT_TEXT_MAX_REQUEST_BYTES = 900000;
-		private const WP_AI_CONNECTOR_MAX_PROMPT_CHARS = 12000;
+		private const WP_AI_CONNECTOR_MAX_SCENE_TEXT_CHARS = 12000;
 		private const WP_AI_CONNECTOR_MAX_TIMEOUT_SECONDS = 60;
 		private const WP_AI_CONNECTOR_MAX_RETENTION_TTL = 86400;
+		private const WP_AI_ALT_TEXT_MAX_UPLOAD_BYTES = 8388608;
+		private const WP_AI_ALT_TEXT_MIN_ARTIFACT_TTL_SECONDS = 120;
+		private const WP_AI_ALT_TEXT_UPLOAD_FORMATS = array(
+			'image/jpeg' => 'jpeg',
+			'image/png'  => 'png',
+			'image/webp' => 'webp',
+		);
 		private const WP_AI_IMAGE_GENERATION_CONTRACT = 'image_generation_request.v1';
 		private const WP_AI_IMAGE_GENERATION_MAX_REQUEST_BYTES = 12000;
 		private const WP_AI_IMAGE_GENERATION_MAX_PROMPT_CHARS = 4000;
@@ -67,6 +82,11 @@ if ( ! class_exists( 'Npcink_Cloud_Runtime_Client' ) ) {
 			'content_summary',
 			'excerpt_generation',
 			'meta_description',
+			'title_generation',
+		);
+		private const WP_AI_CONNECTOR_SOURCE_TEXT_TASKS = array(
+			'content_rewrite',
+			'content_summary',
 			'title_generation',
 		);
 		private const WP_AI_CONNECTOR_FORBIDDEN_KEYS = array(
@@ -433,45 +453,235 @@ if ( ! class_exists( 'Npcink_Cloud_Runtime_Client' ) ) {
 		}
 
 		/**
-		 * Creates one media derivative run through the named runtime service endpoint.
+		 * Uploads one bounded source image for a media job.
 		 *
-		 * @param array<string,mixed> $payload Media derivative request payload.
-		 * @param array<string,array<string,string>> $files Optional multipart source_file.
+		 * @param array<string,mixed> $file Exact contents, filename, and mime_type fields.
 		 * @param string              $trace_id Optional trace id.
 		 * @param string              $idempotency_key Optional idempotency key.
 		 * @return array<string,mixed>|WP_Error
 		 */
-		public function create_media_derivative( array $payload, array $files = array(), string $trace_id = '', string $idempotency_key = '' ) {
-			if ( '' === $idempotency_key ) {
-				$idempotency_key = 'media_derivative_' . wp_generate_uuid4();
-			}
-			foreach ( array_keys( $files ) as $field_name ) {
-				if ( ! in_array( (string) $field_name, array( 'source_file', 'watermark_file' ), true ) ) {
-					return new WP_Error(
-						'cloud_runtime_media_derivative_file_field_not_allowed',
-						__( 'Only source_file and watermark_file uploads are allowed for media derivative transport.', 'npcink-cloud-addon' ),
-						array( 'status' => 400 )
-					);
-				}
-			}
-
-			if ( empty( $files ) ) {
-				return $this->request( 'POST', '/v1/runtime/media-derivatives', $payload, $idempotency_key, $trace_id );
+		public function upload_media_artifact( array $file, string $trace_id = '', string $idempotency_key = '' ) {
+			$allowed_file_fields = array( 'contents', 'filename', 'mime_type' );
+			if (
+				array() !== array_diff( $allowed_file_fields, array_keys( $file ) )
+				|| array() !== array_diff( array_keys( $file ), $allowed_file_fields )
+			) {
+				return new WP_Error(
+					'cloud_media_upload_file_invalid',
+					__( 'Media uploads require exact contents, filename, and mime_type fields.', 'npcink-cloud-addon' ),
+					array( 'status' => 400 )
+				);
 			}
 
-			$multipart = $this->build_media_derivative_multipart_body( $payload, $files );
+			$contents = $file['contents'];
+			if ( ! is_string( $contents ) || '' === $contents ) {
+				return new WP_Error(
+					'cloud_media_upload_contents_invalid',
+					__( 'Media upload contents must be a nonempty byte string.', 'npcink-cloud-addon' ),
+					array( 'status' => 400 )
+				);
+			}
+			if ( strlen( $contents ) > self::MAX_DOWNLOAD_BYTES ) {
+				return new WP_Error(
+					'cloud_media_upload_too_large',
+					__( 'Media upload contents exceed the 25 MiB connector limit.', 'npcink-cloud-addon' ),
+					array( 'status' => 413 )
+				);
+			}
+
+			$filename = is_string( $file['filename'] ) ? sanitize_file_name( $file['filename'] ) : '';
+			if ( '' === $filename || strlen( $filename ) > 160 ) {
+				return new WP_Error(
+					'cloud_media_upload_filename_invalid',
+					__( 'Media upload filename must be a nonempty safe filename of at most 160 characters.', 'npcink-cloud-addon' ),
+					array( 'status' => 400 )
+				);
+			}
+
+			$mime_type = is_string( $file['mime_type'] ) ? strtolower( trim( $file['mime_type'] ) ) : '';
+			if ( ! isset( self::MEDIA_UPLOAD_FORMATS[ $mime_type ] ) ) {
+				return new WP_Error(
+					'cloud_media_upload_mime_type_invalid',
+					__( 'Media uploads allow only AVIF, JPEG, PNG, or WebP images.', 'npcink-cloud-addon' ),
+					array( 'status' => 400 )
+				);
+			}
+
+			$multipart = $this->build_media_upload_multipart_body(
+				array(
+					'request_contract_version' => 'media_upload_request.v1',
+					'media_kind'              => 'image',
+					'ttl_minutes'             => 30,
+				),
+				$contents,
+				$filename,
+				$mime_type
+			);
 			if ( is_wp_error( $multipart ) ) {
 				return $multipart;
 			}
+			if ( '' === $idempotency_key ) {
+				$idempotency_key = 'media_upload_' . wp_generate_uuid4();
+			}
 
-			return $this->request(
+			$response = $this->request(
 				'POST',
-				'/v1/runtime/media-derivatives',
+				'/v1/runtime/media/uploads',
 				null,
 				$idempotency_key,
 				$trace_id,
 				(string) $multipart['body'],
 				(string) $multipart['content_type']
+			);
+			if ( is_wp_error( $response ) ) {
+				return $response;
+			}
+
+			return $this->normalize_media_upload_response( $response, $mime_type, $contents );
+		}
+
+		/**
+		 * Creates one artifact-referenced media job.
+		 *
+		 * @param array<string,mixed> $payload Exact media_job_request.v1 payload.
+		 * @param string              $trace_id Optional trace id.
+		 * @param string              $idempotency_key Optional idempotency key.
+		 * @return array<string,mixed>|WP_Error
+		 */
+		public function create_media_job( array $payload, string $trace_id = '', string $idempotency_key = '' ) {
+			$required_keys = array( 'request_contract_version', 'operation', 'source_artifact_id', 'params', 'result_ttl_minutes' );
+			$allowed_keys  = array_merge( $required_keys, array( 'watermark_artifact_id' ) );
+			if (
+				array() !== array_diff( $required_keys, array_keys( $payload ) )
+				|| array() !== array_diff( array_keys( $payload ), $allowed_keys )
+				|| 'media_job_request.v1' !== (string) ( $payload['request_contract_version'] ?? '' )
+				|| 'image.transform.v1' !== (string) ( $payload['operation'] ?? '' )
+				|| 1 !== preg_match( self::MEDIA_ARTIFACT_ID_PATTERN, (string) ( $payload['source_artifact_id'] ?? '' ) )
+				|| ! is_array( $payload['params'] ?? null )
+				|| 30 !== ( $payload['result_ttl_minutes'] ?? null )
+				|| ( isset( $payload['watermark_artifact_id'] ) && 1 !== preg_match( self::MEDIA_ARTIFACT_ID_PATTERN, (string) $payload['watermark_artifact_id'] ) )
+			) {
+				return new WP_Error(
+					'cloud_media_job_contract_invalid',
+					__( 'Media jobs require the exact artifact-referenced media_job_request.v1 contract.', 'npcink-cloud-addon' ),
+					array( 'status' => 400 )
+				);
+			}
+			if ( '' === $idempotency_key ) {
+				$idempotency_key = 'media_job_' . wp_generate_uuid4();
+			}
+
+			return $this->request( 'POST', '/v1/runtime/media/jobs', $payload, $idempotency_key, $trace_id );
+		}
+
+		/**
+		 * Uploads one bounded WordPress AI alt-text source image.
+		 *
+		 * This internal transport seam accepts bytes only from the authorized local
+		 * attachment handoff. It is not a generic caller-supplied upload API.
+		 *
+		 * @param array<string,mixed> $file Exact contents, filename, and mime_type fields.
+		 * @param string              $trace_id Optional trace id.
+		 * @param string              $idempotency_key Optional idempotency key.
+		 * @return array<string,mixed>|WP_Error
+		 * @internal Authorized local attachment handoff only.
+		 */
+		public function upload_wordpress_ai_alt_text_source( array $file, string $trace_id = '', string $idempotency_key = '' ) {
+			if ( ! class_exists( 'Npcink_Cloud_Addon_Settings' ) || ! Npcink_Cloud_Addon_Settings::is_verified() ) {
+				return new WP_Error(
+					'cloud_runtime_unverified',
+					__( 'Verify Npcink Cloud settings before uploading a WordPress AI alt-text source.', 'npcink-cloud-addon' ),
+					array( 'status' => 403 )
+				);
+			}
+
+			$allowed_file_fields = array( 'contents', 'filename', 'mime_type' );
+			if (
+				array() !== array_diff( $allowed_file_fields, array_keys( $file ) )
+				|| array() !== array_diff( array_keys( $file ), $allowed_file_fields )
+			) {
+				return new WP_Error(
+					'cloud_wp_ai_alt_text_upload_file_invalid',
+					__( 'WordPress AI alt-text uploads require exact contents, filename, and mime_type fields.', 'npcink-cloud-addon' ),
+					array( 'status' => 400 )
+				);
+			}
+
+			$contents = $file['contents'];
+			if ( ! is_string( $contents ) || '' === $contents ) {
+				return new WP_Error(
+					'cloud_wp_ai_alt_text_upload_contents_invalid',
+					__( 'WordPress AI alt-text upload contents must be a nonempty byte string.', 'npcink-cloud-addon' ),
+					array( 'status' => 400 )
+				);
+			}
+			if ( strlen( $contents ) > self::WP_AI_ALT_TEXT_MAX_UPLOAD_BYTES ) {
+				return new WP_Error(
+					'cloud_wp_ai_alt_text_upload_too_large',
+					__( 'WordPress AI alt-text upload contents exceed the 8 MiB limit.', 'npcink-cloud-addon' ),
+					array( 'status' => 413 )
+				);
+			}
+
+			if ( ! is_string( $file['filename'] ) ) {
+				return new WP_Error(
+					'cloud_wp_ai_alt_text_upload_filename_invalid',
+					__( 'WordPress AI alt-text upload filename must be a nonempty safe filename.', 'npcink-cloud-addon' ),
+					array( 'status' => 400 )
+				);
+			}
+			$filename = sanitize_file_name( $file['filename'] );
+			if ( '' === $filename || strlen( $filename ) > 160 ) {
+				return new WP_Error(
+					'cloud_wp_ai_alt_text_upload_filename_invalid',
+					__( 'WordPress AI alt-text upload filename must be a nonempty safe filename of at most 160 characters.', 'npcink-cloud-addon' ),
+					array( 'status' => 400 )
+				);
+			}
+
+			$mime_type = $file['mime_type'];
+			if ( ! is_string( $mime_type ) || ! isset( self::WP_AI_ALT_TEXT_UPLOAD_FORMATS[ $mime_type ] ) ) {
+				return new WP_Error(
+					'cloud_wp_ai_alt_text_upload_mime_type_invalid',
+					__( 'WordPress AI alt-text uploads allow only JPEG, PNG, or WebP images.', 'npcink-cloud-addon' ),
+					array( 'status' => 400 )
+				);
+			}
+
+			$multipart = $this->build_media_upload_multipart_body(
+				array(
+					'request_contract_version' => 'media_upload_request.v1',
+					'media_kind'              => 'image',
+					'ttl_minutes'             => 30,
+				),
+				$contents,
+				$filename,
+				$mime_type
+			);
+			if ( is_wp_error( $multipart ) ) {
+				return $multipart;
+			}
+			if ( '' === $idempotency_key ) {
+				$idempotency_key = 'wp_ai_alt_text_upload_' . wp_generate_uuid4();
+			}
+
+			$response = $this->request(
+				'POST',
+				'/v1/runtime/media/uploads',
+				null,
+				$idempotency_key,
+				$trace_id,
+				(string) $multipart['body'],
+				(string) $multipart['content_type']
+			);
+			if ( is_wp_error( $response ) ) {
+				return $response;
+			}
+
+			return $this->normalize_wordpress_ai_alt_text_upload_response(
+				is_array( $response ) ? $response : array(),
+				$mime_type,
+				$contents
 			);
 		}
 
@@ -559,29 +769,75 @@ if ( ! class_exists( 'Npcink_Cloud_Runtime_Client' ) ) {
 		}
 
 		/**
-		 * Downloads one short-TTL derivative artifact through a signed runtime request.
+		 * Pulls one short-TTL media artifact through the nonce-protected signed route.
 		 *
 		 * @param string $artifact_id Cloud artifact id.
 		 * @param string $trace_id Optional trace id.
 		 * @return array<string,mixed>|WP_Error
 		 */
-		public function download_media_derivative_artifact( string $artifact_id, string $trace_id = '' ) {
-			$artifact_id = $this->normalize_identifier( $artifact_id );
-			if ( '' === $artifact_id ) {
+		public function pull_media_artifact( string $artifact_id, string $trace_id = '' ) {
+			$artifact_id = sanitize_text_field( trim( $artifact_id ) );
+			if ( 1 !== preg_match( self::MEDIA_ARTIFACT_ID_PATTERN, $artifact_id ) ) {
 				return new WP_Error(
-					'cloud_runtime_artifact_missing',
-					__( 'Cloud artifact_id is required.', 'npcink-cloud-addon' ),
+					'cloud_media_artifact_id_invalid',
+					__( 'Cloud media artifact_id must use the canonical art_<32 lowercase hex> shape.', 'npcink-cloud-addon' ),
 					array( 'status' => 400 )
 				);
 			}
 
 			return $this->request_raw(
 				'GET',
-				'/v1/runtime/artifacts/' . rawurlencode( $artifact_id ) . '/download',
+				'/v1/runtime/media/artifacts/' . rawurlencode( $artifact_id ) . '/download',
 				'',
 				$trace_id,
 				'image/*'
 			);
+		}
+
+		/**
+		 * Acknowledges one independently verified media artifact transfer.
+		 *
+		 * @param string              $artifact_id Canonical Cloud artifact id.
+		 * @param array<string,mixed> $payload Exact media_artifact_delivery_ack.v1 body.
+		 * @param string              $trace_id Optional trace id.
+		 * @param string              $idempotency_key Optional independent ACK idempotency key.
+		 * @return array<string,mixed>|WP_Error
+		 */
+		public function acknowledge_media_artifact_delivery( string $artifact_id, array $payload, string $trace_id = '', string $idempotency_key = '' ) {
+			$artifact_id = sanitize_text_field( trim( $artifact_id ) );
+			$exact_keys  = array( 'contract_version', 'delivery_id', 'received_byte_size', 'received_checksum' );
+			if (
+				1 !== preg_match( self::MEDIA_ARTIFACT_ID_PATTERN, $artifact_id )
+				|| array() !== array_diff( $exact_keys, array_keys( $payload ) )
+				|| array() !== array_diff( array_keys( $payload ), $exact_keys )
+				|| 'media_artifact_delivery_ack.v1' !== (string) ( $payload['contract_version'] ?? '' )
+				|| 1 !== preg_match( self::MEDIA_DELIVERY_ID_PATTERN, (string) ( $payload['delivery_id'] ?? '' ) )
+				|| ! is_int( $payload['received_byte_size'] ?? null )
+				|| (int) $payload['received_byte_size'] <= 0
+				|| 1 !== preg_match( '/^sha256:[0-9a-f]{64}$/', (string) ( $payload['received_checksum'] ?? '' ) )
+			) {
+				return new WP_Error(
+					'cloud_media_delivery_ack_contract_invalid',
+					__( 'Media delivery acknowledgement requires the exact verified-transfer contract.', 'npcink-cloud-addon' ),
+					array( 'status' => 400 )
+				);
+			}
+			if ( '' === $idempotency_key ) {
+				$idempotency_key = 'media_delivery_ack_' . wp_generate_uuid4();
+			}
+
+			$response = $this->request(
+				'POST',
+				'/v1/runtime/media/artifacts/' . rawurlencode( $artifact_id ) . '/delivery-ack',
+				$payload,
+				$idempotency_key,
+				$trace_id
+			);
+			if ( is_wp_error( $response ) ) {
+				return $response;
+			}
+
+			return $this->normalize_media_delivery_ack_response( $response, $artifact_id, $payload );
 		}
 
 		/**
@@ -602,44 +858,6 @@ if ( ! class_exists( 'Npcink_Cloud_Runtime_Client' ) ) {
 			$path = '/v1/entitlements/current?object_type=site&object_id=' . rawurlencode( $site_id );
 
 			return $this->request( 'GET', $path, null, '', $trace_id );
-		}
-
-		/**
-		 * Reads profile stats.
-		 *
-		 * @param string $profile_id Hosted profile id.
-		 * @param string $trace_id Optional trace id.
-		 * @return array<string,mixed>|WP_Error
-		 */
-		public function get_profile_stats( string $profile_id, string $trace_id = '' ) {
-			$profile_id = $this->normalize_identifier( $profile_id );
-			if ( '' === $profile_id ) {
-				return new WP_Error(
-					'cloud_runtime_profile_missing',
-					__( 'Cloud profile_id is required.', 'npcink-cloud-addon' )
-				);
-			}
-
-			return $this->request( 'GET', '/v1/stats/profiles/' . rawurlencode( $profile_id ), null, '', $trace_id );
-		}
-
-		/**
-		 * Reads instance stats.
-		 *
-		 * @param string $instance_id Hosted instance id.
-		 * @param string $trace_id Optional trace id.
-		 * @return array<string,mixed>|WP_Error
-		 */
-		public function get_instance_stats( string $instance_id, string $trace_id = '' ) {
-			$instance_id = $this->normalize_identifier( $instance_id );
-			if ( '' === $instance_id ) {
-				return new WP_Error(
-					'cloud_runtime_instance_missing',
-					__( 'Cloud instance_id is required.', 'npcink-cloud-addon' )
-				);
-			}
-
-			return $this->request( 'GET', '/v1/stats/instances/' . rawurlencode( $instance_id ), null, '', $trace_id );
 		}
 
 		/**
@@ -751,8 +969,7 @@ if ( ! class_exists( 'Npcink_Cloud_Runtime_Client' ) ) {
 			}
 
 			$method = strtoupper( trim( $method ) );
-			$path = '/' . ltrim( trim( $path ), '/' );
-			if ( ! $this->is_allowed_request_path( $method, $path ) ) {
+			if ( ! Npcink_Cloud_Runtime_Endpoint_Policy::allows( $method, $path ) ) {
 				return new WP_Error(
 					'cloud_runtime_endpoint_not_allowed',
 					__( 'This Cloud endpoint is not allowed by the Cloud Addon runtime contract.', 'npcink-cloud-addon' ),
@@ -799,8 +1016,26 @@ if ( ! class_exists( 'Npcink_Cloud_Runtime_Client' ) ) {
 				$args['body'] = $body;
 			}
 
-			$response = wp_remote_request( $this->build_request_url( $path ), $args );
+			$response = Npcink_Cloud_Outbound_Policy::request_json(
+				$this->build_request_url( $path ),
+				$args,
+				self::MAX_JSON_RESPONSE_BYTES
+			);
 			if ( is_wp_error( $response ) ) {
+				if ( 'cloud_outbound_response_too_large' === $response->get_error_code() ) {
+					return new WP_Error(
+						'cloud_runtime_response_too_large',
+						__( 'Cloud runtime response exceeds the local size limit.', 'npcink-cloud-addon' ),
+						array( 'status' => 413 )
+					);
+				}
+				if ( 'cloud_outbound_response_type_invalid' === $response->get_error_code() ) {
+					return new WP_Error(
+						'cloud_runtime_response_invalid',
+						__( 'Cloud runtime response was not valid JSON.', 'npcink-cloud-addon' ),
+						array( 'status' => 502 )
+					);
+				}
 				return new WP_Error(
 					'cloud_runtime_request_failed',
 					$this->format_transport_error_message( $response->get_error_message() ),
@@ -831,8 +1066,7 @@ if ( ! class_exists( 'Npcink_Cloud_Runtime_Client' ) ) {
 			}
 
 			$method = strtoupper( trim( $method ) );
-			$path   = '/' . ltrim( trim( $path ), '/' );
-			if ( ! $this->is_allowed_request_path( $method, $path ) ) {
+			if ( ! Npcink_Cloud_Runtime_Endpoint_Policy::allows( $method, $path ) ) {
 				return new WP_Error(
 					'cloud_runtime_endpoint_not_allowed',
 					__( 'This Cloud endpoint is not allowed by the Cloud Addon runtime contract.', 'npcink-cloud-addon' ),
@@ -846,16 +1080,24 @@ if ( ! class_exists( 'Npcink_Cloud_Runtime_Client' ) ) {
 			$headers['Accept'] = sanitize_text_field( $accept );
 			unset( $headers['Content-Type'] );
 
-			$response = wp_remote_request(
+			$response = Npcink_Cloud_Outbound_Policy::request_raw(
 				$this->build_request_url( $path ),
 				array(
 					'method'  => $method,
 					'timeout' => max( 5, absint( $this->config['timeout'] ?? 8 ) ),
 					'limit_response_size' => self::MAX_DOWNLOAD_BYTES,
 					'headers' => $headers,
-				)
+				),
+				self::MAX_DOWNLOAD_BYTES
 			);
 			if ( is_wp_error( $response ) ) {
+				if ( 'cloud_outbound_response_too_large' === $response->get_error_code() ) {
+					return new WP_Error(
+						'cloud_runtime_artifact_too_large',
+						__( 'Cloud artifact download exceeds the local preview size limit.', 'npcink-cloud-addon' ),
+						array( 'status' => 413 )
+					);
+				}
 				return new WP_Error(
 					'cloud_runtime_request_failed',
 					$this->format_transport_error_message( $response->get_error_message() ),
@@ -880,15 +1122,17 @@ if ( ! class_exists( 'Npcink_Cloud_Runtime_Client' ) ) {
 				);
 			}
 
-			$response = wp_remote_get(
+			$response = Npcink_Cloud_Outbound_Policy::request_json(
 				$base_url . '/health/live',
 				array(
+					'method'  => 'GET',
 					'timeout' => max( 5, absint( $this->config['timeout'] ?? 8 ) ),
 					'limit_response_size' => self::MAX_JSON_RESPONSE_BYTES,
 					'headers' => array(
 						'Accept' => 'application/json',
 					),
-				)
+				),
+				self::MAX_JSON_RESPONSE_BYTES
 			);
 
 			if ( is_wp_error( $response ) ) {
@@ -1311,7 +1555,7 @@ if ( ! class_exists( 'Npcink_Cloud_Runtime_Client' ) ) {
 				);
 			}
 
-			return $this->normalize_runtime_artifact_urls( $decoded );
+			return $decoded;
 		}
 
 		/**
@@ -1360,52 +1604,11 @@ if ( ! class_exists( 'Npcink_Cloud_Runtime_Client' ) ) {
 				'body'           => $body,
 				'content_type'   => $content_type,
 				'content_length' => $content_len,
+				'artifact_id'    => $this->response_header( $response, 'x-npcink-artifact-id' ),
+				'artifact_checksum' => $this->response_header( $response, 'x-npcink-artifact-checksum' ),
+				'delivery_id'    => $this->response_header( $response, 'x-npcink-delivery-id' ),
+				'delivery_ack_deadline' => $this->response_header( $response, 'x-npcink-delivery-ack-deadline' ),
 			);
-		}
-
-		/**
-		 * Converts Cloud runtime artifact paths into absolute Cloud URLs.
-		 *
-		 * Runtime responses may return short TTL artifact paths such as
-		 * /v1/runtime/artifacts/{id}/download or tokenized public-download
-		 * paths. WordPress editor surfaces need absolute URLs for media
-		 * preview controls.
-		 *
-		 * @param mixed $value Decoded Cloud response value.
-		 * @return mixed
-		 */
-		private function normalize_runtime_artifact_urls( $value ) {
-			if ( is_string( $value ) ) {
-				return $this->absolute_runtime_artifact_url( $value );
-			}
-			if ( ! is_array( $value ) ) {
-				return $value;
-			}
-
-			$next = array();
-			foreach ( $value as $key => $item ) {
-				$next[ $key ] = $this->normalize_runtime_artifact_urls( $item );
-			}
-			return $next;
-		}
-
-		/**
-		 * Builds an absolute Cloud URL for one runtime artifact path.
-		 *
-		 * @param string $value Decoded scalar value.
-		 * @return string
-		 */
-		private function absolute_runtime_artifact_url( string $value ): string {
-			if ( 1 !== preg_match( '#^/v1/runtime/artifacts/[A-Za-z0-9._:-]+/(?:download|public-download)(?:\\?token=[A-Za-z0-9._~-]+)?$#', $value ) ) {
-				return $value;
-			}
-
-			$base_url = untrailingslashit( (string) ( $this->config['base_url'] ?? '' ) );
-			if ( '' === $base_url ) {
-				return $value;
-			}
-
-			return esc_url_raw( $base_url . $value );
 		}
 
 		/**
@@ -1510,58 +1713,6 @@ if ( ! class_exists( 'Npcink_Cloud_Runtime_Client' ) ) {
 		}
 
 		/**
-		 * Returns whether one signed request path is within the Addon contract.
-		 *
-		 * @param string $method HTTP method.
-		 * @param string $path Relative path with optional query.
-		 * @return bool
-		 */
-		private function is_allowed_request_path( string $method, string $path ): bool {
-			$method = strtoupper( $method );
-			$path_only = wp_parse_url( $path, PHP_URL_PATH );
-			$path_only = is_string( $path_only ) ? $path_only : $path;
-
-			if ( 'POST' === $method && '/v1/runtime/execute' === $path_only ) {
-				return true;
-			}
-			if ( 'POST' === $method && '/v1/runtime/media-derivatives' === $path_only ) {
-				return true;
-			}
-			if ( 'GET' === $method && '/v1/entitlements/current' === $path_only ) {
-				return true;
-			}
-			if ( 'GET' === $method && 1 === preg_match( '#^/v1/runs/[A-Za-z0-9._:-]+(?:/result)?$#', $path_only ) ) {
-				return true;
-			}
-			if ( 'GET' === $method && '/v1/runs/nightly-inspection/recent' === $path_only ) {
-				return true;
-			}
-			if ( 'POST' === $method && 1 === preg_match( '#^/v1/runs/[A-Za-z0-9._:-]+/retry$#', $path_only ) ) {
-				return true;
-			}
-			if ( 'GET' === $method && 1 === preg_match( '#^/v1/runtime/artifacts/[A-Za-z0-9._:-]+/download$#', $path_only ) ) {
-				return true;
-			}
-			if ( 'GET' === $method && 1 === preg_match( '#^/v1/stats/(?:profiles|instances)/[A-Za-z0-9._:-]+$#', $path_only ) ) {
-				return true;
-			}
-			if ( 'POST' === $method && '/v1/observability/plugin-events' === $path_only ) {
-				return true;
-			}
-			if ( 'POST' === $method && '/v1/agent-feedback/events' === $path_only ) {
-				return true;
-			}
-			if ( 'GET' === $method && '/v1/agent-feedback/summary' === $path_only ) {
-				return true;
-			}
-			if ( 'GET' === $method && '/v1/observability/plugin-summary' === $path_only ) {
-				return true;
-			}
-
-			return false;
-		}
-
-		/**
 		 * Builds signed Cloud headers.
 		 *
 		 * @param string $method HTTP method.
@@ -1574,7 +1725,7 @@ if ( ! class_exists( 'Npcink_Cloud_Runtime_Client' ) ) {
 		private function build_signed_headers( string $method, string $path, string $body, string $idempotency_key, string $trace_id, string $content_type = 'application/json' ): array {
 			$timestamp = (string) time();
 			$traceparent = $this->build_traceparent( $trace_id );
-			$nonce = $this->build_request_nonce( $method, $trace_id, $idempotency_key );
+			$nonce = $this->build_request_nonce( $method, $path );
 			$body_digest = hash( 'sha256', $body );
 			$canonical = implode(
 				"\n",
@@ -1614,45 +1765,244 @@ if ( ! class_exists( 'Npcink_Cloud_Runtime_Client' ) ) {
 		}
 
 		/**
-		 * Builds a bounded multipart body for the media derivative endpoint.
+		 * Builds the fixed two-part media upload body.
 		 *
-		 * @param array<string,mixed> $payload Media derivative JSON request.
-		 * @param array<string,array<string,string>> $files Multipart files.
+		 * @param array<string,mixed> $payload Upload request payload.
+		 * @param string              $contents Image bytes.
+		 * @param string              $filename Sanitized filename.
+		 * @param string              $mime_type Allowed image MIME type.
 		 * @return array{body:string,content_type:string}|WP_Error
 		 */
-		private function build_media_derivative_multipart_body( array $payload, array $files ) {
+		private function build_media_upload_multipart_body( array $payload, string $contents, string $filename, string $mime_type ) {
 			$encoded = wp_json_encode( $payload );
 			if ( ! is_string( $encoded ) || '' === $encoded ) {
 				return new WP_Error(
 					'cloud_runtime_encode_failed',
-					__( 'Cloud media derivative request payload could not be encoded.', 'npcink-cloud-addon' )
+					__( 'Cloud media upload request could not be encoded.', 'npcink-cloud-addon' )
 				);
 			}
 
-			$boundary = 'npcink-cloud-addon-' . wp_generate_uuid4();
+			$boundary = 'npcink-cloud-addon-media-' . wp_generate_uuid4();
 			$body = '--' . $boundary . "\r\n";
 			$body .= "Content-Disposition: form-data; name=\"request\"\r\n";
 			$body .= "Content-Type: application/json\r\n\r\n";
 			$body .= $encoded . "\r\n";
-
-			foreach ( array( 'source_file', 'watermark_file' ) as $field_name ) {
-				if ( empty( $files[ $field_name ]['contents'] ) ) {
-					continue;
-				}
-
-				$filename = sanitize_file_name( (string) ( $files[ $field_name ]['filename'] ?? $field_name ) );
-				$mime_type = sanitize_text_field( (string) ( $files[ $field_name ]['mime_type'] ?? 'application/octet-stream' ) );
-				$body .= '--' . $boundary . "\r\n";
-				$body .= 'Content-Disposition: form-data; name="' . $field_name . '"; filename="' . $filename . "\"\r\n";
-				$body .= 'Content-Type: ' . $mime_type . "\r\n\r\n";
-				$body .= (string) $files[ $field_name ]['contents'] . "\r\n";
-			}
-
+			$body .= '--' . $boundary . "\r\n";
+			$body .= 'Content-Disposition: form-data; name="file"; filename="' . $filename . "\"\r\n";
+			$body .= 'Content-Type: ' . $mime_type . "\r\n\r\n";
+			$body .= $contents . "\r\n";
 			$body .= '--' . $boundary . "--\r\n";
 
 			return array(
 				'body'         => $body,
 				'content_type' => 'multipart/form-data; boundary=' . $boundary,
+			);
+		}
+
+		/**
+		 * Validates one exact media_upload_result.v1 response.
+		 *
+		 * @param array<string,mixed> $response Decoded Cloud response.
+		 * @param string              $mime_type Requested MIME type.
+		 * @param string              $contents Uploaded bytes.
+		 * @return array<string,mixed>|WP_Error
+		 */
+		private function normalize_media_upload_response( array $response, string $mime_type, string $contents ) {
+			$result   = $response['data']['result'] ?? null;
+			$artifact = is_array( $result ) ? ( $result['artifact'] ?? null ) : null;
+			$expires_at = is_array( $artifact ) && is_string( $artifact['expires_at'] ?? null )
+				? $artifact['expires_at']
+				: '';
+			$expires_timestamp = 1 === preg_match( '/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})$/', $expires_at )
+				? strtotime( $expires_at )
+				: false;
+			$expected_format = self::MEDIA_UPLOAD_FORMATS[ $mime_type ] ?? '';
+			$result_keys = array( 'artifact_type', 'contract_version', 'artifact' );
+			$artifact_keys = array( 'artifact_id', 'media_kind', 'status', 'content_type', 'format', 'width', 'height', 'filesize_bytes', 'checksum', 'expires_at', 'purged_at' );
+			$is_valid = is_array( $result )
+				&& count( $result_keys ) === count( $result )
+				&& array() === array_diff( $result_keys, array_keys( $result ) )
+				&& array() === array_diff( array_keys( $result ), $result_keys )
+				&& 'media_upload_artifact' === ( $result['artifact_type'] ?? null )
+				&& 'media_upload_result.v1' === ( $result['contract_version'] ?? null )
+				&& is_array( $artifact )
+				&& count( $artifact_keys ) === count( $artifact )
+				&& array() === array_diff( $artifact_keys, array_keys( $artifact ) )
+				&& array() === array_diff( array_keys( $artifact ), $artifact_keys )
+				&& is_string( $artifact['artifact_id'] ?? null )
+				&& 1 === preg_match( self::MEDIA_ARTIFACT_ID_PATTERN, $artifact['artifact_id'] )
+				&& 'image' === ( $artifact['media_kind'] ?? null )
+				&& 'available' === ( $artifact['status'] ?? null )
+				&& null === ( $artifact['purged_at'] ?? null )
+				&& $mime_type === ( $artifact['content_type'] ?? null )
+				&& $expected_format === ( $artifact['format'] ?? null )
+				&& is_int( $artifact['width'] ?? null )
+				&& $artifact['width'] > 0
+				&& is_int( $artifact['height'] ?? null )
+				&& $artifact['height'] > 0
+				&& is_int( $artifact['filesize_bytes'] ?? null )
+				&& strlen( $contents ) === $artifact['filesize_bytes']
+				&& is_string( $artifact['checksum'] ?? null )
+				&& 'sha256:' . hash( 'sha256', $contents ) === $artifact['checksum']
+				&& false !== $expires_timestamp
+				&& $expires_timestamp > time();
+
+			if ( ! $is_valid ) {
+				return new WP_Error(
+					'cloud_media_upload_artifact_invalid',
+					__( 'Cloud returned an invalid media upload artifact.', 'npcink-cloud-addon' ),
+					array( 'status' => 502 )
+				);
+			}
+
+			return $artifact;
+		}
+
+		/**
+		 * Validates the exact Cloud transfer-only acknowledgement projection.
+		 *
+		 * @param array<string,mixed> $response Decoded Cloud response.
+		 * @param string              $artifact_id Expected artifact id.
+		 * @param array<string,mixed> $request Exact ACK request.
+		 * @return array<string,mixed>|WP_Error
+		 */
+		private function normalize_media_delivery_ack_response( array $response, string $artifact_id, array $request ) {
+			$data = $response['data'] ?? null;
+			$keys = array(
+				'contract_version',
+				'delivery_id',
+				'artifact_id',
+				'status',
+				'received_byte_size',
+				'received_checksum',
+				'byte_size_verified',
+				'checksum_verified',
+				'acknowledged_at',
+				'artifact_expires_at',
+				'idempotent_replay',
+				'acknowledgement_scope',
+			);
+			$is_valid = is_array( $data )
+				&& count( $keys ) === count( $data )
+				&& array() === array_diff( $keys, array_keys( $data ) )
+				&& array() === array_diff( array_keys( $data ), $keys )
+				&& 'media_artifact_delivery_ack.v1' === ( $data['contract_version'] ?? null )
+				&& (string) ( $request['delivery_id'] ?? '' ) === ( $data['delivery_id'] ?? null )
+				&& $artifact_id === ( $data['artifact_id'] ?? null )
+				&& 'acknowledged' === ( $data['status'] ?? null )
+				&& (int) ( $request['received_byte_size'] ?? -1 ) === ( $data['received_byte_size'] ?? null )
+				&& (string) ( $request['received_checksum'] ?? '' ) === ( $data['received_checksum'] ?? null )
+				&& true === ( $data['byte_size_verified'] ?? null )
+				&& true === ( $data['checksum_verified'] ?? null )
+				&& is_string( $data['acknowledged_at'] ?? null )
+				&& false !== self::strict_media_timestamp( (string) $data['acknowledged_at'] )
+				&& is_string( $data['artifact_expires_at'] ?? null )
+				&& false !== self::strict_media_timestamp( (string) $data['artifact_expires_at'] )
+				&& is_bool( $data['idempotent_replay'] ?? null )
+				&& 'verified_transfer_only' === ( $data['acknowledgement_scope'] ?? null );
+
+			if ( ! $is_valid ) {
+				return new WP_Error(
+					'cloud_media_delivery_ack_response_invalid',
+					__( 'Cloud returned an invalid media delivery acknowledgement.', 'npcink-cloud-addon' ),
+					array( 'status' => 502 )
+				);
+			}
+
+			return $data;
+		}
+
+		/**
+		 * Parses exact canonical UTC RFC3339 media timestamps.
+		 *
+		 * @param string $value Timestamp.
+		 * @return int|false
+		 */
+		private static function strict_media_timestamp( string $value ) {
+			$utc = new DateTimeZone( 'UTC' );
+			$formats = array(
+				'!Y-m-d\TH:i:s\Z'   => 'Y-m-d\TH:i:s\Z',
+				'!Y-m-d\TH:i:sP'    => 'Y-m-d\TH:i:sP',
+				'!Y-m-d\TH:i:s.u\Z' => 'Y-m-d\TH:i:s.u\Z',
+				'!Y-m-d\TH:i:s.uP'  => 'Y-m-d\TH:i:s.uP',
+			);
+
+			foreach ( $formats as $parse_format => $roundtrip_format ) {
+				$timestamp = DateTimeImmutable::createFromFormat( $parse_format, $value, $utc );
+				$errors    = DateTimeImmutable::getLastErrors();
+				if (
+					false === $timestamp
+					|| ( is_array( $errors ) && ( $errors['warning_count'] > 0 || $errors['error_count'] > 0 ) )
+					|| 0 !== $timestamp->getOffset()
+					|| $value !== $timestamp->format( $roundtrip_format )
+				) {
+					continue;
+				}
+
+				return $timestamp->getTimestamp();
+			}
+
+			return false;
+		}
+
+		/**
+		 * Validates one Cloud alt-text upload artifact response.
+		 *
+		 * @param array<string,mixed> $response Decoded Cloud response.
+		 * @param string              $mime_type Requested MIME type.
+		 * @param string              $contents Uploaded image bytes.
+		 * @return array<string,mixed>|WP_Error
+		 */
+		private function normalize_wordpress_ai_alt_text_upload_response( array $response, string $mime_type, string $contents ) {
+			$result   = $response['data']['result'] ?? null;
+			$artifact = is_array( $result ) ? ( $result['artifact'] ?? null ) : null;
+			$expires_at = is_array( $artifact ) && is_string( $artifact['expires_at'] ?? null )
+				? $artifact['expires_at']
+				: '';
+			$expires_timestamp = 1 === preg_match( '/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})$/', $expires_at )
+				? strtotime( $expires_at )
+				: false;
+			$expected_format = self::WP_AI_ALT_TEXT_UPLOAD_FORMATS[ $mime_type ];
+			$is_valid = is_array( $result )
+				&& 'media_upload_artifact' === ( $result['artifact_type'] ?? null )
+				&& 'media_upload_result.v1' === ( $result['contract_version'] ?? null )
+				&& is_array( $artifact )
+				&& is_string( $artifact['artifact_id'] ?? null )
+				&& 1 === preg_match( '/^art_[0-9a-f]{32}$/', $artifact['artifact_id'] )
+				&& 'image' === ( $artifact['media_kind'] ?? null )
+				&& 'available' === ( $artifact['status'] ?? null )
+				&& $mime_type === ( $artifact['content_type'] ?? null )
+				&& $expected_format === ( $artifact['format'] ?? null )
+				&& is_int( $artifact['width'] ?? null )
+				&& $artifact['width'] > 0
+				&& is_int( $artifact['height'] ?? null )
+				&& $artifact['height'] > 0
+				&& is_int( $artifact['filesize_bytes'] ?? null )
+				&& strlen( $contents ) === $artifact['filesize_bytes']
+				&& is_string( $artifact['checksum'] ?? null )
+				&& 'sha256:' . hash( 'sha256', $contents ) === $artifact['checksum']
+				&& false !== $expires_timestamp
+				&& $expires_timestamp > time() + self::WP_AI_ALT_TEXT_MIN_ARTIFACT_TTL_SECONDS;
+
+			if ( ! $is_valid ) {
+				return new WP_Error(
+					'cloud_wp_ai_alt_text_upload_artifact_invalid',
+					__( 'Cloud returned an invalid WordPress AI alt-text source artifact.', 'npcink-cloud-addon' ),
+					array( 'status' => 502 )
+				);
+			}
+
+			return array(
+				'artifact_id'    => $artifact['artifact_id'],
+				'media_kind'     => 'image',
+				'status'         => 'available',
+				'content_type'   => $mime_type,
+				'format'         => $expected_format,
+				'width'          => $artifact['width'],
+				'height'         => $artifact['height'],
+				'filesize_bytes' => $artifact['filesize_bytes'],
+				'checksum'       => $artifact['checksum'],
+				'expires_at'     => $expires_at,
 			);
 		}
 
@@ -1663,19 +2013,34 @@ if ( ! class_exists( 'Npcink_Cloud_Runtime_Client' ) ) {
 		 * @return array<string,mixed>|WP_Error
 		 */
 		private function normalize_wordpress_ai_connector_request( array $request ) {
-			$contract_version = (string) ( $request['contract_version'] ?? self::WP_AI_CONNECTOR_CONTRACT );
-			if ( self::WP_AI_CONNECTOR_CONTRACT !== $contract_version ) {
+			$contract_version = (string) ( $request['contract_version'] ?? '' );
+			if ( self::CLOUD_CONNECTOR_RUNTIME_CONTRACT !== $contract_version ) {
 				return new WP_Error(
 					'cloud_wp_ai_connector_contract_invalid',
-					__( 'WordPress AI connector requests require the wp_ai_connector_runtime.v1 contract.', 'npcink-cloud-addon' ),
+					__( 'WordPress AI connector requests require the cloud_connector_runtime.v1 contract.', 'npcink-cloud-addon' ),
 					array( 'status' => 400 )
 				);
 			}
 
-			$task          = sanitize_key( (string) ( $request['task'] ?? ( $request['feature_id'] ?? '' ) ) );
+			$operation_contract = is_array( $request['operation_contract'] ?? null ) ? $request['operation_contract'] : array();
+			if (
+				self::WORDPRESS_OPERATION_CONTRACT !== (string) ( $operation_contract['contract_version'] ?? '' )
+				|| array() !== array_diff( array( 'contract_version', 'task', 'request' ), array_keys( $operation_contract ) )
+				|| array() !== array_diff( array_keys( $operation_contract ), array( 'contract_version', 'task', 'request' ) )
+				|| ! is_array( $operation_contract['request'] ?? null )
+			) {
+				return new WP_Error(
+					'cloud_wp_ai_connector_operation_contract_invalid',
+					__( 'WordPress AI connector requests require one wordpress_operation.v1 operation contract.', 'npcink-cloud-addon' ),
+					array( 'status' => 400 )
+				);
+			}
+
+			$task          = sanitize_key( (string) ( $operation_contract['task'] ?? '' ) );
+			$scene_request = $operation_contract['request'];
 			$task_contract = null;
-			if ( is_array( $request['task_contract'] ?? null ) ) {
-				$task_contract = Npcink_Cloud_AI_Task_Contract::normalize( $request['task_contract'] );
+			if ( is_array( $scene_request['task_contract'] ?? null ) ) {
+				$task_contract = Npcink_Cloud_AI_Task_Contract::normalize( $scene_request['task_contract'] );
 				if ( is_wp_error( $task_contract ) ) {
 					return $task_contract;
 				}
@@ -1715,8 +2080,7 @@ if ( ! class_exists( 'Npcink_Cloud_Runtime_Client' ) ) {
 					array( 'status' => 400 )
 				);
 			}
-			$max_request_bytes = 'alt_text_suggest' === $task ? self::WP_AI_CONNECTOR_ALT_TEXT_MAX_REQUEST_BYTES : self::WP_AI_CONNECTOR_MAX_REQUEST_BYTES;
-			if ( strlen( $encoded_request ) > $max_request_bytes ) {
+			if ( strlen( $encoded_request ) > self::WP_AI_CONNECTOR_MAX_REQUEST_BYTES ) {
 				return new WP_Error(
 					'cloud_wp_ai_connector_request_too_large',
 					__( 'WordPress AI connector request exceeds the scene runtime size limit.', 'npcink-cloud-addon' ),
@@ -1724,8 +2088,59 @@ if ( ! class_exists( 'Npcink_Cloud_Runtime_Client' ) ) {
 				);
 			}
 
-			$prompt = (string) ( $request['prompt'] ?? '' );
-			if ( '' !== $prompt && $this->text_length( $prompt ) > self::WP_AI_CONNECTOR_MAX_PROMPT_CHARS ) {
+			if ( 'alt_text_suggest' === $task ) {
+				$scene_request = $this->normalize_wordpress_ai_alt_text_request( $scene_request );
+				if ( is_wp_error( $scene_request ) ) {
+					return $scene_request;
+				}
+			}
+
+			if ( in_array( $task, self::WP_AI_CONNECTOR_SOURCE_TEXT_TASKS, true ) ) {
+				foreach ( array( 'prompt', 'post_title', 'post_excerpt' ) as $forbidden_text_field ) {
+					if ( array_key_exists( $forbidden_text_field, $scene_request ) ) {
+						return new WP_Error(
+							'cloud_wp_ai_connector_source_text_shape_invalid',
+							__( 'WordPress AI title, summary, and rewrite requests require source_text without legacy prompt or post fields.', 'npcink-cloud-addon' ),
+							array( 'status' => 400 )
+						);
+					}
+				}
+				if ( ! is_string( $scene_request['source_text'] ?? null ) || '' === trim( $scene_request['source_text'] ) ) {
+					return new WP_Error(
+						'cloud_wp_ai_connector_source_text_required',
+						__( 'WordPress AI title, summary, and rewrite requests require nonempty source_text.', 'npcink-cloud-addon' ),
+						array( 'status' => 400 )
+					);
+				}
+				$scene_request['source_text'] = trim( $scene_request['source_text'] );
+				if ( $this->text_length( $scene_request['source_text'] ) > self::WP_AI_CONNECTOR_MAX_SCENE_TEXT_CHARS ) {
+					return new WP_Error(
+						'cloud_wp_ai_connector_source_text_too_large',
+						__( 'WordPress AI source_text exceeds the scene runtime size limit.', 'npcink-cloud-addon' ),
+						array( 'status' => 413 )
+					);
+				}
+				if ( array_key_exists( 'system_instruction', $scene_request ) ) {
+					if ( ! is_string( $scene_request['system_instruction'] ) ) {
+						return new WP_Error(
+							'cloud_wp_ai_connector_system_instruction_invalid',
+							__( 'WordPress AI system_instruction must be a string.', 'npcink-cloud-addon' ),
+							array( 'status' => 400 )
+						);
+					}
+					$scene_request['system_instruction'] = trim( $scene_request['system_instruction'] );
+					if ( $this->text_length( $scene_request['system_instruction'] ) > self::WP_AI_CONNECTOR_MAX_SCENE_TEXT_CHARS ) {
+						return new WP_Error(
+							'cloud_wp_ai_connector_system_instruction_too_large',
+							__( 'WordPress AI system_instruction exceeds the scene runtime size limit.', 'npcink-cloud-addon' ),
+							array( 'status' => 413 )
+						);
+					}
+				}
+			}
+
+			$prompt = (string) ( $scene_request['prompt'] ?? '' );
+			if ( '' !== $prompt && $this->text_length( $prompt ) > self::WP_AI_CONNECTOR_MAX_SCENE_TEXT_CHARS ) {
 				return new WP_Error(
 					'cloud_wp_ai_connector_prompt_too_large',
 					__( 'WordPress AI connector prompt exceeds the scene runtime size limit.', 'npcink-cloud-addon' ),
@@ -1737,12 +2152,11 @@ if ( ! class_exists( 'Npcink_Cloud_Runtime_Client' ) ) {
 			$retention_ttl   = absint( $request['retention_ttl'] ?? self::WP_AI_CONNECTOR_MAX_RETENTION_TTL );
 			$retry_max       = absint( $request['retry_max'] ?? 0 );
 			$profile_id      = $this->normalize_identifier( (string) ( $request['profile_id'] ?? 'text.balanced' ) );
-			$input           = is_array( $request['input'] ?? null ) ? $request['input'] : array();
 			if ( null !== $task_contract ) {
-				$input['task_contract'] = $task_contract;
+				$scene_request['task_contract'] = $task_contract;
 			}
 			$site_knowledge_reference = $this->normalize_wordpress_ai_site_knowledge_reference(
-				$input['site_knowledge_reference'] ?? null,
+				$scene_request['site_knowledge_reference'] ?? null,
 				$task,
 				is_array( $task_contract ) ? $task_contract : array()
 			);
@@ -1750,33 +2164,57 @@ if ( ! class_exists( 'Npcink_Cloud_Runtime_Client' ) ) {
 				return $site_knowledge_reference;
 			}
 			if ( null !== $site_knowledge_reference ) {
-				$input['site_knowledge_reference'] = $site_knowledge_reference;
+				$scene_request['site_knowledge_reference'] = $site_knowledge_reference;
 			}
 
-			if ( '' !== $prompt ) {
-				$input['prompt'] = $prompt;
+			$site_id = $this->normalize_identifier( (string) ( $this->config['site_id'] ?? '' ) );
+			if ( '' === $site_id ) {
+				return new WP_Error(
+					'cloud_wp_ai_connector_site_id_required',
+					__( 'WordPress AI connector requests require a verified Cloud site_id.', 'npcink-cloud-addon' ),
+					array( 'status' => 400 )
+				);
 			}
+			$site_url = function_exists( 'home_url' ) ? untrailingslashit( home_url( '/' ) ) : '';
+			if ( '' === $site_url ) {
+				return new WP_Error(
+					'cloud_wp_ai_connector_site_url_required',
+					__( 'WordPress AI connector requests require the canonical WordPress site URL.', 'npcink-cloud-addon' ),
+					array( 'status' => 400 )
+				);
+			}
+			$connector_version = defined( 'NPCINK_CLOUD_ADDON_VERSION' ) ? (string) NPCINK_CLOUD_ADDON_VERSION : '';
+			if ( '' === $connector_version ) {
+				return new WP_Error(
+					'cloud_wp_ai_connector_version_required',
+					__( 'WordPress AI connector requests require the active addon version.', 'npcink-cloud-addon' ),
+					array( 'status' => 400 )
+				);
+			}
+			$is_alt_text = 'alt_text_suggest' === $task;
 
 			return array(
-				'ability_name'        => 'npcink-cloud/wp-ai-connector',
-				'ability_family'      => 'text',
-				'contract_version'    => self::WP_AI_CONNECTOR_CONTRACT,
-				'channel'             => 'wordpress_ai_connector',
-				'execution_kind'      => 'wordpress_ai_connector',
+				'site_id'             => $site_id,
+				'ability_name'        => 'npcink-cloud/connector-runtime',
+				'ability_family'      => $is_alt_text ? 'vision' : 'text',
+				'contract_version'    => self::CLOUD_CONNECTOR_RUNTIME_CONTRACT,
+				'channel'             => 'editor',
+				'execution_kind'      => $is_alt_text ? 'vision' : 'text',
 				'execution_pattern'   => 'inline',
 				'profile_id'          => '' !== $profile_id ? $profile_id : 'text.balanced',
 				'input'               => array(
-					'contract_version'           => self::WP_AI_CONNECTOR_CONTRACT,
-					'source_surface'             => 'wordpress_ai_connector',
-					'connector_id'                => 'npcink-cloud',
-					'task'                        => $task,
-					'write_posture'               => 'suggestion_only',
-					'direct_wordpress_write'      => false,
-					'no_conversation'             => true,
-					'expected_response_contract'  => 'wp_ai_connector_result.v1',
-					'request'                     => $input,
+					'site_url'           => $site_url,
+					'platform_kind'      => 'wordpress',
+					'connector_id'       => 'npcink-cloud-addon',
+					'connector_version'  => $connector_version,
+					'suggestion_only'    => true,
+					'operation_contract' => array(
+						'contract_version' => self::WORDPRESS_OPERATION_CONTRACT,
+						'task'             => $task,
+						'request'          => $scene_request,
+					),
 				),
-				'data_classification' => 'public_site_content',
+				'data_classification' => $is_alt_text ? 'internal' : 'public_site_content',
 				'storage_mode'        => 'result_only',
 				'retention_ttl'       => min( self::WP_AI_CONNECTOR_MAX_RETENTION_TTL, max( 0, $retention_ttl ) ),
 				'timeout_seconds'     => min( self::WP_AI_CONNECTOR_MAX_TIMEOUT_SECONDS, max( 1, $timeout_seconds ) ),
@@ -1785,6 +2223,79 @@ if ( ! class_exists( 'Npcink_Cloud_Runtime_Client' ) ) {
 					'allow_fallback' => false,
 				),
 			);
+		}
+
+		/**
+		 * Normalizes the Artifact-id-only WordPress AI alt-text scene request.
+		 *
+		 * @param array<string,mixed> $request Raw alt-text scene request.
+		 * @return array<string,mixed>|WP_Error
+		 */
+		private function normalize_wordpress_ai_alt_text_request( array $request ) {
+			$allowed_fields = array( 'source_artifact_id', 'prompt', 'filename', 'title', 'existing_alt', 'existing_caption', 'locale', 'max_tokens' );
+			if ( array() !== array_diff( array_keys( $request ), $allowed_fields ) ) {
+				return new WP_Error(
+					'cloud_wp_ai_alt_text_request_fields_not_allowed',
+					__( 'WordPress AI alt-text requests accept only an Artifact id and bounded text context.', 'npcink-cloud-addon' ),
+					array( 'status' => 400 )
+				);
+			}
+
+			$source_artifact_id = $request['source_artifact_id'] ?? null;
+			if ( ! is_string( $source_artifact_id ) || 1 !== preg_match( '/^art_[0-9a-f]{32}$/', $source_artifact_id ) ) {
+				return new WP_Error(
+					'cloud_wp_ai_alt_text_source_artifact_id_invalid',
+					__( 'WordPress AI alt-text requests require a valid source_artifact_id.', 'npcink-cloud-addon' ),
+					array( 'status' => 400 )
+				);
+			}
+
+			$prompt = $request['prompt'] ?? null;
+			if ( ! is_string( $prompt ) || '' === trim( $prompt ) || $this->text_length( trim( $prompt ) ) > 500 ) {
+				return new WP_Error(
+					'cloud_wp_ai_alt_text_prompt_invalid',
+					__( 'WordPress AI alt-text prompt must be a nonempty string of at most 500 characters.', 'npcink-cloud-addon' ),
+					array( 'status' => 400 )
+				);
+			}
+
+			$normalized = array(
+				'source_artifact_id' => $source_artifact_id,
+				'prompt'              => trim( $prompt ),
+			);
+			$field_limits = array(
+				'filename'         => 160,
+				'title'            => 160,
+				'existing_alt'     => 240,
+				'existing_caption' => 240,
+				'locale'           => 32,
+			);
+			foreach ( $field_limits as $field => $limit ) {
+				if ( ! array_key_exists( $field, $request ) ) {
+					continue;
+				}
+				if ( ! is_string( $request[ $field ] ) || $this->text_length( $request[ $field ] ) > $limit ) {
+					return new WP_Error(
+						'cloud_wp_ai_alt_text_context_invalid',
+						__( 'WordPress AI alt-text context fields must be bounded strings.', 'npcink-cloud-addon' ),
+						array( 'status' => 400, 'field' => $field )
+					);
+				}
+				$normalized[ $field ] = $request[ $field ];
+			}
+
+			if ( array_key_exists( 'max_tokens', $request ) ) {
+				if ( ! is_int( $request['max_tokens'] ) || $request['max_tokens'] < 1 || $request['max_tokens'] > 96 ) {
+					return new WP_Error(
+						'cloud_wp_ai_alt_text_max_tokens_invalid',
+						__( 'WordPress AI alt-text max_tokens must be an integer from 1 through 96.', 'npcink-cloud-addon' ),
+						array( 'status' => 400 )
+					);
+				}
+				$normalized['max_tokens'] = $request['max_tokens'];
+			}
+
+			return $normalized;
 		}
 
 		/**
@@ -2826,24 +3337,21 @@ if ( ! class_exists( 'Npcink_Cloud_Runtime_Client' ) ) {
 		}
 
 		/**
-		 * Builds a request nonce for signed POST calls.
+		 * Builds a fresh request nonce for signed POST and media pull calls.
 		 *
 		 * @param string $method HTTP method.
-		 * @param string $trace_id Trace id.
-		 * @param string $idempotency_key Idempotency key.
+		 * @param string $path Signed request path.
 		 * @return string
 		 */
-		private function build_request_nonce( string $method, string $trace_id, string $idempotency_key ): string {
-			if ( 'POST' !== strtoupper( $method ) ) {
+		private function build_request_nonce( string $method, string $path ): string {
+			$is_post       = 'POST' === strtoupper( $method );
+			$is_media_pull = 'GET' === strtoupper( $method )
+				&& 1 === preg_match( '#^/v1/runtime/media/artifacts/art_[0-9a-f]{32}/download$#', $path );
+			if ( ! $is_post && ! $is_media_pull ) {
 				return '';
 			}
 
-			$seed = '' !== $trace_id ? $trace_id : $idempotency_key;
-			if ( '' === $seed ) {
-				$seed = wp_generate_uuid4();
-			}
-
-			return 'nonce-' . substr( strtolower( hash( 'sha256', $seed ) ), 0, 24 );
+			return 'nonce-' . strtolower( str_replace( '-', '', wp_generate_uuid4() ) );
 		}
 
 		/**

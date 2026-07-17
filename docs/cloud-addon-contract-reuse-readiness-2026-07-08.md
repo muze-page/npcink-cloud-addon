@@ -110,19 +110,23 @@ These existing addon contracts are enough to continue the reuse pass:
 - `signed_transport` addon role;
 - `mak1_{base64url(json)}` Cloud API Key wrapper parsing;
 - `POST /v1/runtime/execute`;
-- `POST /v1/runtime/media-derivatives`;
+- `POST /v1/runtime/media/uploads`;
+- `POST /v1/runtime/media/jobs`;
 - `GET /v1/runs/{run_id}`;
 - `GET /v1/runs/{run_id}/result`;
 - `GET /v1/runs/nightly-inspection/recent`;
 - `POST /v1/runs/{run_id}/retry`;
-- `GET /v1/runtime/artifacts/{artifact_id}/download`;
+- `GET /v1/runtime/media/artifacts/{artifact_id}/download`;
+- `POST /v1/runtime/media/artifacts/{artifact_id}/delivery-ack`;
 - `GET /v1/entitlements/current`;
 - `POST /v1/observability/plugin-events`;
 - `GET /v1/observability/plugin-summary`;
 - `POST /v1/agent-feedback/events`;
 - `GET /v1/agent-feedback/summary`;
 - `site_knowledge_change_bridge_status.v1`;
-- `wp_ai_connector_runtime.v1`;
+- `cloud_connector_runtime.v1`;
+- `wordpress_operation.v1`;
+- `cloud_connector_result.v1`;
 - `image_context_evidence_request.v1`;
 - `cloud_agent_feedback.v1`.
 

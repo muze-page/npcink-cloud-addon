@@ -45,6 +45,7 @@ namespace {
 	function maca_invoke_connector_result_parser( string $model_class, array $response, string $expected_task ): string {
 		$model  = ( new \ReflectionClass( $model_class ) )->newInstanceWithoutConstructor();
 		$parser = new \ReflectionMethod( $model_class, 'extract_text' );
+		$parser->setAccessible( true );
 
 		return (string) $parser->invoke( $model, $response, $expected_task );
 	}

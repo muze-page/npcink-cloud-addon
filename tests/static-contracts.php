@@ -244,6 +244,7 @@ maca_assert(
 	&& false !== strpos( $wp_ai_text_browser_smoke, 'explicit_save_writes' )
 	&& false !== strpos( $wp_ai_text_browser_smoke, 'revision_delta' )
 	&& false !== strpos( $wp_ai_text_browser_smoke, 'Browser smoke rejects non-Local host' )
+	&& false !== strpos( $wp_ai_text_browser_smoke, 'Fresh editor startup overlays are dismissed before WordPress AI review.' )
 	&& false !== strpos( $wp_ai_text_browser_smoke, 'destroyAuthSession' )
 	&& false !== strpos( $wp_ai_text_browser_smoke, 'auth_session_destroyed' )
 	&& false !== strpos( $wp_ai_text_browser_smoke, 'originalLabel === reviewLabels.original' )

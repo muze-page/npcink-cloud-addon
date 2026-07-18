@@ -402,19 +402,42 @@ async function waitForCondition(page, predicate, label, timeoutMs = 30000) {
 }
 
 async function dismissEditorOverlays(page) {
-	for (let index = 0; index < 4; index += 1) {
+	for (let index = 0; index < 6; index += 1) {
 		const guides = page.locator('.components-guide, .edit-post-welcome-guide');
 		let visibleGuide = false;
 		for (let guideIndex = 0; guideIndex < await guides.count().catch(() => 0); guideIndex += 1) {
 			visibleGuide = visibleGuide || await guides.nth(guideIndex).isVisible().catch(() => false);
 		}
-		const overlay = await page.locator('.components-modal__screen-overlay').count().catch(() => 0);
-		if (!visibleGuide && !overlay) {
-			return;
+		const overlays = page.locator('.components-modal__screen-overlay');
+		let visibleOverlay = null;
+		for (let overlayIndex = 0; overlayIndex < await overlays.count().catch(() => 0); overlayIndex += 1) {
+			const candidate = overlays.nth(overlayIndex);
+			if (await candidate.isVisible().catch(() => false)) {
+				visibleOverlay = candidate;
+				break;
+			}
 		}
-		await page.keyboard.press('Escape').catch(() => {});
+		if (!visibleGuide && visibleOverlay === null) {
+			return true;
+		}
+		if (visibleOverlay) {
+			const headerButtons = visibleOverlay.locator('.components-modal__header button');
+			for (let buttonIndex = 0; buttonIndex < await headerButtons.count().catch(() => 0); buttonIndex += 1) {
+				const button = headerButtons.nth(buttonIndex);
+				if (await button.isVisible().catch(() => false)) {
+					await button.click();
+					await page.waitForTimeout(200);
+					visibleOverlay = null;
+					break;
+				}
+			}
+		}
+		if (visibleOverlay) {
+			await page.keyboard.press('Escape').catch(() => {});
+		}
 		await page.waitForTimeout(200);
 	}
+	return false;
 }
 
 async function lockAutosaving(page) {
@@ -665,7 +688,7 @@ try {
 	await page.goto(`${baseUrl}/wp-admin/post.php?post=${postId}&action=edit`, { waitUntil: 'domcontentloaded', timeout: 45000 });
 	assert(!page.url().includes('wp-login.php'), 'WP-CLI cookies open the real block editor without a login redirect.');
 	await page.waitForFunction(() => Boolean(window.wp?.data?.select?.('core/editor')?.getCurrentPostId?.()), null, { timeout: 30000 });
-	await dismissEditorOverlays(page);
+	assert(await dismissEditorOverlays(page), 'Fresh editor startup overlays are dismissed before WordPress AI review.');
 	autosaveLocked = await lockAutosaving(page);
 	assert(autosaveLocked, 'Test fixture autosaving is locked until the explicit Save/Update action.');
 
@@ -782,8 +805,8 @@ try {
 	const originalPanel = originalPanelContainer.locator('.ai-content-resizing-modal__text--original');
 	const suggestedPanel = suggestedPanelContainer.locator('.ai-content-resizing-modal__text:not(.ai-content-resizing-modal__loading)');
 	await waitForCondition(page, async () => (await suggestedPanel.innerText().catch(() => '')).trim().length > 0, 'rephrased Suggested content', 90000);
-	const originalLabel = (await originalPanelContainer.locator('.ai-content-resizing-modal__label span').first().innerText()).trim();
-	const suggestedLabel = (await suggestedPanelContainer.locator('.ai-content-resizing-modal__label span').first().innerText()).trim();
+	const originalLabel = (await originalPanelContainer.locator('.ai-content-resizing-modal__label span').first().textContent() || '').trim();
+	const suggestedLabel = (await suggestedPanelContainer.locator('.ai-content-resizing-modal__label span').first().textContent() || '').trim();
 	const originalAriaLabel = (await originalPanelContainer.getAttribute('aria-label') || '').trim();
 	const suggestedAriaLabel = (await suggestedPanelContainer.getAttribute('aria-label') || '').trim();
 	const reviewLabels = await resizeModal.evaluate(() => ({

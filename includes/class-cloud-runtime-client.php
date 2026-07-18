@@ -17,6 +17,7 @@ if ( ! class_exists( 'Npcink_Cloud_Runtime_Client' ) ) {
 	 */
 	final class Npcink_Cloud_Runtime_Client {
 		private const MAX_JSON_RESPONSE_BYTES = 1048576;
+		private const MAX_ERROR_MESSAGE_CHARS = 4096;
 		private const MAX_DOWNLOAD_BYTES = 26214400;
 		private const MEDIA_ARTIFACT_ID_PATTERN = '/^art_[0-9a-f]{32}$/';
 		private const MEDIA_DELIVERY_ID_PATTERN = '/^mdl_[0-9a-f]{32}$/';
@@ -1496,11 +1497,32 @@ if ( ! class_exists( 'Npcink_Cloud_Runtime_Client' ) ) {
 		 * @return string
 		 */
 		private function redact_support_text( string $message ): string {
+			foreach ( array( 'secret', 'authorization' ) as $sensitive_config_key ) {
+				$sensitive_value = $this->config[ $sensitive_config_key ] ?? '';
+				if ( is_string( $sensitive_value ) && strlen( $sensitive_value ) >= 8 ) {
+					$message = str_replace( $sensitive_value, '[redacted]', $message );
+				}
+			}
+
+			$message = preg_replace(
+				"~(?<![A-Za-z0-9_-])[A-Za-z0-9_-]*(?:authorizations?|api[_-]?keys?|provider[_-]?keys?|tokens?|credentials?|cookies?|passwords?|secrets?|signatures?|nonces?)\\s*[:=]\\s*(?:\"[^\"]*\"|'[^']*'|[A-Za-z][A-Za-z0-9_-]*\\s+[^\\s,;]+|[^\\s,;]+)~i",
+				'[redacted]',
+				$message
+			);
 			$message = preg_replace( '/mak1_[A-Za-z0-9_-]+/', '[redacted]', $message );
 			$message = preg_replace( '/Bearer\s+[A-Za-z0-9._~+\/=-]+/i', 'Bearer [redacted]', (string) $message );
 			$message = preg_replace( '/secret[_-]?[A-Za-z0-9._:-]*/i', '[redacted]', (string) $message );
 
-			return sanitize_text_field( (string) $message );
+			$message = sanitize_text_field( (string) $message );
+			if ( function_exists( 'mb_strlen' ) && function_exists( 'mb_substr' ) ) {
+				return mb_strlen( $message, 'UTF-8' ) > self::MAX_ERROR_MESSAGE_CHARS
+					? mb_substr( $message, 0, self::MAX_ERROR_MESSAGE_CHARS, 'UTF-8' ) . '…'
+					: $message;
+			}
+
+			return strlen( $message ) > self::MAX_ERROR_MESSAGE_CHARS
+				? substr( $message, 0, self::MAX_ERROR_MESSAGE_CHARS ) . '...'
+				: $message;
 		}
 
 		/**
@@ -1538,8 +1560,9 @@ if ( ! class_exists( 'Npcink_Cloud_Runtime_Client' ) ) {
 
 			$successful_envelope_statuses = array( '', 'ok', 'ready', 'submitted', 'queued', 'running', 'completed', 'success' );
 			if ( $status < 200 || $status >= 300 || ! in_array( $envelope_status, $successful_envelope_statuses, true ) ) {
-				$error_code = sanitize_text_field( (string) ( $decoded['error_code'] ?? $decoded['code'] ?? '' ) );
+				$error_code = $this->normalize_remote_error_code( $decoded['error_code'] ?? $decoded['code'] ?? '' );
 				$message = $this->normalize_error_message( $decoded['message'] ?? $decoded['detail'] ?? '' );
+				$local_status = $this->normalize_remote_failure_status( $status );
 				if ( '' === $message ) {
 					$message = __( 'Cloud runtime request failed.', 'npcink-cloud-addon' );
 				}
@@ -1548,9 +1571,9 @@ if ( ! class_exists( 'Npcink_Cloud_Runtime_Client' ) ) {
 					$this->map_remote_error_code( $error_code ),
 					$message,
 					array(
-						'status' => $status > 0 ? $status : 502,
-						'cloud_error_code' => $error_code,
-						'cloud_payload' => $decoded,
+						'status'            => $local_status,
+						'cloud_http_status' => $status,
+						'cloud_error_code'  => $error_code,
 					)
 				);
 			}
@@ -1574,7 +1597,7 @@ if ( ! class_exists( 'Npcink_Cloud_Runtime_Client' ) ) {
 			if ( $status < 200 || $status >= 300 ) {
 				$decoded = json_decode( $body, true );
 				$decoded = is_array( $decoded ) ? $decoded : array();
-				$error_code = sanitize_text_field( (string) ( $decoded['error_code'] ?? $decoded['code'] ?? '' ) );
+				$error_code = $this->normalize_remote_error_code( $decoded['error_code'] ?? $decoded['code'] ?? '' );
 				$message = $this->normalize_error_message( $decoded['message'] ?? $decoded['detail'] ?? '' );
 				if ( '' === $message ) {
 					$message = __( 'Cloud runtime artifact download failed.', 'npcink-cloud-addon' );
@@ -1584,9 +1607,9 @@ if ( ! class_exists( 'Npcink_Cloud_Runtime_Client' ) ) {
 					$this->map_remote_error_code( $error_code ),
 					$message,
 					array(
-						'status'           => $status > 0 ? $status : 502,
-						'cloud_error_code' => $error_code,
-						'cloud_payload'    => $decoded,
+						'status'           => $this->normalize_remote_failure_status( $status ),
+						'cloud_http_status' => $status,
+						'cloud_error_code'  => $error_code,
 					)
 				);
 			}
@@ -1621,7 +1644,39 @@ if ( ! class_exists( 'Npcink_Cloud_Runtime_Client' ) ) {
 			$parts = array();
 			$this->collect_error_message_parts( $value, $parts );
 
-			return sanitize_text_field( implode( '; ', array_unique( array_filter( $parts ) ) ) );
+			return $this->redact_support_text( implode( '; ', array_unique( array_filter( $parts ) ) ) );
+		}
+
+		/**
+		 * Keeps only a bounded, non-secret Cloud error-code identifier.
+		 *
+		 * @param mixed $value Raw Cloud error code.
+		 * @return string
+		 */
+		private function normalize_remote_error_code( $value ): string {
+			if ( ! is_string( $value ) ) {
+				return '';
+			}
+
+			$code = strtolower( trim( (string) $value ) );
+			if ( strlen( $code ) > 120 || 1 !== preg_match( '/\A[a-z0-9]+(?:[._-][a-z0-9]+)*\z/', $code ) ) {
+				return '';
+			}
+
+			return $code;
+		}
+
+		/**
+		 * Maps an upstream failure into a non-successful local REST status.
+		 *
+		 * HTTP 2xx error envelopes remain upstream evidence only; projecting 2xx in
+		 * WP_Error data would make a failed local request look successful.
+		 *
+		 * @param int $status Upstream HTTP status.
+		 * @return int
+		 */
+		private function normalize_remote_failure_status( int $status ): int {
+			return $status >= 400 && $status <= 599 ? $status : 502;
 		}
 
 		/**
@@ -1638,7 +1693,7 @@ if ( ! class_exists( 'Npcink_Cloud_Runtime_Client' ) ) {
 			}
 
 			if ( is_scalar( $value ) ) {
-				$parts[] = sanitize_text_field( (string) $value );
+				$parts[] = $this->redact_support_text( (string) $value );
 				return;
 			}
 
@@ -1667,8 +1722,11 @@ if ( ! class_exists( 'Npcink_Cloud_Runtime_Client' ) ) {
 				return;
 			}
 
-			foreach ( $value as $item ) {
-				$this->collect_error_message_parts( $item, $parts, $depth + 1 );
+			$is_list = array() === $value || array_keys( $value ) === range( 0, count( $value ) - 1 );
+			if ( $is_list ) {
+				foreach ( $value as $item ) {
+					$this->collect_error_message_parts( $item, $parts, $depth + 1 );
+				}
 			}
 		}
 
@@ -2219,9 +2277,6 @@ if ( ! class_exists( 'Npcink_Cloud_Runtime_Client' ) ) {
 				'retention_ttl'       => min( self::WP_AI_CONNECTOR_MAX_RETENTION_TTL, max( 0, $retention_ttl ) ),
 				'timeout_seconds'     => min( self::WP_AI_CONNECTOR_MAX_TIMEOUT_SECONDS, max( 1, $timeout_seconds ) ),
 				'retry_max'           => min( 1, $retry_max ),
-				'policy'              => array(
-					'allow_fallback' => false,
-				),
 			);
 		}
 

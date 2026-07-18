@@ -92,11 +92,13 @@ $site_knowledge_vector_ops_doc = maca_read( $root . '/docs/site-knowledge-vector
 $public_onboarding_doc = maca_read( $root . '/docs/public-cloud-onboarding-checklist.md' );
 $agents = maca_read( $root . '/AGENTS.md' );
 $readme = maca_read( $root . '/README.md' );
+$local_test_guide = maca_read( $root . '/docs/local-test-guide.md' );
 $composer = maca_read( $root . '/composer.json' );
 $eval_lab_proxy = maca_read( $root . '/scripts/eval-lab.sh' );
 $ai_i18n_audit = maca_read( $root . '/scripts/audit-ai-plugin-localization.php' );
 $wp_ai_smoke = maca_read( $root . '/scripts/smoke-wordpress-ai-abilities.php' );
 $wp_ai_editor_smoke = maca_read( $root . '/scripts/smoke-wordpress-ai-editor.php' );
+$wp_ai_text_browser_smoke = maca_read( $root . '/scripts/smoke-wordpress-ai-text-browser.mjs' );
 $wp_ai_generation_eval = maca_read( $root . '/scripts/eval-wordpress-ai-generation-reference.php' );
 $zh_cn_po = maca_read( $root . '/languages/npcink-cloud-addon-zh_CN.po' );
 $uninstall = maca_read( $root . '/uninstall.php' );
@@ -210,17 +212,48 @@ maca_assert(
 maca_assert(
 	false !== strpos( $composer, '"smoke:wp-ai-editor":' )
 	&& false !== strpos( $wp_ai_editor_smoke, '/wp-abilities/v1/abilities/ai/title-generation/run' )
-	&& false !== strpos( $wp_ai_editor_smoke, '/wp-abilities/v1/abilities/ai/excerpt-generation/run' )
 	&& false !== strpos( $wp_ai_editor_smoke, '/wp-abilities/v1/abilities/ai/summarization/run' )
-	&& false !== strpos( $wp_ai_editor_smoke, '/wp-abilities/v1/abilities/ai/meta-description/run' )
-	&& false !== strpos( $wp_ai_editor_smoke, '/wp-abilities/v1/abilities/ai/content-classification/run' )
-	&& false !== strpos( $wp_ai_editor_smoke, 'ai-summarization-summary' )
-	&& false !== strpos( $wp_ai_editor_smoke, 'wpai_meta_description' )
+	&& false !== strpos( $wp_ai_editor_smoke, '/wp-abilities/v1/abilities/ai/content-resizing/run' )
+	&& false === strpos( $wp_ai_editor_smoke, '/wp-abilities/v1/abilities/ai/excerpt-generation/run' )
+	&& false === strpos( $wp_ai_editor_smoke, '/wp-abilities/v1/abilities/ai/meta-description/run' )
+	&& false === strpos( $wp_ai_editor_smoke, '/wp-abilities/v1/abilities/ai/content-classification/run' )
+	&& false !== strpos( $wp_ai_editor_smoke, "'action'  => 'rephrase'" )
+	&& false !== strpos( $wp_ai_editor_smoke, 'selected whole core/paragraph block' )
+	&& false !== strpos( $wp_ai_editor_smoke, 'npcink_cloud_addon_wp_ai_editor_smoke_snapshot' )
+	&& false !== strpos( $wp_ai_editor_smoke, 'npcink_cloud_addon_wp_ai_editor_smoke_apply_accepted_suggestions' )
+	&& false !== strpos( $wp_ai_editor_smoke, '"aiGeneratedSummary":true' )
+	&& false !== strpos( $wp_ai_editor_smoke, 'NPCINK_SENTINEL_NON_TARGET_PARAGRAPH_DO_NOT_CHANGE_20260718' )
+	&& false !== strpos( $wp_ai_editor_smoke, 'Cloud zero-write' )
+	&& false !== strpos( $wp_ai_editor_smoke, 'Second local apply helper call was a no-op and created no revision.' )
+	&& false !== strpos( $wp_ai_editor_smoke, '} finally {' )
+	&& false !== strpos( $wp_ai_editor_smoke, "array( 'force' => true )" )
+	&& false !== strpos( $wp_ai_editor_smoke, 'confirmed cleanup' )
 	&& false !== strpos( $wp_ai_editor_smoke, "'status'  => 'draft'" )
 	&& false === strpos( $wp_ai_editor_smoke, "'status'  => 'publish'" )
 	&& false === strpos( $wp_ai_editor_smoke, '"status":"publish"' )
-	&& false === strpos( $wp_ai_editor_smoke, 'trash' ),
-	'WordPress AI editor smoke covers draft-only title, excerpt, summary, SEO, and classification suggestion paths without publish or cleanup side effects.'
+	&& false !== strpos( $local_test_guide, 'the selected whole `core/paragraph` block' )
+	&& false !== strpos( $local_test_guide, 'does not simulate browser review or Core audit' )
+	&& false !== strpos( $local_test_guide, 'force-deletes the temporary draft and confirms cleanup' ),
+	'WordPress AI editor smoke covers exactly title, summary, and selected whole-paragraph rewrite, proves Cloud zero-write, applies accepted draft changes once, and cleans up.'
+);
+
+maca_assert(
+	false !== strpos( $composer, '"smoke:wp-ai-text-browser":' )
+	&& false !== strpos( $wp_ai_text_browser_smoke, "readiness.ai_version === '1.1.0'" )
+	&& false !== strpos( $wp_ai_text_browser_smoke, 'pre_save_post_writes' )
+	&& false !== strpos( $wp_ai_text_browser_smoke, 'explicit_save_writes' )
+	&& false !== strpos( $wp_ai_text_browser_smoke, 'revision_delta' )
+	&& false !== strpos( $wp_ai_text_browser_smoke, 'Browser smoke rejects non-Local host' )
+	&& false !== strpos( $wp_ai_text_browser_smoke, 'destroyAuthSession' )
+	&& false !== strpos( $wp_ai_text_browser_smoke, 'auth_session_destroyed' )
+	&& false !== strpos( $wp_ai_text_browser_smoke, 'originalLabel === reviewLabels.original' )
+	&& false !== strpos( $wp_ai_text_browser_smoke, 'suggestedLabel === reviewLabels.suggested' )
+	&& false !== strpos( $wp_ai_text_browser_smoke, "getByRole('button', { name: reviewLabels.accept, exact: true })" )
+	&& false !== strpos( $wp_ai_text_browser_smoke, "'serialized_hash' => hash('sha256', serialize_block(\$block))" )
+	&& false !== strpos( $wp_ai_text_browser_smoke, 'normalizeEvidenceText(finalSnapshot.summary_meta)' )
+	&& false !== strpos( $local_test_guide, 'official WordPress AI 1.1.0 plugin' )
+	&& false !== strpos( $local_test_guide, 'proves zero post writes before the explicit Save/Update click' ),
+	'Opt-in browser acceptance uses the official AI 1.1.0 UI, preserves suggestion-only review, records bounded evidence, and cleans up its local fixture.'
 );
 
 maca_assert(

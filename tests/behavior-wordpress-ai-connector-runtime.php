@@ -117,7 +117,7 @@ maca_assert(
 	&& 60 === (int) ( $request_body['timeout_seconds'] ?? 0 )
 	&& 86400 === (int) ( $request_body['retention_ttl'] ?? 0 )
 	&& 1 === (int) ( $request_body['retry_max'] ?? -1 )
-	&& false === (bool) ( $request_body['policy']['allow_fallback'] ?? true )
+	&& ! isset( $request_body['policy'] )
 	&& 'https://wordpress.example.test' === (string) ( $request_body['input']['site_url'] ?? '' )
 	&& 'wordpress' === (string) ( $request_body['input']['platform_kind'] ?? '' )
 	&& 'npcink-cloud-addon' === (string) ( $request_body['input']['connector_id'] ?? '' )
@@ -132,7 +132,7 @@ maca_assert(
 	&& ! isset( $request_body['input']['operation_contract']['request']['prompt'] )
 	&& ! isset( $request_body['input']['operation_contract']['request']['post_title'] )
 	&& ! isset( $request_body['input']['operation_contract']['request']['post_excerpt'] ),
-	'Behavior: WordPress AI connector runtime projects a scene-bound no-chat no-write Cloud payload.'
+	'Behavior: WordPress AI connector runtime projects a scene-bound no-chat no-write Cloud payload and leaves provider fallback policy to Cloud.'
 );
 
 $legacy_contract = $client->execute_wordpress_ai_connector_runtime(

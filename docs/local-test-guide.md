@@ -79,24 +79,76 @@ The command uses WP-CLI against `WP_PATH`, defaulting to
 `WP_PATH`, `WP_CLI_BIN`, `WP_CLI_PHP`, or `WP_DB_SOCKET` when the local site
 differs.
 
-This smoke creates one local draft post, runs the same WordPress AI ability
-surfaces used by the editor for title, excerpt, summarization, SEO description,
-and content classification, applies only the summary block and SEO description
-to the draft, and reads the draft back through REST.
+This data-path smoke creates one deterministic temporary draft and calls exactly
+the current editor abilities `ai/title-generation`, `ai/summarization`, and
+`ai/content-resizing`. The resizing input is the selected whole `core/paragraph` block's
+content; it is not an arbitrary selected text range.
+After all three suggestions return, the smoke first proves that the raw title,
+raw body, draft status, and revision IDs are unchanged, so Cloud remains
+suggestion-only and performs zero WordPress writes.
+
+The script then uses an explicit local acceptance helper to apply the returned
+title, one generated summary block, and the selected whole `core/paragraph`
+block rewrite to the isolated draft. This is a local data-path acceptance; it
+does not simulate browser review or Core audit. The helper is called a second
+time to prove the already-applied state is a no-op with no new revision. A
+`finally` block force-deletes the temporary draft and confirms cleanup even
+when an assertion fails.
 
 Expected:
 
-- the created post remains `draft`;
-- title and excerpt return direct suggestion text;
-- the content contains an `ai-summarization-summary` block;
-- `wpai_meta_description` contains direct suggestion text;
-- classification returns labels but the smoke does not accept or create terms;
+- the deterministic temporary post starts and remains `draft` until cleanup;
+- all three Cloud-backed ability calls return before any local application;
+- title, body, status, and revision IDs remain unchanged before acceptance;
+- local acceptance applies the title and exactly one generated summary block;
+- only the target paragraph block is rewritten, while the non-target sentinel
+  paragraph remains byte-for-byte unchanged;
+- the second local apply helper call is a no-op and creates no revision;
+- the temporary draft is permanently deleted and the deletion is confirmed;
 - no publish action is performed.
 
 Use this after changing the Cloud WordPress AI connector, runtime output
-normalization, or the local AI-plugin compatibility shim. Browser visual smoke
-is still useful before release, but this command gives a repeatable regression
-gate for the editor data path.
+normalization, or the local AI-plugin compatibility shim. Browser review is a
+separate product/UI acceptance activity; this command is only the repeatable
+editor data-path regression gate described above.
+
+## WordPress AI Text Browser Acceptance
+
+Run this opt-in browser gate against a disposable local/development WordPress
+site with the official WordPress AI 1.2.0 plugin, a verified Cloud Addon
+connection, and only title generation, summarization, and content resizing
+enabled:
+
+```bash
+NODE_PATH="/Applications/ChatGPT.app/Contents/Resources/cua_node/lib/node_modules" \
+HEADLESS=1 \
+WP_BASE_URL="https://magick-ai.local" \
+WP_AI_TEXT_ARTIFACT_DIR="/tmp/npcink-cloud-addon-p5-b3" \
+WP_AI_TEXT_SUMMARY_PATH="/tmp/npcink-cloud-addon-p5-b3-summary.json" \
+composer run smoke:wp-ai-text-browser
+```
+
+Use an installed Playwright module instead of `NODE_PATH` when available.
+`WP_PATH`, `WP_CLI_BIN`, `WP_CLI_PHP`, `WP_DB_SOCKET`, and
+`WP_AI_SMOKE_USER` have the same override purpose as the data-path smoke.
+
+The browser gate refuses non-local hosts and non-local/development WordPress
+environments. It creates an isolated draft, locks autosave, uses the real AI
+1.2.0 editor controls to review title, summary, and one whole-paragraph
+rephrase, proves zero post writes before the explicit Save/Update click, then
+verifies one local save, unchanged sentinel blocks, revision evidence, draft
+status, and forced fixture cleanup. Screenshots and the optional JSON summary
+serve different evidence purposes: the JSON contains only hashes and bounded
+request metadata, while screenshots intentionally show the disposable fixture
+and reviewed suggestions. Keep screenshots in a controlled temporary directory
+and never run this gate with real sensitive content. The gate is intentionally
+outside `composer test:all` because it requires a configured local WordPress
+site, browser runtime, and live Cloud provider.
+
+When the optional WordPress AI request log is enabled, the Addon records
+`cloud_run_id` only inside metadata-only request context for correlation. It
+does not store prompt or output previews, and that identifier is not local
+approval, Core audit, persistence, or WordPress write truth.
 
 ## WordPress AI Generation Reference A/B Evaluation
 

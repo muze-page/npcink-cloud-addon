@@ -232,10 +232,14 @@ The client returns a decoded Cloud response array on success.
 On failure it returns `WP_Error` with:
 
 - local error code prefixed with `cloud_`
-- human-readable message
-- `status`
-- `cloud_error_code`
-- `cloud_payload`
+- bounded, redacted human-readable message
+- local non-success `status`
+- upstream `cloud_http_status` as transport evidence
+- bounded `cloud_error_code`
+
+Raw Cloud failure payloads are not projected into `WP_Error`; untrusted nested
+fields may contain provider diagnostics or credentials and are therefore not a
+local public contract.
 
 ## Observability Transport
 
@@ -419,7 +423,9 @@ The method projects accepted requests into a fixed runtime payload:
 - `input.connector_version=<active addon version>`
 - `input.suggestion_only=true`
 - `input.operation_contract.contract_version=wordpress_operation.v1`
-- `policy.allow_fallback=false`
+
+Provider fallback posture is owned by the selected Cloud profile/runtime. The
+Addon does not send a local `policy.allow_fallback` override for this connector.
 
 The nested operation contract has exactly `contract_version`, `task`, and
 `request`. Platform identity stays in the connector envelope; WordPress task

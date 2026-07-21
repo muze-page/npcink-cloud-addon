@@ -95,6 +95,50 @@ namespace {
 		'Behavior: WordPress AI request log bridge writes metadata-only Cloud image run evidence.'
 	);
 
+	$text_input_sentinel  = 'PRIVATE_TEXT_INPUT_MUST_NOT_REACH_REQUEST_LOG';
+	$text_output_sentinel = 'PRIVATE_TEXT_OUTPUT_MUST_NOT_REACH_REQUEST_LOG';
+	Npcink_Cloud_WordPress_AI_Connector::maybe_log_wordpress_ai_request_evidence(
+		array(
+			'type'                       => 'text',
+			'operation'                  => 'npcink-cloud/connector-runtime',
+			'task'                       => 'content_summary',
+			'contract_version'           => 'cloud_connector_runtime.v1',
+			'operation_contract_version' => 'wordpress_operation.v1',
+			'input'                      => array( 'source_text' => $text_input_sentinel ),
+			'response'                   => array(
+				'data' => array(
+					'run_id' => 'run_text_summary_1',
+					'result' => array(
+						'provider_id' => 'cloud-text-provider',
+						'model_id'    => 'cloud-text-model',
+						'output'      => array( 'output_text' => $text_output_sentinel ),
+					),
+				),
+			),
+			'duration_ms'                => 321,
+			'fallback_model_id'          => Npcink_Cloud_WordPress_AI_Connector::MODEL_ID,
+		)
+	);
+
+	$text_log     = $GLOBALS['maca_wpai_request_logs'][1] ?? array();
+	$text_context = is_array( $text_log['context'] ?? null ) ? $text_log['context'] : array();
+	maca_assert(
+		2 === count( $GLOBALS['maca_wpai_request_logs'] )
+		&& 'text' === (string) ( $text_log['type'] ?? '' )
+		&& 'npcink-cloud/connector-runtime:content_summary' === (string) ( $text_log['operation'] ?? '' )
+		&& 'cloud-text-provider' === (string) ( $text_log['provider'] ?? '' )
+		&& 'cloud-text-model' === (string) ( $text_log['model'] ?? '' )
+		&& 'run_text_summary_1' === (string) ( $text_context['cloud_run_id'] ?? '' )
+		&& true === (bool) ( $text_context['suggestion_only'] ?? false )
+		&& false === (bool) ( $text_context['direct_wordpress_write'] ?? true )
+		&& 'omitted_metadata_only' === (string) ( $text_context['content_storage'] ?? '' )
+		&& ! isset( $text_context['input_preview'] )
+		&& ! isset( $text_context['output_preview'] )
+		&& false === strpos( wp_json_encode( $text_log ), $text_input_sentinel )
+		&& false === strpos( wp_json_encode( $text_log ), $text_output_sentinel ),
+		'Behavior: WordPress AI text success keeps nested cloud_run_id as metadata-only correlation evidence.'
+	);
+
 	update_option( 'wpai_feature_ai-request-logging_enabled', '', false );
 	Npcink_Cloud_WordPress_AI_Connector::maybe_log_wordpress_ai_request_evidence(
 		array(
@@ -106,7 +150,7 @@ namespace {
 	);
 
 	maca_assert(
-		1 === count( $GLOBALS['maca_wpai_request_logs'] ),
+		2 === count( $GLOBALS['maca_wpai_request_logs'] ),
 		'Behavior: WordPress AI request log bridge respects the AI request logging feature flag.'
 	);
 
@@ -124,10 +168,10 @@ namespace {
 		)
 	);
 
-	$error_log = $GLOBALS['maca_wpai_request_logs'][1] ?? array();
+	$error_log = $GLOBALS['maca_wpai_request_logs'][2] ?? array();
 	$error_context = is_array( $error_log['context'] ?? null ) ? $error_log['context'] : array();
 	maca_assert(
-		2 === count( $GLOBALS['maca_wpai_request_logs'] )
+		3 === count( $GLOBALS['maca_wpai_request_logs'] )
 		&& 'error' === (string) ( $error_log['status'] ?? '' )
 		&& 'npcink-cloud/connector-runtime:content_summary' === (string) ( $error_log['operation'] ?? '' )
 		&& 'Provider timeout while generating text output.' === (string) ( $error_log['error_message'] ?? '' )

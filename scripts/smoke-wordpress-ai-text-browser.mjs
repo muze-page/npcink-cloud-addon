@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Opt-in browser evidence for the official WordPress AI 1.1.0 text surfaces.
+ * Opt-in browser evidence for the official WordPress AI 1.2.0 text surfaces.
  *
  * This smoke deliberately separates:
  * - UI review evidence: real editor controls, review modals, visible blocks, and screenshots.
@@ -554,7 +554,7 @@ function abilityAction(request) {
 	try {
 		const payload = JSON.parse(request.postData() || '{}');
 		const action = String(payload?.input?.action || '');
-		return ['shorten', 'lengthen', 'rephrase'].includes(action) ? action : '';
+		return ['shorten', 'expand', 'rephrase'].includes(action) ? action : '';
 	} catch (error) {
 		return '';
 	}
@@ -585,7 +585,7 @@ async function visibleMenuItems(page, editorFrame) {
 		}
 		await page.waitForTimeout(100);
 	}
-	throw new Error('Content resizing menu did not expose its three pinned WordPress AI 1.1.0 controls.');
+	throw new Error('Content resizing menu did not expose its three pinned WordPress AI 1.2.0 controls.');
 }
 
 async function captureDiagnostics(page, screenshotPath, abilityResponses, preSaveWrites, error) {
@@ -634,7 +634,7 @@ try {
 	const readiness = preflight();
 	assert(['local', 'development'].includes(readiness.environment), `WordPress environment is non-production (${readiness.environment}).`);
 	assert(new URL(readiness.home_url).origin === baseUrl, 'WP_BASE_URL matches the Local WordPress home origin.');
-	assert(readiness.ai_active && readiness.ai_version === '1.1.0', 'Official WordPress AI 1.1.0 is active.');
+	assert(readiness.ai_active && readiness.ai_version === '1.2.0', 'Official WordPress AI 1.2.0 is active.');
 	assert(readiness.addon_loaded && readiness.addon_verified && readiness.connector_enabled, 'Verified Cloud Addon connector is enabled for WordPress AI.');
 	assert(Object.values(readiness.features).every(Boolean), 'Global, title, summary, and content resizing WordPress AI features are enabled.');
 	assert(readiness.has_administrator, 'A local administrator is available for the isolated fixture.');

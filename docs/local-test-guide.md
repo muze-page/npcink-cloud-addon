@@ -115,7 +115,7 @@ editor data-path regression gate described above.
 ## WordPress AI Text Browser Acceptance
 
 Run this opt-in browser gate against a disposable local/development WordPress
-site with the official WordPress AI 1.1.0 plugin, a verified Cloud Addon
+site with the official WordPress AI 1.2.0 plugin, a verified Cloud Addon
 connection, and only title generation, summarization, and content resizing
 enabled:
 
@@ -134,7 +134,7 @@ Use an installed Playwright module instead of `NODE_PATH` when available.
 
 The browser gate refuses non-local hosts and non-local/development WordPress
 environments. It creates an isolated draft, locks autosave, uses the real AI
-1.1.0 editor controls to review title, summary, and one whole-paragraph
+1.2.0 editor controls to review title, summary, and one whole-paragraph
 rephrase, proves zero post writes before the explicit Save/Update click, then
 verifies one local save, unchanged sentinel blocks, revision evidence, draft
 status, and forced fixture cleanup. Screenshots and the optional JSON summary
@@ -144,6 +144,11 @@ and reviewed suggestions. Keep screenshots in a controlled temporary directory
 and never run this gate with real sensitive content. The gate is intentionally
 outside `composer test:all` because it requires a configured local WordPress
 site, browser runtime, and live Cloud provider.
+
+When the optional WordPress AI request log is enabled, the Addon records
+`cloud_run_id` only inside metadata-only request context for correlation. It
+does not store prompt or output previews, and that identifier is not local
+approval, Core audit, persistence, or WordPress write truth.
 
 ## WordPress AI Generation Reference A/B Evaluation
 

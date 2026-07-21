@@ -239,7 +239,9 @@ maca_assert(
 
 maca_assert(
 	false !== strpos( $composer, '"smoke:wp-ai-text-browser":' )
-	&& false !== strpos( $wp_ai_text_browser_smoke, "readiness.ai_version === '1.1.0'" )
+	&& false !== strpos( $wp_ai_text_browser_smoke, "readiness.ai_version === '1.2.0'" )
+	&& false !== strpos( $wp_ai_text_browser_smoke, "['shorten', 'expand', 'rephrase']" )
+	&& false === strpos( $wp_ai_text_browser_smoke, "'lengthen'" )
 	&& false !== strpos( $wp_ai_text_browser_smoke, 'pre_save_post_writes' )
 	&& false !== strpos( $wp_ai_text_browser_smoke, 'explicit_save_writes' )
 	&& false !== strpos( $wp_ai_text_browser_smoke, 'revision_delta' )
@@ -252,9 +254,10 @@ maca_assert(
 	&& false !== strpos( $wp_ai_text_browser_smoke, "getByRole('button', { name: reviewLabels.accept, exact: true })" )
 	&& false !== strpos( $wp_ai_text_browser_smoke, "'serialized_hash' => hash('sha256', serialize_block(\$block))" )
 	&& false !== strpos( $wp_ai_text_browser_smoke, 'normalizeEvidenceText(finalSnapshot.summary_meta)' )
-	&& false !== strpos( $local_test_guide, 'official WordPress AI 1.1.0 plugin' )
+	&& false !== strpos( $local_test_guide, 'official WordPress AI 1.2.0 plugin' )
+	&& false !== strpos( $local_test_guide, '`cloud_run_id` only inside metadata-only request context for correlation' )
 	&& false !== strpos( $local_test_guide, 'proves zero post writes before the explicit Save/Update click' ),
-	'Opt-in browser acceptance uses the official AI 1.1.0 UI, preserves suggestion-only review, records bounded evidence, and cleans up its local fixture.'
+	'Opt-in browser acceptance uses the official AI 1.2.0 UI, preserves suggestion-only review, records bounded correlation evidence, and cleans up its local fixture.'
 );
 
 maca_assert(
@@ -647,6 +650,9 @@ maca_assert(
 maca_assert(
 	false !== strpos( $wordpress_ai_connector, 'maybe_log_wordpress_ai_request_evidence' )
 	&& false !== strpos( $wordpress_ai_connector, 'AI_Request_Log_Manager' )
+	&& false !== strpos( $wordpress_ai_connector, "'cloud_run_id'               => \$run_id" )
+	&& false !== strpos( $wordpress_ai_connector, "'suggestion_only'            => true" )
+	&& false !== strpos( $wordpress_ai_connector, "'direct_wordpress_write'     => false" )
 	&& false !== strpos( $wordpress_ai_connector, 'omitted_metadata_only' )
 	&& false !== strpos( $wordpress_ai_connector, "'operation'                  => 'npcink-cloud/connector-runtime'" )
 	&& false !== strpos( $wordpress_ai_connector, "'operation_contract_version' => 'wordpress_operation.v1'" )

@@ -76,7 +76,7 @@ Run before handing off changes:
 ```bash
 composer run test:all
 git diff --check
-rg "/v1/runtime/workflows/runs|wp_insert_post|wp_update_post" --glob '*.php' --glob '!build/**' .
+rg '/v1/runtime/workflows/runs|\b(?:wp_insert_post|wp_update_post|wp_insert_attachment|wp_update_attachment_metadata|update_post_meta|wp_set_post_terms|set_post_thumbnail|media_handle_sideload)\s*\(' --glob '*.php' --glob '!build/**' .
 ```
 
 Documentation may mention forbidden concepts only to describe what this addon must not own.

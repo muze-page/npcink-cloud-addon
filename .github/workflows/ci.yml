@@ -45,10 +45,4 @@ jobs:
         run: composer run check:wporg
 
       - name: Boundary search
-        run: |
-          ! grep -RInE '/v1/runtime/workflows/runs|wp_insert_post|wp_update_post' \
-            --include='*.php' \
-            --exclude-dir='.git' \
-            --exclude-dir='build' \
-            --exclude-dir='vendor' \
-            .
+        run: composer run check:boundary

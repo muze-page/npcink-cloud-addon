@@ -94,6 +94,23 @@ $agents = maca_read( $root . '/AGENTS.md' );
 $readme = maca_read( $root . '/README.md' );
 $local_test_guide = maca_read( $root . '/docs/local-test-guide.md' );
 $composer = maca_read( $root . '/composer.json' );
+$ci_workflow = maca_read( $root . '/.github/workflows/ci.yml' );
+$composer_config = json_decode( $composer, true );
+$boundary_guard = is_array( $composer_config )
+	? (string) ( $composer_config['scripts']['check:boundary'] ?? '' )
+	: '';
+$boundary_write_functions = array(
+	'wp_insert_post',
+	'wp_update_post',
+	'wp_insert_attachment',
+	'wp_update_attachment_metadata',
+	'update_post_meta',
+	'wp_set_post_terms',
+	'set_post_thumbnail',
+	'media_handle_sideload',
+);
+$boundary_write_call_pattern = '\\b(?:' . implode( '|', $boundary_write_functions ) . ')\\s*\\(';
+$expected_boundary_pattern = '/v1/runtime/workflows/' . 'runs|' . $boundary_write_call_pattern;
 $eval_lab_proxy = maca_read( $root . '/scripts/eval-lab.sh' );
 $ai_i18n_audit = maca_read( $root . '/scripts/audit-ai-plugin-localization.php' );
 $wp_ai_smoke = maca_read( $root . '/scripts/smoke-wordpress-ai-abilities.php' );
@@ -193,10 +210,14 @@ maca_assert(
 );
 maca_assert(
 	false !== strpos( $composer, '"check:boundary": "sh -c' )
-	&& false !== strpos( $composer, '/v1/runtime/workflows/' . 'runs|wp_insert_' . 'post|wp_update_' . 'post' )
+	&& false !== strpos( $boundary_guard, $expected_boundary_pattern )
+	&& false !== strpos( $agents, $expected_boundary_pattern )
+	&& false !== strpos( $ci_workflow, 'run: composer run check:boundary' )
+	&& false !== strpos( $boundary_guard, '--glob "*.php"' )
+	&& false !== strpos( $boundary_guard, '--glob "!build/**"' )
 	&& false !== strpos( $composer, '"@check:boundary"' )
 	&& false !== strpos( $composer, '"@ai:i18n:audit"' ),
-	'Cloud Addon release scripts include deterministic boundary and AI i18n gates.'
+	'Cloud Addon release scripts enforce the retired workflow-route and all forbidden WordPress write API boundaries across PHP source.'
 );
 maca_assert(
 	false === strpos( $composer, '@eval:lab' )

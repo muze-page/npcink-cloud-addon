@@ -623,14 +623,16 @@ $GLOBALS['maca_http_response_queue'][] = array(
 			'run_id' => 'run_wp_ai_image_1',
 			'data'   => array(
 				'result' => array(
-					'artifact_type'             => 'image_generation_candidates',
-					'contract_version'          => 'image_generation_result.v1',
-					'provider_response_format'  => 'b64_json',
-					'direct_wordpress_write'    => false,
-					'images'                    => array(
+					'artifact_type'          => 'image_generation_artifacts',
+					'contract_version'       => 'image_generation_result.v1',
+					'suggestion_only'        => true,
+					'requires_local_review'  => true,
+					'artifacts'              => array(
 						array(
-							'b64_json'  => base64_encode( 'image-bytes' ),
-							'mime_type' => 'image/png',
+							'artifact_id'        => 'art_wp_ai_image_1',
+							'artifact_reference' => array( 'artifact_id' => 'art_wp_ai_image_1' ),
+							'status'             => 'available',
+							'content_type'       => 'image/png',
 						),
 					),
 				),
@@ -645,7 +647,6 @@ $image_result = $client->execute_wordpress_ai_image_generation_runtime(
 		'task'             => 'image_generation',
 		'prompt'           => 'A clean product image of a blue ceramic mug.',
 		'n'                => 2,
-		'response_format'  => 'b64_json',
 		'aspect_ratio'     => '16:9',
 		'resolution'       => 'medium',
 		'timeout_seconds'  => 120,
@@ -675,10 +676,24 @@ maca_assert(
 	&& 'wordpress_ai_connector' === (string) ( $image_request_body['input']['source_surface'] ?? '' )
 	&& 'npcink-cloud' === (string) ( $image_request_body['input']['connector_id'] ?? '' )
 	&& 'image_generation' === (string) ( $image_request_body['input']['task'] ?? '' )
-	&& 'b64_json' === (string) ( $image_request_body['input']['response_format'] ?? '' )
+	&& ! isset( $image_request_body['input']['response_format'] )
 	&& '16:9' === (string) ( $image_request_body['input']['aspect_ratio'] ?? '' )
 	&& 2 === (int) ( $image_request_body['input']['n'] ?? 0 ),
 	'Behavior: WordPress AI image generation runtime projects a bounded Cloud image-generation payload.'
+);
+
+$image_provider_media_field = $client->execute_wordpress_ai_image_generation_runtime(
+	array(
+		'contract_version' => 'image_generation_request.v1',
+		'task'             => 'image_generation',
+		'prompt'           => 'A clean product image.',
+		'response_format'  => 'url',
+	)
+);
+maca_assert(
+	is_wp_error( $image_provider_media_field )
+	&& 'cloud_wp_ai_image_generation_provider_media_field_forbidden' === $image_provider_media_field->get_error_code(),
+	'Behavior: WordPress AI image generation rejects caller-selected provider media response formats.'
 );
 
 $GLOBALS['maca_http_response_queue'][] = array(
@@ -689,13 +704,16 @@ $GLOBALS['maca_http_response_queue'][] = array(
 			'run_id' => 'run_toolbox_image_1',
 			'data'   => array(
 				'result' => array(
-					'artifact_type'             => 'image_generation_candidates',
-					'contract_version'          => 'image_generation_result.v1',
-					'provider_response_format'  => 'url',
-					'direct_wordpress_write'    => false,
-					'images'                    => array(
+					'artifact_type'          => 'image_generation_artifacts',
+					'contract_version'       => 'image_generation_result.v1',
+					'suggestion_only'        => true,
+					'requires_local_review'  => true,
+					'artifacts'              => array(
 						array(
-							'url' => 'https://cdn.example.test/toolbox-image.png',
+							'artifact_id'        => 'art_toolbox_image_1',
+							'artifact_reference' => array( 'artifact_id' => 'art_toolbox_image_1' ),
+							'status'             => 'available',
+							'content_type'       => 'image/png',
 						),
 					),
 				),
@@ -710,7 +728,6 @@ $toolbox_image_result = $client->execute_toolbox_image_generation_runtime(
 		'task'             => 'image_generation',
 		'prompt'           => 'A cinematic featured image for a WordPress article.',
 		'n'                => 3,
-		'response_format'  => 'url',
 		'aspect_ratio'     => '16:9',
 		'resolution'       => 'high',
 		'source_surface'   => 'toolbox_featured_image',
@@ -740,10 +757,24 @@ maca_assert(
 	&& 'toolbox_featured_image' === (string) ( $toolbox_image_request_body['input']['source_surface'] ?? '' )
 	&& 'npcink-cloud-addon' === (string) ( $toolbox_image_request_body['input']['connector_id'] ?? '' )
 	&& 'image_generation' === (string) ( $toolbox_image_request_body['input']['task'] ?? '' )
-	&& 'url' === (string) ( $toolbox_image_request_body['input']['response_format'] ?? '' )
+	&& ! isset( $toolbox_image_request_body['input']['response_format'] )
 	&& '16:9' === (string) ( $toolbox_image_request_body['input']['aspect_ratio'] ?? '' )
 	&& 3 === (int) ( $toolbox_image_request_body['input']['n'] ?? 0 ),
 	'Behavior: Toolbox image generation runtime projects a transport-only Cloud image-generation payload.'
+);
+
+$toolbox_image_provider_media_field = $client->execute_toolbox_image_generation_runtime(
+	array(
+		'contract_version' => 'image_generation_request.v1',
+		'task'             => 'image_generation',
+		'prompt'           => 'A clean featured-image candidate.',
+		'response_format'  => 'b64_json',
+	)
+);
+maca_assert(
+	is_wp_error( $toolbox_image_provider_media_field )
+	&& 'cloud_toolbox_image_generation_provider_media_field_forbidden' === $toolbox_image_provider_media_field->get_error_code(),
+	'Behavior: Toolbox image generation rejects caller-selected provider media response formats.'
 );
 
 $GLOBALS['maca_http_response_queue'][] = array(

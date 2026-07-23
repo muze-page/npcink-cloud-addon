@@ -45,7 +45,6 @@ if ( ! class_exists( 'Npcink_Cloud_Runtime_Client' ) ) {
 		private const WP_AI_IMAGE_GENERATION_MAX_PROMPT_CHARS = 4000;
 		private const WP_AI_IMAGE_GENERATION_MAX_TIMEOUT_SECONDS = 90;
 		private const WP_AI_IMAGE_GENERATION_MAX_RETENTION_TTL = 86400;
-		private const WP_AI_IMAGE_GENERATION_ALLOWED_RESPONSE_FORMATS = array( 'url', 'b64_json' );
 		private const WP_AI_IMAGE_GENERATION_ALLOWED_ASPECT_RATIOS = array( '1:1', '2:3', '3:2', '3:4', '4:3', '4:5', '5:4', '9:16', '16:9', '21:9' );
 		private const TOOLBOX_IMAGE_GENERATION_ALLOWED_SOURCE_SURFACES = array( 'toolbox_featured_image', 'toolbox_editor_featured_image', 'toolbox_editor_image_modal', 'toolbox_ai_image_generation' );
 		private const TOOLBOX_AUDIO_GENERATION_CONTRACT = 'audio_generation_request.v1';
@@ -2441,6 +2440,14 @@ if ( ! class_exists( 'Npcink_Cloud_Runtime_Client' ) ) {
 				);
 			}
 
+			if ( array_key_exists( 'response_format', $request ) ) {
+				return new WP_Error(
+					'cloud_wp_ai_image_generation_provider_media_field_forbidden',
+					__( 'WordPress AI image generation requests may not select a provider response format.', 'npcink-cloud-addon' ),
+					array( 'status' => 400 )
+				);
+			}
+
 			$forbidden_key = $this->find_forbidden_wordpress_ai_connector_key( $request );
 			if ( '' !== $forbidden_key ) {
 				return new WP_Error(
@@ -2485,15 +2492,6 @@ if ( ! class_exists( 'Npcink_Cloud_Runtime_Client' ) ) {
 				);
 			}
 
-			$response_format = (string) ( $request['response_format'] ?? 'b64_json' );
-			if ( ! in_array( $response_format, self::WP_AI_IMAGE_GENERATION_ALLOWED_RESPONSE_FORMATS, true ) ) {
-				return new WP_Error(
-					'cloud_wp_ai_image_generation_response_format_invalid',
-					__( 'WordPress AI image generation response format must be url or b64_json.', 'npcink-cloud-addon' ),
-					array( 'status' => 400 )
-				);
-			}
-
 			$aspect_ratio = (string) ( $request['aspect_ratio'] ?? '1:1' );
 			if ( ! in_array( $aspect_ratio, self::WP_AI_IMAGE_GENERATION_ALLOWED_ASPECT_RATIOS, true ) ) {
 				$aspect_ratio = '1:1';
@@ -2519,7 +2517,6 @@ if ( ! class_exists( 'Npcink_Cloud_Runtime_Client' ) ) {
 					'task'              => 'image_generation',
 					'prompt'            => $prompt,
 					'n'                 => $image_count,
-					'response_format'   => $response_format,
 					'aspect_ratio'      => $aspect_ratio,
 					'resolution'        => sanitize_key( (string) ( $request['resolution'] ?? 'medium' ) ),
 				),
@@ -2555,6 +2552,14 @@ if ( ! class_exists( 'Npcink_Cloud_Runtime_Client' ) ) {
 				return new WP_Error(
 					'cloud_toolbox_image_generation_task_not_allowed',
 					__( 'Toolbox image generation requests require the supported image_generation task surface.', 'npcink-cloud-addon' ),
+					array( 'status' => 400 )
+				);
+			}
+
+			if ( array_key_exists( 'response_format', $request ) ) {
+				return new WP_Error(
+					'cloud_toolbox_image_generation_provider_media_field_forbidden',
+					__( 'Toolbox image generation requests may not select a provider response format.', 'npcink-cloud-addon' ),
 					array( 'status' => 400 )
 				);
 			}
@@ -2603,15 +2608,6 @@ if ( ! class_exists( 'Npcink_Cloud_Runtime_Client' ) ) {
 				);
 			}
 
-			$response_format = (string) ( $request['response_format'] ?? 'url' );
-			if ( ! in_array( $response_format, self::WP_AI_IMAGE_GENERATION_ALLOWED_RESPONSE_FORMATS, true ) ) {
-				return new WP_Error(
-					'cloud_toolbox_image_generation_response_format_invalid',
-					__( 'Toolbox image generation response format must be url or b64_json.', 'npcink-cloud-addon' ),
-					array( 'status' => 400 )
-				);
-			}
-
 			$aspect_ratio = (string) ( $request['aspect_ratio'] ?? '16:9' );
 			if ( ! in_array( $aspect_ratio, self::WP_AI_IMAGE_GENERATION_ALLOWED_ASPECT_RATIOS, true ) ) {
 				$aspect_ratio = '16:9';
@@ -2642,7 +2638,6 @@ if ( ! class_exists( 'Npcink_Cloud_Runtime_Client' ) ) {
 					'task'              => 'image_generation',
 					'prompt'            => $prompt,
 					'n'                 => $image_count,
-					'response_format'   => $response_format,
 					'aspect_ratio'      => $aspect_ratio,
 					'resolution'        => sanitize_key( (string) ( $request['resolution'] ?? 'high' ) ),
 				),

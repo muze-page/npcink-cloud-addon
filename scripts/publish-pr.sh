@@ -31,6 +31,9 @@ invocation_dir="${PWD}"
 
 while [ "$#" -gt 0 ]; do
 	case "$1" in
+		--)
+			shift
+			;;
 		--title)
 			[ "$#" -ge 2 ] || fail '--title requires a value'
 			title="$2"
@@ -80,6 +83,11 @@ for required_heading in Scope Boundary Verification Risk; do
 	grep -Eiq "^#{1,6}[[:space:]]+.*${required_heading}" "${body_path}" \
 		|| fail "body file is missing the ${required_heading} heading"
 done
+
+if [ "${base_branch}" = 'production' ]; then
+	grep -Fq 'Approved for production validation by operator.' "${body_path}" \
+		|| fail 'production PR body is missing operator approval'
+fi
 
 branch="$(git branch --show-current)"
 [ -n "${branch}" ] || fail 'detached HEAD is not publishable'

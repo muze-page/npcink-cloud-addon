@@ -1,3 +1,8 @@
+<!--
+Keep the Scope, Boundary, Verification, and Risk headings below.
+The PR body contract requires them before merge.
+-->
+
 ## Scope
 
 - [ ] This change is limited to the stated Cloud Addon module.

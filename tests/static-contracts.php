@@ -95,6 +95,9 @@ $readme = maca_read( $root . '/README.md' );
 $local_test_guide = maca_read( $root . '/docs/local-test-guide.md' );
 $composer = maca_read( $root . '/composer.json' );
 $ci_workflow = maca_read( $root . '/.github/workflows/ci.yml' );
+$pr_body_workflow = maca_read( $root . '/.github/workflows/pr-body-contract.yml' );
+$pr_template = maca_read( $root . '/.github/pull_request_template.md' );
+$pr_publisher = maca_read( $root . '/scripts/publish-pr.sh' );
 $composer_config = json_decode( $composer, true );
 $boundary_guard = is_array( $composer_config )
 	? (string) ( $composer_config['scripts']['check:boundary'] ?? '' )
@@ -311,6 +314,26 @@ maca_assert(
 	&& false !== strpos( $ai_i18n_audit, 'Do not add dynamic ability names' )
 	&& false === strpos( $ai_i18n_audit, 'npcink_cloud_addon_runtime_client' ),
 	'AI plugin localization audit compares local ai-domain strings against the bounded shim without Cloud runtime.'
+);
+
+maca_assert(
+	false !== strpos( $composer, '"pr:publish": "bash scripts/publish-pr.sh"' )
+	&& false !== strpos( $pr_template, '## Scope' )
+	&& false !== strpos( $pr_template, '## Cloud Addon Boundary' )
+	&& false !== strpos( $pr_template, '## Verification' )
+	&& false !== strpos( $pr_template, '## Risk' )
+	&& false !== strpos( $pr_body_workflow, '"Scope":' )
+	&& false !== strpos( $pr_body_workflow, '"Boundary":' )
+	&& false !== strpos( $pr_body_workflow, '"Verification":' )
+	&& false !== strpos( $pr_body_workflow, '"Risk":' )
+	&& false !== strpos( $pr_publisher, "git status --porcelain" )
+	&& false !== strpos( $pr_publisher, 'git merge-base --is-ancestor "origin/${base_branch}" HEAD' )
+	&& false !== strpos( $pr_publisher, '--body-file "${body_path}"' )
+	&& false !== strpos( $pr_publisher, '--auto --squash --match-head-commit "${head_sha}"' )
+	&& false === strpos( $pr_publisher, '--delete-branch' )
+	&& false !== strpos( $agents, 'composer pr:publish' )
+	&& false !== strpos( $readme, 'composer pr:publish' ),
+	'PR publishing reuses the checked-in body contract and requests protected squash auto-merge without deleting worktree branches.'
 );
 
 maca_assert(

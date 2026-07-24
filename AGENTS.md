@@ -53,6 +53,8 @@ runtime truth rules here beyond addon-owned connector contracts.
   the PR, and requests squash auto-merge after required checks. It deliberately
   does not delete local or remote branches because this repository commonly
   uses multiple worktrees.
+- The cross-repository contract is
+  `/Users/muze/gitee/npcink-workflow-toolbox/docs/platform/pr-publishing-standard-v1.md`.
 - For multi-repo milestones, run the central matrix from
   `/Users/muze/gitee/npcink-workflow-toolbox` instead of copying the script into
   this addon: `composer quality:matrix` for status and

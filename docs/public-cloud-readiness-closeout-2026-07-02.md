@@ -57,17 +57,19 @@ WP_CLI_BIN=/opt/homebrew/Cellar/wp-cli/2.12.0/bin/wp composer run release:verify
 
 Plugin Check completed with no errors after the retry run ID sanitization fix.
 
-Public Cloud entrypoints were checked:
+The following entrypoint evidence is historical to the 2026-07-02 closeout.
+Current source uses `/portal` as the only top-level Portal entry and does not
+retain a `/portal/sites` compatibility route.
 
 ```bash
 curl -fsS https://cloud.npc.ink/health/live
-curl -fsSI https://cloud.npc.ink/portal
+curl -fsSI https://cloud.npc.ink/portal/sites
 ```
 
 Observed result:
 
 - `/health/live` returned a production healthy response.
-- `/portal` redirected to Portal login, which is expected for an
+- `/portal/sites` redirected to Portal login, which was expected for an
   unauthenticated authorization entry.
 
 ## Boundary Conclusion

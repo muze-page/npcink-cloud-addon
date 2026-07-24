@@ -44,6 +44,15 @@ runtime truth rules here beyond addon-owned connector contracts.
 - Before committing, verify `git diff --cached --stat` and
   `git diff --cached --name-only`; after committing, verify
   `git show --name-status --stat HEAD`.
+- Publish pull requests with `.github/pull_request_template.md` as the body
+  contract. For non-interactive AI work, prepare a completed body file and run
+  `composer pr:publish -- --title "<title>" --body-file <path>`. Do not replace
+  the template with an ad hoc `gh pr create --body` that omits `Scope`,
+  `Boundary`, `Verification`, or `Risk`.
+- `composer pr:publish` may push only the current clean topic branch, creates
+  the PR, and requests squash auto-merge after required checks. It deliberately
+  does not delete local or remote branches because this repository commonly
+  uses multiple worktrees.
 - For multi-repo milestones, run the central matrix from
   `/Users/muze/gitee/npcink-workflow-toolbox` instead of copying the script into
   this addon: `composer quality:matrix` for status and

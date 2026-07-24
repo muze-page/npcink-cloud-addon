@@ -479,6 +479,21 @@ Do not keep or publish through Gitee remotes for current development. New work
 should branch, review, and merge through GitHub. Keep `master` as the default
 branch unless the CI and release process are intentionally migrated.
 
+For a clean topic branch, publish a non-interactive PR with the checked-in body
+contract and request squash auto-merge after required checks:
+
+```bash
+composer pr:publish -- \
+  --title "fix: describe the focused change" \
+  --body-file /absolute/path/to/completed-pr-body.md
+```
+
+Start the body from `.github/pull_request_template.md` and keep the `Scope`,
+`Boundary`, `Verification`, and `Risk` headings. The publisher fails before
+push when the worktree is dirty, the branch is `master`, the branch is behind
+`origin/master`, or the body contract is incomplete. It never bypasses required
+checks and never deletes branches, which keeps multi-worktree development safe.
+
 ## Local Checks
 
 ```bash

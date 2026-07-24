@@ -438,3 +438,18 @@ maca_assert(
 	&& 'Pro' === (string) ( $post_verify_summary['package_label'] ?? '' ),
 	'Behavior: re-verify and refresh reuses the verification entitlement response without an extra signed Cloud read.'
 );
+
+maca_reset_test_state();
+maca_seed_settings( true );
+$settings = Npcink_Cloud_Addon_Settings::get_settings();
+$GLOBALS['maca_http_response_queue'][] = new WP_Error( 'cloud_unavailable', 'Cloud unavailable.' );
+
+$method->invoke( null, $settings, 'Verified.' );
+$failed_state = Npcink_Cloud_Addon_Settings::get_credential_state();
+
+maca_assert(
+	'configured_unavailable' === (string) ( $failed_state['code'] ?? '' )
+	&& false !== strpos( (string) ( $failed_state['message'] ?? '' ), 'Cloud unavailable.' )
+	&& false === get_transient( 'npcink_cloud_notice_1' ),
+	'Behavior: verification failure remains visible in the connection summary without a duplicate redirect notice.'
+);

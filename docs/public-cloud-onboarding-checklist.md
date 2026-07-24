@@ -59,7 +59,10 @@ Expected result:
 
 ## Fresh Public Site Smoke
 
-Use a WordPress site that has no stored `npcink_cloud_addon_settings` option.
+Use a non-local WordPress site that has no stored
+`npcink_cloud_addon_settings` option. Local WordPress environments deliberately
+reject `https://cloud.npc.ink/`; use the isolated M4 Preview connection profile
+for local development instead.
 
 1. Install the packaged addon.
 2. Activate `Npcink Cloud Addon`.
@@ -80,19 +83,10 @@ Use a WordPress site that has no stored `npcink_cloud_addon_settings` option.
 
 ## Local Development Smoke
 
-Local WordPress environments may still resolve the default Cloud Base URL to
-`http://localhost:8010/`. This is expected when `wp_get_environment_type()`
-returns `local` or the site host is `localhost`, `127.0.0.1`, `::1`, or
-`.local`.
-
-To simulate the public package path from a local WordPress site, set:
-
-```php
-define( 'NPCINK_CLOUD_ADDON_DEFAULT_BASE_URL', 'https://cloud.npc.ink/' );
-```
-
-Remove that override after the smoke test unless the site is intentionally
-connected to public Cloud.
+Local WordPress environments resolve the default Cloud Base URL to
+`http://localhost:8010/`, or to a workspace-specific loopback override such as
+`http://127.0.0.1:18010/`. They must not override that value to
+`https://cloud.npc.ink/`.
 
 ## Monitoring And Data Boundary
 

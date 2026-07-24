@@ -26,6 +26,13 @@ local environment (or the local-development constant opts in). The environment d
 entry belong in `Connection Management > Manual fallback` as a recovery
 fallback for local debugging or authorization outages.
 
+Local WordPress environments must fail closed when a stored or submitted Base
+URL points to the canonical public endpoint `https://cloud.npc.ink/`. Public
+Cloud onboarding belongs on a non-local test or public site. A workspace may
+set a different loopback preview default through
+`NPCINK_CLOUD_ADDON_DEFAULT_BASE_URL`; this does not change the packaged
+non-local default.
+
 The default `Connect` view may expose one folded `Advanced connection /
 Self-hosted Cloud endpoint` entry. That entry only changes the authorization target for a
 compatible Npcink Cloud deployment; it must not save partial credentials before

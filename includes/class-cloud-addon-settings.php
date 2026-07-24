@@ -80,10 +80,9 @@ if ( ! class_exists( 'Npcink_Cloud_Addon_Settings' ) ) {
 		 * @return string
 		 */
 		public static function get_default_base_url(): string {
-			$default = self::PRODUCTION_DEFAULT_BASE_URL;
-			if ( self::is_local_wordpress_environment() ) {
-				$default = self::LOCAL_DEFAULT_BASE_URL;
-			}
+			$is_local = self::is_local_wordpress_environment();
+			$fallback = $is_local ? self::LOCAL_DEFAULT_BASE_URL : self::PRODUCTION_DEFAULT_BASE_URL;
+			$default  = $fallback;
 			if ( defined( 'NPCINK_CLOUD_ADDON_DEFAULT_BASE_URL' ) && '' !== trim( (string) NPCINK_CLOUD_ADDON_DEFAULT_BASE_URL ) ) {
 				$default = (string) NPCINK_CLOUD_ADDON_DEFAULT_BASE_URL;
 			}
@@ -96,7 +95,7 @@ if ( ! class_exists( 'Npcink_Cloud_Addon_Settings' ) ) {
 			$filtered = apply_filters( 'npcink_cloud_addon_default_base_url', $default );
 			$normalized = self::normalize_base_url( is_string( $filtered ) ? $filtered : $default );
 
-			return '' !== $normalized ? $normalized : self::PRODUCTION_DEFAULT_BASE_URL;
+			return '' !== $normalized ? $normalized : self::normalize_base_url( $fallback );
 		}
 
 		/**

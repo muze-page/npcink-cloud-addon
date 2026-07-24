@@ -44,6 +44,27 @@ maca_assert(
 	'http://[::1]:8010' === Npcink_Cloud_Outbound_Policy::normalize_base_url( 'http://[::1]:8010/' ),
 	'Behavior: bracketed IPv6 loopback is normalized as an exact local-development target.'
 );
+maca_assert(
+	'' === Npcink_Cloud_Outbound_Policy::normalize_base_url( 'https://cloud.npc.ink/' ),
+	'Behavior: local WordPress rejects the canonical public Cloud Base URL.'
+);
+
+$local_public_request = Npcink_Cloud_Outbound_Policy::request_json(
+	'https://cloud.npc.ink/health/live',
+	array( 'method' => 'GET' )
+);
+maca_assert(
+	is_wp_error( $local_public_request )
+	&& 'cloud_outbound_target_not_allowed' === $local_public_request->get_error_code()
+	&& 0 === count( $GLOBALS['maca_http_requests'] ),
+	'Behavior: local WordPress rejects public Cloud before outbound HTTP dispatch.'
+);
+
+$GLOBALS['maca_wp_environment_type'] = 'production';
+maca_assert(
+	'https://cloud.npc.ink' === Npcink_Cloud_Outbound_Policy::normalize_base_url( 'https://cloud.npc.ink/' ),
+	'Behavior: production WordPress retains the canonical public Cloud Base URL.'
+);
 
 foreach (
 	array(

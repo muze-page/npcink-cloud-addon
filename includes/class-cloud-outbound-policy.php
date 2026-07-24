@@ -19,6 +19,7 @@ if ( ! class_exists( 'Npcink_Cloud_Outbound_Policy' ) ) {
 		public const MAX_JSON_RESPONSE_BYTES = 1048576;
 		public const MAX_AUTH_RESPONSE_BYTES = 65536;
 		public const MAX_RAW_RESPONSE_BYTES  = 26214400;
+		private const PRODUCTION_CLOUD_HOST  = 'cloud.npc.ink';
 
 		/**
 		 * Normalizes a configured Cloud base URL without performing DNS I/O.
@@ -48,6 +49,9 @@ if ( ! class_exists( 'Npcink_Cloud_Outbound_Policy' ) ) {
 				|| isset( $parts['fragment'] )
 				|| ( '' !== $path && '/' !== $path )
 			) {
+				return '';
+			}
+			if ( self::is_public_cloud_forbidden_in_local( $host ) ) {
 				return '';
 			}
 			if ( filter_var( $host, FILTER_VALIDATE_IP ) && ! self::is_loopback_host( $host ) && ! self::is_public_ip( $host ) ) {
@@ -174,6 +178,9 @@ if ( ! class_exists( 'Npcink_Cloud_Outbound_Policy' ) ) {
 			$scheme = strtolower( (string) ( $parts['scheme'] ?? '' ) );
 			$host   = self::normalize_host( (string) ( $parts['host'] ?? '' ) );
 			if ( '' === $host || isset( $parts['user'] ) || isset( $parts['pass'] ) || isset( $parts['fragment'] ) ) {
+				return self::target_error();
+			}
+			if ( self::is_public_cloud_forbidden_in_local( $host ) ) {
 				return self::target_error();
 			}
 
@@ -371,6 +378,18 @@ if ( ! class_exists( 'Npcink_Cloud_Outbound_Policy' ) ) {
 		 */
 		private static function is_loopback_host( string $host ): bool {
 			return in_array( self::normalize_host( $host ), array( 'localhost', '127.0.0.1', '::1' ), true );
+		}
+
+		/**
+		 * Returns whether local WordPress is attempting to use the public Cloud host.
+		 *
+		 * @param string $host Normalized or raw host.
+		 * @return bool
+		 */
+		private static function is_public_cloud_forbidden_in_local( string $host ): bool {
+			return function_exists( 'wp_get_environment_type' )
+				&& 'local' === wp_get_environment_type()
+				&& self::PRODUCTION_CLOUD_HOST === self::normalize_host( $host );
 		}
 
 		/**

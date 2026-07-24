@@ -70,6 +70,13 @@ Steps:
 For the local `magick-ai.local` development site with Cloud settings already
 verified and WordPress AI features enabled, run:
 
+The current M4 Preview profile is intentionally separate from the packaged
+public Cloud profile. Its local MU plugin selects
+`npcink_cloud_addon_m4_preview_settings` and should set
+`NPCINK_CLOUD_ADDON_DEFAULT_BASE_URL` to `http://127.0.0.1:18010/`, where the
+MBA tunnel forwards to M4 `127.0.0.1:8010`. Do not use
+`https://cloud.npc.ink/` from this local WordPress environment.
+
 ```bash
 composer run smoke:wp-ai-editor
 ```

@@ -1697,7 +1697,9 @@ maca_assert(
 maca_assert(
 	false !== strpos( $settings, "LOCAL_DEFAULT_BASE_URL = 'http://localhost:8010/'" )
 	&& false !== strpos( $settings, "PRODUCTION_DEFAULT_BASE_URL = 'https://cloud.npc.ink/'" )
+	&& false !== strpos( $outbound_policy, "PRODUCTION_CLOUD_HOST  = 'cloud.npc.ink'" )
 	&& false !== strpos( $settings, 'function get_default_base_url' )
+	&& false !== strpos( $outbound_policy, 'function is_public_cloud_forbidden_in_local' )
 	&& false !== strpos( $settings_page, "ACTION_COMPLETE_AUTH = 'npcink_cloud_addon_complete_auth'" )
 	&& false !== strpos( $settings_page, "ACTION_START_CUSTOM_AUTH = 'npcink_cloud_addon_start_custom_auth'" )
 	&& false !== strpos( $settings_page, "admin_post_' . self::ACTION_COMPLETE_AUTH" )

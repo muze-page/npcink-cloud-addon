@@ -1795,7 +1795,8 @@ maca_assert(
 
 maca_assert(
 	false !== strpos( $public_onboarding_doc, 'https://cloud.npc.ink/' )
-	&& false !== strpos( $public_onboarding_doc, '/portal/sites' )
+	&& false !== strpos( $public_onboarding_doc, 'https://cloud.npc.ink/portal' )
+	&& false === strpos( $public_onboarding_doc, '/portal/sites' )
 	&& false !== strpos( $public_onboarding_doc, '/portal/v1/addon-connections/exchange' )
 	&& false !== strpos( $public_onboarding_doc, 'must not become a Cloud operations console or a second control plane' )
 	&& false !== strpos( $public_onboarding_doc, 'must not send prompts, generated content' )

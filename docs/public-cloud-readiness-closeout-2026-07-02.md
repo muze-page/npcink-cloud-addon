@@ -61,13 +61,13 @@ Public Cloud entrypoints were checked:
 
 ```bash
 curl -fsS https://cloud.npc.ink/health/live
-curl -fsSI https://cloud.npc.ink/portal/sites
+curl -fsSI https://cloud.npc.ink/portal
 ```
 
 Observed result:
 
 - `/health/live` returned a production healthy response.
-- `/portal/sites` redirected to Portal login, which is expected for an
+- `/portal` redirected to Portal login, which is expected for an
   unauthenticated authorization entry.
 
 ## Boundary Conclusion

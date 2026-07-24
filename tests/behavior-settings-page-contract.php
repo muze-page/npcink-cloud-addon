@@ -195,6 +195,11 @@ $callback_query = $parse_query_pairs( (string) wp_parse_url( $return_url, PHP_UR
 $callback_states = $callback_query['state'] ?? array();
 
 maca_assert(
+	'/portal' === (string) wp_parse_url( $authorization_url, PHP_URL_PATH ),
+	'Behavior: Cloud authorization uses the one canonical Portal entry without a compatibility route.'
+);
+
+maca_assert(
 	1 === count( $top_level_states )
 	&& 1 === count( $return_urls ),
 	'Behavior: Cloud authorization URL has exactly one top-level state and one encoded return URL.'

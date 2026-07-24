@@ -226,6 +226,20 @@ maca_assert(
 );
 
 maca_reset_test_state();
+maca_seed_settings( false );
+$failed_settings = Npcink_Cloud_Addon_Settings::get_settings();
+$failed_settings['last_verification_error'] = 'Cloud connection failed once.';
+Npcink_Cloud_Addon_Settings::write_settings( $failed_settings );
+ob_start();
+Npcink_Cloud_Settings_Page::render();
+$failed_rendered = (string) ob_get_clean();
+
+maca_assert(
+	1 === substr_count( $failed_rendered, 'Cloud connection failed once.' ),
+	'Behavior: the unverified connection page renders its persisted Cloud failure exactly once.'
+);
+
+maca_reset_test_state();
 maca_seed_settings( true );
 $http_before_overview = count( $GLOBALS['maca_http_requests'] );
 ob_start();

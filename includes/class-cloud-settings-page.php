@@ -431,7 +431,8 @@ if ( ! class_exists( 'Npcink_Cloud_Settings_Page' ) ) {
 			$message = self::format_probe_failure_message( $probe );
 			Npcink_Cloud_Addon_Settings::mark_verification_result( false, $message );
 			Npcink_Cloud_Observability_Collector::sync_schedule();
-			self::set_admin_notice( 'error', $message );
+			// The connection summary always renders the persisted verification
+			// failure, so a redirect notice would duplicate the same message.
 		}
 
 		/**
@@ -2010,9 +2011,6 @@ if ( ! class_exists( 'Npcink_Cloud_Settings_Page' ) ) {
 					<p class="description"><?php esc_html_e( 'This does not manage Cloud sites, keys, billing, models, router, workflows, or runtime policy.', 'npcink-cloud-addon' ); ?></p>
 				</div>
 			</details>
-			<?php if ( '' !== (string) ( $state['last_verification_error'] ?? '' ) ) : ?>
-				<p class="npcink-cloud-empty"><?php echo esc_html( (string) $state['last_verification_error'] ); ?></p>
-			<?php endif; ?>
 			<?php
 		}
 
